@@ -1,0 +1,437 @@
+/* Cryptol KATAN Implementation
+* Copyright (c) 2018, Galois Inc.
+* www.cryptol.net
+* You can freely use this source code for educational purposes.
+* KATAN- Extended Tiny Encryption Algorithm
+* source: http://www.cs.technion.ac.il/~orrd/KATAN/index.html#Introduction
+* Author: Ajay Kumar Eeralla
+* KATAN block sizes-32,48, 64, key size-80
+* Testing: For testing a version of KATAN/KATANTAN, please uncomment the respected L1, L2, x, y, and the testing property while commenting the other versions and their values  
+*/
+
+module KATAN where
+
+type Katan32 = 32
+type Katan48 = 48
+type Katan64 = 64
+//type KatanBlock = Katan32
+//type KatanBlock = Katan48
+type KatanBlock = Katan64
+type KatanKeySize = 80
+type Round = 8
+type xSize = 5
+type ySize = 6
+
+//Number of rounds
+
+type Nr = 254
+
+//Sizes of the registers
+
+//32-bit
+
+//type L1Size = 13
+//type L2Size = 19
+
+//48-bit
+
+//type L1Size = 19
+//type L2Size = 29
+
+//64-bit
+
+type L1Size = 25
+type L2Size = 39
+
+// x, y values
+
+//32-bit 
+
+//x = [12, 7, 8, 5, 3]
+//y = [18, 7, 12, 10, 8, 3]
+
+//48-bit
+
+//x = [18, 12, 15, 7, 6]
+//y = [28, 19, 21, 13, 15, 6]
+
+//64-bit
+
+x = [24, 15, 20, 11, 9]
+y = [38, 25, 33, 21, 14, 9]
+
+// Split and load the plaintext into two registers L1||L2
+
+split: [KatanBlock] -> ([L1Size], [L2Size])
+
+split pt = (l1, l2)
+            where l1 = take`{L1Size} pt
+                  l2 = drop`{L1Size} pt
+
+
+//Irregular round update
+
+iR: [1][Nr]
+
+//iR = [0x3f8d57b329118f08507cfd454c33bee95a7362ede5b5c934713d0eb059037012]
+//iR = [28745440178967186054114865700305651645479019971890695849938977564416473788434]
+iR = [0b11111110001101010101111011001100101001000100011000111100001000010100000111110011111101010001010100110000110011101111101110100101011010011100110110001011101101111001011011010111001001001101000111000100111101000011101011000001011001000000110111000000010010]
+
+//Key Schedule-recursively extend the key
+
+kS: {a} (fin a) => ([a], [12]) -> [a+1] 
+kS (key, i ) = key # [((key@(i-80))^ (key@(i-61)) ^ (key@(i-50)) ^ (key@(i-13)))]
+
+kS10 : {a} (fin a) => ([a], [12]) -> [a + 10]
+kS10 (key, i) = key9
+           where key0 = kS (key, i)
+                 key1 = kS (key0, i+1)
+                 key2 = kS (key1, i+2)
+                 key3 = kS (key2, i+3)
+                 key4 = kS (key3, i+4)
+                 key5 = kS (key4, i+5)
+                 key6 = kS (key5, i+6)
+                 key7 = kS (key6, i+7)
+                 key8 = kS (key7, i+8)
+                 key9 = kS (key8, i+9)
+
+kS100 : {a} (fin a) => ([a], [12]) -> [a + 100]
+kS100 (key, i) = key9
+            where key0 = kS10 (key, i)
+                  key1 = kS10 (key0, i+10)
+                  key2 = kS10 (key1, i+20)
+                  key3 = kS10 (key2, i+30)
+                  key4 = kS10 (key3, i+40)
+                  key5 = kS10 (key4, i+50)
+                  key6 = kS10 (key5, i+60)
+                  key7 = kS10 (key6, i+70)
+                  key8 = kS10 (key7, i+80)
+                  key9 = kS10 (key8, i+90)
+
+keySchedule' :[80] -> [508]
+keySchedule' key = key13
+            where key0 = kS100 (key, 80)
+                  key1= kS100 (key0, 180)
+                  key2 = kS100 (key1, 280)
+                  key3 = kS100 (key2, 380)
+                  key4 = kS10(key3, 480)
+                  key5 = kS10 (key4, 490)
+                  key6 = kS (key5, 500)
+                  key7 = kS (key6, 501)
+                  key8 = kS (key7, 502)
+                  key9 = kS (key8, 503)
+                  key10 = kS (key9, 504)
+                  key11 = kS (key10, 505)
+                  key12 = kS (key11, 506)
+                  key13 = kS (key12, 507)
+// functions fa and fb
+
+funFa : [L1Size]-> [xSize][xSize] -> [508] -> [Round] -> Bit
+
+funFa L1 x k i = (L1!(x@0)) ^ (L1!(x@1)) ^ ((L1!(x@2)) && (L1!(x@3))) ^ ((L1!(x@4)) && ((iR@0)@i)) ^ (k@(pmult 2 i))
+
+funFb : [L2Size]-> [ySize][ySize] -> [508] -> [Round] -> Bit
+
+funFb L2 y k i = (L2!(y@0)) ^ (L2!(y@1)) ^ (L2!(y@2) && L2!(y@3)) ^ (L2!(y@4) && L2!(y@5)) ^ (k@((pmult 2 i)+1))
+
+//left shift L1 and L2 and replace LSBs of them with fb and fa respectively
+
+
+aply_fb : [L1Size] -> [L2Size]->  [ySize][ySize] ->[KatanKeySize] -> [Round] -> [L1Size]
+aply_fb l1 l2 y key i = (l1 !! [(L1Size-2),(L1Size-3)..0]) # [(funFb l2 y (keySchedule' key) i)]
+
+aply_fa : [L1Size] -> [L2Size]-> [xSize][xSize]->[KatanKeySize] -> [Round] -> [L2Size]
+aply_fa l1 l2 x key i = (l2 !! [(L2Size-2),(L2Size-3)..0]) # [(funFa l1 x (keySchedule' key) i)]
+
+//Update LFSR for encryption
+
+updateLfsr : [L1Size] -> [L2Size]-> [xSize][xSize] -> [ySize][ySize]->[KatanKeySize] -> [Round] -> ([L1Size], [L2Size])
+updateLfsr l1 l2 x y key i = if `(L1Size) == 13
+                             then (l1', l2')
+                             else if `(L1Size) == 19
+                                  then (l1'', l2'')
+                                  else (l1''', l2''')
+                 
+                 where pt = (aply_fb l1 l2 y key i) # (aply_fa l1 l2 x key i)
+                       l1' = (split pt).0
+                       l2' = (split pt).1
+                       pt' = (aply_fb l1' l2' y key i) # (aply_fa l1' l2' x key i)
+                       l1'' = (split pt').0
+                       l2'' =  (split pt').1
+                       pt'' = (aply_fb l1'' l2'' y key i) # (aply_fa l1'' l2'' x key i)
+                       l1''' = (split pt'').0
+                       l2''' =  (split pt'').1
+
+//Encryption
+
+katanEncrypt : ( [KatanKeySize], [KatanBlock]) -> _ // [KatanBlock]
+
+katanEncrypt (key, pt) =  (hs!0).0 # (hs!0).1
+               where hs = [(l1, l2)] # [ ( (updateLfsr pT.0 pT.1 x y key i).0, (updateLfsr pT.0 pT.1 x y key i).1)  | i<- [0,1..253] | pT <- hs ]
+                     l1 = (split pt).0 
+                     l2 = (split pt).1
+              
+// wrapper to do experiments
+
+katanEncrypt64 : ([KatanBlock], [KatanBlock]) -> [KatanBlock]
+katanEncrypt64 (key, pt) = katanEncrypt(key#zero, pt)
+             
+
+katanEncrypt80 : ([KatanKeySize], [KatanKeySize]) -> [KatanKeySize]
+katanEncrypt80 (key, pt) = katanEncrypt(key, (take`{64} pt)) # zero
+
+//Auxiliary functions for decryption
+
+// fa and fb
+
+decFunFa : [L1Size] -> [L2Size] -> [xSize][xSize] -> [508] -> [Round] -> Bit
+
+decFunFa L1 L2 x k i = fa ^ (L1!((x@1)+1)) ^ (L1!((x@2)+1) && L1!((x@3)+1)) ^ (L1!((x@4)+1) && ((iR@0)@i)) ^ k@(2*i)
+         where fa = L2!0
+
+decFunFb : [L2Size] -> [L1Size] -> [ySize][ySize] -> [508] -> [Round] -> Bit
+decFunFb L2 L1 y k i =  fb ^ (L2!((y@1)+1)) ^ ((L2!((y@2)+1)) && L2!((y@3)+1)) ^ ((L2!((y@4)+1)) && L2!((y@5)+1)) ^ k@(2*i+1)
+         where fb = L1!0
+
+//Left shifting L1, L2 and appending fa, fb values 
+
+aply_decFa_once : [L1Size] -> [L2Size] -> [xSize][xSize] -> [KatanKeySize] -> [Round] -> [L1Size]
+
+aply_decFa_once  l1 l2 x k i = [(decFunFa l1 l2 x (keySchedule' k) i)] # (l1!![(L1Size-1),(L1Size-2)..1])
+                         
+
+aply_decFb_once : [L2Size] -> [L1Size] -> [ySize][ySize] -> [KatanKeySize] -> [Round] -> [L2Size]
+aply_decFb_once  l2 l1 y k i =  [(decFunFb l2 l1 y (keySchedule' k) i)] # (l2!![(L2Size-1),(L2Size-2)..1])
+
+// Updating LFSR for decryption
+
+decUpdateLfsr: [L1Size] -> [L2Size] -> [xSize][xSize]-> [ySize][ySize] -> [KatanKeySize] -> [Round] -> ([L1Size], [L2Size])
+decUpdateLfsr  l1 l2 x y key i = if `(L1Size) == 13
+                                 then (l1', l2')
+                                 else if `(L1Size) == 19
+                                      then (l1'', l2'')
+                                      else (l1''', l2''')
+                               where ct = (aply_decFa_once l1 l2 x key i) # (aply_decFb_once l2 l1 y key i)
+                                     l1' = (split ct).0
+                                     l2' = (split ct).1
+                                     ct' = (aply_decFa_once l1' l2' x key i) # (aply_decFb_once l2' l1' y key i)
+                                     l1'' = (split ct').0
+                                     l2'' = (split ct').1
+                                     ct'' = (aply_decFa_once l1'' l2'' x key i) # (aply_decFb_once l2'' l1'' y key i)
+                                     l1''' = (split ct'').0
+                                     l2''' = (split ct'').1 
+//Decryption
+
+katanDecrypt : ([KatanKeySize], [KatanBlock]) -> [KatanBlock]
+katanDecrypt (key, pt) = (hs!0).0 # (hs!0).1
+               where hs = [(l1, l2)] #[ ((decUpdateLfsr pT.0 pT.1 x y key i).0 , (decUpdateLfsr pT.0 pT.1 x y key i).1)  | i <-[253,252..0] |pT <- hs ]
+                     l1 = (split pt).0
+                     l2 = (split pt).1
+
+
+// Correctness
+
+property katanCorrect key m = katanEncrypt( key, katanDecrypt(key, m)) == m
+
+
+
+/*******KTANTAN*******************************************/
+/**********************************************************/
+
+k_a_index = [0x3f, 0x1f, 0x1f, 0x0f, 0x0e, 0x3c, 0x28, 0x31, 0x23, 0x36, 0x2d,
+             0x3a, 0x25, 0x4a, 0x45, 0x4a, 0x35, 0x2b, 0x47, 0x3f, 0x1e, 0x2d,
+             0x0b, 0x36, 0x1c, 0x29, 0x03, 0x26, 0x3c, 0x19, 0x22, 0x05, 0x1a,
+             0x14, 0x09, 0x02, 0x14, 0x18, 0x01, 0x02, 0x34, 0x18, 0x11, 0x03,
+             0x06, 0x4c, 0x48, 0x31, 0x13, 0x17, 0x0f, 0x0e, 0x0c, 0x18, 0x10,
+             0x01, 0x02, 0x04, 0x28, 0x30, 0x11, 0x12, 0x05, 0x0a, 0x04, 0x08,
+             0x40, 0x40, 0x41, 0x33, 0x17, 0x2f, 0x0f, 0x4e, 0x4c, 0x49, 0x43,
+             0x37, 0x2f, 0x3f, 0x2f, 0x3e, 0x1d, 0x1a, 0x05, 0x0a, 0x24, 0x38,
+             0x21, 0x32, 0x15, 0x2a, 0x05, 0x3a, 0x14, 0x19, 0x03, 0x06, 0x0c,
+             0x38, 0x10, 0x21, 0x03, 0x46, 0x3c, 0x29, 0x43, 0x47, 0x4e, 0x4d,
+             0x3b, 0x27, 0x4f, 0x4f, 0x3e, 0x2d, 0x3b, 0x17, 0x2e, 0x0d, 0x2a,
+             0x34, 0x29, 0x42, 0x35, 0x2a, 0x35, 0x1b, 0x26, 0x0d, 0x4a, 0x34,
+             0x19, 0x23, 0x07, 0x3e, 0x2c, 0x49, 0x33, 0x16, 0x1d, 0x0b, 0x06,
+             0x2c, 0x48, 0x41, 0x32, 0x25, 0x4b, 0x37, 0x2e, 0x4d, 0x4b, 0x46,
+             0x3d, 0x1b, 0x27, 0x0f, 0x2e, 0x4c, 0x39, 0x22, 0x45, 0x3b, 0x26,
+             0x3d, 0x2b, 0x46, 0x4d, 0x3a, 0x15, 0x2b, 0x07, 0x1e, 0x2c, 0x09,
+             0x12, 0x24, 0x09, 0x32, 0x24, 0x39, 0x13, 0x16, 0x0d, 0x0a, 0x44,
+             0x38, 0x11, 0x13, 0x07, 0x0e, 0x1c, 0x28, 0x01, 0x42, 0x44, 0x39,
+             0x23, 0x37, 0x1f, 0x1e, 0x0d, 0x0a, 0x04, 0x48, 0x30, 0x21, 0x33,
+             0x27, 0x4e, 0x3d, 0x1a, 0x15, 0x0b, 0x06, 0x0c, 0x08, 0x20, 0x40,
+             0x31, 0x12, 0x25, 0x0b, 0x16, 0x1c, 0x09, 0x02, 0x04, 0x08, 0x00,
+             0x30, 0x20, 0x41, 0x43, 0x36, 0x1d, 0x1b, 0x07, 0x0e, 0x0c, 0x08,
+             0x00, 0x00, 0x10, 0x20, 0x01, 0x22, 0x44, 0x49, 0x42, 0x45, 0x4b,
+             0x47]
+ 
+
+k_b_index = [0x1f, 0x3f, 0x3f, 0x2f, 0x0e, 0x4c, 0x28, 0x11, 0x43, 0x16, 0x4d,
+             0x1a, 0x45, 0x0a, 0x45, 0x0a, 0x15, 0x2b, 0x07, 0x4f, 0x3e, 0x2d,
+             0x0b, 0x46, 0x3c, 0x29, 0x13, 0x46, 0x1c, 0x49, 0x22, 0x15, 0x4a,
+             0x34, 0x29, 0x12, 0x44, 0x38, 0x21, 0x02, 0x44, 0x38, 0x31, 0x23,
+             0x06, 0x4c, 0x08, 0x11, 0x33, 0x37, 0x3f, 0x2e, 0x1c, 0x48, 0x30,
+             0x31, 0x22, 0x14, 0x48, 0x10, 0x41, 0x32, 0x35, 0x3a, 0x24, 0x08,
+             0x40, 0x00, 0x01, 0x13, 0x37, 0x2f, 0x0f, 0x4e, 0x0c, 0x09, 0x03,
+             0x17, 0x2f, 0x1f, 0x4f, 0x1e, 0x4d, 0x3a, 0x25, 0x1a, 0x44, 0x18,
+             0x41, 0x12, 0x45, 0x2a, 0x05, 0x4a, 0x34, 0x39, 0x33, 0x26, 0x0c,
+             0x48, 0x30, 0x21, 0x03, 0x46, 0x1c, 0x29, 0x03, 0x47, 0x0e, 0x0d,
+             0x1b, 0x27, 0x0f, 0x4f, 0x1e, 0x2d, 0x1b, 0x47, 0x2e, 0x1d, 0x4a,
+             0x14, 0x49, 0x02, 0x45, 0x2a, 0x15, 0x4b, 0x26, 0x0d, 0x4a, 0x14,
+             0x39, 0x23, 0x07, 0x4e, 0x2c, 0x09, 0x43, 0x36, 0x3d, 0x2b, 0x16,
+             0x4c, 0x08, 0x41, 0x12, 0x25, 0x0b, 0x47, 0x2e, 0x0d, 0x4b, 0x06,
+             0x1d, 0x3b, 0x27, 0x1f, 0x4e, 0x0c, 0x49, 0x22, 0x05, 0x4b, 0x26,
+             0x1d, 0x4b, 0x06, 0x4d, 0x1a, 0x35, 0x2b, 0x17, 0x4e, 0x2c, 0x19,
+             0x42, 0x24, 0x09, 0x42, 0x24, 0x19, 0x43, 0x36, 0x2d, 0x0a, 0x44,
+             0x18, 0x31, 0x33, 0x27, 0x1e, 0x4c, 0x28, 0x01, 0x42, 0x04, 0x19,
+             0x23, 0x17, 0x4f, 0x3e, 0x3d, 0x2a, 0x04, 0x48, 0x10, 0x21, 0x13,
+             0x47, 0x0e, 0x4d, 0x3a, 0x35, 0x3b, 0x36, 0x2c, 0x18, 0x40, 0x00,
+             0x41, 0x32, 0x25, 0x1b, 0x46, 0x3c, 0x39, 0x32, 0x34, 0x28, 0x00,
+             0x40, 0x20, 0x01, 0x43, 0x16, 0x3d, 0x3b, 0x37, 0x3e, 0x3c, 0x38,
+             0x20, 0x10, 0x40, 0x20, 0x11, 0x42, 0x04, 0x49, 0x02, 0x05, 0x0b,
+             0x07]
+
+//KTANTAN-Encryption
+
+// functions fa and fb
+
+tanFa : [L1Size]-> [xSize][xSize] -> [508] -> [Round] -> Bit
+
+tanFa L1 x k i = (L1!(x@0)) ^ (L1!(x@1)) ^ ((L1!(x@2)) && (L1!(x@3))) ^ ((L1!(x@4)) && ((iR@0)@i)) ^ (k@(k_a_index @i))
+
+tanFb : [L2Size]-> [ySize][ySize] -> [508] -> [Round] -> Bit
+
+tanFb L2 y k i = (L2!(y@0)) ^ (L2!(y@1)) ^ (L2!(y@2) && L2!(y@3)) ^ (L2!(y@4) && L2!(y@5)) ^ (k@(k_b_index @i))
+
+//left shift L1 and L2 and replace LSBs of them with fb and fa respectively
+
+
+tanAplyFb : [L1Size] -> [L2Size]->  [ySize][ySize] ->[KatanKeySize] -> [Round] -> [L1Size]
+tanAplyFb l1 l2 y key i = (l1 !! [(L1Size-2),(L1Size-3)..0]) # [(tanFb l2 y (keySchedule' key) i)]
+
+tanAplyFa : [L1Size] -> [L2Size]-> [xSize][xSize]->[KatanKeySize] -> [Round] -> [L2Size]
+tanAplyFa l1 l2 x key i = (l2 !! [(L2Size-2),(L2Size-3)..0]) # [(tanFa l1 x (keySchedule' key) i)]
+
+
+//Update LFSR KTANTAN
+
+
+updateLfsrTan : [L1Size] -> [L2Size]-> [xSize][xSize] -> [ySize][ySize]->[KatanKeySize] -> [Round] -> ([L1Size], [L2Size])
+updateLfsrTan l1 l2 x y key i = if `(L1Size) == 13
+                             then (l1', l2')
+                             else if `(L1Size) == 19
+                                  then (l1'', l2'')
+                                  else (l1''', l2''')
+                 
+                 where pt = (tanAplyFb l1 l2 y key i) # (tanAplyFa l1 l2 x key i)
+                       l1' = (split pt).0
+                       l2' = (split pt).1
+                       pt' = (tanAplyFb l1' l2' y key i) # (tanAplyFa l1' l2' x key i)
+                       l1'' = (split pt').0
+                       l2'' =  (split pt').1
+                       pt'' = (tanAplyFb l1'' l2'' y key i) # (tanAplyFa l1'' l2'' x key i)
+                       l1''' = (split pt'').0
+                       l2''' =  (split pt'').1
+
+//Encryption
+
+katantanEncrypt : ([KatanKeySize], [KatanBlock]) -> [KatanBlock]
+
+katantanEncrypt (key, pt) = (hs!0).0 # (hs!0).1
+               where hs = [(l1, l2)] # [((updateLfsrTan pT.0 pT.1 x y key i).0, (updateLfsrTan pT.0 pT.1 x y key i).1) | i<- [0,1..253] | pT <- hs ]
+                     l1 = (split pt).0 
+                     l2 = (split pt).1
+// Wrapper to do experiments
+
+katantanEncrypt64 : ([KatanBlock], [KatanBlock]) -> [KatanBlock]
+katantanEncrypt64  (key, pt) = katantanEncrypt( key#zero, pt)
+               
+
+katantanEncrypt80 : ([KatanKeySize], [KatanKeySize]) -> [KatanKeySize]
+katantanEncrypt80  (key, pt) = katantanEncrypt( key, (take`{64} pt)) # zero
+                 
+
+//KTANTAN-Decryption
+
+
+decTanFa : [L1Size] -> [L2Size] -> [xSize][xSize] -> [508] -> [Round] -> Bit
+
+decTanFa L1 L2 x k i = fa ^ (L1!((x@1)+1)) ^ (L1!((x@2)+1) && L1!((x@3)+1)) ^ (L1!((x@4)+1) && ((iR@0)@i)) ^ k@(k_a_index@i)
+         where fa = L2!0
+
+decTanFb : [L2Size] -> [L1Size] -> [ySize][ySize] -> [508] -> [Round] -> Bit
+decTanFb L2 L1 y k i =  fb ^ (L2!((y@1)+1)) ^ ((L2!((y@2)+1)) && L2!((y@3)+1)) ^ ((L2!((y@4)+1)) && L2!((y@5)+1)) ^ k@(k_b_index@i)
+         where fb = L1!0
+
+//Left shifting L1, L2 and appending fa, fb values 
+
+tanAplydecFa : [L1Size] -> [L2Size] -> [xSize][xSize] -> [KatanKeySize] -> [Round] -> [L1Size]
+
+tanAplydecFa  l1 l2 x k i = [(decTanFa l1 l2 x (keySchedule' k) i)] # (l1!![(L1Size-1),(L1Size-2)..1])
+                         
+
+tanAplydecFb : [L2Size] -> [L1Size] -> [ySize][ySize] -> [KatanKeySize] -> [Round] -> [L2Size]
+tanAplydecFb  l2 l1 y k i =  [(decTanFb l2 l1 y (keySchedule' k) i)] # (l2!![(L2Size-1),(L2Size-2)..1])
+
+// Updating LFSR for decryption
+
+decUpdateLfsrTan: [L1Size] -> [L2Size] -> [xSize][xSize]-> [ySize][ySize] -> [KatanKeySize] -> [Round] -> ([L1Size], [L2Size])
+decUpdateLfsrTan  l1 l2 x y key i = if `(L1Size) == 13
+                                 then (l1', l2')
+                                 else if `(L1Size) == 19
+                                      then (l1'', l2'')
+                                      else (l1''', l2''')
+                               where ct = (tanAplydecFa l1 l2 x key i) # (tanAplydecFb l2 l1 y key i)
+                                     l1' = (split ct).0
+                                     l2' = (split ct).1
+                                     ct' = (tanAplydecFa l1' l2' x key i) # (tanAplydecFb l2' l1' y key i)
+                                     l1'' = (split ct').0
+                                     l2'' = (split ct').1
+                                     ct'' = (tanAplydecFa l1'' l2'' x key i) # (tanAplydecFb l2'' l1'' y key i)
+                                     l1''' = (split ct'').0
+                                     l2''' = (split ct'').1 
+//Decryption
+
+katantanDecrypt : ([KatanKeySize], [KatanBlock]) -> [KatanBlock]
+katantanDecrypt (key, pt) = (hs!0).0 # (hs!0).1
+               where hs = [(l1, l2)] #[ ((decUpdateLfsrTan pT.0 pT.1 x y key i).0 , (decUpdateLfsrTan pT.0 pT.1 x y key i).1)  | i <-[253,252..0] |pT <- hs ]
+                     l1 = (split pt).0
+                     l2 = (split pt).1
+// Correcteness
+
+property katantanCorrect key m = katantanDecrypt(key, katantanEncrypt(key, m)) == m
+
+// Testing
+
+//32bit block size
+
+//tests32 = [ katan32_2, katantan32_1, katantan32_2]
+//property testsPass = tests32 == ~zero
+
+//katan32_1 = katanEncrypt(0x00000000, 0xffffffffffffffffffff) == 0x7e1ff945
+//katan32_2 = katanEncrypt(0xffffffff, 0x00000000000000000000) == 0x432e61da
+
+//katantan32_1 = katantanEncrypt(0x00000000, 0xffffffffffffffffffff) == 0x22ea3988
+//katantan32_2 = katantanEncrypt(0xffffffff, 0x00000000000000000000) == 0x432e61da
+
+
+//48bit block size
+/*
+tests48 = [katan48_1, katan48_2, katantan48_1, katantan48_2]
+property testsPass = tests48 == ~zero
+
+katan48_1 = katanEncrypt(0x000000000000, 0xffffffffffffffffffff) == 0x4b7efcfb8659
+katan48_2 = katanEncrypt(0xffffffffffff, 0x00000000000000000000) == 0xa4bd196d0b85
+
+katantan48_1 = katantanEncrypt(0x000000000000, 0xffffffffffffffffffff) == 0x936d0fa33a05
+katantan48_2 = katantanEncrypt(0xffffffffffff, 0x00000000000000000000) == 0xa4bd196d0b85
+*/
+
+//64bit block size
+
+tests64 = [katan64_1, katan64_2, katantan64_1, katantan64_2]
+property testsPass = tests64 == ~zero
+
+katan64_1 = katanEncrypt( 0xffffffffffffffffffff, zero) == 0x21f2e99c0fab828a
+katan64_2 = katanEncrypt(zero, 0xffffffffffffffff) == 0xc956100dbeb64ba8
+
+katantan64_1 = katantanEncrypt(0xffffffffffffffffffff, zero) == 0xc02de05bfa194b16
+katantan64_2 = katantanEncrypt(zero, 0xffffffffffffffff) == 0xc956100dbeb64ba8

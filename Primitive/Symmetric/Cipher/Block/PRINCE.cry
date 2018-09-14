@@ -1,0 +1,232 @@
+// Cryptol PRINCE Implementation
+// Copyright (c) 2018, Galois Inc.
+// www.cryptol.net
+// You can freely use this source code for educational purposes.
+// source: https://eprint.iacr.org/2012/529.pdf ("PRINCE-A Low-latency Block Cipher for Pervasive Computing Applications")
+//Author: Ajay Kumar Eeralla
+//Block size: 64 bits, key size: 128 bits
+
+module PRINCE where
+type princeBlockSize = 64
+type princeKeySize = 128
+type State = [4][4][4]
+type Round = 4
+
+//S-box
+
+sbox = [0xb, 0xf, 0x3, 0x2, 0xa, 0xc, 0x9, 0x1, 0x6, 0x7, 0x8, 0x0, 0xe, 0x5, 0xd, 0x4]
+sboxInv = [0xb, 0x7, 0x3, 0x2, 0xf, 0xd, 0x8, 0x9, 0xa, 0x6, 0x4, 0x0, 0x5, 0xe, 0xc, 0x1]
+
+// Round Constant (RC)
+
+RC = [0x0000000000000000, 0x13198a2e03707344, 0xa4093822299f31d0, 0x082efa98ec4e6c89, 0x452821e638d01377, 0xbe5466cf34e90c6c, 0x7ef84f78fd955cb1, 0x85840851f1ac43aa, 0xc882d32f25323c54, 0x64a51195e0e3610d, 0xd3b5a399ca0c2399, 0xc0ac29b7c97c50dd]
+
+//Extend key to 192bits
+
+extendKey :[princeKeySize] -> ([64], [64], [64])
+extendKey key = (K!0, K', K!1) 
+          where K = split key:[2][64]
+                K' = ((K!0) >>> 1) ^ ((K!0) >> 63)
+//Message to state
+
+msgToState:[princeBlockSize] -> State
+msgToState msg = split (split msg)
+
+//State to Msg
+
+stateToMsg :State -> [princeBlockSize]
+stateToMsg st = join (join st)
+
+//Substitute Sbox
+
+SubCell :[4] -> [4]
+SubCell st = sbox@st
+
+SubCells : State -> State
+SubCells st = [ [ SubCell b | b<- row ] | row <- st ]
+
+//Substitute Inverse Sbox
+
+InvSubCell :[4] -> [4]
+InvSubCell st = sboxInv@st
+
+InvSubCells : State -> State
+InvSubCells st = [ [ InvSubCell b | b<- row ] | row <- st ]
+
+//Shift Rows
+perm  = [0x0, 0x5, 0xa, 0xf, 0x4, 0x9, 0xe, 0x3, 0x8, 0xd, 0x2, 0x7, 0xc, 0x1, 0x6, 0xb]
+inv_perm = [0x0, 0xd, 0xa, 0x7, 0x4, 0x1, 0xe, 0xb, 0x8, 0x5, 0x2, 0xf, 0xc,0x9, 0x6, 0x3]
+
+ShiftRows : State -> State
+ShiftRows state = split [State_16@i
+                  | i <-  perm]
+                where State_16 = join state
+InvShiftRows : State -> State
+InvShiftRows state = split [State_16@i
+                  | i <-  inv_perm]
+                where State_16 = join state
+
+// Linear Layer
+
+m0 = [ 0x0, 0x4, 0x2, 0x1]
+m1 = [ 0x8, 0x0, 0x2, 0x1]
+m2 = [ 0x8, 0x4, 0x0, 0x1]
+m3 = [ 0x8, 0x4, 0x2, 0x0]
+
+M0 = [ [m0, m1, m2, m3], [m1, m2, m3, m0], [m2, m3, m0, m1], [m3, m0, m1, m2] ]
+M1 = [ [m1, m2, m3, m0], [m2, m3, m0, m1], [m3, m0, m1, m2], [m0, m1, m2, m3] ]
+
+M' = [ M0, M1, M1, M0]
+
+
+// m0
+
+defm1 : [16] -> [16]
+defm1 st = res 
+ where  res = b15 # b14 # b13 # b12 # b11 # b10 # b9 # b8 # b7 # b6 # b5 # b4 # b3 # b2 # b1 # b0
+        b0 = [st!4 ^ st!8 ^ st!12]
+        b1 = [st!1 ^ st!9 ^ st!13]
+        b2 = [st!2 ^ st!6 ^ st!14]
+        b3 = [st!3 ^ st!7 ^ st!11]
+        b4 = [st!0 ^ st!4 ^ st!8]
+        b5 = [st!5 ^ st!9 ^ st!13]
+        b6 = [st!2 ^ st!10 ^ st!14]
+        b7 = [st!3 ^ st!7 ^ st!15]
+        b8 = [st!0 ^ st!4 ^ st!12]
+        b9 = [st!1 ^ st!5 ^ st!9]
+        b10 = [st!6 ^ st!10 ^ st!14]
+        b11 = [st!3 ^ st!11 ^ st!15]
+        b12 = [st!0 ^ st!8 ^ st!12]
+        b13 = [st!1 ^ st!5 ^ st!13]
+        b14 = [st!2 ^ st!6 ^ st!10]
+        b15 = [st!7 ^ st!11 ^ st!15]
+
+// m1
+
+defm0 : [16] -> [16]
+defm0 st = res
+  where res = b15 # b14 # b13 # b12 # b11 # b10 # b9 # b8 # b7 # b6 # b5 # b4 # b3 # b2 # b1 # b0
+        b0 = [st!0 ^ st!4 ^ st!8]
+        b1 = [st!5 ^ st!9 ^ st!13]
+        b2 = [st!2 ^ st!10 ^ st!14]
+        b3 = [st!3 ^ st!7 ^ st!15]
+        b4 = [st!0 ^ st!4 ^ st!12]
+        b5 = [st!1 ^ st!5 ^ st!9]
+        b6 = [st!6 ^ st!10 ^ st!14]
+        b7 = [st!3 ^ st!11 ^ st!15]
+        b8 = [st!0 ^ st!8 ^ st!12]
+        b9 = [st!1 ^ st!5 ^ st!13]
+        b10 = [st!2 ^ st!6 ^ st!10]
+        b11 = [st!7 ^ st!11 ^ st!15]
+        b12 = [st!4 ^ st!8 ^ st!12]
+        b13 = [st!1 ^ st!9 ^ st!13]
+        b14 = [st!2 ^ st!6 ^ st!14]
+        b15 = [st!3 ^ st!7 ^ st!11]
+
+// M'
+
+defMPrime: State -> State
+defMPrime st = [rt3] # [rt2] # [rt1] # [rt0]
+      where rt0 = split (defm0 (join (st!0))):[4][4]
+            rt1 = split (defm1 (join (st!1))):[4][4]
+            rt2 = split (defm1 (join (st!2))):[4][4]
+            rt3 = split (defm0 (join (st!3))):[4][4]
+
+
+// first rounds
+firstRounds : State -> State -> [Round] -> State
+firstRounds pt key r = res
+           where   pt' =  SubCells(pt)
+                   pt'' = defMPrime (pt')
+                   pt''' = ShiftRows (pt'')
+                   res = pt''' ^ (split (split (RC@r))) ^ key
+                   
+// last rounds
+
+lastRounds : State -> State -> [Round] -> State
+lastRounds pt key r = res
+           where   pt' =  pt ^ key ^ (split (split (RC@r)))
+                   pt'' = InvShiftRows( pt')
+                   pt''' = defMPrime (pt'')
+                   res = InvSubCells (pt''')
+
+princeCore : State -> State -> State
+princeCore pt key  = addRC11
+           where addRC0 = pt ^ key ^ (split (split (RC@0)))
+                 firstR = [(firstRounds addRC0 key 1)] # [ (firstRounds res key i)
+                                                         | i <- [2,3..5]
+                                                         | res <- firstR
+                                                         ]
+                 subSbox = SubCells (firstR!0)
+                 linLayer = defMPrime (subSbox)
+                 subInvSbox = InvSubCells (linLayer)
+                 lastR = [(lastRounds subInvSbox  key 6) ] # [ (lastRounds res key i)
+                                                             | i <- [7,8..10]
+                                                             | res <- lastR
+                                                             ]
+                 addRC11 = (lastR!0) ^ key^ (split (split (RC@11)))
+                 
+
+
+// Encrypt
+
+princeEncrypt : ([princeKeySize], [princeBlockSize]) -> [princeBlockSize]
+princeEncrypt (key, pt) =  stateToMsg postWhiten
+            where  extk = extendKey (key)
+                   preWhiten = msgToState(pt) ^ msgToState (extk.0)
+                   coreEnc =  (princeCore preWhiten (msgToState (extk.2)))
+                   postWhiten = coreEnc ^ (msgToState (extk.1))
+//Extend key to 192bits
+
+extendKeyDec :[princeKeySize] -> ([64], [64], [64])
+extendKeyDec key = (K', K!0, K!1) 
+          where K = split key:[2][64]
+                K' = ((K!0) >>> 1) ^ ((K!0) >> 63)
+
+// Decryption
+
+princeDecrypt : ([princeKeySize], [princeBlockSize]) -> [princeBlockSize]
+princeDecrypt ( key, ct) = stateToMsg postWhiten
+            where alpha_padd = join((split(key):[32][4])^ (split (0xc0ac29b7c97c50dd0000000000000000):[32][4]))
+                  extk = extendKeyDec alpha_padd 
+                  preWhiten = msgToState(ct) ^ msgToState (extk.0)
+                  coreEnc =  (princeCore preWhiten (msgToState (extk.2)))
+                  postWhiten = coreEnc ^ (msgToState (extk.1))
+
+//correctness
+
+property princeCorrect key m = princeDecrypt ( key, princeEncrypt(key, m)) == m
+
+//Helper functions to run the experiments
+
+princeEncrypt64 : ([princeBlockSize], [princeBlockSize]) -> [princeBlockSize]
+princeEncrypt64 (key, pt) = princeEncrypt(key#zero, pt)
+  
+princeDecrypt64 : ([princeBlockSize], [princeBlockSize]) -> [princeBlockSize]
+princeDecrypt64 (key, ct) = princeDecrypt(key#zero, ct)
+            
+property princeCorrect' key m = princeDecrypt64 (key, princeEncrypt64 (key, m)) == m
+                  
+princeEncrypt128 : ([princeKeySize], [princeKeySize]) -> [princeKeySize]
+princeEncrypt128 (key, pt) = princeEncrypt(key, (take`{64} pt))# zero
+
+// Testing
+
+tests = [t01, t02, t03, t04, t05, t06, t07]
+property testsPass = tests == ~zero
+
+t01 = princeEncrypt (zero, zero) == 0x818665aa0d02dfda
+
+t02 = princeEncrypt (zero, 0xffffffffffffffff) == 0x604ae6ca03c20ada
+
+t03 = princeEncrypt ( 0xffffffffffffffff0000000000000000, zero) == 0x78a54cbe737bb7ef
+
+t04 = princeEncrypt (0xffffffffffffffffffffffffffffffff, zero) == 0xb9f952807615743f
+
+t05 = princeEncrypt (0x0000000000000000ffffffffffffffff, zero) == 0x9fb51935fc3df524
+
+t06 = princeEncrypt (0x0000000000000000fedcba9876543210, 0x0123456789abcdef) == 0x1f24bb8638e813d3
+
+t07 = princeEncrypt (0xfedcba98765432100000000000000000, 0x0123456789abcdef) == 0xae25ad3ca8fa9ccf
+                                                                                                                         
+

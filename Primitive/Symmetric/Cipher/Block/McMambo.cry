@@ -1,0 +1,73 @@
+module McMambo where
+
+and : [32] -> [32] -> [32]
+and xs ys = [ x && y | x <- xs | y <- ys ]
+or : [32] -> [32] -> [32]
+or xs ys = [ x || y | x <- xs | y <- ys ]
+nand : [32] -> [32] -> [32]
+nand xs ys = [ ~(x && y) | x <- xs | y <- ys ]
+nor : [32] -> [32] -> [32]
+nor xs ys = [ ~(x || y) | x <- xs | y <- ys ]
+
+T : [16][32] -> [16][32] -> [16][32]
+T ts ms = [t ^ m | m <- ms | t <- ts] 
+
+Q : [4][32] -> [4][32]
+Q [x0, x1, x2, x3] = [y0, y1, y2, y3]
+  where
+    y1 = x1 ^ ((x0 && x2) <<< 7)
+    y2 = x2 ^ ((or   x0 x3) <<< 9)
+    y3 = x3 ^ ((nand y1 x0) <<< 13)
+    y0 = x0 ^ ((nor  y1 y2) <<< 18)
+
+D : [16][32] -> [16][32]
+D [x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15] =
+  [z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10, z11, z12, z13, z14, z15]
+  where
+    [y0, y1, y2, y3]     = Q [x0, x1, x2, x3]
+    [y4, y5, y6, y7]     = Q [x4, x5, x6, x7]
+    [y8, y9, y10, y11]   = Q [x8, x9, x10, x11]
+    [y12, y13, y14, y15] = Q [x12, x13, x14, x15]
+    [z0, z4, z8, z12]    = Q [y0, y4, y8, y12]
+    [z1, z5, z9, z13]    = Q [y1, y5, y9, y13]
+    [z2, z6, z10, z14]   = Q [y2, y6, y10, y14]
+    [z3, z7, z11, z15]   = Q [y3, y7, y11, y15]
+
+K : [32] -> [8][32] -> [16][32] -> [16][32]
+K j [k0, k1, k2, k3, k4, k5, k6, k7]
+  [x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15] =
+  [z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10, z11, z12, z13, z14, z15]
+  where
+    z0 = x0 ^ j
+    z1 = x1 ^ k0
+    z2 = x2
+    z3 = x3 ^ k1
+    z4 = x4 ^ k2
+    z5 = x5 ^ j
+    z6 = x6 ^ k3
+    z7 = x7
+    z8 = x8
+    z9 = x9 ^ k4
+    z10 = x10 ^ j
+    z11 = x11 ^ k5
+    z12 = x12 ^ k6
+    z13 = x13
+    z14 = x14 ^ k7
+    z15 = x15 ^ j
+
+cipher : [8][32] -> ([16][32], [16][32]) -> [16][32]
+cipher ks (xs, ts) = ys
+  where
+    y1 = K 0 ks xs
+    y2 = K 1 ks y1
+    y3 = K 2 ks y2
+    y4 = K 3 ks y3
+    y5 = T ts (D (K 4 ks y4))
+    y6 = K 6 ks y5
+    y7 = K 7 ks y6
+    y8 = K 8 ks y7
+    y9 = K 9 ks y8
+    y10 = D (K 10 ks y9)
+    y11 = D (K 11 ks y10)
+    ys = K 0 ks y11
+    

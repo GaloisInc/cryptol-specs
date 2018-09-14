@@ -1,0 +1,212 @@
+// Cryptol PRESENT Implementation
+// Copyright (c) 2018, Galois Inc.
+// www.cryptol.net
+// You can freely use this source code for educational purposes.
+// source: "PRESENT: An Ultra-Lightweight Block Cipher" by Bogdanov et. al
+//Author: Ajay Kumar Eeralla
+// Block size: 64 bits, key size:80, 128 bits
+
+module PRESENT where
+type PrBlockSize = 64
+type State = [4][4][4]
+type StdBlockSize = 32
+type PrKeySize = 80
+type PrRkeySize = 64
+type PrKeySize128 = 128
+
+
+//S-box 
+
+sbox = [0xc, 0x5, 0x6, 0xb, 0x9, 0x0, 0xa, 0xd, 0x3, 0xe, 0xf, 0x8, 0x4, 0x7, 0x1, 0x2]
+
+Sbox_inv = [0x5, 0xe, 0xf, 0x8, 0xc, 0x1, 0x2, 0xd, 0xb, 0x4, 0x6, 0x3, 0x0, 0x7, 0x9, 0xa]
+
+//pLayer
+
+pbox = [0x00, 0x10, 0x20, 0x30, 0x01, 0x11, 0x21, 0x31, 0x02, 0x12, 0x22,
+        0x32, 0x03, 0x13, 0x23, 0x33, 0x04, 0x14, 0x24, 0x34, 0x05, 0x15,
+        0x25, 0x35, 0x06, 0x16, 0x26, 0x36, 0x07, 0x17, 0x27, 0x37, 0x08,
+        0x18, 0x28, 0x38, 0x09, 0x19, 0x29, 0x39, 0x0a, 0x1a, 0x2a, 0x3a,
+        0x0b, 0x1b, 0x2b, 0x3b, 0x0c, 0x1c, 0x2c, 0x3c, 0x0d, 0x1d, 0x2d,
+        0x3d, 0x0e, 0x1e, 0x2e, 0x3e, 0x0f, 0x1f, 0x2f, 0x3f]
+        
+pbox_inv = [0x00, 0x04, 0x08, 0x0c, 0x10, 0x14, 0x18, 0x1c, 0x20, 0x24, 0x28,
+          0x2c, 0x30, 0x34, 0x38, 0x3c, 0x01, 0x05, 0x09, 0x0d, 0x11, 0x15,
+          0x19, 0x1d, 0x21, 0x25, 0x29, 0x2d, 0x31, 0x35, 0x39, 0x3d, 0x02,
+          0x06, 0x0a, 0x0e, 0x12, 0x16, 0x1a, 0x1e, 0x22, 0x26, 0x2a, 0x2e,
+          0x32, 0x36, 0x3a, 0x3e, 0x03, 0x07, 0x0b, 0x0f, 0x13, 0x17, 0x1b,
+          0x1f, 0x23, 0x27, 0x2b, 0x2f, 0x33, 0x37, 0x3b, 0x3f]
+
+// Key schedule - 80bits
+
+updateKey : [PrKeySize] -> [5] -> _
+updateKey key i =  (rkey, shift, res,  key'')
+            where rkey = key !![79,78..16]
+                  shift =  (key !! [18,17..0]) # (key !! [79,78..19])
+                  res = sbox@((shift) !! [79,78,77, 76]) # (shift !! [75,74..0])
+                  key'' =  (res !! [79,78..20]) # ((res!![19,18..15])^(i+1)) # (res!![14,13..0])
+
+//Round key List
+
+RoundKeyList : [PrKeySize] -> _
+
+RoundKeyList key = hs
+             where hs = [ (updateKey key 0) ] # [(updateKey (key'.3) i)
+                                                | i<- [1,2..31]
+                                                | key' <- hs
+                                                 ]
+
+// Add round key
+
+addRoundKey : State -> State -> State
+addRoundKey pt key = pt ^ key
+
+//Substitute Sbox
+
+SubCell : [4] -> [4]
+SubCell st = sbox@st
+
+SubCells : State -> State
+SubCells st = [ [ SubCell b | b<- row ] | row <- st ]
+
+//Sbox Layer for decryption
+
+SubCell_dec : [4] -> [4]
+SubCell_dec st = Sbox_inv@st
+
+SubCells_dec : State -> State
+SubCells_dec st = [ [ SubCell_dec b | b<- row ] | row <- st ]
+
+// Message to state
+
+msgToState : [PrBlockSize] -> State
+msgToState msg = split (split msg)
+
+//State to Msg
+
+stateToMsg : State -> [PrBlockSize]
+stateToMsg st = join (join st)
+
+//pemutation Layer
+     
+SubpLayer: [PrBlockSize] -> [PrBlockSize]
+SubpLayer pt =  hs
+          where hs = [ pt!(pbox_inv ! i) | i <- [0,1..63] ]
+
+//pLayer for decryption
+  
+SubpLayer_dec: [PrBlockSize] -> [PrBlockSize]
+SubpLayer_dec pt =  hs
+          where hs = [ pt!(pbox ! i) | i <- [0,1..63] ]
+
+//round encryption
+
+roundEncrypt:  (State, State) -> State
+roundEncrypt (pt, key) = msgToState(SubpLayer(stateToMsg(SubCells (addRoundKey pt key))))
+
+//round Decryption
+
+roundDecrypt:  (State, State) -> State
+roundDecrypt (pt, key) = SubCells_dec (msgToState(SubpLayer_dec (stateToMsg (addRoundKey pt key))))
+
+// Encryption-80bits
+
+PrEncrypt : ([PrKeySize], [PrBlockSize]) -> [PrBlockSize]
+PrEncrypt (key, pt) = stateToMsg(addRoundKey (hs!0) (msgToState(key'@31).0))
+                where hs = [ roundEncrypt (msgToState(pt), msgToState((key'@0).0)) ] # [ roundEncrypt(pT, msgToState((key'@i).0)) 
+                                                                                       | i<- [1,2..30]
+                                                                                       | pT <- hs ]
+                      key'= (RoundKeyList key)
+                      
+// Decryption
+
+PrDecrypt : ([PrKeySize], [PrBlockSize]) -> _
+PrDecrypt (key, pt) = stateToMsg(addRoundKey (hs!0) (msgToState(key'@0).0))
+                where hs = [ roundDecrypt (msgToState(pt), msgToState((key'@31).0)) ] # [ roundDecrypt(pT, msgToState((key'@i).0)) 
+                                                                                       | i<- [30,29..1]
+                                                                                       | pT <- hs ]
+                      key'= (RoundKeyList key)
+                                                                                         
+                                                                       
+
+                           
+
+
+//Correctness
+
+property PresentCorrectnes key m = PrDecrypt( key, PrEncrypt(key, m)) == m
+
+
+/*********128-bit key ********/
+
+//keyschedule -128bit
+
+
+updateKey_128 : [PrKeySize128] -> [5] -> _
+updateKey_128 key i =  (rkey, key'')
+            where rkey = key !![127,126..64]
+                  shift =  (key !! [66,65..0]) # (key !! [127,126..67])
+                  res = sbox@((shift) !! [127,126,125, 124]) # sbox@((shift) !! [123,122,121, 120]) # (shift !! [119,118..0])
+                  key'' =  (res !! [127,126..67]) # ((res!![66,65,64,63,62])^(i+1)) # (res!![61,60..0])
+
+
+RoundKeyList_128: [PrKeySize128] -> _
+
+RoundKeyList_128 key = hs
+             where hs = [ (updateKey_128 key 0)] # [ (updateKey_128 (key'.1) i)
+                                                   | i <- [1,2..31]
+                                                   | key' <- hs ]
+//Encryption-128bit
+
+PrEncrypt_128 : ([PrKeySize128], [PrBlockSize]) -> _
+PrEncrypt_128 (key , pt) = stateToMsg(addRoundKey (hs!0) (msgToState(key'@31).0))
+                         //stateToMsg(addRoundKey (hs!0) (msgToState(key'@31).0))
+                where hs = [ roundEncrypt (msgToState(pt), msgToState((key'@0).0)) ] # [ roundEncrypt(pT, msgToState((key'@i).0)) 
+                                                                                       | i<- [1,2..30]
+                                                                                       | pT <- hs ]
+                      key'= (RoundKeyList_128 key)
+                     
+//Decryption-128bit
+
+PrDecrypt_128 : ([PrKeySize128], [PrBlockSize]) -> _
+PrDecrypt_128 (key, pt) = stateToMsg(addRoundKey (hs!0) (msgToState(key'@0).0))
+                where hs = [ roundDecrypt (msgToState(pt), msgToState((key'@31).0)) ] # [ roundDecrypt(pT, msgToState((key'@i).0)) 
+                                                                                       | i<- [30,29..1]
+                                                                                       | pT <- hs ]
+                      key'= (RoundKeyList_128 key)
+
+//Correctness
+
+property PresentCorrectnes128 key m = PrDecrypt_128(key, PrEncrypt_128(key, m)) == m
+
+// Heleper function to perform analaysis
+
+prEncrypt64 : ([PrBlockSize], [PrBlockSize]) -> [PrBlockSize]
+prEncrypt64 (key, pt)  = PrEncrypt_128 (key#zero, pt)
+
+prDecrypt64 : ([PrBlockSize], [PrBlockSize]) -> [PrBlockSize]
+prDecrypt64 (key, ct)  = PrDecrypt_128(key#zero , ct)
+
+property PrCorrect64 key m = prDecrypt64 (key, (prEncrypt64(key, m))) == m
+
+
+prEncrypt128 : ([PrKeySize128], [PrKeySize128]) -> [PrKeySize128]
+prEncrypt128 (key, pt)  = PrEncrypt_128(key, (take`{64} pt)) # zero
+
+// Testing
+tests = [test80_1, test80_2, test80_3, test80_4, test80_5, test128_1]
+property testsPass = tests == ~zero
+//keysize: 80bits
+
+test80_1 =  PrEncrypt (zero, zero) == 0x5579c1387b228445
+test80_2 =  PrEncrypt (zero, zero) == 0x5579c1387b228445
+test80_3 =  PrEncrypt (0xffffffffffffffffffff, zero) == 0xe72c46c0f5945049
+test80_4 =  PrEncrypt (0xffffffffffffffffffff, 0xffffffffffffffff) == 0x3333dcd3213210d2
+test80_5 =  PrEncrypt (zero, 0xffffffffffffffff) == 0xa112ffc72f68417b
+
+
+//keysize: 128bits
+
+
+test128_1 = PrEncrypt_128 ( 0x0123456789abcdef0123456789abcdef, 0x0123456789abcdef) == 0x0e9d28685e671dd6
+
