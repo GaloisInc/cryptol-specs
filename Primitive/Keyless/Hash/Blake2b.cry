@@ -1,7 +1,8 @@
 // The Blake2b hash function
 // Copyright: Galois 2015
 // Author: Thomas M. DuBuisson
-module Blake2b where
+
+module Primitive::Keyless::Hash::Blake2b where
 
 type Block   = [16][64]
 type State   = [8][64]

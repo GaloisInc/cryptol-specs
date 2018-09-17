@@ -11,7 +11,7 @@
  * * The output correctly matches on all test vectors from
  * http://csrc.nist.gov/groups/ST/toolkit/documents/Examples/SHA256.pdf
  */
-module SHA256 where
+module Primitive::Keyless::Hash::SHA256 where
 
 /*
  * SHA256 Functions : Section 4.1.2

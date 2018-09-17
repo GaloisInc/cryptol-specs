@@ -3,9 +3,9 @@
  * Distributed under the terms of the BSD3 license (see LICENSE file)
  */
 
-module TripleDES where
+module Primitive::Symmetric::Cipher::Block::TripleDES where
 
-import DES
+import Primitive::Symmetric::Cipher::Block::DES as DES
 
 blockEncrypt : ([64],[64],[64],[64]) -> [64]
 blockEncrypt (k1,k2,k3,data) = result where

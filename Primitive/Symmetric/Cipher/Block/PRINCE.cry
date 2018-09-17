@@ -1,12 +1,13 @@
-// Cryptol PRINCE Implementation
-// Copyright (c) 2018, Galois Inc.
-// www.cryptol.net
-// You can freely use this source code for educational purposes.
-// source: https://eprint.iacr.org/2012/529.pdf ("PRINCE-A Low-latency Block Cipher for Pervasive Computing Applications")
-//Author: Ajay Kumar Eeralla
-//Block size: 64 bits, key size: 128 bits
+/* Cryptol PRINCE Implementation
+   Copyright (c) 2018, Galois Inc.
+   www.cryptol.net
+   You can freely use this source code for educational purposes.
 
-module PRINCE where
+   source: https://eprint.iacr.org/2012/529.pdf ("PRINCE-A Low-latency Block Cipher for Pervasive Computing Applications")
+   Author: Ajay Kumar Eeralla
+   Block size: 64 bits, key size: 128 bits
+*/
+module Primitive::Symmetric::Cipher::Block::PRINCE where
 type princeBlockSize = 64
 type princeKeySize = 128
 type State = [4][4][4]

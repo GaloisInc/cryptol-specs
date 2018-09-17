@@ -5,7 +5,8 @@
 //Author: Ajay Kumar Eeralla
 // Block size: 64 bits, key size: 256 bits
 
-module GOST where
+module Primitive::Symmetric::Cipher::Block::GOST where
+
 type BlockSize = 64
 type StdBlockSize = 32
 type KeySize = 256

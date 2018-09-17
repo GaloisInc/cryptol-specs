@@ -2,7 +2,8 @@
  * Copyright (c) 2013-2016 Galois, Inc.
  * Distributed under the terms of the BSD3 license (see LICENSE file)
  */
-module Blake2s where
+
+module Primitive::Keyless::Hash::Blake2s where
 
 type Block   = [16][32]
 type State   = [8][32]

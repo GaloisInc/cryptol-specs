@@ -1,13 +1,19 @@
-module McMambo where
+/* Cryptol LED Implementation
+   Copyright (c) 2018, Galois Inc.
+   www.cryptol.net
+   You can freely use this source code for educational purposes.
+*/
+
+module Primitive::Symmetric::Cipher::Block::McMambo where
 
 and : [32] -> [32] -> [32]
-and xs ys = [ x && y | x <- xs | y <- ys ]
+and xs ys = [ x /\ y | x <- xs | y <- ys ]
 or : [32] -> [32] -> [32]
-or xs ys = [ x || y | x <- xs | y <- ys ]
+or xs ys = [ x \/ y | x <- xs | y <- ys ]
 nand : [32] -> [32] -> [32]
-nand xs ys = [ ~(x && y) | x <- xs | y <- ys ]
+nand xs ys = [ ~(x /\ y) | x <- xs | y <- ys ]
 nor : [32] -> [32] -> [32]
-nor xs ys = [ ~(x || y) | x <- xs | y <- ys ]
+nor xs ys = [ ~(x \/ y) | x <- xs | y <- ys ]
 
 T : [16][32] -> [16][32] -> [16][32]
 T ts ms = [t ^ m | m <- ms | t <- ts] 
@@ -15,7 +21,7 @@ T ts ms = [t ^ m | m <- ms | t <- ts]
 Q : [4][32] -> [4][32]
 Q [x0, x1, x2, x3] = [y0, y1, y2, y3]
   where
-    y1 = x1 ^ ((x0 && x2) <<< 7)
+    y1 = x1 ^ ((x0 /\ x2) <<< 7)
     y2 = x2 ^ ((or   x0 x3) <<< 9)
     y3 = x3 ^ ((nand y1 x0) <<< 13)
     y0 = x0 ^ ((nor  y1 y2) <<< 18)

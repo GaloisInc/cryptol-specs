@@ -1,15 +1,17 @@
-// Cryptol LED Implementation
-// Copyright (c) 2018, Galois Inc.
-// www.cryptol.net
-// You can freely use this source code for educational purposes.
-// Author: Ajay Kumar Eeralla
-// Source: "The LED Block Cipher" by Guo et. al: https://sites.google.com/site/ledblockcipher/
-// LED - Light Encryption Device cipher
-// block size = 64
-// key size = 64 or 128
-// steps s = 8 or 12
+/* Cryptol LED Implementation
+   Copyright (c) 2018, Galois Inc.
+   www.cryptol.net
+   You can freely use this source code for educational purposes.
 
-module LED where
+   Author: Ajay Kumar Eeralla
+   Source: "The LED Block Cipher" by Guo et. al: https://sites.google.com/site/ledblockcipher/
+   LED - Light Encryption Device cipher
+   block size = 64
+   key size = 64 or 128
+   steps s = 8 or 12
+*/
+
+module Primitive::Symmetric::Cipher::Block::LED where
 
 type GF24 = [4]
 type State = [4][4]GF24

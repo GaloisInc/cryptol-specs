@@ -1,12 +1,13 @@
-// Copyright (c) 2001, 2014 Galois, Inc.
-// Distributed under the terms of the BSD3 license (see LICENSE file)
-//
-// MD5 digest algorithm from RFC 1321
-// https://www.ietf.org/rfc/rfc1321.txt
-//
-// Based on a previous Cryptol 1.* implementation
+/* Copyright (c) 2001, 2014 Galois, Inc.
+   Distributed under the terms of the BSD3 license (see LICENSE file)
 
-module MD5 where
+   MD5 digest algorithm from RFC 1321
+   https://www.ietf.org/rfc/rfc1321.txt
+
+   Based on a previous Cryptol 1.* implementation
+*/
+
+module Primitive::Keyless::Hash::MD5 where
 
 // Swap byte order from network to host order (long word)
 ntohl : [32] -> [32]

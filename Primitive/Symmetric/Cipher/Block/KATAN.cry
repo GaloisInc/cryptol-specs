@@ -9,7 +9,7 @@
 * Testing: For testing a version of KATAN/KATANTAN, please uncomment the respected L1, L2, x, y, and the testing property while commenting the other versions and their values  
 */
 
-module KATAN where
+module Primitive::Symmetric::Cipher::Block::KATAN where
 
 type Katan32 = 32
 type Katan48 = 48

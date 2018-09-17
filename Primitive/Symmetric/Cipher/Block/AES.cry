@@ -10,7 +10,7 @@
 // Must be one of 4 (AES128), 6 (AES192), or 8 (AES256)
 // Aside from this line, no other code below needs to change for
 // implementing AES128, AES192, or AES256
-module AES where
+module Primitive::Symmetric::Cipher::Block::AES where
 
 type AES128 = 4
 type AES192 = 6

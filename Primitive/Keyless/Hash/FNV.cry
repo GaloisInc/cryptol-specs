@@ -3,6 +3,8 @@
  * Distributed under the terms of the BSD3 license (see LICENSE file)
  */
 
+module Primitive::Keyless::Hash::FNV
+
 fnv1a : {n} (fin n) => [n] -> [64]
 fnv1a ws = fnv1a' (pad ws)
 

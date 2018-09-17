@@ -3,7 +3,7 @@
  * Distributed under the terms of the BSD3 license (see LICENSE file)
  */
 
-module Cipher where
+module Primitive::Symmetric::Cipher::Block::Cipher where
 
 type Cipher KeySize BlockSize =
   { encrypt : [KeySize] -> [BlockSize] -> [BlockSize]

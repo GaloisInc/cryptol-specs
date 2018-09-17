@@ -3,9 +3,9 @@
  * Distributed under the terms of the BSD3 license (see LICENSE file)
  */
 
-module DES where
+module Primitive::Symmetric::Cipher::Block::DES where
 
-import Cipher
+import Primitive::Symmetric::Cipher::Block::Cipher
 
 // DES API
 DES : Cipher 64 64

@@ -1,13 +1,16 @@
-// Cryptol TEA Implementation
-// Copyright (c) 2018, Galois Inc.
-// www.cryptol.net
-// You can freely use this source code for educational purposes.
-// TEA-Tiny Encryption Algorithm and it's extensions
-// Author: Ajay Kumar Eeralla
-// TEA pliantext size-64, key size-128
-// We consider fixing the size 128bits for plaintext as well as ciphertext
+/* Cryptol TEA Implementation
+   Copyright (c) 2018, Galois Inc.
+   www.cryptol.net
+   You can freely use this source code for educational purposes.
+
+   TEA-Tiny Encryption Algorithm and it's extensions
+   Author: Ajay Kumar Eeralla
+   TEA pliantext size-64, key size-128
+   We consider fixing the size 128bits for plaintext as well as ciphertext
+*/
 
 module TEA where
+
 type Nb = 2
 type Nkb = 4
 type Nr = 2
