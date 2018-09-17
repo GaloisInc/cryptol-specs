@@ -1,0 +1,95 @@
+/* This module implements the data conversion and
+cryptographic RSA primitives described in sections 4 and 5 of
+
+PKCS #1: RSA Cryptography Specifications Version 2.2
+
+See also:
+https://tools.ietf.org/html/rfc8017
+
+Copyright (c) 2018, Galois Inc.
+www.cryptol.net
+You can freely use this source code for educational purposes.
+*/
+
+
+module Primitive::Asymmetric::Cipher::RSA where
+
+import Common::mod_arith
+
+// Integer-to-Octet-String primitive
+I2OSP : {xLen,int} (fin int, fin xLen, int<=xLen*8, xLen>=1) => 
+      [int] -> [xLen][8]
+I2OSP x = split ((zero # x):[xLen*8]) : [xLen][8]
+
+// Octet-String-to-Integer primitive
+OS2IP : {xLen} (fin xLen) => [xLen][8] -> [xLen*8]
+OS2IP xs = join xs
+
+I2OSConversionCorrect : {xLen} (fin xLen, xLen>=1) => [xLen][8] -> Bit
+property I2OSConversionCorrect xs = I2OSP (OS2IP xs) == xs
+
+
+// RSA encryption primitive
+RSAEP : {K} (fin K, K >= 1) => (([K],[K]),[K]) -> [K]
+RSAEP ((n, e), m) = if (m < zero \/ m > (n-1)) then error "message representative out of range"
+                    else c
+      where c = mod_pow (n,m,e)
+
+// RSA decryption primitive
+RSADP : {K} (fin K, K >= 1) => (([K],[K]),[K]) -> [K]
+RSADP ((n, d), c) = if (c < 0 \/ c > (n-1)) then error "ciphertext representative out of range"
+                    else m
+      where m = mod_pow (n,c,d)
+
+
+RSACorrect : {K} (fin K, K >= 1) => [K] -> [K] -> [K] -> [K] -> Bit
+property RSACorrect e d n msg = ( msg >= zero /\ msg < n ) ==> RSADP ((n,d), RSAEP ((n,e), msg)) == msg
+
+
+
+//Integer-based implementation
+
+genRSAKeys : (Integer,Integer) -> (Integer,Integer,Integer) // (n,e,d)
+genRSAKeys (p,q) = (p*q,e,d)
+           where nTotient = lcm (p-1) (q-1)
+                 e        = 65537 // 2^16+1, commonly used public key exponent
+                 d        = inv e nTotient
+
+private
+    gcd : Integer -> Integer -> Integer
+    gcd x y =  gcd' x y
+        where gcd' a b = if b == zero then a else gcd' b (a%b)
+
+
+    lcm : Integer -> Integer -> Integer
+    lcm x y =  if (x == zero \/ y == zero) then zero else (x / (gcd x y)) * y
+
+
+    inv : Integer -> Integer -> Integer // Note, k and m MUST be coprime
+    inv k m = (inv' m k).1 % m
+      where
+        inv' n x = if x==1 then (zero, 1) else (r', q' - r' * q)
+          where
+            (q,  r)  = (n/x, n%x)
+            (q', r') = inv' x r
+
+
+rsaEncrypt : (Integer,Integer,Integer) -> Integer
+rsaEncrypt (msg,e,n) = (msg^^e)%n
+
+rsaDecrypt : (Integer,Integer,Integer) -> Integer
+rsaDecrypt (ct,d,n) = (ct^^d)%n
+
+// :prove IntegerRSACorrectKeyGen 49979693 67867967
+// :check IntegerRSACorrectKeyGen 49979693 67867967
+IntegerRSACorrectKeyGen : Integer -> Integer -> Integer -> Bit
+property IntegerRSACorrectKeyGen p q msg = ( msg >= zero /\ msg < n ) ==>
+         rsaDecrypt (rsaEncrypt (msg,e,n),d,n) == msg
+         where (n,e,d) = genRSAKeys (p,q)
+
+// :prove IntegerRSACorrect 7 103 143
+// :check IntegerRSACorrect 7 103 143
+// :check IntegerRSACorrect (toInteger e) (toInteger d) (toInteger n)
+IntegerRSACorrect : Integer -> Integer -> Integer -> Integer -> Bit
+property IntegerRSACorrect e d n msg = ( msg >= zero /\ msg < n ) ==>
+         rsaDecrypt (rsaEncrypt (msg,e,n),d,n) == msg

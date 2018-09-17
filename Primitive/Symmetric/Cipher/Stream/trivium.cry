@@ -4,6 +4,8 @@ Institute for System Dynamics and Control Theory
 Russian Academy of Sciences
 */
 
+module Primitive::Symmetric::Cipher::Stream::trivium where
+
 Trivium_stream : [93] -> [84] -> [111] -> [inf]
 Trivium_stream R1 R2 R3 = stream
 	where

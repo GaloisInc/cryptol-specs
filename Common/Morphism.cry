@@ -1,0 +1,42 @@
+module Common::Morphism where
+
+import Common::Set
+
+/* ***** Morphisms ***** */
+
+/* This file contains types and functions for
+** coercing values between different Cryptol types.
+*/
+
+// Morphism from type a to type b.
+type Mor a b = a -> b
+
+// Contravariant morphism (Opposite morphism)
+type Mor_OP a b = Mor b a
+
+id_mor : {a} Mor a a
+id_mor x = x
+
+comp_mor : {a, b, c} Mor b c -> Mor a b -> Mor a c
+comp_mor f g x = f (g x)
+
+// Homset morphism (contravariant in 1st arg, covariant in second arg)
+Hom_mor : {a, b, c, d} Mor_OP a b -> Mor c d -> Mor (a -> c) (b -> d)
+Hom_mor f g h = comp_mor g (comp_mor h f)
+
+// Product morphism
+Pair_mor : {a, b, c, d} Mor a c -> Mor b d -> Mor (a,b) (c,d)
+Pair_mor f g (a,b) = (f a, g b)
+
+// Diagonal morphism
+Diag_mor : {a, b} Mor a b -> Mor (a,a) (b,b)
+Diag_mor f = Pair_mor f f
+
+// Set morphism (contravariant)
+Set_mor : {a, b} Mor_OP a b -> Mor (Set a) (Set b)
+Set_mor m = Hom_mor m id_mor
+
+// Binary-Set morphism (contravariant)
+Set2_mor : {a, b} Mor_OP a b -> Mor (Set (a,a)) (Set (b,b))
+Set2_mor = comp_mor Set_mor Diag_mor
+

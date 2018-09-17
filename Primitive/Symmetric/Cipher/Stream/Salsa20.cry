@@ -5,7 +5,7 @@
 
 // see http://cr.yp.to/snuffle/spec.pdf
 
-module Salsa20 where
+module Primitive::Symmetric::Cipher::Stream::Salsa20 where
 
 quarterround : [4][32] -> [4][32]
 quarterround [y0, y1, y2, y3] = [z0, z1, z2, z3]

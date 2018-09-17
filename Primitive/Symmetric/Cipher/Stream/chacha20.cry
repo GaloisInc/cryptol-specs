@@ -5,7 +5,7 @@
 ** Based on RFC 7539 - "ChaCha20 and Poly1305 for IETF Protocols"
 **     https://tools.ietf.org/html/rfc7539
 */
-module chacha20 where
+module Primitive::Symmetric::Cipher::Stream::chacha20 where
 
 /* -------------------------------------------------------------------------- */
 /* -- Implementation -------------------------------------------------------- */

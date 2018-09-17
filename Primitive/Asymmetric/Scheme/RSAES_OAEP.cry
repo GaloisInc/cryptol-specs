@@ -1,0 +1,176 @@
+/* This module implements an RSA encryption scheme
+with the EME-OAEP encoding method desribed in 7.1 of
+
+PKCS #1: RSA Cryptography Specifications Version 2.2
+
+See also:
+https://tools.ietf.org/html/rfc8017
+
+Copyright (c) 2018, Galois Inc.
+www.cryptol.net
+You can freely use this source code for educational purposes.
+*/
+
+module Primitive::Asymmetric::Scheme::RSAES_OAEP where
+
+import Primitive::Asymmetric::Cipher::RSA
+
+parameter
+  type k : #
+  type constraint (fin k, k >= 1)
+
+  type hLen : # // Number of octets returned by chosen hash function 
+  type constraint (fin hLen, hLen >= 1)
+
+  hash : {a} (2 * hLen >= width (8 * a) ) => [a][8] -> [8 * hLen]
+
+  n : [KeySize]
+  e : [KeySize]
+  d : [KeySize]
+
+type KeySize = k * 8
+
+
+RSAES_OAEP_ENCRYPT : {l,mLen}
+                   (fin l, fin mLen
+                   , l>=0
+                   , 2 * hLen >= width (8 * l) // Required for use of hash
+                   , 2 * hLen >= width (8 * ( k - hLen + 3)) // Required for use of hash in MGF
+                   , k >= mLen+2*hLen+2
+                   , 32 >= width ((k-hLen-1)/hLen) // Required for MGF1
+                   )
+                   => [256] // Seed for random number
+                   -> [mLen][8]
+                   -> [l][8]
+                   -> [k][8]
+RSAES_OAEP_ENCRYPT rand M L = I2OSP`{k} c // Return k-octet cipher text 
+                   where
+                    EM = EME_OAEP_encode rand (M, L)   // Pad message M with optional label L to k octets
+                    m  = (zero # OS2IP EM) : [KeySize]  // Take k-octet padded message EM to int of width KeySize
+                    c  = RSAEP ((n, e), m)   // Encrypt integer m
+
+
+
+
+RSAES_OAEP_DECRYPT : {l}
+                   (fin l
+                   , l>=0
+                   , 2 * hLen >= width (8 * l) // Required for use of hash 
+                   , 2 * hLen >= width (8 * ( k - hLen + 3)) // Required for use of hash in MGF
+                   , k >= 2 * hLen + 2
+                   , 32 >= width ((k - hLen - 1)/hLen) // Required for use of MGF1
+                   ) => [k][8] -> [l][8] -> ([k - hLen - 1][8], [width (k - hLen - 1)])
+RSAES_OAEP_DECRYPT C L = if c < 0 \/ c >= n then error "decryption error"
+                         else M
+                   where
+                    c  = OS2IP C
+                    m  = RSADP ((n,d),c)
+                    EM = I2OSP`{k} m
+                    M  = EME_OAEP_decode (EM, L)
+
+
+RSAES_OAEP_Correct : {l,mLen}
+                   (fin l, fin mLen
+                   , l>=0
+                   , 2 * hLen >= width (8 * l) 
+                   , 2 * hLen >= width (8 * ( k - hLen + 3)) 
+                   , k >= mLen+2*hLen+2
+                   , 32 >= width ((k-hLen-1)/hLen) 
+                   )
+                   => [256] // Seed for random number
+                   -> [l][8]
+                   -> [mLen][8]
+                   -> Bit
+property RSAES_OAEP_Correct r l m = (RSAES_OAEP_DECRYPT (RSAES_OAEP_ENCRYPT r m l ) l).0 == m#(zero:[_][8])
+
+
+
+EME_OAEP_encode : {l,mLen}
+         (fin l,fin mLen
+         , l >= 0
+         , 2 * hLen >= width (8 * l) // Required for using hash
+         , 2 * hLen >= width (8 * ( k - hLen + 3)) // Required for using hash in MGF
+         , k >= mLen + 2 * hLen + 2
+         , 32 >= width ((k - hLen - 1)/hLen) // Required use of MGF1
+         )
+         => [256] // Seed for random number
+         -> ([mLen][8], [l][8])
+         -> [k][8]
+EME_OAEP_encode rseed (M,L) = (zero : [1][8]) # maskedSeed # maskedDB // value of EM
+         where
+          lHash      = split (hash L) : [hLen][8]
+          PS         = (zero:[(k-mLen-2*hLen-2)][8]) // This may be (zero:[0][8])
+          DB         = lHash # PS # [(1:[8])] # M 
+          seed       = random rseed : [hLen][8] 
+          dbMask     = MGF1`{maskLen=(k-hLen-1)} seed 
+          maskedDB   = DB ^ dbMask
+          seedMask   = MGF1`{maskLen=hLen} maskedDB
+          maskedSeed = seed ^ seedMask
+
+
+
+
+EME_OAEP_decode : {l}
+         (fin l
+         , l>=0
+         , 2*hLen >= width (8 * l) // Required for using hash
+         , 2*hLen >= width (8 * ( k - hLen + 3)) // Required for using hash in MGF
+         , k >= 2 * hLen + 2
+         , 32 >= width ((k - hLen - 1)/hLen) // Required for using MGF1
+         ) => ([k][8], [l][8]) -> ([k - hLen - 1][8], [width (k - hLen - 1)])
+EME_OAEP_decode (EM,L) = if Y != zero then error "decryption error"
+                         | lHash' != lHash then error "decryption error"
+                         else (Mpadded,mLen)
+                where
+                  Y          = head EM
+                  maskedSeed = take`{hLen} (drop`{1} EM)
+                  maskedDB   = drop`{hLen+1} EM
+                  seedMask   = MGF1`{maskLen=hLen} maskedDB
+                  seed       = seedMask ^ maskedSeed
+                  dbMask     = MGF1`{maskLen=k-hLen-1} seed
+                  DB         = maskedDB ^ dbMask // lHash' # (zero:[_][8]) # [(1:[8])] # M
+                  lHash'     = take`{hLen} DB // This should equal hash L
+                  lHash      = split (hash L) : [_][8]
+                  (Mpadded,mLen) = extractMsg DB // Original msg is take`{mLen} Mpadded
+
+private
+    extractMsg : {a} (fin a, a >= 1) =>  [a][8] -> ([a][8],[width a])
+    extractMsg DB = (Mpadded, mLen)
+                where
+                 init    = {removedPad = False,
+                            padMsg     = DB,
+                            idx        = (`a:[width a])}
+                 ys      = [init] # [ if (~y.removedPad /\ x==(1:[8]) )
+                                          then {removedPad = True,
+                                                padMsg     = (tail y.padMsg)#(zero:[1][8]),
+                                                idx        = y.idx - 1}
+                                          | y.removedPad
+                                          then y
+                                          else {removedPad = False,
+                                                padMsg     = (tail y.padMsg)#(zero:[1][8]),
+                                                idx        = y.idx - 1}
+                                    | x <- DB
+                                    | y <- ys ]
+                 Mpadded = (ys!0).padMsg
+                 mLen    = (ys!0).idx
+
+
+
+
+MGF1 : {maskLen,l,counterMax}
+       (fin hLen, fin l, fin maskLen
+       , hLen >= 1
+       , maskLen >= 1
+       , 2*hLen >= width (8 * (4 + l))
+       , 32 >= width (maskLen/hLen)  // In spec, looks like maskLen <= 2^^32 * hLen
+       , counterMax == (maskLen - 1)/hLen // (ceiling maskLen/hLen) - 1
+       )
+       => [l][8] // MGF Seed
+       -> [maskLen][8]
+MGF1 mgfSeed = take`{maskLen} Ts
+     where
+
+      Cs = map (\counter -> I2OSP`{xLen=4} counter) ([0..counterMax]:[_][32]) 
+      Ts = join [ split (hash (mgfSeed # c)) : [_][8] | c <- Cs]
+
+

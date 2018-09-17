@@ -1,0 +1,29 @@
+/* This module implements the signature primitives described in section 5 of
+
+PKCS #1: RSA Cryptography Specifications Version 2.2
+
+See also:
+https://tools.ietf.org/html/rfc8017
+
+Copyright (c) 2010-2013, Galois Inc.
+www.cryptol.net
+You can freely use this source code for educational purposes.
+*/
+
+
+module Primitive::Asymmetric::Signature::RSA where
+
+import Primitive::Asymmetric::Cipher::RSA
+
+// Produce a signature representative of a message representative
+RSASP1 : {K} (fin K, K >= 1) => (([K],[K]),[K]) -> [K]
+RSASP1 ((n, d), m) =  if (m < zero \/ m > (n-1)) then error "message representative out of range"
+                      else s
+       where s = RSADP ((n,d), m)
+
+
+// Verify the signature
+RSAVP1 : {K} (fin K, K >= 1) => (([K],[K]),[K]) -> [K]
+RSAVP1 ((n, e), s) = if (m < zero \/ m > (n-1)) then error "signature representative out of range"
+                     else m
+       where m = RSAEP ((n, e), s)

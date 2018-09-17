@@ -1,0 +1,23 @@
+module Common::Field where
+
+import Common::Morphism
+import Common::Set
+
+type Field fv =
+  { is_val : Set fv         // carrier set
+  , norm : fv -> fv
+  , add : (fv,fv) -> fv
+  , sub : (fv,fv) -> fv
+  , neg : fv -> fv
+  , mul : (fv,fv) -> fv
+  , sq : fv -> fv
+  , half : fv -> fv
+  , div : (fv,fv) -> fv
+  /* Zero value for field. */
+  , field_zero : fv
+    /* Unit value for field. */
+  , field_unit : fv
+  /* Return true if two field elements are equal. */
+  , is_equal : (fv, fv) -> Bit
+  }
+

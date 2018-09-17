@@ -1,0 +1,93 @@
+/* This module implements an RSA encryption scheme
+with the EME-PCKS1-v1_5 encoding method desribed in
+section 7.2 of 
+
+PKCS #1: RSA Cryptography Specifications Version 2.2
+
+See also:
+https://tools.ietf.org/html/rfc8017
+
+Copyright (c) 2018, Galois Inc.
+www.cryptol.net
+You can freely use this source code for educational purposes.
+*/
+
+module Primitive::Asymmetric::Scheme::RSAES_PKCS1_v1_5 where
+
+import Primitive::Asymmetric::Cipher::RSA
+
+parameter
+
+  type k : #
+  type constraint (fin k, k >= 11) 
+
+
+  n : [KeySize]
+  e : [KeySize]
+  d : [KeySize]
+
+
+
+type KeySize = k * 8
+
+
+
+
+RSAES_PKCS1_v1_5_Encrypt : {mLen} (mLen <= k - 11, mLen >= 1)
+                         => [k-mLen-3][8] -> [mLen][8] -> [k][8]
+RSAES_PKCS1_v1_5_Encrypt rand M = I2OSP`{k} c
+                         where
+                          PS = rand // Needs to be random _nonzero_ octets
+                          EM = ( zero : [1][8] ) # [( 1 : [8])] # PS # ( zero : [1][8] ) # M
+                          m  = OS2IP EM
+                          c  = RSAEP ((n,e),m)
+
+
+RSAES_PKCS1_v1_5_Decrypt : [k][8] -> ([k][8],[width k]) 
+RSAES_PKCS1_v1_5_Decrypt C = if c >= n then error "decryption error" else (Mp,idx) // M = take`{idx} Mp
+                         where
+                          c        = OS2IP C
+                          m        = RSADP ((n,d),c)
+                          EM       = I2OSP`{k} m
+                          (Mp,idx) = EME_PKCS1_v1_5_decode EM 
+
+
+
+
+RSAES_PKCS1_Correct : {mLen} (mLen <= k - 11, mLen >= 1) =>
+                    [k-mLen-3][8] -> [mLen][8] -> Bit
+property RSAES_PKCS1_Correct rand M = take`{mLen} ((D ( E rand M ) ).0) == M
+         where
+          D = RSAES_PKCS1_v1_5_Decrypt
+          E = RSAES_PKCS1_v1_5_Encrypt
+
+
+
+
+private 
+
+        EME_PKCS1_v1_5_decode : [k][8] -> ([k][8],[width k])
+        EME_PKCS1_v1_5_decode EM = if (ys!0).removedPad == False then error "decryption error"
+                                    | firstOctet != zero then error "decryption error"
+                                    | secondOctet != (1:[8]) then error "decryption error"
+                                    | mLen + 11 > `k then error "decryption error"
+                                   else (Mpadded, mLen)
+                   where
+                    firstOctet  = EM@0
+                    secondOctet = EM@1
+                    init        = {removedPad = False,
+                                   padMsg     = (tail EM)#(zero:[1][8]),
+                                   idx        = (`k-1):[width k]}
+                    ys          = [init] # [ if (~y.removedPad /\ x==zero)
+                                             then {removedPad = True,
+                                                   padMsg     = (tail y.padMsg)#(zero:[1][8]),
+                                                   idx        = y.idx - 1}
+                                             | y.removedPad
+                                             then y
+                                             else {removedPad = False,
+                                                   padMsg     = (tail y.padMsg)#(zero:[1][8]),
+                                                   idx        = y.idx - 1}
+                                       | x <- tail EM
+                                       | y <- ys ]
+                    Mpadded     = (ys!0).padMsg
+                    mLen        = (ys!0).idx

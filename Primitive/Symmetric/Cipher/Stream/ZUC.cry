@@ -9,6 +9,8 @@
 // Note that the ZUC test vectors below will not work for version 1.4, as the
 // old test vectors are no longer published.
 
+module Primitive::Symmetric::Cipher::Stream::ZUC where
+
 version1_5 : Bit
 version1_5 = True
 
