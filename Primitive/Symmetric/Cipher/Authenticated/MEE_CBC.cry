@@ -1,6 +1,5 @@
 module Primitive::Symmetric::Cipher::Authenticated::MEE_CBC where
 
-import Cryptol::Extras
 
 // Fixing block size for simplicity.
 type blkBytes = 16

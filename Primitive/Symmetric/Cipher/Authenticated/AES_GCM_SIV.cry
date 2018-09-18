@@ -10,7 +10,7 @@ https://tools.ietf.org/html/draft-irtf-cfrg-gcmsiv-06
 
 module Primitive::Symmetric::Cipher::Authenticated::AES_GCM_SIV where
 
-import Primitive::Symmetric::Cipher::Block::AES as AES
+import Primitive::Symmetric::Cipher::Block::AES_parameterized as AES
 
 parameter
   /** 0: use AES128, 1: use AES256 */

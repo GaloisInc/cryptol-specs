@@ -37,7 +37,7 @@ RSAES_OAEP_ENCRYPT : {l,mLen}
                    , 2 * hLen >= width (8 * l) // Required for use of hash
                    , 2 * hLen >= width (8 * ( k - hLen + 3)) // Required for use of hash in MGF
                    , k >= mLen+2*hLen+2
-                   , 32 >= width ((k-hLen-1)/hLen) // Required for MGF1
+                   , 2^^32*hLen >= k - hLen - 1 // Required for MGF1
                    )
                    => [256] // Seed for random number
                    -> [mLen][8]
@@ -58,7 +58,7 @@ RSAES_OAEP_DECRYPT : {l}
                    , 2 * hLen >= width (8 * l) // Required for use of hash 
                    , 2 * hLen >= width (8 * ( k - hLen + 3)) // Required for use of hash in MGF
                    , k >= 2 * hLen + 2
-                   , 32 >= width ((k - hLen - 1)/hLen) // Required for use of MGF1
+                   , 2^^32*hLen >= k - hLen - 1 // Required for use of MGF1
                    ) => [k][8] -> [l][8] -> ([k - hLen - 1][8], [width (k - hLen - 1)])
 RSAES_OAEP_DECRYPT C L = if c < 0 \/ c >= n then error "decryption error"
                          else M
@@ -91,7 +91,7 @@ EME_OAEP_encode : {l,mLen}
          , 2 * hLen >= width (8 * l) // Required for using hash
          , 2 * hLen >= width (8 * ( k - hLen + 3)) // Required for using hash in MGF
          , k >= mLen + 2 * hLen + 2
-         , 32 >= width ((k - hLen - 1)/hLen) // Required use of MGF1
+         , 2^^32*hLen >= k - hLen - 1 // Required use of MGF1
          )
          => [256] // Seed for random number
          -> ([mLen][8], [l][8])
@@ -116,7 +116,7 @@ EME_OAEP_decode : {l}
          , 2*hLen >= width (8 * l) // Required for using hash
          , 2*hLen >= width (8 * ( k - hLen + 3)) // Required for using hash in MGF
          , k >= 2 * hLen + 2
-         , 32 >= width ((k - hLen - 1)/hLen) // Required for using MGF1
+         , 2^^32*hLen >= k - hLen - 1 // Required for using MGF1
          ) => ([k][8], [l][8]) -> ([k - hLen - 1][8], [width (k - hLen - 1)])
 EME_OAEP_decode (EM,L) = if Y != zero then error "decryption error"
                          | lHash' != lHash then error "decryption error"
@@ -162,8 +162,9 @@ MGF1 : {maskLen,l,counterMax}
        , hLen >= 1
        , maskLen >= 1
        , 2*hLen >= width (8 * (4 + l))
-       , 32 >= width (maskLen/hLen)  // In spec, looks like maskLen <= 2^^32 * hLen
-       , counterMax == (maskLen - 1)/hLen // (ceiling maskLen/hLen) - 1
+       , 2^^32 * hLen >= maskLen
+//       , 32 >= width (maskLen/hLen)  // In spec, looks like maskLen <= 2^^32 * hLen
+       , counterMax == (hLen + maskLen - 1)/hLen - 1 // (ceiling maskLen/hLen) - 1
        )
        => [l][8] // MGF Seed
        -> [maskLen][8]

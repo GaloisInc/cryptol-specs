@@ -1,0 +1,11 @@
+module Primitive::Symmetric::Cipher::Block::AES::SubByteSBox where
+
+import Primitive::Symmetric::Cipher::Block::AES::GF28
+import Primitive::Symmetric::Cipher::Block::AES::SBox
+
+SubByte : GF28 -> GF28
+SubByte b = sbox @ b
+
+InvSubByte : GF28 -> GF28
+InvSubByte b = sboxInv @ b
+

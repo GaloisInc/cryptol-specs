@@ -87,7 +87,7 @@ language convention of zero being the index origin).
 The elements in this vector or matrix are 32-bit unsigned integers.
 
 ```cryptol
-module Primitive::Symmetric::Cipher::Authenticated::ChaCha20 where
+module Primitive::Symmetric::Cipher::Authenticated::ChaChaPolyCryptolIETF where
 
 type ChaChaState = [16][32]
 ```

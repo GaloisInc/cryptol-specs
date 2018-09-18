@@ -1,9 +1,7 @@
 ```
-module Primitive::Symmetric::Cipher::Authenticated::SIV where
+module Primitive::Symmetric::Cipher::Authenticated::SIV_rfc5297 where
 
-import Primitive::Symmetric::Cipher::Block::AES as AES
-// Uses ../bench/data/AES.cry:
-//    CRYPTOLPATH=../bench/data cryptol SIV-rfc5297.md
+import Primitive::Symmetric::Cipher::Block::AES
 
 type Key = [AESKeySize]
 ```

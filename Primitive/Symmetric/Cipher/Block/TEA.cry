@@ -9,7 +9,7 @@
    We consider fixing the size 128bits for plaintext as well as ciphertext
 */
 
-module TEA where
+module Primitive::Symmetric::Cipher::Block::TEA where
 
 type Nb = 2
 type Nkb = 4

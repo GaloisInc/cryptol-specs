@@ -11,8 +11,8 @@
 
 module Primitive::Symmetric::Cipher::Block::SHACAL where
 
-import Primitive::Keyless::Hash::SHA256 as SHA256
-import Primitive::Keyless::Hash::SHA1 as SHA1
+import Primitive::Keyless::Hash::SHA256
+import Primitive::Keyless::Hash::SHA1
 
 /**SHACAL1**/
 

@@ -5,7 +5,7 @@
 
 module Primitive::Symmetric::Cipher::Block::TripleDES where
 
-import Primitive::Symmetric::Cipher::Block::DES as DES
+import Primitive::Symmetric::Cipher::Block::DES
 
 blockEncrypt : ([64],[64],[64],[64]) -> [64]
 blockEncrypt (k1,k2,k3,data) = result where
