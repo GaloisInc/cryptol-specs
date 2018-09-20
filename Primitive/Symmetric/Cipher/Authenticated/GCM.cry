@@ -1,9 +1,9 @@
 /* Galois Counter Mode in Cryptol
-Copyright (c) 2017, Galois, Inc.
+   Copyright (c) 2017-2018, Galois, Inc.
 
-This implementation follows:
-  "The Galois/Counter Mode of Operation (GCM)"
-paper by McGrew and Viega.
+   This implementation follows:
+   "The Galois/Counter Mode of Operation (GCM)"
+   paper by McGrew and Viega.
 */
 
 module Primitive::Symmetric::Cipher::Authenticated::GCM where

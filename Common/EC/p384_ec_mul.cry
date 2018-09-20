@@ -1,11 +1,11 @@
-module Common::p384_ec_mul where
+module Common::EC::p384_ec_mul where
 
 import Common::bv
-import Common::ec_point_ops
 import Common::mul_java
-import Common::p384_field
-import Common::p384_ec_point_ops
-import Common::ref_ec_mul
+import Common::EC::ec_point_ops
+import Common::EC::p384_field
+import Common::EC::p384_ec_point_ops
+import Common::EC::ref_ec_mul
 
 /* Promote a finite sequence to an infinite sequence */
 mk_strm : {a, b} fin a => [a][b] -> [inf][b]

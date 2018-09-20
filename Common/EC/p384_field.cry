@@ -1,4 +1,4 @@
-module Common::p384_field where
+module Common::EC::p384_field where
 
 import Common::bv
 import Common::mod_arith

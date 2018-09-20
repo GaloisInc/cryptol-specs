@@ -1,4 +1,4 @@
-module Common::ec_point_ops where
+module Common::EC::ec_point_ops where
 
 import Common::Field
 import Common::Set

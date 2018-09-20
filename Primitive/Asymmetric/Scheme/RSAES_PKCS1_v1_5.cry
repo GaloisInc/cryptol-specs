@@ -1,15 +1,15 @@
 /* This module implements an RSA encryption scheme
-with the EME-PCKS1-v1_5 encoding method desribed in
-section 7.2 of 
+   with the EME-PCKS1-v1_5 encoding method desribed in
+   section 7.2 of 
 
-PKCS #1: RSA Cryptography Specifications Version 2.2
+   PKCS #1: RSA Cryptography Specifications Version 2.2
 
-See also:
-https://tools.ietf.org/html/rfc8017
+   See also:
+   https://tools.ietf.org/html/rfc8017
 
-Copyright (c) 2018, Galois Inc.
-www.cryptol.net
-You can freely use this source code for educational purposes.
+   Copyright (c) 2018, Galois Inc.
+   www.cryptol.net
+   You can freely use this source code for educational purposes.
 */
 
 module Primitive::Asymmetric::Scheme::RSAES_PKCS1_v1_5 where

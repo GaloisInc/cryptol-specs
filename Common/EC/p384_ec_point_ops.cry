@@ -1,7 +1,7 @@
-module Common::p384_ec_point_ops where
+module Common::EC::p384_ec_point_ops where
 
-import Common::ec_point_ops
-import Common::p384_field
+import Common::EC::ec_point_ops
+import Common::EC::p384_field
 
 p384_point_ops : PointOps [384] [384]
 p384_point_ops = {

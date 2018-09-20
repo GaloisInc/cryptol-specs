@@ -1,6 +1,7 @@
 /*
- * Copyright (c) 2014-2016 Galois, Inc.
- * Distributed under the terms of the BSD3 license (see LICENSE file)
+  Copyright (c) 2014-2018, Galois Inc.
+  www.cryptol.net
+  You can freely use this source code for educational purposes.
  */
 
 module Primitive::Keyless::Hash::FNV where

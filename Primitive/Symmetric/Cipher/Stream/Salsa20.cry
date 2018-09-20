@@ -1,9 +1,10 @@
 /*
- * Copyright (c) 2013-2016 Galois, Inc.
- * Distributed under the terms of the BSD3 license (see LICENSE file)
- */
+   Copyright (c) 2013-2018 Galois, Inc.
+   www.cryptol.net
+   You can freely use this source code for educational purposes.
 
-// see http://cr.yp.to/snuffle/spec.pdf
+   See http://cr.yp.to/snuffle/spec.pdf
+ */
 
 module Primitive::Symmetric::Cipher::Stream::Salsa20 where
 

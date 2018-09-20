@@ -1,14 +1,14 @@
 /* This module implements an RSA encryption scheme
-with the EME-OAEP encoding method desribed in 7.1 of
+   with the EME-OAEP encoding method desribed in 7.1 of
 
-PKCS #1: RSA Cryptography Specifications Version 2.2
+   PKCS #1: RSA Cryptography Specifications Version 2.2
 
-See also:
-https://tools.ietf.org/html/rfc8017
+   See also:
+   https://tools.ietf.org/html/rfc8017
 
-Copyright (c) 2018, Galois Inc.
-www.cryptol.net
-You can freely use this source code for educational purposes.
+   Copyright (c) 2018, Galois Inc.
+   www.cryptol.net
+   You can freely use this source code for educational purposes.
 */
 
 module Primitive::Asymmetric::Scheme::RSAES_OAEP where

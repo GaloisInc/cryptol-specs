@@ -1,6 +1,6 @@
-module Common::ref_ec_mul where
+module Common::EC::ref_ec_mul where
 
-import Common::ec_point_ops
+import Common::EC::ec_point_ops
 
 /* Multiplies a large word scalar by the an affine point. */
 ec_mul : {fv, gv}  (fin gv) => (PointOps fv [gv], [gv], AffinePoint fv) -> JacobianPoint fv

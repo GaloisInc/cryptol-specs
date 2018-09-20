@@ -1,11 +1,16 @@
 /* This module implements that AES-GCM-SIV mode of operations
-as desribed in:
+   as desribed in:
 
-"AES-GCM-SIV: Specification and Analysis"
-by Shay Gueron, Adam Langley, and Yehuda Lindell
+   "AES-GCM-SIV: Specification and Analysis"
+   by Shay Gueron, Adam Langley, and Yehuda Lindell
 
-See also:
-https://tools.ietf.org/html/draft-irtf-cfrg-gcmsiv-06
+   See also:
+   https://tools.ietf.org/html/draft-irtf-cfrg-gcmsiv-06
+
+   Copyright (c) 2018, Galois Inc.
+   www.cryptol.net
+   You can freely use this source code for educational purposes.
+
 */
 
 module Primitive::Symmetric::Cipher::Authenticated::AES_GCM_SIV where

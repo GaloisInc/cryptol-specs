@@ -1,3 +1,11 @@
+/* Reference ECDSA signature algorithm as formalized from [ANSI X9.62-2005, pg 8]
+   Reference ECDSA signature verification algorithm as formalized from [ANSI X9.62-2005, pg 9]
+   
+   Copyright (c) 2018, Galois Inc.
+   www.cryptol.net
+   You can freely use this source code for educational purposes.
+*/
+
 module Primitive::Asymmetric::Signature::ecdsa where
 
 import Common::bv
@@ -5,11 +13,11 @@ import Common::mod_arith
 import Common::mul_java
 
 import Common::Field /* Defines Field type and generic operations */
-import Common::ec_point_ops
-import Common::ref_ec_mul
-import Common::p384_field
-import Common::p384_ec_point_ops
-import Common::p384_ec_mul
+import Common::EC::ec_point_ops
+import Common::EC::ref_ec_mul
+import Common::EC::p384_field
+import Common::EC::p384_ec_point_ops
+import Common::EC::p384_ec_mul
 
 /* Scalar multiply operations {{{1 */
 

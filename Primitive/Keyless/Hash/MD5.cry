@@ -1,5 +1,4 @@
-/* Copyright (c) 2001, 2014 Galois, Inc.
-   Distributed under the terms of the BSD3 license (see LICENSE file)
+/* Copyright (c) 2001, 2014-2018 Galois, Inc.
 
    MD5 digest algorithm from RFC 1321
    https://www.ietf.org/rfc/rfc1321.txt
