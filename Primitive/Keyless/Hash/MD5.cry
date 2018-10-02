@@ -249,25 +249,31 @@ sineTbl =
 
 // The MD5 test suite from RFC 1321, appendix A.5
 
-property r0 = test ""
-           == 0xd41d8cd98f00b204e9800998ecf8427e
+r0 = test ""
+  == 0xd41d8cd98f00b204e9800998ecf8427e
 
-property r1 = test "a"
-          == 0x0cc175b9c0f1b6a831c399e269772661
+r1 = test "a"
+  == 0x0cc175b9c0f1b6a831c399e269772661
 
-property r2 = test "abc"
-           == 0x900150983cd24fb0d6963f7d28e17f72
+r2 = test "abc"
+  == 0x900150983cd24fb0d6963f7d28e17f72
 
-property r3 = test "message digest"
-           == 0xf96b697d7cb7938d525a2f31aaf161d0
+r3 = test "message digest"
+  == 0xf96b697d7cb7938d525a2f31aaf161d0
 
-property r4 = test "abcdefghijklmnopqrstuvwxyz"
-           == 0xc3fcd3d76192e4007dfb496cca67e13b
+r4 = test "abcdefghijklmnopqrstuvwxyz"
+  == 0xc3fcd3d76192e4007dfb496cca67e13b
 
-property r5 = test "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-           == 0xd174ab98d277d9f5a5611c2c9f419d9f
+r5 = test "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+  == 0xd174ab98d277d9f5a5611c2c9f419d9f
 
-property r6 = test "12345678901234567890123456789012345678901234567890123456789012345678901234567890"
-           == 0x57edf4a22be3c955ac49da2e2107b67a
+r6 = test "12345678901234567890123456789012345678901234567890123456789012345678901234567890"
+  == 0x57edf4a22be3c955ac49da2e2107b67a
 
-alltests = r0 /\ r1 /\ r2 /\ r3 /\ r4 /\ r5 /\ r6
+r7 = test "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
+  == 0x8215ef0796a20bcaaae116d3876c664a
+
+r8 = test (join (repeat`{1000000} "a") )
+  == 0x7707d6ae4e027c70eea2a935c2296f21
+
+property testsPass = ~zero == [ r0, r1, r2, r3, r4, r5, r6, r7, r8 ]

@@ -169,3 +169,26 @@ sbox8 = [[13, 2, 8, 4, 6, 15, 11, 1, 10, 9, 3, 14, 5, 0, 12, 7],
          [7, 11, 4, 1, 9, 12, 14, 2, 0, 6, 10, 13, 15, 3, 5, 8],
          [2, 1, 14, 7, 4, 10, 8, 13, 15, 12, 9, 0, 3, 5, 6, 11]
         ]
+
+
+property DESCorrect msg key = DES.decrypt key (DES.encrypt key msg) == msg
+
+
+testmsgs = [0x1122334455667788
+           ,0x99aabbccddeeff00
+           ,0x41AD068548809D02
+           ,0xB10F843097A0F932]
+
+testkeys = [0x752878397493CB70
+          ,0x752878397493CB70
+          ,0x0001020304050607
+          ,0x2BD6459F82C5B300]
+
+testct = [0xB5219EE81AA7499D
+         ,0x2196687E13973856
+         ,0x0011223344556677
+         ,0xEA024714AD5C4D84]
+
+property testsPass = ~zero == [ DES.encrypt key msg == ct
+                              | key <- testkeys | msg <- testmsgs | ct <- testct ]
+

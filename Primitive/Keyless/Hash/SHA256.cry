@@ -102,7 +102,7 @@ SHA256Block H M = SHA256Compress H (SHA256MessageSchedule M)
 /*
  * The SHA256' function hashes a preprocessed sequence of blocks with the
  * compression function.  The SHA256 function hashes a sequence of bytes, and
- * is more likely the function that will be similar to those seein in an
+ * is more likely the function that will be similar to those seen in an
  * implementation to be verified.
  */
 
@@ -121,8 +121,8 @@ kats = [ (SHA256 "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
          ,0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855)
        , (SHA256 "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu"
          , 0xcf5b16a778af8380036ce59e7b0492370b249b11e8f07a51afac45037afee9d1)
-       // , ([0x61 | i <- [1..1000000] : [_][32]]
-       //   , 0xcdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0)
+       , (SHA256 (join (repeat`{1000000} "a"))
+         , 0xcdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0)
        ]
 
 //////// Imperative top level ////////
@@ -177,12 +177,14 @@ SHA256Imp msg = SHA256Final (SHA256Update SHA256Init msg)
 
 property katsPassImp = ~zero == [test == kat | (test,kat) <- katsImp ]
 
-katsImp = [ (SHA256Imp "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", 0x248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1), (SHA256Imp ""
+katsImp = [ (SHA256Imp "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
+            , 0x248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1)
+          , (SHA256Imp ""
             , 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855)
           , (SHA256Imp "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu"
             , 0xcf5b16a778af8380036ce59e7b0492370b249b11e8f07a51afac45037afee9d1)
-          // , ([0x61 | i <- [1..1000000] : [_][32]]
-          //   , 0xcdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0)
+          , (SHA256Imp ( join ( repeat`{1000000} "a" ) )
+            , 0xcdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0)
           ]
 
 property imp_correct msg = SHA256 msg == SHA256Imp msg

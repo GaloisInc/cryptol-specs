@@ -163,7 +163,6 @@ MGF1 : {maskLen,l,counterMax}
        , maskLen >= 1
        , 2*hLen >= width (8 * (4 + l))
        , 2^^32 * hLen >= maskLen
-//       , 32 >= width (maskLen/hLen)  // In spec, looks like maskLen <= 2^^32 * hLen
        , counterMax == (hLen + maskLen - 1)/hLen - 1 // (ceiling maskLen/hLen) - 1
        )
        => [l][8] // MGF Seed
