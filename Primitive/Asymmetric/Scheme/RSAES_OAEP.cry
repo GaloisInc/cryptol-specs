@@ -174,3 +174,4 @@ MGF1 mgfSeed = take`{maskLen} Ts
       Ts = join [ split (hash (mgfSeed # c)) : [_][8] | c <- Cs]
 
 
+

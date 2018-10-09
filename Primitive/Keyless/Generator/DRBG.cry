@@ -114,3 +114,57 @@ drbg_update data drbg = result
              , ctx = { key = take data_xor }
              , v = drop data_xor
              }
+
+
+/* Example test vectors from
+
+   https://csrc.nist.gov/Projects/Cryptographic-Algorithm-Validation-Program/Random-Number-Generators
+
+   for CTR_DRBG.
+*/
+
+/* [AES-128 no df]
+   [PredictionResistance = False]
+   [EntropyInputLen = 256]
+   [NonceLen = 0]
+   [PersonalizationStringLen = 0]
+   [AdditionalInputLen = 0]
+   [ReturnedBitsLen = 512] <- value of type parameter n
+*/
+
+
+
+testInstantiate0 = {entropy = 0xed1e7f21ef66ea5d8e2a85b9337245445b71d6393a4eecb0e63c193d0f72f9a9,
+                    pString = zero : [0],
+                        Key = 0xb5fc83ef1518da3cb85598ee9795001e,
+                         	V = 0x58f90cf75af84f221514db847ec007d1}
+
+testInstantiatedrbg0 = drbg_instantiate`{ps_size=0} testInstantiate0.entropy testInstantiate0.pString
+
+testInstantiate0Pass = testInstantiatedrbg0.v == testInstantiate0.V /\ testInstantiatedrbg0.ctx.key == testInstantiate0.Key
+
+testReseed0 = {entropyReseed = 0x303fb519f0a4e17d6df0b6426aa0ecb2a36079bd48be47ad2a8dbfe48da3efad,
+            	           Key = 0x577a79cc512258c3e255fcf3f4cf0c1a,
+                        	 V = 0x531599fd616f33678192928bf771bb2b}
+
+testReseed0Pass = drbgreseed.v == testReseed0.V /\ drbgreseed.ctx.key == testReseed0.Key
+                where drbgreseed = drbg_reseed`{ps_size=0} testInstantiatedrbg0 testReseed0.entropyReseed zero
+
+testGenerate0 = {	Key = 0xac373fb3773597b0d6cb6f37e6b59293,
+                	V   = 0xcd9bf115d35c60cbf7f2ebac8e43f53b}
+
+testGeneratedrbg0 = (drbg_generate`{n=512} testInstantiatedrbg0 testReseed0.entropyReseed True).1
+
+testGenerate0Pass = testGeneratedrbg0.v == testGenerate0.V /\ testGeneratedrbg0.ctx.key == testGenerate0.Key
+
+testGenerateSnd0 = {returnedBits = 0xf80111d08e874672f32f42997133a5210f7a9375e22cea70587f9cfafebe0f6a6aa2eb68e7dd9164536d53fa020fcab20f54caddfab7d6d91e5ffec1dfd8deaa,
+                 	Key = 0x964c57946a104aa93fc3c2137bb9bc11,
+                 	V   = 0x9d58008033ac007c9ead254bfa8de2b6}
+
+testGenerateSnd0Pass = ~zero == [result == testGenerateSnd0.returnedBits
+                                , drbg.ctx.key == testGenerateSnd0.Key
+                                , drbg.v == testGenerateSnd0.V]
+                     where (result,drbg) = drbg_generate`{n=512} testGeneratedrbg0 zero False
+
+
+property testsPass = ~zero == [testInstantiate0Pass,testReseed0Pass,testGenerate0Pass,testGenerateSnd0Pass]
