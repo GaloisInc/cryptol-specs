@@ -1,0 +1,65 @@
+module p224 = ECDSA where
+
+import utils
+
+type p = 26959946667150639794667015087019630673557916260026308143510066298881
+
+b = 18958286285566608000408668544493926415504680968679321075787234672564
+
+G = {x = 19277929113566293071110308034699488026831934219452440156649784352033,
+     y = 19926808758034470970197974370888749184205991990603949537637343198772,
+     z = 1}
+
+type q = 26959946667150639794667015087019625940457807714424391721682722368061
+
+mp_mod_sqrt : Z p -> Z p
+mp_mod_sqrt c = r
+  where s = random (ZtoBV c)
+        (d0, e0, f0) = RP c s
+        (d1, e1, f1) = RS d0 e0 f0
+        state = [(d1, e1, f1)] #
+                [ if d1' == 0 then (d, e, f) else (d1', e1', f1')
+                  where (d1', e1', f1') = RS d e f
+                | (d, e, f) <- state ]
+        (d0', e0', _) = state@95
+        r = d0' * (mp_mod_inv e0')
+
+private
+
+  RS : Z p -> Z p -> Z p -> (Z p, Z p, Z p)
+  RS d0 e0 f0 = (d1, e1', f1'')
+    where t    = d0 ^^ 2
+          e1   = d0 * e0
+          d1   = t + f0
+          e1'  = e1 + e1
+          f1   = t * f0
+          f1'  = f1 + f1
+          f1'' = f1' + f1'
+
+  RSS : Z p -> Z p -> Z p -> [7] -> (Z p, Z p, Z p)
+  RSS d0 e0 f0 j = (d1, e1, f1)
+    where (d1, e1, f1) = state@j
+          state = [(d0, e0, f0)] # [ RS d e f | (d, e, f) <- state ]
+
+  RM : Z p -> Z p -> Z p -> Z p -> Z p -> (Z p, Z p, Z p)
+  RM c d0 e0 d1 e1 = (d2, e2', f2'')
+    where t1    = e0 * e1
+          t1'   = t1 * c
+          t1''  = -t1'
+          t2    = d0 * d1
+          t2'   = t2 + t1''
+          t1''' = d0 * e1
+          e2    = d1 * e0
+          e2'   = e2 + t1'''
+          f2    = e2' ^^ 2
+          f2'   = f2 * c
+          f2''  = -f2'
+          d2    = t2'
+
+  RP : Z p -> Z p -> (Z p, Z p, Z p)
+  RP c r = (d1, e1, f1)
+    where (d1, e1, f1) = state!0
+          state = [(r, 1, -c)] # [ body d e f i | (d, e, f) <- state | i <- [0..6] ]
+          body d0 e0 f0 i = (d1'', e1'', f1'')
+            where (d1', e1', _) = RSS d0 e0 f0 (2^^i)
+                  (d1'', e1'', f1'') = RM c d1' e1' d0 e0
