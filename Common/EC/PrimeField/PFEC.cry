@@ -2,6 +2,8 @@
 
 module Common::EC::PrimeField::PFEC where
 
+import Common::ModDivZ
+
 parameter
     type P : #     //  The prime modulus
     type constraint (fin P, P >= 5)
@@ -13,28 +15,7 @@ parameter
 type Point = (Z P, Z P)
 G = (Gx, Gy) : Point
 a = -3 : Z P
-p = toInteger`{width P} `P
-
-private
-    even k = k % 2 == 0
-
-// Calulate x / y in F_p using Euler's binary gcd algorithm
-moddiv : {p}(fin p, p >= 3) => Z p -> Z p -> Z p  // p prime!
-moddiv x y = if y == 0 then error "division by 0"  // zero has no inverse
-                       else fromInteger (egcd `p 0 (fromZ y) (fromZ x))
-    where
-
-    egcd : Integer -> Integer -> Integer -> Integer -> Integer
-    egcd aa ra bb rb =  // aa odd!
-        if bb == 0 then ra
-         | even bb then egcd aa ra (   bb     / 2) (half rb)
-         | aa < bb then egcd aa ra ((bb - aa) / 2) (half ((rb - ra) % `p))
-                   else egcd bb rb ((aa - bb) / 2) (half ((ra - rb) % `p))
-
-    half : Integer -> Integer
-    half k = (if k % 2 == 0 then k else (k + `p)) / 2
-
-(%/) = moddiv  // infix form of operator
+p = toInteger`{width P} `P    
 
 // A convenient representation of the point-at-infinity identity element
 oo = (0, 0) : Point
