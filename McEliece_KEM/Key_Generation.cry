@@ -1,0 +1,78 @@
+module Key_Generation where
+
+parameter
+    type t : #
+    type constraint (fin t, t>=1, t-1>=1)
+    type n : #
+    type constraint (fin n, n>=1)
+    type m : #
+    type constraint (fin m, m>=1, t * n == min t n)
+    type d : #
+
+type f2_T = Bit
+type m_T = [m]f2_T
+type d_T = [d]f2_T
+type n_T = [n]f2_T
+type t_T = [t]f2_T
+type mt_T = [m*t]f2_T
+type k_T = [(n-m*t)]f2_T
+type field_element_T = m_T
+type poly_T =  [t]field_element_T
+type alphas_T = [n]field_element_T
+type H_T = [t][n]field_element_T
+type session_key_T = d_T
+type cipher_text_T =
+    { C0 : mt_T
+    , C1 : d_T}
+type hash_input_T =
+    { n : Integer
+    , v : n_T
+    , C : cipher_text_T}
+type public_key_T = [m*t][(n-m*t)]f2_T
+type gamma_T =
+    { p : poly_T                // [13]Bit
+    , a : alphas_T              // [6960][13]Bit  //[n][m]Bit
+    }
+type private_key_T =
+    { s : n_T                   // [870][8]Bit
+    , g : gamma_T
+    }
+
+//--------------------------------------------------
+//TODO :)
+random_element : field_element_T
+random_element = ([True | i <- [1..m]])
+random_elements : {t0}(fin t0, t0>=1) => [t0]field_element_T
+random_elements = ([random_element | i <- [1..t0]])
+
+//TODO: make irreducible poly
+step_1 = random_elements `{ t0 = t-1}#[1]
+
+// TODO: add power operation
+step_3 : (t * n == min t n) =>  poly_T -> alphas_T -> H_T
+step_3 g alphas = [[ f i j | j <- [1..n]] | i <- [1..t]]
+    where f i j = aj / (g @ aj)
+            where aj = alphas@j
+
+// TODO: apply gaussian elimination
+step_5 : H_T -> (Bool, public_key_T)
+step_5 H_tilde = undefined
+
+mk_gamma : Integer -> (gamma_T,public_key_T)
+mk_gamma counter =
+    if(flag) then ({p=g, a=alphas}, public_key)
+    else if (counter < 100)
+        then mk_gamma (counter+1)
+    else undefined
+    where
+        // TODO check if g is irreducible
+        (g: poly_T) = step_1
+        (alphas: alphas_T) =  random_elements `{ t0 = n}
+        (H_tilde: H_T) = step_3 g alphas
+        (flag, public_key) = step_5 H_tilde
+
+key_generation : [n]Bit -> (public_key_T, private_key_T)
+key_generation s = (public_key, private_key) where
+    (gamma: gamma_T, public_key: public_key_T) = mk_gamma 0
+    (private_key: private_key_T) = {s=s, g=gamma}
+

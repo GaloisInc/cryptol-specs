@@ -1,0 +1,12 @@
+module CM_819 where
+
+import CM_Parameters
+
+CM_819 =
+    { m = 13 : a_ty
+    , q = (2^13) : a_ty
+    , n = 8192 : a_ty
+    , t = 128 : a_ty
+    , k = (8192-(13*128)) : a_ty
+    , d = 256 : a_ty
+    } : CM
