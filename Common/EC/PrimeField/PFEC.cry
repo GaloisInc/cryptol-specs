@@ -14,8 +14,8 @@ parameter
 
 type Point = (Z P, Z P)
 G = (Gx, Gy) : Point
-a = -3 : Z P
-p = toInteger`{width P} `P    
+a = -3 : Z P       //  Curve coefficient
+p = toInteger`{width P} `P
 
 // A convenient representation of the point-at-infinity identity element
 oo = (0, 0) : Point
@@ -29,11 +29,11 @@ valid_point (x, y) =
 // Addition of two elliptic curve points in E(F_p) (p an odd prime)
 // on a curve with coefficient 'a'. Note 'b' is unused.
 ec_add : Point -> Point -> Point
-ec_add (x1, y1) (x2, y2) = 
+ec_add (x1, y1) (x2, y2) =
     if (x1, y1) ==    oo     then  (x2, y2)  //  Rules 1, 2
      | (x2, y2) ==    oo     then  (x1, y1)  //  Rules 1, 2
      | (x1, y1) == (x2, -y1) then     oo     //  Rule 3
-                             else   (x, y)   //  Rules 4, 5 
+                             else   (x, y)   //  Rules 4, 5
     where  // all arithmetic operations are mod p
     x = L ^^ 2 - x1 - x2
     y = L * (x1 - x) - y1
