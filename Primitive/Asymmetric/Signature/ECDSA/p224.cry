@@ -1,6 +1,6 @@
-module p224 = ECDSA where
+module p224 = Primitive::Asymmetric::Signature::ECDSA::ECDSA where
 
-import utils
+import Common::utils
 
 type p = 26959946667150639794667015087019630673557916260026308143510066298881
 

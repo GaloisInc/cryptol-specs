@@ -1,6 +1,6 @@
-module ECDSA_tests where
+module Primitive::Asymmetric::Signature::ECDSA::ECDSA_tests where
 
-import utils
+import Common::utils
 
 import p192 as p192
 import p224 as p224

@@ -1,4 +1,4 @@
-module utils where
+module Common::utils where
 
 while : {a} (a -> Bit) -> (a -> a) -> a -> a
 while condition body initial_state =

@@ -1,6 +1,6 @@
-module ECDSA where
+module Primitive::Asymmetric::Signature::ECDSA::ECDSA where
 
-import utils
+import Common::utils
 
 sign : Z q -> Z q -> Z p -> (Z q, Z q)
 sign d z k = (r, s)
