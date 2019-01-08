@@ -22,7 +22,7 @@
 
 // Specification of the Keccak (SHA-3) hash function
 // Author: David Lazar
-module keccak where
+module Primitive::Keyless::Hash::keccak where
 
 SHA_3_224 M = take`{224} (Keccak `{r = 1152, c =  448} (M # 0b01))
 SHA_3_256 M = take`{256} (Keccak `{r = 1088, c =  512} (M # 0b01))
