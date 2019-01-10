@@ -22,6 +22,12 @@ ZtoZ x = (fromInteger (fromZ x))
 isEven : Integer -> Bit
 isEven x = ~((fromInteger x) : [1]) ! 0
 
+abs : Integer -> Integer
+abs x = if x >= zero then x else zero-x
+
+unzip : {a,f,s} [a](f,s) -> ([a]f,[a]s)
+unzip tuples = (map (\x -> x.0) tuples , map (\x -> x.1) tuples)
+
 mul2 x = x + x
 mul3 x = x + mul2 x
 mul4 x = mul2(mul2 x)
