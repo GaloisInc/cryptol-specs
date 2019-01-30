@@ -84,14 +84,14 @@ private
   ec_decompress S = ({x = Rx, y = Ry}, err)
     where c = BVtoZ  (take S : [2])
           Rx = BVtoZ (drop S : [a-2])
-          t0 = Rx^^3 - (mul3 Rx) + `b
+          t0 = Rx ^^ 3 - (mul3 Rx) + `b
           t1 = mp_mod_sqrt t0
           err = t1 ^^ 2 != t0
           Ry = if t1 == c%2 then t1 else -t1
 
   ec_is_point_affine : AffinePoint p -> Bit
   ec_is_point_affine S = S.y ^^ 2 == t
-    where t = S.x ^^ 3 + b
+    where t = S.x ^^ 3 - (mul3 S.x) + b
 
   ec_double : {a} (Constraints a) => ProjectivePoint a -> ProjectivePoint a
   ec_double S =
