@@ -61,7 +61,7 @@ parameter
 
 private
 
-  type constraint Constraints a = (fin a, isOdd a, width a >= 4)
+  type constraint Constraints a = (fin a, isOdd a, a >= 4)
 
   type AffinePoint a = {x : Z a, y : Z a}
   type ProjectivePoint a = {x : Z a, y : Z a, z : Z a}
@@ -191,8 +191,8 @@ private
           SpTp = if SpT.z != 1 then ec_projectify (ec_affinify SpT) else SpT
           SmT = ec_full_sub Sp Tp
           SmTp = if SmT.z != 1 then ec_projectify (ec_affinify SmT) else SmT
-          e0  = ZtoBV d0 : [width a]
-          e1  = ZtoBV d1 : [width a]
+          e0  = ZtoBV d0 : [max 4 (width a)]
+          e1  = ZtoBV d1 : [max 4 (width a)]
           c   = [[False, False] # take e0,
                  [False, False] # take e1] : [2][6]
           states = [({x = 1, y = 1, z = 0}, c)] #
