@@ -37,8 +37,10 @@ All the built-in operations on integer values return integers.
 In particular, the base-2 logarithm returns the *ceiling* of its real-valued equivalent:
 `(lg2 7, lg2 8, lg2 9) == (3, 3, 4)`.
 
-Truncation of a bit string is accomplished with Cryptol's `take` function, writing *Trunc<sub>l</sub>(x)* as "take\`{l} x", where "l" (in bits) is the function's type-level parameter "front":
-<pre>take`{16} 0x12345678 == 0x1234</pre>.
+Truncation of a bit string is accomplished with Cryptol's `take` function,
+writing *Trunc<sub>l</sub>(x)* as "take\`{*l*} *x*",
+where "*l*" (in bits) is the function's first type-level parameter:
+<pre>take`{16} 0x12345678 == 0x1234</pre>
 
 ### 2.3 Operators
 
@@ -60,11 +62,13 @@ and can't be simulated by the divergent recursive binding `let a = a + 1`,
 where variable `a` is already bound.
 That Cryptol expression defines an infinite integer,
 which cannot be evaluated in any useful way.
-Instead of a destructive update, we must use a fresh name: `let a' = a + 1`.
+Instead of a destructive update, we must use a fresh variable: `let a' = a + 1`.
 
 Cryptol's "logical" shift operators are defined on bit strings
 rather than integers, a distinction not made by the spec:
 
+| **Name** | **Spec syntax** | **Cryptol syntax** | **Example** |
+| -------- | --------------- | ------------------ | ----------- |
 | left shift  | *a << b* | `a << b` | `0x00ff00 << 8 == 0xff0000` |
 | right shift | *a >> b* | `a >> b` | `0x00ff00 >> 8 == 0x0000ff` |
 
@@ -72,14 +76,45 @@ Array indexing is accomplished with Cryptol's infix `@` operator
 rather than postfix square brackets.
 Moreover, because Cryptol regards the byte strings defined above as
 sequences of *bits* rather than bytes,
-we define a helper function to index a whole byte.
+we define another infix operator to index a whole byte.
 
 ```
-byte : {n} (fin n) => [n] -> [n * 8] -> [8]
-byte index bytestring = (split`{each=8} bytestring) @ index
+(~@) : {n} (fin n) => [n * 8] -> [n] -> [8]
+(~@) bytestring index = (split`{each=8} bytestring) @ index
 ```
 
+| **Name** | **Spec syntax** | **Cryptol syntax** | **Example** |
+| -------- | --------------- | ------------------ | ----------- |
 | array index | *A[i]* | `A @ i` | `[0x0a, 0x0b, 0x0c] @ 1 == 0x0b` |
-| byte string index | *X[i]* | `byte i X` | `byte 2 0x0a0b0c == 0x0c` |
+| byte string index | *X[i]* | `X ~@ i` | `0x0a0b0c ~@ 2 == 0x0c` |
+
+Cryptol's bitwise logical operators for our byte strings
+are written in a somewhat C-like syntax.
+
+| **Name** | **Spec syntax** | **Cryptol syntax** | **Example** |
+| -------- | --------------- | ------------------ | ----------- |
+| bitwise conjunction | *A* AND *B* | `A && B` | `0xffff00 && 0x00ffff == 0x00ff00` |
+| bitwise exclusive disjunction | *A* XOR *B* (or *A ⊕ B*) | `A ^ B` | `0xffff00 ^ 0x00ffff == 0xff00ff` |
+
+Byte string concatenation is written with `#`.
+
+| **Name** | **Spec syntax** | **Cryptol syntax** | **Example** |
+| -------- | --------------- | ------------------ | ----------- |
+| concatenation | *A || B* | `A # B` | `0x000102 # 0x0a0b == 0x0001020a0b` |
 
 
+### 2.4 Integer to Byte Conversion
+
+Cryptol uses a type-level function parameter
+to determine the length of the resulting bit string.
+
+| **Name** | **Spec syntax** | **Cryptol syntax** | **Example** |
+| -------- | --------------- | ------------------ | ----------- |
+| conversion | `toByte`(*x,y*) | `(fromInteger x) : [y*8]` | `((fromInteger 255) : [3*8]) == 0x0000ff` |
+
+This parameter to can also be written more explicitly:
+<pre> fromInteger`{[y*8]} x </pre>
+
+### 2.5 Strings of Base-*w* Numbers
+
+**TODO**
