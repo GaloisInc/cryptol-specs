@@ -235,9 +235,9 @@ addressRecord adrs =
     is_tree   = _type' == TREE \/ _type' == FORS_TREE
 
 setAddressType : AddressWord -> Address -> Address
-setAddressType new_type adrs =
-    { layer    = adrs.layer
-    , tree     = adrs.tree
+setAddressType new_type address =
+    { layer    = address.layer
+    , tree     = address.tree
     , _type    = new_type
     , keypair  = zero
     , chain    = zero
@@ -248,4 +248,103 @@ setAddressType new_type adrs =
 
 ```
 
-**TODO**
+
+## 3. WOTS+ One-Time Signatures
+
+This section contains the Cryptol implementations of the specified algorithms for
+chaining, key generation, signing, and computing public keys.
+
+### 3.1 WOTS+ Parameters
+
+The formula to compute values `len = len_1 + len2` are given in the spec
+using real-valued division and logarithm operators.
+We can't easily define an equivalent formula using Cryptol's integer-valued `lg2` function,
+because the numerator in `len_2` would be rounded up before dividing,
+losing information.
+(The information lost by integer division can be recovered with the modulus operator,
+but there is no equivalent of `(%)` for `lg2`.)
+
+Parameter *w* can take only 3 values.
+In the example parameter sets given in section 7.1 of the spec,
+`n` takes only 3 values as well; 16, 24, or 32.
+
+The following table gives correct values for these 9 distinct cases.
+
+```
+// TODO: make these into type-level module parameters
+//       and adjust type signatures as needed
+
+(n : Integer, w : Integer) = (24, 16) 
+
+(len : Integer, len1 : Integer, len2 : Integer) =
+    if (n, w) == (16,   4) then (11,  8, 3)
+     | (n, w) == (16,  16) then ( 6,  4, 2)
+     | (n, w) == (16, 256) then ( 4,  2, 2)
+     | (n, w) == (24,   4) then (15, 12, 3)
+     | (n, w) == (24,  16) then ( 8,  6, 2)
+     | (n, w) == (24, 256) then ( 5,  3, 2)
+     | (n, w) == (32,   4) then (19, 16, 3)
+     | (n, w) == (32,  16) then (10,  8, 2)
+     | (n, w) == (32, 256) then ( 6,  4, 2)
+     else error "unsupported n or w parameter"
+```
+
+### 3.2 WOTS+ Chaining Function
+
+Function **F** is a global parameter not yet defined.
+(See Section 7.2 for concrete instances of
+**F**, **H**, **H_msg**, **PRF**, and **PRF_msg**.)
+Similarly, public key **PK** is not yet defined.
+
+The return value "NULL" is used by the spec pseudocode, but never defined.
+We'll assume it is intended to indicate an error.
+The spec's prose says that the ADRS value must be a WOTS hash address.
+The pseudocode doesn't check, but the implementation below does.
+
+The pseudocode mutates the ADRS input at each iteration.
+Cryptol can't do that,
+so we return an updated ADRS along with the final value of X.
+Intermediate recursive steps use the Address record type.
+
+```
+// TODO: Replace with parameterized F
+F : {k} (fin k) => [k] -> Address -> [k] -> [k]
+F _ _ x = x
+
+// TODO: Replace with actual private key structure
+type Pk = { seed : [24*8] }  // seed is n bytes long
+pk = ({ seed = zero } : Pk)
+
+setHashAddress : AddressWord -> Address -> Address
+setHashAddress new_hash address =
+    if address._type != WOTS_HASH
+    then error "not a WOTS hash address"
+    else
+    { layer    = address.layer
+    , tree     = address.tree
+    , _type    = WOTS_HASH
+    , keypair  = address.keypair
+    , chain    = address.chain
+    , hash     = new_hash
+    , height   = zero
+    , index    = zero
+    }
+
+chain : [24*8] -> Integer -> Integer -> [24*8] -> ADRS ->
+        ([24*8], ADRS)
+chain X i s seed adrs =
+    if i + s > w - 1 then error "spec says NULL"
+     | address._type != WOTS_HASH then error "wrong address type"
+    else (finalX, addressBytes finalAddress)
+    where
+    address = addressRecord adrs
+    (finalX, finalAddress) = chain' s (X, address)
+    chain' : Integer -> ([24*8], Address) -> ([24*8], Address)    
+    chain' s' (X', address') =
+        if s' == 0 then (X', address')
+        else chain' (s' - 1)
+                    ( F pk.seed address' X' 
+                    , setHashAddress (fromInteger (i + s' - 1)) address'
+                    )
+```
+
