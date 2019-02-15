@@ -301,18 +301,16 @@ We'll assume it is intended to indicate an error.
 The spec's prose says that the ADRS value must be a WOTS hash address.
 The pseudocode doesn't check, but the implementation below does.
 
-The pseudocode mutates the ADRS input at each iteration.
-Cryptol can't do that,
-so we return an updated ADRS along with the final value of X.
-Intermediate recursive steps use the Address record type.
-
 ```
 // TODO: Replace with parameterized F
 F : {k} (fin k) => [k] -> Address -> [k] -> [k]
 F _ _ x = x
 
-// TODO: Replace with actual private key structure
-type Pk = { seed : [24*8] }  // seed is n bytes long
+// TODO: Replace with actual private key structure,
+//       make n a module parameter
+type NBytes = [24*8]
+type Seed = NBytes
+type Pk = { seed : Seed }
 pk = ({ seed = zero } : Pk)
 
 setHashAddress : AddressWord -> Address -> Address
@@ -330,21 +328,17 @@ setHashAddress new_hash address =
     , index    = zero
     }
 
-chain : [24*8] -> Integer -> Integer -> [24*8] -> ADRS ->
-        ([24*8], ADRS)
+chain : NBytes -> Integer -> Integer -> Seed -> ADRS -> NBytes
 chain X i s seed adrs =
     if i + s > w - 1 then error "spec says NULL"
-     | address._type != WOTS_HASH then error "wrong address type"
-    else (finalX, addressBytes finalAddress)
+                     else chain' s address X
     where
     address = addressRecord adrs
-    (finalX, finalAddress) = chain' s (X, address)
-    chain' : Integer -> ([24*8], Address) -> ([24*8], Address)    
-    chain' s' (X', address') =
-        if s' == 0 then (X', address')
+    chain' : Integer -> Address -> NBytes -> NBytes
+    chain' s' address' X' =
+        if s' == 0 then X'
         else chain' (s' - 1)
-                    ( F pk.seed address' X' 
-                    , setHashAddress (fromInteger (i + s' - 1)) address'
-                    )
+                    (setHashAddress (fromInteger (i + s' - 1)) address')
+                    (F pk.seed address' X')
 ```
 
