@@ -48,6 +48,8 @@ where "*len*" (in bits) is the function's first type-level parameter:
 
 ### 2.3 Operators
 
+**TODO**: Shorten and streamline all this. It's tedious.
+
 The usual integer operators mostly have familiar notations,
 and respect the standard precedence ordering.
 Note that Cryptol has no rational numbers, so `/` means integer division.
@@ -91,6 +93,8 @@ so we define another infix operator to index a whole byte.
 | -------- | --------------- | ------------------ | ----------- |
 | array index | *A[i]* | `A @ i` | `[0x0a, 0x0b, 0x0c] @ 1 == 0x0b` |
 | byte string index | *X[i]* | `X ~@ i` | `0x0a0b0c ~@ 2 == 0x0c` |
+
+**TODO**: Show 'assignment' using `update`
 
 Cryptol's bitwise logical operators for our byte strings
 are written in a somewhat C-like syntax.
@@ -150,6 +154,8 @@ Instead of destructive updates, we must construct a whole new record and give it
 See Section 7 for the definition of specific *tweakable* hash functions,
 which abstract over the implementations of SHA2 or SHAKE.
 
+**TODO**: module parameters go here!
+
 #### 2.7.1 Tweakable Hash Functions
 
 Translating the given function signatures:
@@ -181,6 +187,11 @@ To facilitate working with the five different types of address,
 we define a single record form having all the fields of each,
 along with functions for converting between these records
 and flat byte string representations.
+
+**TODO**: This was a dumb idea...
+Better to just operate directly on ADRS.
+Define all the getters and setters here,
+each with the appropriate 'type' check.
 
 ```
 type ADRS        = [256]
@@ -232,7 +243,8 @@ addressRecord adrs =
      _type', word5, word6, word7] = split`{each=32} adrs
     is_wh     = _type' == WOTS_HASH
     is_pk     = _type' == WOTS_PK
-    is_tree   = _type' == TREE \/ _type' == FORS_TREE
+    is_tree   = _type' == TREE \/
+                _type' == FORS_TREE
 
 setAddressType : AddressWord -> Address -> Address
 setAddressType new_type address =
@@ -276,6 +288,7 @@ The following table gives correct values for these 9 distinct cases.
 
 (n : Integer, w : Integer) = (24, 16) 
 
+// TODO: All these will have to be available at type level
 (len : Integer, len1 : Integer, len2 : Integer) =
     if (n, w) == (16,   4) then (11,  8, 3)
      | (n, w) == (16,  16) then ( 6,  4, 2)
@@ -342,3 +355,42 @@ chain X i s seed adrs =
                     (F pk.seed address' X')
 ```
 
+### 3.3 WOTS+ Private Key
+
+This algorithm is not used anywhere else in the spec,
+but we include a Cryptol implementation here for completeness.
+
+(The spec's pseudocode iterates over an array `sk`,
+but never declares or initializes it.)
+
+```
+// TODO: Replace with parameterized PRF
+PRF : Seed -> Address -> NBytes
+PRF s _ = s
+
+setChainAddress : AddressWord -> Address -> Address
+setChainAddress new_chain address =
+    { layer    = address.layer
+    , tree     = address.tree
+    , _type    = address._type
+    , keypair  = address.keypair
+    , chain    = new_chain
+    , hash     = address.hash
+    , height   = address.height
+    , index    = address.index
+    }
+
+// TODO: replace [8] with type parameter [len]
+//       and use demoted value in body
+wots_SKgen : Seed -> ADRS -> [8]NBytes
+wots_SKgen seed adrs =
+    kgen 0 (addressRecord adrs) zero
+    where
+    kgen i address sk =
+        if i >= fromInteger len then sk
+        else kgen (i + 1) address'
+                  (update sk i (PRF seed address'))
+             where
+             address' = setChainAddress i address
+
+```
