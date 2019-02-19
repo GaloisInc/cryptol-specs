@@ -176,17 +176,11 @@ H_msg : {n, x, m} (fin n, fin m) => [n] -> [n] -> [n] -> [x] -> [m]
 #### 2.7.3 Hash Function Address Scheme
 
 To facilitate working with the five different types of address,
-we define a single record form having all the fields of each,
-along with functions for converting between these records
-and flat byte string representations.
-
-**TODO**: This was a dumb idea...
-Better to just operate directly on ADRS.
-Define all the getters and setters here,
-each with the appropriate 'type' check.
+we define member access and update functions for each field,
+including type checks as appropriate.
 
 ```
-type ADRS        = [256]
+type Address     = [256]
 type AddressWord = [32]
 type TreeAddress = [96]
 
@@ -196,59 +190,105 @@ TREE       = 2 : AddressWord
 FORS_TREE  = 3 : AddressWord
 FORS_ROOTS = 4 : AddressWord
 
-type Address =                // 0 1 2 3 4
-    { layer    : AddressWord  // X X X X X 
-    , tree     : TreeAddress  // X X X X X
-    , _type    : AddressWord  // X X X X X
-    , keypair  : AddressWord  // X X
-    , chain    : AddressWord  // X
-    , hash     : AddressWord  // X
-    , height   : AddressWord  //     X X
-    , index    : AddressWord  //     X X
-    }
+getLayer : Address -> AddressWord
+getLayer = take
 
-addressBytes : Address -> ADRS
-addressBytes addr = addr.layer # addr.tree # t # rest
+setLayer : Address -> AddressWord -> Address
+setLayer adrs layer = layer # (take adrs)
+
+getTree : Address -> TreeAddress
+getTree adrs = take (drop`{32} adrs)
+
+setTree : Address -> TreeAddress -> Address
+setTree adrs tree = take`{32} adrs # tree # drop`{128} adrs
+
+getType : Address -> AddressWord
+getType adrs = take (drop`{128} adrs)
+
+// Setting the type field implicitly zeros out
+// the subsequent three address words
+setType : Address -> AddressWord -> Address
+setType adrs typ = take`{128} adrs # typ # zero
+
+wat = error "wrong address type"
+
+getKeypair : Address -> AddressWord
+getKeypair adrs =
+    if t == WOTS_HASH then kp
+     | t == WOTS_PK   then kp
+    else wat
     where
-    t = addr._type
-    rest =
-        if t == WOTS_HASH  then  addr.keypair # addr.chain # addr.hash
-         | t == WOTS_PK    then  addr.keypair # zero
-         | t == TREE       then  zero # addr.height # addr.index
-         | t == FORS_TREE  then  addr.keypair # addr.height # addr.index
-         | t == FORS_ROOTS then  addr.keypair # zero
-                           else  error "bad address type"
+    t  = getType adrs
+    kp = take (drop`{160} adrs)
 
-addressRecord : ADRS -> Address
-addressRecord adrs =
-    { layer   = layer'
-    , tree    = word1 # word2 # word3
-    , _type   = _type'
-    , keypair = if is_wh \/ is_pk then word5 else zero
-    , chain   = if is_wh          then word6 else zero
-    , hash    = if is_wh          then word7 else zero
-    , height  = if is_tree        then word6 else zero 
-    , index   = if is_tree        then word7 else zero
-    }
+setKeypair : Address -> AddressWord -> Address
+setKeypair adrs kp =
+    if t == WOTS_HASH then adrs'
+     | t == WOTS_PK   then adrs'
+    else wat
     where
-    [layer', word1, word2, word3,
-     _type', word5, word6, word7] = split`{each=32} adrs
-    is_wh     = _type' == WOTS_HASH
-    is_pk     = _type' == WOTS_PK
-    is_tree   = _type' == TREE \/
-                _type' == FORS_TREE
+    t     = getType adrs
+    adrs' = take adrs # kp # drop`{160} adrs
 
-setAddressType : AddressWord -> Address -> Address
-setAddressType new_type address =
-    { layer    = address.layer
-    , tree     = address.tree
-    , _type    = new_type
-    , keypair  = zero
-    , chain    = zero
-    , hash     = zero
-    , height   = zero
-    , index    = zero
-    }
+getChain : Address -> AddressWord
+getChain adrs =
+    if getType adrs == WOTS_HASH
+    then take (drop`{192} adrs)
+    else wat
+
+setChain : Address -> AddressWord -> Address
+setChain adrs chn =
+    if getType adrs == WOTS_HASH
+    then take`{192} adrs # chn # drop adrs
+    else wat
+
+getHash : Address -> AddressWord
+getHash adrs =
+    if getType adrs == WOTS_HASH
+    then drop`{224} adrs
+    else wat
+
+setHash : Address -> AddressWord -> Address
+setHash adrs hash =
+    if getType adrs == WOTS_HASH
+    then take adrs # hash
+    else wat
+
+getTreeHeight : Address -> AddressWord
+getTreeHeight adrs =
+    if t == FORS_TREE  then height
+     | t == FORS_ROOTS then height
+    else wat
+    where
+    t      = getType adrs
+    height = take (drop`{192} adrs)
+
+setTreeHeight : Address -> AddressWord -> Address
+setTreeHeight adrs height =
+    if t == FORS_TREE  then adrs'
+     | t == FORS_ROOTS then adrs'
+    else wat
+    where
+    t     = getType adrs
+    adrs' = take adrs # height # drop`{224} adrs
+
+getTreeIndex : Address -> AddressWord
+getTreeIndex adrs =
+    if t == FORS_TREE  then ix
+     | t == FORS_ROOTS then ix
+    else wat
+    where
+    t  = getType adrs
+    ix = drop adrs
+
+setTreeIndex : Address -> AddressWord -> Address
+setTreeIndex adrs ix =
+    if t == FORS_TREE  then adrs'
+     | t == FORS_ROOTS then adrs'
+    else wat
+    where
+    t     = getType adrs
+    adrs' = take adrs # ix
 
 ```
 
@@ -303,8 +343,6 @@ Similarly, public key **PK** is not yet defined.
 
 The return value "NULL" is used by the spec pseudocode, but never defined.
 We'll assume it is intended to indicate an error.
-The spec's prose says that the ADRS value must be a WOTS hash address.
-The pseudocode doesn't check, but the implementation below does.
 
 ```
 // TODO: Replace with parameterized F
@@ -318,33 +356,17 @@ type Seed = NBytes
 type Pk = { seed : Seed }
 pk = ({ seed = zero } : Pk)
 
-setHashAddress : AddressWord -> Address -> Address
-setHashAddress new_hash address =
-    if address._type != WOTS_HASH
-    then error "not a WOTS hash address"
-    else
-    { layer    = address.layer
-    , tree     = address.tree
-    , _type    = WOTS_HASH
-    , keypair  = address.keypair
-    , chain    = address.chain
-    , hash     = new_hash
-    , height   = zero
-    , index    = zero
-    }
-
-chain : NBytes -> Integer -> Integer -> Seed -> ADRS -> NBytes
+chain : NBytes -> Integer -> Integer -> Seed -> Address -> NBytes
 chain X i s seed adrs =
     if i + s > w - 1 then error "spec says NULL"
-                     else chain' s address X
+                     else chain' s adrs X
     where
-    address = addressRecord adrs
     chain' : Integer -> Address -> NBytes -> NBytes
-    chain' s' address' X' =
+    chain' s' adrs' X' =
         if s' == 0 then X'
         else chain' (s' - 1)
-                    (setHashAddress (fromInteger (i + s' - 1)) address')
-                    (F pk.seed address' X')
+                    (setHash adrs' (fromInteger (i + s' - 1)))
+                    (F pk.seed adrs' X')
 ```
 
 ### 3.3 WOTS+ Private Key
@@ -352,37 +374,24 @@ chain X i s seed adrs =
 This algorithm is not used anywhere else in the spec,
 but we include a Cryptol implementation here for completeness.
 
-(The spec's pseudocode iterates over an array `sk`,
-but never declares or initializes it.)
+The spec's pseudocode iterates over an array `sk`,
+but never declares or initializes it.
+We'll assume it initially contains all-zero bytestrings.
 
 ```
 // TODO: Replace with parameterized PRF
 PRF : Seed -> Address -> NBytes
 PRF s _ = s
 
-setChainAddress : AddressWord -> Address -> Address
-setChainAddress new_chain address =
-    { layer    = address.layer
-    , tree     = address.tree
-    , _type    = address._type
-    , keypair  = address.keypair
-    , chain    = new_chain
-    , hash     = address.hash
-    , height   = address.height
-    , index    = address.index
-    }
-
 // TODO: replace [8] with type parameter [len]
 //       and use demoted value in body
-wots_SKgen : Seed -> ADRS -> [8]NBytes
+wots_SKgen : Seed -> Address -> [8]NBytes
 wots_SKgen seed adrs =
-    kgen 0 (addressRecord adrs) zero
+    kgen 0 adrs zero
     where
     kgen i address sk =
         if i >= fromInteger len then sk
-        else kgen (i + 1) address'
-                  (update sk i (PRF seed address'))
-             where
-             address' = setChainAddress i address
+        else kgen (i + 1) (setChain address i)
+                  (update sk i (PRF seed address))
 
 ```
