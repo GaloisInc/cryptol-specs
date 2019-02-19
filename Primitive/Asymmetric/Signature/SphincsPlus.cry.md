@@ -22,9 +22,10 @@ This section shows the Cryptol equivalent of each basic operation used in the sp
 
 ### 2.1 Data Types
 
-Byte string literals are written as "0x" followed by a positive even number of hexadecimal digits,
-as in `0xe534f0`.
-Arrays of byte strings have uniform element length, determined by the longest element:
+Byte string literals are written as "0x" followed by
+an even number of hexadecimal digits, as in `0xe534f0`.
+Arrays of byte strings have uniform element length,
+determined by the longest element:
 `[0x34, 5, 6] == [0x34, 0x05, 0x06]`.
 Cryptol's built-in bit-string and array types are big-endian.
 
@@ -48,20 +49,9 @@ where "*len*" (in bits) is the function's first type-level parameter:
 
 ### 2.3 Operators
 
-**TODO**: Shorten and streamline all this. It's tedious.
-
 The usual integer operators mostly have familiar notations,
 and respect the standard precedence ordering.
-Note that Cryptol has no rational numbers, so `/` means integer division.
-
-| **Name** | **Spec syntax** | **Cryptol syntax** | **Example** |
-| -------- | --------------- | ------------------ | ----------- |
-| exponent | *a<sup>b</sup>* | `a ^^ b`           | `4 ^^ 3 == 64` |
-| product  | *a · b* or *ab* | `a * b`            | `4 * 3 == 12` |
-| integer quotient | ⌊ *a / b* ⌋ | `a / b`        | `5 / 3 == 1` |
-| remainder | *a % b*        | `a % b`            | `5 % 3 == 2` |
-| sum      | *a + b*         | *a + b*            | `4 + 3 == 7` |
-| difference  | *a - b*      | *a - b*            | `3 - 4 == -1` |
+Cryptol has no rational number type, so `/` means integer division.
 
 The postfix `++` increment operator from C-like languages does not exist in Cryptol,
 and can't be simulated by the divergent recursive binding `let a = a + 1`,
@@ -71,43 +61,44 @@ which cannot be evaluated in any useful way.
 Instead of a destructive update, we must use a fresh variable: `let a' = a + 1`.
 
 Cryptol's "logical" shift operators are defined on bit strings
-rather than integers, a distinction not made by the spec:
+rather than integers.
+The `toInteger` and `fromInteger` functions convert between the two types.
 
-| **Name** | **Spec syntax** | **Cryptol syntax** | **Example** |
-| -------- | --------------- | ------------------ | ----------- |
-| left shift  | *a << b* | `a << b` | `0x00ff00 << 8 == 0xff0000` |
-| right shift | *a >> b* | `a >> b` | `0x00ff00 >> 8 == 0x0000ff` |
-
-Array indexing is accomplished with Cryptol's infix `@` operator
+Reading an array element at a given index
+is accomplished with Cryptol's infix `@` operator,
 rather than postfix square brackets.
+We use `update` to create a new array from an existing one,
+replacing a single indexed element.
 Cryptol regards the byte strings defined above as
 sequences of *bits* rather than bytes,
-so we define another infix operator to index a whole byte.
+so we define another infix operator to access a whole byte at a particular index.
 
 ```
 (~@) : {n} (fin n) => [n * 8] -> [n] -> [8]
 (~@) bytestring index = (split`{each=8} bytestring) @ index
 ```
 
-| **Name** | **Spec syntax** | **Cryptol syntax** | **Example** |
-| -------- | --------------- | ------------------ | ----------- |
-| array index | *A[i]* | `A @ i` | `[0x0a, 0x0b, 0x0c] @ 1 == 0x0b` |
-| byte string index | *X[i]* | `X ~@ i` | `0x0a0b0c ~@ 2 == 0x0c` |
-
-**TODO**: Show 'assignment' using `update`
-
 Cryptol's bitwise logical operators for our byte strings
 are written in a somewhat C-like syntax.
-
-| **Name** | **Spec syntax** | **Cryptol syntax** | **Example** |
-| -------- | --------------- | ------------------ | ----------- |
-| bitwise conjunction | *A* AND *B* | `A && B` | `0xffff00 && 0x00ffff == 0x00ff00` |
-| bitwise exclusive disjunction | *A* XOR *B* (or *A ⊕ B*) | `A ^ B` | `0xffff00 ^ 0x00ffff == 0xff00ff` |
-
 Byte string concatenation is written with `#`.
 
+The table below summarizes Cryptol's operator syntax relative to the SPHINCS+ specification.
+
 | **Name** | **Spec syntax** | **Cryptol syntax** | **Example** |
 | -------- | --------------- | ------------------ | ----------- |
+| exponent | *a<sup>b</sup>* | `a ^^ b`           | `4 ^^ 3 == 64` |
+| product  | *a · b* or *ab* | `a * b`            | `4 * 3 == 12` |
+| integer quotient | ⌊ *a / b* ⌋ | `a / b`        | `5 / 3 == 1` |
+| remainder | *a % b*        | `a % b`            | `5 % 3 == 2` |
+| sum      | *a + b*         | *a + b*            | `4 + 3 == 7` |
+| difference  | *a - b*      | *a - b*            | `3 - 4 == -1` |
+| left shift  | *a << b* | `a << b` | `0x00ff00 << 8 == 0xff0000` |
+| right shift | *a >> b* | `a >> b` | `0x00ff00 >> 8 == 0x0000ff` |
+| read array at index | *A[i]* | `A @ i` | `[0x0a, 0x0b, 0x0c] @ 1 == 0x0b` |
+| write array at index | *A[i] = e* | `update A i e` | `update [0x0a, 0x0b, 0x0c] 1 0xff == [0x0a, 0xff, 0x0c]` |
+| read byte string at index | *X[i]* | `X ~@ i` | `0x0a0b0c ~@ 2 == 0x0c` |
+| bitwise conjunction | *A* AND *B* | `A && B` | `0xffff00 && 0x00ffff == 0x00ff00` |
+| bitwise exclusive disjunction | *A* XOR *B* (or *A ⊕ B*) | `A ^ B` | `0xffff00 ^ 0x00ffff == 0xff00ff` |
 | concatenation | *A \|\| B* | `A # B` | `0x0123 # 0xab == 0x0123ab` |
 
 ### 2.4 Integer to Byte Conversion
@@ -119,12 +110,13 @@ to determine the length of the resulting bit string.
 | -------- | --------------- | ------------------ | ----------- |
 | conversion | `toByte`(*x,y*) | `(fromInteger x) : [y*8]` | `((fromInteger 255) : [3*8]) == 0x0000ff` |
 
-This parameter can also be written more explicitly:
+This type can often be inferred from the argument value,
+but it can also be written as an explicit parameter using the backtick notation:
 <pre> fromInteger`{[y*8]} x </pre>
 
 ### 2.5 Strings of Base-*w* Numbers
 
-The specified function does two things:
+The specified function `base_w` does two things:
 splitting a byte string into an array, and truncating the array.
 Since our "byte strings" are really bit strings,
 and *w* is always one of three specific powers of 2,
