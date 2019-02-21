@@ -22,6 +22,9 @@ This section shows the Cryptol equivalent of each basic operation used in the sp
 
 ### 2.1 Data Types
 
+The spec uses the blackboard bold **B** symbol ("𝔹") to mean *bytes*,
+rather than the more standard mathematical meaning of *boolean* or *bit* values.
+
 Byte string literals are written as "0x" followed by
 an even number of hexadecimal digits, as in `0xe534f0`.
 Arrays of byte strings have uniform element length,
@@ -141,6 +144,9 @@ Cryptol has record types, and uses a dot syntax for accessing record components.
 
 Instead of destructive updates, we must construct a whole new record and give it a new name.
 
+We treat the the WOTS+ address structures (**ADRS**) as flat byte strings,
+and define explicit member functions for them in Section 2.7.3.
+
 ### 2.7 Hash Function Families
 
 See Section 7 for the definition of specific *tweakable* hash functions,
@@ -154,8 +160,8 @@ Translating the given function signatures:
 
 <pre>
 T_l : {l, n} (fin n, fin l, Arith n, Arith l) =>
-      [n] -> [32] -> [l*n] -> [n]
-//   PK.seed ADRS      M      md
+      [n*8] -> [32*8] -> [l*n*8] -> [n*8]
+//   PK.seed    ADRS        M        md
 F = T_l`{1}
 H = T_l`{2}
 </pre>
@@ -212,8 +218,8 @@ setType adrs typ = take`{128} adrs # typ # zero
 
 wat = error "wrong address type"
 
-getKeypair : Address -> AddressWord
-getKeypair adrs =
+getKeyPair : Address -> AddressWord
+getKeyPair adrs =
     if t == WOTS_HASH then kp
      | t == WOTS_PK   then kp
     else wat
@@ -221,8 +227,8 @@ getKeypair adrs =
     t  = getType adrs
     kp = take (drop`{160} adrs)
 
-setKeypair : Address -> AddressWord -> Address
-setKeypair adrs kp =
+setKeyPair : Address -> AddressWord -> Address
+setKeyPair adrs kp =
     if t == WOTS_HASH then adrs'
      | t == WOTS_PK   then adrs'
     else wat
@@ -395,3 +401,47 @@ wots_SKgen seed adrs =
                   (update sk i (PRF seed address))
 
 ```
+
+### 3.4 WOTS+ Public Key Generation
+
+The `T_len` function in the specification's pseudocode
+denotes tweakable hash function `T_l` as defined in Section 2.7.1,
+instantiated at `len`.
+
+We infer the type of a public key from the final call to `T_len`,
+as the spec does not define it directly.
+
+In the pseudocode, the last argument of that call, `tmp`,
+is clearly a length-`len` array of *n*-byte strings,
+although the signature of `T_l` specifies a single flat bytestring.
+We respect that signature, and amend the pseudocode algorithm,
+by joining the array before passing it to `T_len`.
+
+```
+// TODO: Replace with parameterized T_l
+// T_len : [n*8] -> [32*8] -> [len*n*8] -> [n*8]
+// T_len : [24*8] -> [32*8] -> [8*24*8] -> [24*8]
+T_len : Seed -> Address -> [8*24*8] -> NBytes
+T_len x _ _ = x
+
+// TODO: use demoted `len and `w values
+wots_PKgen : Seed -> Seed -> Address -> NBytes
+wots_PKgen sk_seed pk_seed adrs =
+    T_len pk_seed wotspkADRS tmp
+    where
+    tmp = join (mkTmp 0 zero)
+    wotspkADRS = setKeyPair (setType adrs WOTS_PK) (getKeyPair adrs)
+    mkTmp i tmp' =
+        if i >= fromInteger len then tmp'
+        else mkTmp (i + 1) (update tmp' i tmp_i)
+        where
+        tmp_i = chain sk 0 (w - 1) pk_seed adrs'
+        adrs' = setChain adrs i
+        sk = PRF sk_seed adrs'
+```
+
+Similarly, where the pseudocode has `sk[i]` as the first argument to `chain`,
+we have `sk`. Since `sk` is the result of a call to **PRF**,
+it must be an *n*-byte string.
+Function `chain` only accepts values of that type as its first argument:
+a single-byte argument (denoted by `sk[i]`) does not type-check.
