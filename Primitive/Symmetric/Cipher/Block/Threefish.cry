@@ -1,4 +1,4 @@
-/* 
+/*
    Copyright (c) 2018, Galois Inc.
    www.cryptol.net
    You can freely use this source code for educational purposes.
@@ -30,8 +30,13 @@ WordsToBytes words = join [ ToBytes w | w <- words ]
 //////////////////////////////////////////////////////////////////////
 // Section 3.3: A Full Specification of Threefish
 
+enc256 : [32][8] -> [16][8] -> [32][8] -> [32][8]
 enc256 = encrypt`{Nr=72} R4 pi4
+
+enc512 : [64][8] -> [16][8] -> [64][8] -> [64][8]
 enc512 = encrypt`{Nr=72} R8 pi8
+
+enc1024 : [128][8] -> [16][8] -> [128][8] -> [128][8]
 enc1024 = encrypt`{Nr=80} R16 pi16
 
 encrypt :
@@ -154,6 +159,87 @@ KeySchedule k [t0,t1] = take`{r} [ subkey s | s <- [0...] ]
 
 C240 : [64]
 C240 = 0x1BD11BDAA9FC1A22
+
+
+//////////////////////////////////////////////////////////////////////
+// Section 3.3.3: Decryption
+
+// "The Threefish decryption operation is the obvious inverse of the
+// encryption operation. Subkeys are used in reverse order and each
+// round consists of applying the inverse word permutation followed by
+// the inverse MIX functions."
+
+dec256 : [32][8] -> [16][8] -> [32][8] -> [32][8]
+dec256 = decrypt`{Nr=72} R4 pi4'
+
+dec512 : [64][8] -> [16][8] -> [64][8] -> [64][8]
+dec512 = decrypt`{Nr=72} R8 pi8'
+
+dec1024 : [128][8] -> [16][8] -> [128][8] -> [128][8]
+dec1024 = decrypt`{Nr=80} R16 pi16'
+
+decrypt :
+  {Nr, Nw} (fin Nr, fin Nw, Nw >= 3, Nr % 8 == 0, Nw % 2 == 0) =>
+  [8][Nw/2]Rot ->
+  ([Nw][64] -> [Nw][64]) ->
+  [8 * Nw][8] -> [16][8] -> [8 * Nw][8] -> [8 * Nw][8]
+decrypt R pi key tweak ciphertext = WordsToBytes (decrypt'`{Nr=Nr} R pi K T P)
+  where
+    K = BytesToWords key
+    T = BytesToWords tweak
+    P = BytesToWords ciphertext
+
+// Decryption in terms of 64-bit words.
+decrypt' :
+  {Nr, Nw} (fin Nr, fin Nw, Nw >= 3, Nr % 8 == 0, Nw % 2 == 0) =>
+  [8][Nw/2]Rot -> ([Nw][64] -> [Nw][64]) ->
+  [Nw][64] -> [2][64] -> [Nw][64] -> [Nw][64]
+decrypt' R pi key tweak ciphertext = last e - last ks
+  where
+    ks : [Nr/4 + 1][Nw][64]
+    ks = reverse (KeySchedule key tweak)
+
+    // Add a subkey from the key schedule once every four rounds.
+    v : [Nr][Nw][64]
+    v = [ ed - kd
+        | ed <- e
+        | subkey <- take`{Nr/4} ks, kd <- [subkey, zero, zero, zero] ]
+
+    // Cycle over the eight lists of rotation amounts for the mixing function.
+    e : [Nr+1][Nw][64]
+    e = [ciphertext] # [ mixing' Rd fd | Rd <- reverse (join (repeat`{Nr/8} R)) | fd <- f ]
+
+    // Permute the words every round.
+    f : [Nr][Nw][64]
+    f = [ pi vd | vd <- v ]
+
+
+// Inverse MIX function
+MIX' : Rot -> [2][64] -> [2][64]
+MIX' R [y0, y1] = [x0, x1]
+  where
+    x0 = y0 - x1
+    x1 = (y0 ^ y1) >>> R
+
+// One round of inverse mixing.
+mixing' : {w} (fin w) => [w]Rot -> [2 * w][64] -> [2 * w][64]
+mixing' Rd e = join [ MIX' R x | R <- Rd | x <- split`{each=2} e ]
+
+// Inverse permutations.
+
+pi4' : [4][64] -> [4][64]
+pi4' xs = xs @@ [0, 3, 2, 1:[2]]
+
+pi8' : [8][64] -> [8][64]
+pi8' xs = xs @@ [6, 1, 0, 7, 2, 5, 4, 3:[3]]
+
+pi16' : [16][64] -> [16][64]
+pi16' xs = xs @@ [0, 15, 2, 11, 6, 13, 4, 9, 14, 1, 8, 5, 10, 3, 12, 7:[4]]
+
+property MIX_inv R x = MIX' R (MIX R x) == x
+property pi4_inv xs = pi4' (pi4 xs) == xs
+property pi8_inv xs = pi8' (pi8 xs) == xs
+property pi16_inv xs = pi16' (pi16 xs) == xs
 
 
 //////////////////////////////////////////////////////////////////////
