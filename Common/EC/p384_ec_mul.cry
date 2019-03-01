@@ -17,7 +17,7 @@ ripple_adc(xx,yy) = (values, carry_strm!0)
   where
     adc' : ([m],[m],Bit) -> (Bit,[m])
     adc'(x,y,c) = (sum@0, drop(sum))
-      where sum = safe_add(x,y) + uext([c])
+      where sum = safe_add(x,y) + zext([c])
     list = [ adc'(a,b,c)
            | a <- xx
            | b <- yy
@@ -34,7 +34,7 @@ property ripple_adc_toJavaArray x y =
 ripple_shr : {m, n} (m >= 1, fin m, n >= 1, fin n) => ([n][m],Bit) -> ([n][m])
 ripple_shr(xl,c) = [ (x' << (width(x) - 1:[width m])) || (x >> 1)
                    | x <- xl
-                   | x' <- drop`{1}(xl) # [(uext([c]))]
+                   | x' <- drop`{1}(xl) # [(zext([c]))]
                    ]
 
 property ripple_shr_toJavaArray x c =
