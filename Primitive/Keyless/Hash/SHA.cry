@@ -1,4 +1,4 @@
-/* 
+/*
    Copyright (c) 2018, Galois Inc.
    www.cryptol.net
    You can freely use this source code for educational purposes.
@@ -12,8 +12,8 @@ sha M = join (SHA_2_Common' [ split x | x <- parse`{num_blocks L} (pad`{L} M) ])
 parameter
 
   /** Word size
-    Specifications are based on word size w, rather than digest size (8 * w) 
-    or block size (m == 16 * w), in order to avoid confusing Cryptol's type 
+    Specifications are based on word size w, rather than digest size (8 * w)
+    or block size (m == 16 * w), in order to avoid confusing Cryptol's type
     constraint verifier with integer division.
   */
 
@@ -142,6 +142,3 @@ private
   SHA_2_Common' blocks = hash ! 0
     where
     hash = [H0] # [ processBlock_Common h b | h <- hash | b <- blocks]
-
-
-
