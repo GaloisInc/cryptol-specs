@@ -58,10 +58,10 @@ p384_field_mod(a)
   where
     [  a23, a22, a21, a20, a19, a18, a17, a16, a15, a14, a13, a12,
        a11, a10,  a9,  a8,  a7,  a6,  a5,  a4,  a3,  a2,  a1,  a0]
-              = [ uext x | (x : [32]) <- split a ] : [24][64]
+              = [ zext x | (x : [32]) <- split a ] : [24][64]
 
     chop : [64] -> ([64],[32])
-    chop x = (iext(take(x):[32]), drop(x))
+    chop x = (sext(take(x):[32]), drop(x))
 
     (d0, z0)  = chop(    a0          +a12+a21        +a20-a23)
     (d1, z1)  = chop(d0 +a1          +a13+a22+a23        -a12-a20)
@@ -81,7 +81,7 @@ p384_field_mod(a)
       # z11 # z10 #  z9 #  z8 #  z7 #  z6
       #  z5 #  z4 #  z3 #  z2 #  z1 #  z0
 
-    p  = uext(p384_prime) : [13*32]
+    p  = zext(p384_prime) : [13*32]
     // Fix potential underflow
     r0 = if (d11@0) then r + p else r
     // Fix potential overflow

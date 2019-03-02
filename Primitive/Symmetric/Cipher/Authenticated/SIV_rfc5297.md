@@ -489,7 +489,7 @@ dbl x = ite ((x@0) == False) (x << 1) ((x << 1) ^ `0x87)
 
 ```
 // S2V for n=2
-S2V : {k, ad, p} (fin ad, fin p) => Key -> [ad] -> [p] -> [128]
+S2V : {ad, p} (fin ad, fin p) => Key -> [ad] -> [p] -> [128]
 S2V K S1 S2 = res
  where
  D0 = aesCMAC K (zero : [128])
