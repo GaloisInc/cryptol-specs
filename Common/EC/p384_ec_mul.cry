@@ -16,8 +16,8 @@ ripple_adc : {m, n} (m >= 1, fin m, fin n) => ([n][m],[n][m]) -> ([n][m],Bit)
 ripple_adc(xx,yy) = (values, carry_strm!0)
   where
     adc' : ([m],[m],Bit) -> (Bit,[m])
-    adc'(x,y,c) = (sum@0, drop(sum))
-      where sum = safe_add(x,y) + zext([c])
+    adc'(x,y,c) = (sum3@0, drop(sum3))
+      where sum3 = safe_add(x,y) + zext([c])
     list = [ adc'(a,b,c)
            | a <- xx
            | b <- yy
