@@ -109,9 +109,6 @@ blake2b : {ll,dd}
          , dd == (max 1 ((ll+127)/128)) - 1
          // ^^^ ugly  We'd like , dd == (ll-1)/128  but then we can't hash the empty string
          , 128 >= width ll
-         // Following constraints because Cryptol can't math:
-         , fin (min (ll / 128) 1)
-         , fin (min dd 1)
          )
           => [ll][8]
           -> [512]
