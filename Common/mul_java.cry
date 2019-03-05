@@ -2,10 +2,6 @@ module Common::mul_java where
 
 import Common::bv
 
-// Array update
-update : {n, a, i} (fin n, fin i, 2^^i >= n) => [n]a -> [i] -> a -> [n]a
-update xs i y = [ if i == j then y else x | x <- xs | j <- [0...] ]
-
 mul_java_inner : (Bit, [24][32], [32], [32], [32], [64]) -> { mji_a : [24][32], mji_d : [64]}
 mul_java_inner (azero, a, ij, xi, yj, d) = { mji_a = a', mji_d = d' >> 32 }
   where
