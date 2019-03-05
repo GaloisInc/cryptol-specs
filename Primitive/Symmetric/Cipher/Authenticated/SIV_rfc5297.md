@@ -336,7 +336,7 @@ cmacBlocks K completeMn ms = ci ! 0
    ci      = [zero] # [ E(K,c ^ mi) | c <- ci | mi <- (xs # [mn]) ]
 
 property cmacKAT1 =
-    ~zero ==
+    and
     [ aesCMAC 0x2b7e151628aed2a6abf7158809cf4f3c [] == 0xbb1d6929e95937287fa37d129b756746
     , aesCMAC 0x2b7e151628aed2a6abf7158809cf4f3c 0x6bc1bee22e409f96e93d7e117393172a == 0x070a16b46b4d4144f79bdd9dd04a287c
     , aesCMAC 0x2b7e151628aed2a6abf7158809cf4f3c 0x6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411 == 0xdfa66747de9ae63030ca32611497c827

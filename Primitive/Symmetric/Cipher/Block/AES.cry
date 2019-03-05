@@ -250,8 +250,8 @@ testct128 = [0x3ad77bb40d7a3660a89ecaf32466ef97
             ,0x43b1cd7f598ece23881b00e3ed030688
             ,0x7b0c785e27e8ad3f8223207104725dd4]
 
-property testsPass = ~zero == [ aesEncrypt (msg, testkey128) == ct
-                              | msg <- testmsgs | ct <- testct128 ]
+property testsPass = and [ aesEncrypt (msg, testkey128) == ct
+                         | msg <- testmsgs | ct <- testct128 ]
 
 
 // AES192 tests
@@ -263,8 +263,8 @@ property testsPass = ~zero == [ aesEncrypt (msg, testkey128) == ct
 //             ,0xef7afd2270e2e60adce0ba2face6444e 
 //             ,0x9a4b41ba738d6c72fb16691603c18e0e]
 
-// property testsPass = ~zero == [ aesEncrypt (msg, testkey192) == ct
-//                               | msg <- testmsgs | ct <- testct192 ]
+// property testsPass = and [ aesEncrypt (msg, testkey192) == ct
+//                          | msg <- testmsgs | ct <- testct192 ]
 
 
 // AES256 tests
@@ -275,7 +275,7 @@ property testsPass = ~zero == [ aesEncrypt (msg, testkey128) == ct
 //             ,0xb6ed21b99ca6f4f9f153e7b1beafed1d 
 //             ,0x23304b7a39f9f3ff067d8d8f9e24ecc7]
 
-// property testsPass = ~zero == [ aesEncrypt (msg, testkey256) == ct
-//                               | msg <- testmsgs | ct <- testct256 ]
+// property testsPass = and [ aesEncrypt (msg, testkey256) == ct
+//                          | msg <- testmsgs | ct <- testct256 ]
 
 

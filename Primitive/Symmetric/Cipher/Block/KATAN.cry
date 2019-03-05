@@ -404,7 +404,7 @@ property katantanCorrect key m = katantanDecrypt(key, katantanEncrypt(key, m)) =
 //32bit block size
 
 //tests32 = [ katan32_2, katantan32_1, katantan32_2]
-//property testsPass = tests32 == ~zero
+//property testsPass = and tests32
 
 //katan32_1 = katanEncrypt(0x00000000, 0xffffffffffffffffffff) == 0x7e1ff945
 //katan32_2 = katanEncrypt(0xffffffff, 0x00000000000000000000) == 0x432e61da
@@ -416,7 +416,7 @@ property katantanCorrect key m = katantanDecrypt(key, katantanEncrypt(key, m)) =
 //48bit block size
 /*
 tests48 = [katan48_1, katan48_2, katantan48_1, katantan48_2]
-property testsPass = tests48 == ~zero
+property testsPass = and tests48
 
 katan48_1 = katanEncrypt(0x000000000000, 0xffffffffffffffffffff) == 0x4b7efcfb8659
 katan48_2 = katanEncrypt(0xffffffffffff, 0x00000000000000000000) == 0xa4bd196d0b85
@@ -428,7 +428,7 @@ katantan48_2 = katantanEncrypt(0xffffffffffff, 0x00000000000000000000) == 0xa4bd
 //64bit block size
 
 tests64 = [katan64_1, katan64_2, katantan64_1, katantan64_2]
-property testsPass = tests64 == ~zero
+property testsPass = and tests64
 
 katan64_1 = katanEncrypt( 0xffffffffffffffffffff, zero) == 0x21f2e99c0fab828a
 katan64_2 = katanEncrypt(zero, 0xffffffffffffffff) == 0xc956100dbeb64ba8

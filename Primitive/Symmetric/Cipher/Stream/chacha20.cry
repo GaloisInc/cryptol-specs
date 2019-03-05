@@ -312,11 +312,12 @@ private
               0x75, 0x7a, 0x79, 0x7a, 0xc1, 0x88, 0xd1 ]
 
 property allTestsPass =
-  ([ // Basic tests
-     qround01, core01, core02
-     // Full RFC test vectors
-   , rfctest01, rfctest02, rfctest03
-   ] : [_]Bit) == ~zero // All test bits should equal one
+  and
+  [ // Basic tests
+    qround01, core01, core02
+    // Full RFC test vectors
+  , rfctest01, rfctest02, rfctest03
+  ]
 
 /* -------------------------------------------------------------------------- */
 /* -- Private utilities ----------------------------------------------------- */

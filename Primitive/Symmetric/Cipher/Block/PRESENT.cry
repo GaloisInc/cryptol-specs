@@ -198,7 +198,7 @@ prEncrypt128 (key, pt)  = PrEncrypt_128(key, (take`{64} pt)) # zero
 
 // Testing
 tests = [test80_1, test80_2, test80_3, test80_4, test80_5, test128_1]
-property testsPass = tests == ~zero
+property testsPass = and tests
 //keysize: 80bits
 
 test80_1 =  PrEncrypt (zero, zero) == 0x5579c1387b228445

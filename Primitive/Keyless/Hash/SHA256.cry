@@ -113,7 +113,7 @@ SHA256' blocks = hash!0 where
 SHA256 : {a} (fin a, 64 >= width (8*a)) => [a][8] -> [256]
 SHA256 msg =   join (SHA256' [ split x | x <- preprocess(join msg)])
 
-property katsPass = ~zero == [test == kat | (test,kat) <- kats ]
+property katsPass = and [test == kat | (test, kat) <- kats ]
 
 kats = [ (SHA256 "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
          , 0x248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1)

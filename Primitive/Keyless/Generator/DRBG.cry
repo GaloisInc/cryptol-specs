@@ -161,10 +161,10 @@ testGenerateSnd0 = {returnedBits = 0xf80111d08e874672f32f42997133a5210f7a9375e22
                  	Key = 0x964c57946a104aa93fc3c2137bb9bc11,
                  	V   = 0x9d58008033ac007c9ead254bfa8de2b6}
 
-testGenerateSnd0Pass = ~zero == [result == testGenerateSnd0.returnedBits
-                                , drbg.ctx.key == testGenerateSnd0.Key
-                                , drbg.v == testGenerateSnd0.V]
+testGenerateSnd0Pass = and [ result == testGenerateSnd0.returnedBits
+                           , drbg.ctx.key == testGenerateSnd0.Key
+                           , drbg.v == testGenerateSnd0.V ]
                      where (result,drbg) = drbg_generate`{n=512} testGeneratedrbg0 zero False
 
 
-property testsPass = ~zero == [testInstantiate0Pass,testReseed0Pass,testGenerate0Pass,testGenerateSnd0Pass]
+property testsPass = and [testInstantiate0Pass, testReseed0Pass, testGenerate0Pass, testGenerateSnd0Pass]
