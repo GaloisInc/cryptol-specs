@@ -38,4 +38,4 @@ test_B1_1 = blockEncrypt (Key1, Key2, Key3, P1) == C1
 test_B1_2 = blockEncrypt (Key1, Key2, Key3, P2) == C2
 test_B1_3 = blockEncrypt (Key1, Key2, Key3, P3) == C3
 
-property testsPass = [test_B1_1, test_B1_2, test_B1_3] == ~zero
+property testsPass = and [test_B1_1, test_B1_2, test_B1_3]

@@ -34,4 +34,4 @@ t1 = fnv1a [] == 0xcbf29ce484222325
 t2 = fnv1a (join "a") == 0xaf63dc4c8601ec8c
 t3 = fnv1a (join "foobar") == 0x85944171f73967e8
 
-property testsPass = [t1, t2, t3] == ~zero
+property testsPass = and [t1, t2, t3]

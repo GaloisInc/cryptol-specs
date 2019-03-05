@@ -52,7 +52,7 @@ R4 = 63
 
 // Section 3.1: Mixing function 'G'
 G : [4] -> [4] -> LocalState -> [4][6] -> Block -> [16][64]
-G r i vec abcd ms = fold updateVector vec (zip abcd new)
+G r i vec abcd ms = updates vec abcd new
   where
   new  = G' r i (vec @@ abcd) ms
 
@@ -109,9 +109,6 @@ blake2b : {ll,dd}
          , dd == (max 1 ((ll+127)/128)) - 1
          // ^^^ ugly  We'd like , dd == (ll-1)/128  but then we can't hash the empty string
          , 128 >= width ll
-         // Following constraints because Cryptol can't math:
-         , fin (min (ll / 128) 1)
-         , fin (min dd 1)
          )
           => [ll][8]
           -> [512]
@@ -163,33 +160,16 @@ reverseBytes x = join (reverse (bytes x))
 bytes x = split x : [_] [8]
 
 
-fold : {a, b, c} (fin a) => (c -> b -> c) -> c -> [a]b -> c
-fold f i l = results ! 0
- where
-  results = [i] # [ f y x | x <- l | y <- results]
-
-zip : {a,b,c} [a]b -> [a]c -> [a](b,c)
-zip xs ys = [(x,y) | x <- xs | y <- ys]
-
-// XXX can probably do a cleaner merge-sort style update.
-updateVector : {a, b, c} (c >= width (a-1), a >= 1, fin a, fin c) => [a]b -> ([c], b) -> [a]b
-updateVector orig idxNew = vs
- where
- idx = idxNew.0
- new = idxNew.1
- vs = [if i == idx then new else orig@i | i <- [0..a-1]]
-
-
 testZeros =
-  ~zero == [ blake2b (zero : [128][8]) == 0x865939e120e6805438478841afb739ae4250cf372653078a065cdcfffca4caf798e6d462b65d658fc165782640eded70963449ae1500fb0f24981d7727e22c41
-            , blake2b (zero : [0][8]) == 0x786A02F742015903C6C6FD852552D272912F4740E15847618A86E217F71F5419D25E1031AFEE585313896444934EB04B903A685B1448B755D56F701AFE9BE2CE ]
+  and [ blake2b (zero : [128][8]) == 0x865939e120e6805438478841afb739ae4250cf372653078a065cdcfffca4caf798e6d462b65d658fc165782640eded70963449ae1500fb0f24981d7727e22c41
+      , blake2b (zero : [0][8]) == 0x786A02F742015903C6C6FD852552D272912F4740E15847618A86E217F71F5419D25E1031AFEE585313896444934EB04B903A685B1448B755D56F701AFE9BE2CE ]
 
 testZerosLarge =
-  ~zero ==  [ blake2b (zero : [129][8]) == 0xa60edba343e7a6933c14d203d2e535f35e6deb6c8a4f8e624c1a6f6e2612860447cb4c37e5aa11bcf03b7c3eea7228eb8b998f922794f2d1b8f2dc63f03bd3fa
-            ]
+  and [ blake2b (zero : [129][8]) == 0xa60edba343e7a6933c14d203d2e535f35e6deb6c8a4f8e624c1a6f6e2612860447cb4c37e5aa11bcf03b7c3eea7228eb8b998f922794f2d1b8f2dc63f03bd3fa
+      ]
 
 testKATs =
- ~zero == [ blake2b "The quick brown fox jumps over the lazy dog" == 0xA8ADD4BDDDFD93E4877D2746E62817B116364A1FA7BC148D95090BC7333B3673F82401CF7AA2E4CB1ECD90296E3F14CB5413F8ED77BE73045B13914CDCD6A918
-           ]
+  and [ blake2b "The quick brown fox jumps over the lazy dog" == 0xA8ADD4BDDDFD93E4877D2746E62817B116364A1FA7BC148D95090BC7333B3673F82401CF7AA2E4CB1ECD90296E3F14CB5413F8ED77BE73045B13914CDCD6A918
+      ]
 
-property katsPass = ~zero == [ testZeros, testZerosLarge, testKATs ]
+property katsPass = and [ testZeros, testZerosLarge, testKATs ]

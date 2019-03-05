@@ -240,7 +240,7 @@ property bTeaCorrect key m = bTeaDecrypt(key, bTeaEncrypt (key, m)) == m
 
 //Testing
 tests = [teaTest, xteaTest, xxteaTest]
-property testsPass = tests == ~zero
+property testsPass = and tests
 
 // TEA
 teaTest = teaEncrypt(0x0123456789abcdef0123456789abcdef, 0x0123456789abcdef) == 0xce674a7575034065
