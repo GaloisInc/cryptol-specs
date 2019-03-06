@@ -1,5 +1,5 @@
 /* This module implements an RSA encryption scheme
-   with the EME-OAEP encoding method desribed in 7.1 of
+   with the EME-OAEP encoding method described in 7.1 of
 
    PKCS #1: RSA Cryptography Specifications Version 2.2
 
@@ -56,7 +56,7 @@ RSAES_OAEP_DECRYPT : {l}
                    (fin l
                    , l>=0
                    , 2 * hLen >= width (8 * l) // Required for use of hash
-                   , 2 * hLen >= width (8 * ( k - hLen + 3)) // Required for use of hash in MGF
+                   , 2 * hLen >= width (8 * (k - hLen + 3)) // Required for use of hash in MGF
                    , k >= 2 * hLen + 2
                    , 2^^32*hLen >= k - hLen - 1 // Required for use of MGF1
                    ) => [k][8] -> [l][8] -> ([k - hLen - 1][8], [width (k - hLen - 1)])
@@ -71,17 +71,16 @@ RSAES_OAEP_DECRYPT C L = if c < 0 \/ c >= n then error "decryption error"
 
 RSAES_OAEP_Correct : {l,mLen}
                    (fin l, fin mLen
-                   , l>=0
-                   , 2 * hLen >= width (8 * l)
-                   , 2 * hLen >= width (8 * ( k - hLen + 3))
+                   , 2 * hLen >= width (8 * l) // Required for use of hash
+                   , 2 * hLen >= width (8 * (k - hLen + 3)) // Required for use of hash in MGF
                    , k >= mLen+2*hLen+2
-                   , 32 >= width ((k-hLen-1)/hLen)
+                   , 2^^32*hLen >= k - hLen - 1 // Required for use of MGF1
                    )
                    => [256] // Seed for random number
                    -> [l][8]
                    -> [mLen][8]
                    -> Bit
-property RSAES_OAEP_Correct r l m = (RSAES_OAEP_DECRYPT (RSAES_OAEP_ENCRYPT r m l ) l).0 == m#(zero:[_][8])
+property RSAES_OAEP_Correct r l m = (RSAES_OAEP_DECRYPT (RSAES_OAEP_ENCRYPT r m l) l).0 == m#(zero:[_][8])
 
 
 
@@ -163,7 +162,7 @@ MGF1 : {maskLen,l,counterMax}
        , maskLen >= 1
        , 2*hLen >= width (8 * (4 + l))
        , 2^^32 * hLen >= maskLen
-       , counterMax == (hLen + maskLen - 1)/hLen - 1 // (ceiling maskLen/hLen) - 1
+       , counterMax == maskLen/^hLen - 1 // (ceiling maskLen/hLen) - 1
        )
        => [l][8] // MGF Seed
        -> [maskLen][8]
