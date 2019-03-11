@@ -180,3 +180,19 @@ property v1 = join (toBytes (SHA_3_224 msg1600)) ==
 
 property w1 = join (toBytes (SHA_3_224 (msg1600 # 0b11000))) ==
   0x22d2f7bb0b173fd8c19686f9173166e3ee62738047d7eadd69efb228
+
+//SHAKE -- Test Vectors
+//Author: Ajay Kumar Eeralla
+//source:https://github.com/XKCP/XKCP/tree/master/tests/TestVectors
+
+property k1 = join (toBytes (take`{512} (SHAKE128 []))) == 0x7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef263cb1eea988004b93103cfb0aeefd2a686e01fa4a58e8a3639ca8a1e3f9ae57e2
+
+property k2 = join (toBytes (take`{512} (SHAKE128 0b0))) == 0xe78b86559a9ccdc72288bf7bcf8e11d574543a2922978913a02be149e89d03cae63d2c36e2cf6906791b187d7e371d4f21ebe59dcfc249a510b82255a18250dd
+
+property k3 = join (toBytes (take`{512} (SHAKE128 0b11))) == 0xf6b6c4093f0a2ceba61b9f2c2fea2ca238ce9005edcd588c380405070532ddd00cbd3a3a7448017d874c52c9e383fa3db1c184e023181fcc8550f53ac92feca5
+
+property k4 = join (toBytes (take`{512} (SHAKE256 []))) == 0x46b9dd2b0ba88d13233b3feb743eeb243fcd52ea62b81b82b50c27646ed5762fd75dc4ddd8c0f200cb05019d67b592f6fc821c49479ab48640292eacb3b7c4be
+
+property k5 = join (toBytes (take`{512} (SHAKE256 0b0))) == 0x1e20b13f3bdb730d286913335c092bcec0eb1aff2798c05736faa93bd665807a48ed7652aefd600427e9f797d647b9b355d30410d71b8e275a676545600f1c35
+
+property k6 = join (toBytes (take`{512} (SHAKE256 0b11))) == 0x4f86b0eb85f7a9f6dc38b622706948adb2beb6dd6911b5e9d865fd1f9667b5c02a0dbb39c488b040a18ff3885f04ef957c98f3948e6b7959a9b8950ffd6345d5
