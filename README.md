@@ -10,7 +10,7 @@ inter-dependency.
 Some of the widely adopted cryptographic algorithms contained in this
 repository are listed below.
 
-|                           | Primitive         | Synthisis   | Verification |
+|                           | Primitive         | Synthesis   | Verification |
 | ------------------------- | ----------------- | ----------- | ------------ |
 | **Block Cipher**          | [AES](Primitive/Symmetric/Cipher/Block/AES.cry)| | |
 |                           | [Triple DES](Primitive/Symmetric/Cipher/Block/TripleDES.cry)| | |

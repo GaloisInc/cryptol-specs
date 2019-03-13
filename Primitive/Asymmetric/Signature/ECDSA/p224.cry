@@ -1,4 +1,4 @@
-module p224 = Primitive::Asymmetric::Signature::ECDSA::ECDSA where
+module Primitive::Asymmetric::Signature::ECDSA::p224 = Primitive::Asymmetric::Signature::ECDSA::ECDSA where
 
 import Common::utils
 

@@ -1,5 +1,5 @@
 /* This module implements an RSA encryption scheme
-   with the EME-OAEP encoding method desribed in 7.1 of
+   with the EME-OAEP encoding method described in 7.1 of
 
    PKCS #1: RSA Cryptography Specifications Version 2.2
 
@@ -19,7 +19,7 @@ parameter
   type k : #
   type constraint (fin k, k >= 1)
 
-  type hLen : # // Number of octets returned by chosen hash function 
+  type hLen : # // Number of octets returned by chosen hash function
   type constraint (fin hLen, hLen >= 1)
 
   hash : {a} (2 * hLen >= width (8 * a) ) => [a][8] -> [8 * hLen]
@@ -43,7 +43,7 @@ RSAES_OAEP_ENCRYPT : {l,mLen}
                    -> [mLen][8]
                    -> [l][8]
                    -> [k][8]
-RSAES_OAEP_ENCRYPT rand M L = I2OSP`{k} c // Return k-octet cipher text 
+RSAES_OAEP_ENCRYPT rand M L = I2OSP`{k} c // Return k-octet cipher text
                    where
                     EM = EME_OAEP_encode rand (M, L)   // Pad message M with optional label L to k octets
                     m  = (zero # OS2IP EM) : [KeySize]  // Take k-octet padded message EM to int of width KeySize
@@ -55,8 +55,8 @@ RSAES_OAEP_ENCRYPT rand M L = I2OSP`{k} c // Return k-octet cipher text
 RSAES_OAEP_DECRYPT : {l}
                    (fin l
                    , l>=0
-                   , 2 * hLen >= width (8 * l) // Required for use of hash 
-                   , 2 * hLen >= width (8 * ( k - hLen + 3)) // Required for use of hash in MGF
+                   , 2 * hLen >= width (8 * l) // Required for use of hash
+                   , 2 * hLen >= width (8 * (k - hLen + 3)) // Required for use of hash in MGF
                    , k >= 2 * hLen + 2
                    , 2^^32*hLen >= k - hLen - 1 // Required for use of MGF1
                    ) => [k][8] -> [l][8] -> ([k - hLen - 1][8], [width (k - hLen - 1)])
@@ -71,17 +71,16 @@ RSAES_OAEP_DECRYPT C L = if c < 0 \/ c >= n then error "decryption error"
 
 RSAES_OAEP_Correct : {l,mLen}
                    (fin l, fin mLen
-                   , l>=0
-                   , 2 * hLen >= width (8 * l) 
-                   , 2 * hLen >= width (8 * ( k - hLen + 3)) 
+                   , 2 * hLen >= width (8 * l) // Required for use of hash
+                   , 2 * hLen >= width (8 * (k - hLen + 3)) // Required for use of hash in MGF
                    , k >= mLen+2*hLen+2
-                   , 32 >= width ((k-hLen-1)/hLen) 
+                   , 2^^32*hLen >= k - hLen - 1 // Required for use of MGF1
                    )
                    => [256] // Seed for random number
                    -> [l][8]
                    -> [mLen][8]
                    -> Bit
-property RSAES_OAEP_Correct r l m = (RSAES_OAEP_DECRYPT (RSAES_OAEP_ENCRYPT r m l ) l).0 == m#(zero:[_][8])
+property RSAES_OAEP_Correct r l m = (RSAES_OAEP_DECRYPT (RSAES_OAEP_ENCRYPT r m l) l).0 == m#(zero:[_][8])
 
 
 
@@ -100,9 +99,9 @@ EME_OAEP_encode rseed (M,L) = (zero : [1][8]) # maskedSeed # maskedDB // value o
          where
           lHash      = split (hash L) : [hLen][8]
           PS         = (zero:[(k-mLen-2*hLen-2)][8]) // This may be (zero:[0][8])
-          DB         = lHash # PS # [(1:[8])] # M 
-          seed       = random rseed : [hLen][8] 
-          dbMask     = MGF1`{maskLen=(k-hLen-1)} seed 
+          DB         = lHash # PS # [(1:[8])] # M
+          seed       = random rseed : [hLen][8]
+          dbMask     = MGF1`{maskLen=(k-hLen-1)} seed
           maskedDB   = DB ^ dbMask
           seedMask   = MGF1`{maskLen=hLen} maskedDB
           maskedSeed = seed ^ seedMask
@@ -163,15 +162,12 @@ MGF1 : {maskLen,l,counterMax}
        , maskLen >= 1
        , 2*hLen >= width (8 * (4 + l))
        , 2^^32 * hLen >= maskLen
-       , counterMax == (hLen + maskLen - 1)/hLen - 1 // (ceiling maskLen/hLen) - 1
+       , counterMax == maskLen/^hLen - 1 // (ceiling maskLen/hLen) - 1
        )
        => [l][8] // MGF Seed
        -> [maskLen][8]
 MGF1 mgfSeed = take`{maskLen} Ts
      where
 
-      Cs = map (\counter -> I2OSP`{xLen=4} counter) ([0..counterMax]:[_][32]) 
+      Cs = map (\counter -> I2OSP`{xLen=4} counter) ([0..counterMax]:[_][32])
       Ts = join [ split (hash (mgfSeed # c)) : [_][8] | c <- Cs]
-
-
-

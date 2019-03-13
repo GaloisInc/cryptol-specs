@@ -3,9 +3,9 @@
    www.cryptol.net
    You can freely use this source code for educational purposes.
 
-   TEA-Tiny Encryption Algorithm and it's extensions
+   TEA-Tiny Encryption Algorithm and its extensions
    Author: Ajay Kumar Eeralla
-   TEA pliantext size-64, key size-128
+   TEA plaintext size-64, key size-128
    We consider fixing the size 128bits for plaintext as well as ciphertext
 */
 
@@ -32,145 +32,149 @@ splitKey key = split(key):[Nkb][stdBlock]
 //A constant derived from golden number
 
 dlta : [stdBlock]
-dlta=0x9e3779b9 
+dlta = 0x9e3779b9
 
 // sum
 sum = 0xc6ef3720
+
 // Round function for TEA
 
-teaRoundFun : [stdBlock]-> [stdBlock] -> [stdBlock]-> [stdBlock] -> [stdBlock]
-teaRoundFun pt k1 k2 delta = (pt << 4 + k1) ^ ((pt + delta)) ^ ((pt>>5)+k2)
+teaRoundFun : [stdBlock] -> [stdBlock] -> [stdBlock] -> [stdBlock] -> [stdBlock]
+teaRoundFun pt k1 k2 delta = (pt << 4 + k1) ^ (pt + delta) ^ ((pt>>5)+k2)
 
 // TEA encryption cycle contains two Feistel rounds
 
-teaEncCycle: ([TeaBlockSize], [TeaKeySize], [stdBlock]) ->[TeaBlockSize]
+teaEncCycle: ([TeaBlockSize], [TeaKeySize], [stdBlock]) -> [TeaBlockSize]
 teaEncCycle (pt, key, sum) = fiestr2
-              where lpt = (splitPT pt)@0
-                    rpt = (splitPT pt)@1
-                    k0 = (splitKey key)@0
-                    k1 = (splitKey key)@1
-                    k2 = (splitKey key)@2
-                    k3 = (splitKey key)@3
-                    fiestr1 = rpt# roundf1
-                    roundf1 = lpt +(teaRoundFun rpt k0 k1 sum) 
-                    fiestr2 =  roundf1 # roundf2
-                    roundf2 = rpt+(teaRoundFun roundf1 k2 k3 sum)
-                    
+    where lpt = (splitPT pt)@0
+          rpt = (splitPT pt)@1
+          k0 = (splitKey key)@0
+          k1 = (splitKey key)@1
+          k2 = (splitKey key)@2
+          k3 = (splitKey key)@3
+          fiestr1 = rpt# roundf1
+          roundf1 = lpt + (teaRoundFun rpt k0 k1 sum)
+          fiestr2 = roundf1 # roundf2
+          roundf2 = rpt + (teaRoundFun roundf1 k2 k3 sum)
+
 // TEA decryption cycle with two Feistel rounds
 
-teaDecCycle: ([TeaBlockSize], [TeaKeySize], [stdBlock]) ->[TeaBlockSize]
+teaDecCycle: ([TeaBlockSize], [TeaKeySize], [stdBlock]) -> [TeaBlockSize]
 teaDecCycle (pt, key, sum) = fiestr2
-              where lpt = (splitPT pt)@0
-                    rpt = (splitPT pt)@1
-                    k0 = (splitKey key)@0
-                    k1 = (splitKey key)@1
-                    k2 = (splitKey key)@2
-                    k3 = (splitKey key)@3
-                    roundf2 = rpt-(teaRoundFun lpt k2 k3 sum)
-                    roundf1 = lpt -(teaRoundFun roundf2 k0 k1 sum) 
-                    fiestr2 =  roundf1 # roundf2
-                    
-                    
+    where lpt = (splitPT pt)@0
+          rpt = (splitPT pt)@1
+          k0 = (splitKey key)@0
+          k1 = (splitKey key)@1
+          k2 = (splitKey key)@2
+          k3 = (splitKey key)@3
+          roundf2 = rpt - (teaRoundFun lpt k2 k3 sum)
+          roundf1 = lpt - (teaRoundFun roundf2 k0 k1 sum)
+          fiestr2 = roundf1 # roundf2
+
+
 //Encryption: 32 TEA cycles are recommended
 //We change the blocksize as the key size
 //teaEncrypt encrypts actually half of the given plaintext
 
-teaEncrypt : ([TeaKeySize], [TeaBlockSize]) ->[TeaBlockSize]
+teaEncrypt : ([TeaKeySize], [TeaBlockSize]) -> [TeaBlockSize]
 teaEncrypt (key, pt) = (hs!0)
-                   where hs = [pt]#[teaEncCycle(m, key, i*dlta)| i <- [1,2..32]|m<-hs ]
-                      
-                         
-                                             
+    where hs = [pt] # [ teaEncCycle(m, key, i*dlta) | i <- [1,2..32] | m <- hs ]
+
+
+
 //Decryption
 
-teaDecrypt : ([TeaKeySize], [TeaBlockSize]) ->[TeaBlockSize]
+teaDecrypt : ([TeaKeySize], [TeaBlockSize]) -> [TeaBlockSize]
 teaDecrypt (key, ct) = (hs!0)
-                where hs = [ct]#[teaDecCycle(cT, key, sum-i*dlta) | i<- [0,1..31] | cT<- hs ]
-                      
-                     
-                      
+    where hs = [ct] # [ teaDecCycle(cT, key, sum-i*dlta) | i <- [0,1..31] | cT <- hs ]
+
+
+
 
 property teaCorrect key m = teaDecrypt(key, teaEncrypt (key, m)) == m
 
 // Helper to run the experiments
 
-teaEncrypt' : ([TeaBlockSize], [TeaBlockSize]) ->[TeaBlockSize]
+teaEncrypt' : ([TeaBlockSize], [TeaBlockSize]) -> [TeaBlockSize]
 teaEncrypt' (key, pt) = (hs!0)
-                   where hs = [pt]#[teaEncCycle(m, key', i*dlta)| i <- [1,2..32]|m<-hs ]
-                         key' = key # zero
-teaDecrypt' : ([TeaBlockSize], [TeaBlockSize]) ->[TeaBlockSize]
-teaDecrypt' ( key, ct) = (hs!0)
-                where hs = [ct]#[teaDecCycle(cT, key', sum-i*dlta) | i<- [0,1..31] | cT<- hs ]
-                      key' = key #zero
-                      
-    
-property teaCorrect' key m = teaDecrypt'( key, teaEncrypt'(key, m)) == m
+    where hs = [pt] # [ teaEncCycle(m, key', i*dlta) | i <- [1,2..32] | m <- hs ]
+          key' = key # zero
+
+teaDecrypt' : ([TeaBlockSize], [TeaBlockSize]) -> [TeaBlockSize]
+teaDecrypt' (key, ct) = (hs!0)
+    where hs = [ct] # [ teaDecCycle(cT, key', sum-i*dlta) | i<- [0,1..31] | cT <- hs ]
+          key' = key #zero
+
+
+property teaCorrect' key m = teaDecrypt'(key, teaEncrypt'(key, m)) == m
+
 /************************************************************************/
 /************************************************************************/
 /* eXtended TEA */
 
 //Round function for XTEA
 
-xTeaRoundFun : [stdBlock]-> [TeaKeySize]-> [stdBlock] -> [stdBlock]->[stdBlock]
-xTeaRoundFun pt key sum1 sum2 = (((pt << 4) ^ (pt >> 5))+pt) ^ (sum1 + k)
-                               where k = (splitKey key)@(sum2 !![1,0])
+xTeaRoundFun : [stdBlock] -> [TeaKeySize] -> [stdBlock] -> [stdBlock] -> [stdBlock]
+xTeaRoundFun pt key sum1 sum2 = (((pt << 4) ^ (pt >> 5)) + pt) ^ (sum1 + k)
+    where k = (splitKey key)@(sum2 !![1,0])
 
 // XTEA cycle contains two Feistel rounds
 
-xTeaEncCycle: ([TeaBlockSize], [TeaKeySize], [stdBlock]) ->[TeaBlockSize]
+xTeaEncCycle: ([TeaBlockSize], [TeaKeySize], [stdBlock]) -> [TeaBlockSize]
 xTeaEncCycle (pt, key, sum) = fiestr2
-              where lpt = (splitPT pt)@0
-                    rpt = (splitPT pt)@1
-                    roundf1 = lpt +(xTeaRoundFun rpt key sum sum) 
-                    fiestr2 =  roundf1 # roundf2
-                    roundf2 = rpt+(xTeaRoundFun roundf1 key (sum+dlta) ((sum+dlta)>>11))
-                    
+    where lpt = (splitPT pt)@0
+          rpt = (splitPT pt)@1
+          roundf1 = lpt +(xTeaRoundFun rpt key sum sum)
+          fiestr2 = roundf1 # roundf2
+          roundf2 = rpt+(xTeaRoundFun roundf1 key (sum+dlta) ((sum+dlta)>>11))
+
 //XTEA decryption cycle contains two Feistel rounds
 
-xTeaDecCycle: ([TeaBlockSize], [TeaKeySize], [stdBlock]) ->[TeaBlockSize]
+xTeaDecCycle: ([TeaBlockSize], [TeaKeySize], [stdBlock]) -> [TeaBlockSize]
 xTeaDecCycle (pt, key, sum) = fiestr2
-              where lpt = (splitPT pt)@0
-                    rpt = (splitPT pt)@1
-                    roundf2 = rpt-(xTeaRoundFun lpt key sum (sum>>11))
-                    roundf1 = lpt -(xTeaRoundFun roundf2 key (sum-dlta) (sum-dlta)) 
-                    fiestr2 =  roundf1 # roundf2
-                    
-                    
+    where lpt = (splitPT pt)@0
+          rpt = (splitPT pt)@1
+          roundf2 = rpt - (xTeaRoundFun lpt key sum (sum>>11))
+          roundf1 = lpt - (xTeaRoundFun roundf2 key (sum-dlta) (sum-dlta))
+          fiestr2 = roundf1 # roundf2
+
+
 //Encryption: 32 XTEA cycles are recommended
 //I change the signatures to run the experiments
 
 type PTSize = TeaBlockSize
 type CTSize = TeaBlockSize
 
-xTeaEncrypt : ([TeaKeySize], [PTSize]) ->[CTSize]
-xTeaEncrypt (key, pt) =  (hs!0)
-                   where hs = [pt]#[xTeaEncCycle (m, key, i*dlta) | i<- [0,1..31] | m <-hs]
+xTeaEncrypt : ([TeaKeySize], [PTSize]) -> [CTSize]
+xTeaEncrypt (key, pt) = (hs!0)
+    where hs = [pt] # [ xTeaEncCycle (m, key, i*dlta) | i <- [0,1..31] | m <- hs ]
 
 //Decryption
 
-xTeaDecrypt : ([TeaKeySize], [CTSize]) ->[PTSize]
+xTeaDecrypt : ([TeaKeySize], [CTSize]) -> [PTSize]
 xTeaDecrypt (key, ct) = (hs!0)
-            where hs = [ct]#[xTeaDecCycle (pT, key, i*dlta) | i<-[32,31..1] | pT <- hs ]
-  
+    where hs = [ct] # [ xTeaDecCycle (pT, key, i*dlta) | i <- [32,31..1] | pT <- hs ]
+
 property xTeaCorrect key m = xTeaDecrypt(key, xTeaEncrypt(key, m)) == m
 
 // Helper function to run experiments
 
-xTeaEncrypt64 : ([PTSize], [PTSize]) ->[CTSize]
-xTeaEncrypt64 (key, pt) =  (hs!0)
-                   where hs = [pt]#[xTeaEncCycle (m, key', i*dlta) | i<- [0,1..31] | m <-hs]
-                         key' = key # zero
+xTeaEncrypt64 : ([PTSize], [PTSize]) -> [CTSize]
+xTeaEncrypt64 (key, pt) = (hs!0)
+    where hs = [pt] # [ xTeaEncCycle (m, key', i*dlta) | i <- [0,1..31] | m <- hs ]
+          key' = key # zero
 
-xTeaDecrypt64 : ([CTSize], [PTSize]) ->[PTSize]
+xTeaDecrypt64 : ([CTSize], [PTSize]) -> [PTSize]
 xTeaDecrypt64 (key, ct) = (hs!0)
-            where hs = [ct]#[xTeaDecCycle (pT, key', i*dlta) | i<-[32,31..1] | pT <- hs]
-                  key' = key # zero
+    where hs = [ct] # [ xTeaDecCycle (pT, key', i*dlta) | i <- [32,31..1] | pT <- hs ]
+          key' = key # zero
 
 property xTeaCorrect64 key m = xTeaDecrypt64 (key, xTeaEncrypt64(key,m)) == m
 
 
-xTeaEncrypt128 : ( [TeaKeySize], [TeaKeySize]) -> [TeaKeySize]
+xTeaEncrypt128 : ([TeaKeySize], [TeaKeySize]) -> [TeaKeySize]
 xTeaEncrypt128 (key, pt) = xTeaEncrypt (key, (take`{64} pt)) # zero
+
 /************************************************************************/
 /************************************************************************/
 /* Corrected Block TEA or XXTEA*/
@@ -183,52 +187,52 @@ type bTeaPtSize= NB*stdBlock
 //Splitting text into number of words
 
 splitPtN: [bTeaPtSize] -> [NB][stdBlock]
-splitPtN pt = split(pt):[NB][stdBlock]
+splitPtN pt = split(pt) : [NB][stdBlock]
 
 //Round Function
 
 bTeaRoundFun: [stdBlock]-> [stdBlock]-> [TeaKeySize]-> [6]-> [stdBlock]->[stdBlock]
-bTeaRoundFun y z key p sum = ((z>>5)^ (y<<2))+ ((y>>3)^(z<<4))^(sum^y)+ ((ki @((p!![1,0])^e))^z)
-                 where ki = (splitKey key)
-                       e = (sum >> 2) !![1,0]
-                 
+bTeaRoundFun y z key p sum = ((z>>5) ^ (y<<2)) + ((y>>3) ^ (z<<4)) ^ (sum ^ y) + ((ki @ ((p!![1,0]) ^ e)) ^ z)
+    where ki = (splitKey key)
+          e = (sum >> 2) !![1,0]
+
 //Mixing in encryption
 
-bTeaEncMixing :([bTeaPtSize],[TeaKeySize], [stdBlock])-> [bTeaPtSize]
+bTeaEncMixing : ([bTeaPtSize], [TeaKeySize], [stdBlock]) -> [bTeaPtSize]
 
-bTeaEncMixing (pt, key, sum) =  join hs'
-              where pt' = splitPtN pt
-                    hs= [ (pt'@0)+(bTeaRoundFun (pt'@1) (pt'@(`NB-1)) key 0 sum) ] # [ (pt'@p)+(bTeaRoundFun (pt'@(p+1)) h key p sum) | p<- [1,2..NB-2] | h <- hs ]
-                    hs' =  hs # [ (pt'@(`NB-1)) + (bTeaRoundFun (hs@0) (hs!0) key (`NB-1) sum)]
-                    
-                    
-                  
+bTeaEncMixing (pt, key, sum) = join hs'
+    where pt' = splitPtN pt
+          hs = [ (pt'@0)+(bTeaRoundFun (pt'@1) (pt'@(`NB-1)) key 0 sum) ] # [ (pt'@p)+(bTeaRoundFun (pt'@(p+1)) h key p sum) | p <- [1,2..NB-2] | h <- hs ]
+          hs' = hs # [ (pt'@(`NB-1)) + (bTeaRoundFun (hs@0) (hs!0) key (`NB-1) sum) ]
+
+
+
 //Encryption
 
-bTeaEncrypt: ([TeaKeySize], [bTeaPtSize]) -> [bTeaPtSize]
-bTeaEncrypt (key, pt) =  hs!0
-                     where  hs = [bTeaEncMixing (pt, key, dlta)] # [bTeaEncMixing (pT, key, i*dlta) | i<-[2,3..Nr] | pT<- hs ]
-                      
+bTeaEncrypt : ([TeaKeySize], [bTeaPtSize]) -> [bTeaPtSize]
+bTeaEncrypt (key, pt) = hs!0
+    where hs = [bTeaEncMixing (pt, key, dlta)] # [ bTeaEncMixing (pT, key, i*dlta) | i <- [2,3..Nr] | pT <- hs ]
+
 
 //Mixing in decryption
 
 
-bTeaDecMixing :([bTeaPtSize],[TeaKeySize], [stdBlock])-> [bTeaPtSize]
+bTeaDecMixing : ([bTeaPtSize], [TeaKeySize], [stdBlock]) -> [bTeaPtSize]
 
-bTeaDecMixing (pt, key, sum) =   join hs''
-              where pt' = splitPtN pt
-                    hs= [  (pt'@(`NB-1))-(bTeaRoundFun (pt'@0) (pt'@(`NB-2)) key  1 sum)] # [ pt'@(`NB-1-p)-(bTeaRoundFun h (pt'@ (`NB-2-p)) key p sum) | p<- [1,2..(NB-2)] | h <- hs ]
-                    hs' =  hs # [ pt'@0 - (bTeaRoundFun (hs!0) (hs@0) key  0 sum)]
-                    hs'' = [hs'!0] # [hs'!i | i<- [1,2..NB-1] ] 
-                    //e = (sum >> 2) !![1,0]
-                    //hs'' = [(hs'!0).2]# [((hs'!i).2) | i<-[1,2..`NB-1]]
-                    
+bTeaDecMixing (pt, key, sum) = join hs''
+    where pt' = splitPtN pt
+          hs= [(pt'@(`NB-1)) - (bTeaRoundFun (pt'@0) (pt'@(`NB-2)) key  1 sum)] # [ pt'@(`NB-1-p)-(bTeaRoundFun h (pt'@ (`NB-2-p)) key p sum) | p <- [1,2..(NB-2)] | h <- hs ]
+          hs' =  hs # [ pt'@0 - (bTeaRoundFun (hs!0) (hs@0) key  0 sum)]
+          hs'' = [hs'!0] # [hs'!i | i<- [1,2..NB-1] ]
+          //e = (sum >> 2) !![1,0]
+          //hs'' = [(hs'!0).2]# [((hs'!i).2) | i<-[1,2..`NB-1]]
+
 // Decryption
 
-bTeaDecrypt: ([TeaKeySize], [bTeaPtSize]) -> [bTeaPtSize]
+bTeaDecrypt : ([TeaKeySize], [bTeaPtSize]) -> [bTeaPtSize]
 bTeaDecrypt (key, pt) =  hs!0
-                     where  hs = [bTeaDecMixing (pt, key, `Nr*dlta)] # [bTeaDecMixing (pT, key, (`Nr-i)*dlta) | i<-[1,2.. (Nr-1)] | pT<- hs ]
-                           
+    where hs = [bTeaDecMixing (pt, key, `Nr*dlta)] # [ bTeaDecMixing (pT, key, (`Nr-i)*dlta) | i <- [1,2..(Nr-1)] | pT <- hs ]
+
 // correctness
 
 property bTeaCorrect key m = bTeaDecrypt(key, bTeaEncrypt (key, m)) == m
@@ -236,12 +240,11 @@ property bTeaCorrect key m = bTeaDecrypt(key, bTeaEncrypt (key, m)) == m
 
 //Testing
 tests = [teaTest, xteaTest, xxteaTest]
-property testsPass = tests == ~zero
+property testsPass = and tests
 
 // TEA
 teaTest = teaEncrypt(0x0123456789abcdef0123456789abcdef, 0x0123456789abcdef) == 0xce674a7575034065
 //XTEA
-xteaTest = xTeaEncrypt( 0x0123456789abcdef0123456789abcdef, 0x0123456789abcdef) == 0x27e795e076b2b537
-//XXTEA or bTEA                      
+xteaTest = xTeaEncrypt(0x0123456789abcdef0123456789abcdef, 0x0123456789abcdef) == 0x27e795e076b2b537
+//XXTEA or bTEA
 xxteaTest = bTeaEncrypt(0x0123456789abcdef0123456789abcdef,0x0123456789abcdef) == 0x2b98de778c9b788c
-

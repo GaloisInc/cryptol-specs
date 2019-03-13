@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013-2018 Galois, Inc.
- * 
+ *
  */
 
 module Primitive::Symmetric::Cipher::Block::DES where
@@ -22,7 +22,7 @@ des pt keys = (swap (split lst)) @@ FPz
         iv  = [ round (k, split lr)
               | k  <- keys
               | lr <- [pt'] # iv ]
-        lst = iv @ (length keys - 1)
+        lst = iv @ (width keys - 1)
 
 round : ([48],[2][32]) -> [64]
 round (k, [l, r]) = r # (l ^ f (r, k))
@@ -189,6 +189,6 @@ testct = [0xB5219EE81AA7499D
          ,0x0011223344556677
          ,0xEA024714AD5C4D84]
 
-property testsPass = ~zero == [ DES.encrypt key msg == ct
-                              | key <- testkeys | msg <- testmsgs | ct <- testct ]
+property testsPass = and [ DES.encrypt key msg == ct
+                         | key <- testkeys | msg <- testmsgs | ct <- testct ]
 

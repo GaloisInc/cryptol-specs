@@ -202,19 +202,19 @@ property princeCorrect key m = princeDecrypt ( key, princeEncrypt(key, m)) == m
 
 princeEncrypt64 : ([princeBlockSize], [princeBlockSize]) -> [princeBlockSize]
 princeEncrypt64 (key, pt) = princeEncrypt(key#zero, pt)
-  
+
 princeDecrypt64 : ([princeBlockSize], [princeBlockSize]) -> [princeBlockSize]
 princeDecrypt64 (key, ct) = princeDecrypt(key#zero, ct)
-            
+
 property princeCorrect' key m = princeDecrypt64 (key, princeEncrypt64 (key, m)) == m
-                  
+
 princeEncrypt128 : ([princeKeySize], [princeKeySize]) -> [princeKeySize]
 princeEncrypt128 (key, pt) = princeEncrypt(key, (take`{64} pt))# zero
 
 // Testing
 
 tests = [t01, t02, t03, t04, t05, t06, t07]
-property testsPass = tests == ~zero
+property testsPass = and tests
 
 t01 = princeEncrypt (zero, zero) == 0x818665aa0d02dfda
 

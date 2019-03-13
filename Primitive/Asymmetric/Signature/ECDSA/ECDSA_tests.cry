@@ -2,11 +2,11 @@ module Primitive::Asymmetric::Signature::ECDSA::ECDSA_tests where
 
 import Common::utils
 
-import p192 as p192
-import p224 as p224
-import p256 as p256
-import p384 as p384
-import p521 as p521
+import Primitive::Asymmetric::Signature::ECDSA::p192 as p192
+import Primitive::Asymmetric::Signature::ECDSA::p224 as p224
+import Primitive::Asymmetric::Signature::ECDSA::p256 as p256
+import Primitive::Asymmetric::Signature::ECDSA::p384 as p384
+import Primitive::Asymmetric::Signature::ECDSA::p521 as p521
 
 
 //p192 tests

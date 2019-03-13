@@ -3,10 +3,10 @@
  * Distributed under the terms of the BSD3 license (see LICENSE file)
  *
  * @tmd - 24 April 2015 - took Ian's SHA512, converted to SHA256
- * @ian - 15 August 2015 - he lies, probably ment 2014.
+ * @ian - 15 August 2015 - he lies, probably meant 2014.
  *
  * This is a very simple implementation of SHA256, designed to be as clearly
- * mathced to the specification in NIST's FIPS-PUB-180-4 as possible
+ * matched to the specification in NIST's FIPS-PUB-180-4 as possible
  *
  * * The output correctly matches on all test vectors from
  * http://csrc.nist.gov/groups/ST/toolkit/documents/Examples/SHA256.pdf
@@ -113,7 +113,7 @@ SHA256' blocks = hash!0 where
 SHA256 : {a} (fin a, 64 >= width (8*a)) => [a][8] -> [256]
 SHA256 msg =   join (SHA256' [ split x | x <- preprocess(join msg)])
 
-property katsPass = ~zero == [test == kat | (test,kat) <- kats ]
+property katsPass = and [test == kat | (test, kat) <- kats ]
 
 kats = [ (SHA256 "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
          , 0x248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1)

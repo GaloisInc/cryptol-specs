@@ -40,7 +40,7 @@ shacal1Encrypt512 (key, pt) = shacal1Encrypt(key, (take`{160} pt))#zero
 
 // //Added 10 test vectors for more vectors, please visit:  https://www.cosic.esat.kuleuven.be/nessie/tweaks.html
 
-property shacal1TestsPass = ~zero == [shacal1Encrypt(key, plain) == cipher | (key, plain, cipher) <- tVector1]
+property shacal1TestsPass = and [shacal1Encrypt(key, plain) == cipher | (key, plain, cipher) <- tVector1]
 
 tVector1 = [ (0x8#zero, zero, 0x0FFD8D43B4E33C7C53461BD10F27A5461050D90D)
            , (0x4#zero, zero, 0xB9C60AA972B49CA04D5A0D9B9E08B2A2BA138C93)
@@ -72,14 +72,14 @@ shacal2Encrypt (key, pt) = join (SHA256Block pt' key')
 
 shacal2Encrypt256 : ([shacal2Block], [shacal2Block]) -> [shacal2Block]
 shacal2Encrypt256 (key, pt) = shacal2Encrypt(key#zero, pt)
-               
+
 shacal2Encrypt512 : ([shacal2Key], [shacal2Key]) -> [shacal2Key]
 shacal2Encrypt512 (key, pt) = shacal2Encrypt(key, (take`{256} pt))#zero
 
 //Testing
 //Added 10 test vectors for more vectors, please visit:  https://www.cosic.esat.kuleuven.be/nessie/tweaks.html
 
-property shacal2TestsPass = ~zero == [shacal2Encrypt(key, plain) == cipher | (key, plain, cipher) <- tVector2]
+property shacal2TestsPass = and [shacal2Encrypt(key, plain) == cipher | (key, plain, cipher) <- tVector2]
 
 tVector2 = [ (0x8#zero, zero, 0x361AB6322FA9E7A7BB23818D839E01BDDAFDF47305426EDD297AEDB9F6202BAE)
            , (0x4#zero, zero, 0xF3BAF53E5301E08813F8BE6F651BB19E9722151FF15063BA42A6FEF7CF3BF3D7)

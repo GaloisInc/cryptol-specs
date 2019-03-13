@@ -1,4 +1,4 @@
-module p192 = Primitive::Asymmetric::Signature::ECDSA::ECDSA where
+module Primitive::Asymmetric::Signature::ECDSA::p192 = Primitive::Asymmetric::Signature::ECDSA::ECDSA where
 
 type p = 6277101735386680763835789423207666416083908700390324961279
 

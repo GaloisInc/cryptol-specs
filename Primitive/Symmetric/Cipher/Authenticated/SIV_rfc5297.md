@@ -336,15 +336,12 @@ cmacBlocks K completeMn ms = ci ! 0
    ci      = [zero] # [ E(K,c ^ mi) | c <- ci | mi <- (xs # [mn]) ]
 
 property cmacKAT1 =
-    ~zero ==
+    and
     [ aesCMAC 0x2b7e151628aed2a6abf7158809cf4f3c [] == 0xbb1d6929e95937287fa37d129b756746
     , aesCMAC 0x2b7e151628aed2a6abf7158809cf4f3c 0x6bc1bee22e409f96e93d7e117393172a == 0x070a16b46b4d4144f79bdd9dd04a287c
     , aesCMAC 0x2b7e151628aed2a6abf7158809cf4f3c 0x6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411 == 0xdfa66747de9ae63030ca32611497c827
     , aesCMAC 0x2b7e151628aed2a6abf7158809cf4f3c 0x6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710 == 0x51f0bebf7e3b9d92fc49741779363cfe
     ]
-
-repeat : {n,a} (n >= 1, fin n) => a -> [n]a
-repeat a = [a | _ <- [1..n]]
 ```
 
 ```
@@ -489,7 +486,7 @@ dbl x = ite ((x@0) == False) (x << 1) ((x << 1) ^ `0x87)
 
 ```
 // S2V for n=2
-S2V : {k, ad, p} (fin ad, fin p) => Key -> [ad] -> [p] -> [128]
+S2V : {ad, p} (fin ad, fin p) => Key -> [ad] -> [p] -> [128]
 S2V K S1 S2 = res
  where
  D0 = aesCMAC K (zero : [128])

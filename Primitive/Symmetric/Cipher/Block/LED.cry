@@ -295,12 +295,12 @@ ledEncrypt64' (key, pt) = ledEncrypt128 (key#zero, pt)
 
 ledEncrypt128' : ([LEDKeySize128], [LEDKeySize128]) -> [LEDKeySize128]
 ledEncrypt128' (key, pt) = ledEncrypt128(key, (take`{64} pt))# zero
-               
+
 
 // Testing
 
 tests = [test64_1, test64_2, test128_1, test128_2]
-property testsPass = tests == ~zero
+property testsPass = and tests
 
 //Keysize: 64bits
 
