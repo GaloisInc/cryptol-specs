@@ -8,7 +8,7 @@ Cryptol only sees the contents of triple-backtick code blocks;
 all other text here is strictly for human eyes.
 
 ```
-module SphincsPlus where
+module Primitive::Asymmetric::Signature::SphincsPlus where
 ```
 
 The present document's heading structure follows the SPHINCS+ [specification](https://sphincs.org/data/sphincs+-specification.pdf),
