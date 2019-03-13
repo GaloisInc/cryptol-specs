@@ -17,6 +17,7 @@ repository are listed below.
 | **Stream Cipher**         | [ChaCha20-Poly1305](Primitive/Symmetric/Cipher/Authenticated/ChaChaPolyCryptolIETF.md)| | |
 | **Message Authentication**| [HMAC](Primitive/Symmetric/MAC/HMAC.cry)| | |
 | **Digital Signature**     | [ECDSA](Primitive/Asymmetric/Signature/ecdsa.cry)| | |
+|                           | [SPHINCS+](Primitive/Asymmetric/Signature/SphincsPlus.md)| | |
 | **Hash**                  | [SHA1](Primitive/Keyless/Hash/SHA1.cry)| | |
 |                           | [SHA256](Primitive/Keyless/Hash/SHA256.cry)| | |
 |                           | [SHA2, SHA3](Primitive/Keyless/Hash/SHA.cry)| | |
