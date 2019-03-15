@@ -177,13 +177,18 @@ H = T_l`{2}
 Specific pseudo-random functions will be defined (or imported?) later.
 Translating their signatures, and guessing at the type constraints:
 
-<pre>
-PRF : {n} (fin n) => [n] -> [32] -> [n]
+```
+parameter
+  /** Pseudorandom function for pseudorandom key generation. */
+  PRF : [n*8] -> Address -> [n*8]
 
-PRF_msf : {n, x} (fin n) => [n] -> [n] -> [x] -> [n]
+  /** Pseudorandom function to generate randomness for message compression. */
+  PRF_msg : {k} (fin k) => [n*8] -> [n*8] -> [k*8] -> [n*8]
 
-H_msg : {n, x, m} (fin n, fin m) => [n] -> [n] -> [n] -> [x] -> [m]
-</pre>
+  // /** Keyed hash function that can process arbitrary-length messages. */
+  //H_msg : {k} (fin k) => [n*8] -> [n*8] -> [n*8] -> [k*8] -> [m*8]
+  // (?) result type? Paper says "B^m" without defining m.
+```
 
 #### 2.7.3 Hash Function Address Scheme
 
@@ -333,7 +338,6 @@ parameter
     256}." (Section 3.1) */
 type w = 2 ^^ log_w
 
-
 /** The number of base-w digits necessary to represent an n-bit number. */
 type len1 = n /^ log_w
 
@@ -413,10 +417,6 @@ but never declares or initializes it.
 We'll assume it initially contains all-zero bytestrings.
 
 ```
-// TODO: Replace with parameterized PRF
-PRF : Seed -> Address -> NBytes
-PRF s _ = s
-
 // TODO: replace [8] with type parameter [len]
 //       and use demoted value in body
 wots_SKgen : Seed -> Address -> [8]NBytes
