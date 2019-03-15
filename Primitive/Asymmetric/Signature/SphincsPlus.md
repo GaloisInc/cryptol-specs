@@ -306,6 +306,41 @@ chaining, key generation, signing, and computing public keys.
 
 ### 3.1 WOTS+ Parameters
 
+```
+parameter
+
+  /** "n: the security parameter; it is the message length as well as
+      the length of a private key, public key, or signature element in
+      bytes." (Section 3.1) */
+  type n : #
+  type constraint (fin n)
+
+  /** The base-2 log of the Winternitz parameter w. (Section 3.1) */
+  type log_w : #
+  type constraint (fin log_w)
+
+  // needed for wots_PKgen
+  type constraint (32 >= width len)
+
+
+/** "w: the Winternitz parameter; it is an element of the set {4, 16,
+    256}." (Section 3.1) */
+type w = 2 ^^ log_w
+
+
+/** The number of base-w digits necessary to represent an n-bit number. */
+type len1 = n /^ log_w
+
+/** The number of base-w digits necessary to represent the number
+    (len1 * (w - 1)). */
+type len2 = width (len1 * (w - 1)) /^ log_w
+
+/** The number of base-w digits in a WOTS+ private key, public key, or
+    signature. */
+type len = len1 + len2
+
+```
+
 The formula to compute values `len = len_1 + len2` are given in the spec
 using real-valued division and logarithm operators.
 We can't easily define an equivalent formula using Cryptol's integer-valued `lg2` function,
@@ -320,25 +355,17 @@ In the example parameter sets given in section 7.1 of the spec,
 
 The following table gives correct values for these 9 distinct cases.
 
-```
-// TODO: make these into type-level module parameters
-//       and adjust type signatures as needed
-
-(n : Integer, w : Integer) = (24, 16) 
-
-// TODO: All these will have to be available at type level
-(len : Integer, len1 : Integer, len2 : Integer) =
-    if (n, w) == (16,   4) then (11,  8, 3)
-     | (n, w) == (16,  16) then ( 6,  4, 2)
-     | (n, w) == (16, 256) then ( 4,  2, 2)
-     | (n, w) == (24,   4) then (15, 12, 3)
-     | (n, w) == (24,  16) then ( 8,  6, 2)
-     | (n, w) == (24, 256) then ( 5,  3, 2)
-     | (n, w) == (32,   4) then (19, 16, 3)
-     | (n, w) == (32,  16) then (10,  8, 2)
-     | (n, w) == (32, 256) then ( 6,  4, 2)
-     else error "unsupported n or w parameter"
-```
+| **n** | **w** | **len** | **len1** | **len2** |
+| ----: | ----- | ------- | -------- | -------- |
+|  16   |    4  |   11    |     8    |     3    |
+|  16   |   16  |    6    |     4    |     2    |
+|  16   |  256  |    4    |     2    |     2    |
+|  24   |    4  |   15    |    12    |     3    |
+|  24   |   16  |    8    |     6    |     2    |
+|  24   |  256  |    5    |     3    |     2    |
+|  32   |    4  |   19    |    16    |     3    |
+|  32   |   16  |   10    |     8    |     2    |
+|  32   |  256  |    6    |     4    |     2    |
 
 ### 3.2 WOTS+ Chaining Function
 
@@ -364,7 +391,7 @@ pk = ({ seed = zero } : Pk)
 
 chain : NBytes -> Integer -> Integer -> Seed -> Address -> NBytes
 chain X i s seed adrs =
-    if i + s > w - 1 then error "spec says NULL"
+    if i + s > `w - 1 then error "spec says NULL"
                      else chain' s adrs X
     where
     chain' : Integer -> Address -> NBytes -> NBytes
@@ -396,7 +423,7 @@ wots_SKgen seed adrs =
     kgen 0 adrs zero
     where
     kgen i address sk =
-        if i >= fromInteger len then sk
+        if i >= `len then sk
         else kgen (i + 1) (setChain address i)
                   (update sk i (PRF seed address))
 
@@ -432,10 +459,10 @@ wots_PKgen sk_seed pk_seed adrs =
     tmp = join (mkTmp 0 zero)
     wotspkADRS = setKeyPair (setType adrs WOTS_PK) (getKeyPair adrs)
     mkTmp i tmp' =
-        if i >= fromInteger len then tmp'
+        if i >= `len then tmp'
         else mkTmp (i + 1) (update tmp' i tmp_i)
         where
-        tmp_i = chain sk 0 (w - 1) pk_seed adrs'
+        tmp_i = chain sk 0 (`w - 1) pk_seed adrs'
         adrs' = setChain adrs i
         sk = PRF sk_seed adrs'
 ```
