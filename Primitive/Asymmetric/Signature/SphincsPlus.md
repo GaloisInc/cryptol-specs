@@ -158,13 +158,19 @@ which abstract over the implementations of SHA2 or SHAKE.
 
 Translating the given function signatures:
 
-<pre>
-T_l : {l, n} (fin n, fin l, Arith n, Arith l) =>
-      [n*8] -> [32*8] -> [l*n*8] -> [n*8]
-//   PK.seed    ADRS        M        md
+```
+parameter
+
+  /** A tweakable hash function that takes an n-byte public seed, an
+  address, and an n*l-byte message to produce an n-byte hash. */
+  T_l : {l} (fin l) => [n*8] -> Address -> [l*n*8] -> [n*8]
+
+F : [n*8] -> Address -> [n*8] -> [n*8]
 F = T_l`{1}
+
+H : [n*8] -> Address -> [n*16] -> [n*8]
 H = T_l`{2}
-</pre>
+```
 
 #### 2.7.2 PRF and Message Digest
 
@@ -313,7 +319,7 @@ parameter
       the length of a private key, public key, or signature element in
       bytes." (Section 3.1) */
   type n : #
-  type constraint (fin n)
+  type constraint (fin n, n >= 1)
 
   /** The base-2 log of the Winternitz parameter w. (Section 3.1) */
   type log_w : #
@@ -378,13 +384,8 @@ The return value "NULL" is used by the spec pseudocode, but never defined.
 We'll assume it is intended to indicate an error.
 
 ```
-// TODO: Replace with parameterized F
-F : {k} (fin k) => [k] -> Address -> [k] -> [k]
-F _ _ x = x
-
-// TODO: Replace with actual private key structure,
-//       make n a module parameter
-type NBytes = [24*8]
+// TODO: Replace with actual private key structure
+type NBytes = [n*8]
 type Seed = NBytes
 type Pk = { seed : Seed }
 pk = ({ seed = zero } : Pk)
@@ -448,10 +449,9 @@ by joining the array before passing it to `T_len`.
 // TODO: Replace with parameterized T_l
 // T_len : [n*8] -> [32*8] -> [len*n*8] -> [n*8]
 // T_len : [24*8] -> [32*8] -> [8*24*8] -> [24*8]
-T_len : Seed -> Address -> [8*24*8] -> NBytes
+T_len : Seed -> Address -> [8*n*8] -> NBytes
 T_len x _ _ = x
 
-// TODO: use demoted `len and `w values
 wots_PKgen : Seed -> Seed -> Address -> NBytes
 wots_PKgen sk_seed pk_seed adrs =
     T_len pk_seed wotspkADRS tmp
