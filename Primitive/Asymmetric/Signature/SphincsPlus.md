@@ -133,6 +133,12 @@ we can just use type-level arguments to Cryptol's built-in `split` and `take`.
 
 Note that the value of `split`'s argument `each` is the base-2 log of the spec's function parameter `w`.
 
+```
+base_w : {len_X, out_len} (fin out_len, 8 * len_X >= out_len * log_w) =>
+  [len_X][8] -> [out_len][log_w]
+base_w X = split (take (join X))
+```
+
 ### 2.6 Member Functions
 
 Cryptol has record types, and uses a dot syntax for accessing record components.
