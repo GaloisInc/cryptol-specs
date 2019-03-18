@@ -416,17 +416,9 @@ but never declares or initializes it.
 We'll assume it initially contains all-zero bytestrings.
 
 ```
-// TODO: replace [8] with type parameter [len]
-//       and use demoted value in body
-wots_SKgen : Seed -> Address -> [8]NBytes
+wots_SKgen : Seed -> Address -> [len]NBytes
 wots_SKgen seed adrs =
-    kgen 0 adrs zero
-    where
-    kgen i address sk =
-        if i >= `len then sk
-        else kgen (i + 1) (setChain address i)
-                  (update sk i (PRF seed address))
-
+  [ PRF seed (setChain adrs i) | i <- take`{len,inf} [0...] ]
 ```
 
 ### 3.4 WOTS+ Public Key Generation
