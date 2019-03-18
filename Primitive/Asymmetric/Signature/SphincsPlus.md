@@ -392,7 +392,6 @@ We'll assume it is intended to indicate an error.
 type NBytes = [n*8]
 type Seed = NBytes
 type Pk = { seed : Seed }
-pk = ({ seed = zero } : Pk)
 
 chain : NBytes -> Integer -> Integer -> Seed -> Address -> NBytes
 chain X i s seed adrs =
@@ -404,7 +403,7 @@ chain X i s seed adrs =
         if s' == 0 then X'
         else chain' (s' - 1)
                     (setHash adrs' (fromInteger (i + s' - 1)))
-                    (F pk.seed adrs' X')
+                    (F seed adrs' X')
 ```
 
 ### 3.3 WOTS+ Private Key
