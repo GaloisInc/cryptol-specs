@@ -328,7 +328,7 @@ parameter
 
   /** The base-2 log of the Winternitz parameter w. (Section 3.1) */
   type log_w : #
-  type constraint (fin log_w)
+  type constraint (fin log_w, log_w >= 1)
 
   // needed for wots_PKgen
   type constraint (32 >= width len)
