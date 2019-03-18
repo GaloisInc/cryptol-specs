@@ -418,42 +418,33 @@ We'll assume it initially contains all-zero bytestrings.
 ```
 wots_SKgen : Seed -> Address -> [len]NBytes
 wots_SKgen seed adrs =
-  [ PRF seed (setChain adrs i) | i <- take`{len,inf} [0...] ]
+  [ PRF seed (setChain adrs i) | i <- take`{len} [0...] ]
 ```
 
 ### 3.4 WOTS+ Public Key Generation
 
-The `T_len` function in the specification's pseudocode
+The `T_l` function in the specification's pseudocode
 denotes tweakable hash function `T_l` as defined in Section 2.7.1,
 instantiated at `len`.
 
-We infer the type of a public key from the final call to `T_len`,
+We infer the type of a public key from the final call to `T_l`,
 as the spec does not define it directly.
 
 In the pseudocode, the last argument of that call, `tmp`,
 is clearly a length-`len` array of *n*-byte strings,
 although the signature of `T_l` specifies a single flat bytestring.
 We respect that signature, and amend the pseudocode algorithm,
-by joining the array before passing it to `T_len`.
+by joining the array before passing it to `T_l`.
 
 ```
-// TODO: Replace with parameterized T_l
-// T_len : [n*8] -> [32*8] -> [len*n*8] -> [n*8]
-// T_len : [24*8] -> [32*8] -> [8*24*8] -> [24*8]
-T_len : Seed -> Address -> [8*n*8] -> NBytes
-T_len x _ _ = x
-
 wots_PKgen : Seed -> Seed -> Address -> NBytes
 wots_PKgen sk_seed pk_seed adrs =
-    T_len pk_seed wotspkADRS tmp
-    where
-    tmp = join (mkTmp 0 zero)
+    T_l`{len} pk_seed wotspkADRS (join tmp)
+  where
+    tmp = [ mkTmp i | i <- take`{len} [0...] ]
     wotspkADRS = setKeyPair (setType adrs WOTS_PK) (getKeyPair adrs)
-    mkTmp i tmp' =
-        if i >= `len then tmp'
-        else mkTmp (i + 1) (update tmp' i tmp_i)
-        where
-        tmp_i = chain sk 0 (`w - 1) pk_seed adrs'
+    mkTmp i = chain sk 0 (`w - 1) pk_seed adrs'
+      where
         adrs' = setChain adrs i
         sk = PRF sk_seed adrs'
 ```
