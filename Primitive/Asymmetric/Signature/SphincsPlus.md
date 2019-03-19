@@ -466,7 +466,9 @@ a single-byte argument (denoted by `sk[i]`) does not type-check.
 
 
 ```
-wots_sign : {wub} (8 * wub >= len1 * log_w) => [wub][8] -> Seed -> Seed -> Address -> [len]NBytes
+wots_sign :
+  {i} (8 * i >= len1 * log_w) =>
+  [i][8] -> Seed -> Seed -> Address -> [len]NBytes
 wots_sign M sk_seed pk_seed adrs = sig
   where
     msg : [len1][log_w]
@@ -483,4 +485,37 @@ wots_sign M sk_seed pk_seed adrs = sig
       where
         adrs' = setChain adrs i
         sk = PRF sk_seed adrs'
+```
+
+
+### 3.6. WOTS+ Compute Public Key from Signature
+
+```
+wots_pkFromSig :
+  {i} (8 * i >= len1 * log_w) =>
+  [len]NBytes -> [i][8] -> Seed -> Address -> NBytes
+
+wots_pkFromSig sig M pk_seed adrs =
+    T_l`{len} pk_seed wotspkADRS (join tmp)
+  where
+    msg : [len1][log_w]
+    msg = base_w`{out_len=len1} M
+
+    csum : [len2 * log_w]
+    csum = sum [ zext (~ msg_i) | msg_i <- msg ]
+
+    msg' : [len][log_w]
+    msg' = msg # split`{parts=len2} csum
+
+    tmp : [len]_
+    tmp = [ mkTmp i sig_i msg_i | i <- take`{len} [0...] | sig_i <- sig | msg_i <- msg' ]
+
+    mkTmp : [32] -> _
+    mkTmp i sig_i msg_i =
+        chain sig_i (toInteger msg_i) (toInteger (~ msg_i)) pk_seed adrs'
+      where
+        adrs' = setChain adrs i
+
+    wotspkADRS : Address
+    wotspkADRS = setKeyPair (setType adrs WOTS_PK) (getKeyPair adrs)
 ```
