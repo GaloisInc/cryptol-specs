@@ -217,22 +217,22 @@ FORS_ROOTS = 4 : AddressWord
 getLayer : Address -> AddressWord
 getLayer = take
 
-setLayer : Address -> AddressWord -> Address
-setLayer adrs layer = layer # (take adrs)
+setLayer : AddressWord -> Address -> Address
+setLayer layer adrs = layer # (take adrs)
 
 getTree : Address -> TreeAddress
 getTree adrs = take (drop`{32} adrs)
 
-setTree : Address -> TreeAddress -> Address
-setTree adrs tree = take`{32} adrs # tree # drop`{128} adrs
+setTree : TreeAddress -> Address -> Address
+setTree tree adrs = take`{32} adrs # tree # drop`{128} adrs
 
 getType : Address -> AddressWord
 getType adrs = take (drop`{128} adrs)
 
 // Setting the type field implicitly zeros out
 // the subsequent three address words
-setType : Address -> AddressWord -> Address
-setType adrs typ = take`{128} adrs # typ # zero
+setType : AddressWord -> Address -> Address
+setType typ adrs = take`{128} adrs # typ # zero
 
 wat = error "wrong address type"
 
@@ -245,8 +245,8 @@ getKeyPair adrs =
     t  = getType adrs
     kp = take (drop`{160} adrs)
 
-setKeyPair : Address -> AddressWord -> Address
-setKeyPair adrs kp =
+setKeyPair : AddressWord -> Address -> Address
+setKeyPair kp adrs =
     if t == WOTS_HASH then adrs'
      | t == WOTS_PK   then adrs'
     else wat
@@ -260,8 +260,8 @@ getChain adrs =
     then take (drop`{192} adrs)
     else wat
 
-setChain : Address -> AddressWord -> Address
-setChain adrs chn =
+setChain : AddressWord -> Address -> Address
+setChain chn adrs =
     if getType adrs == WOTS_HASH
     then take`{192} adrs # chn # drop adrs
     else wat
@@ -272,8 +272,8 @@ getHash adrs =
     then drop`{224} adrs
     else wat
 
-setHash : Address -> AddressWord -> Address
-setHash adrs hash =
+setHash : AddressWord -> Address -> Address
+setHash hash adrs =
     if getType adrs == WOTS_HASH
     then take adrs # hash
     else wat
@@ -287,8 +287,8 @@ getTreeHeight adrs =
     t      = getType adrs
     height = take (drop`{192} adrs)
 
-setTreeHeight : Address -> TreeHeight -> Address
-setTreeHeight adrs height =
+setTreeHeight : TreeHeight -> Address -> Address
+setTreeHeight height adrs =
     if t == FORS_TREE  then adrs'
      | t == FORS_ROOTS then adrs'
     else wat
@@ -305,8 +305,8 @@ getTreeIndex adrs =
     t  = getType adrs
     ix = drop adrs
 
-setTreeIndex : Address -> AddressWord -> Address
-setTreeIndex adrs ix =
+setTreeIndex : AddressWord -> Address -> Address
+setTreeIndex ix adrs =
     if t == FORS_TREE  then adrs'
      | t == FORS_ROOTS then adrs'
     else wat
@@ -409,7 +409,7 @@ chain X i s seed adrs =
     chain' s' adrs' X' =
         if s' == 0 then X'
         else chain' (s' - 1)
-                    (setHash adrs' (fromInteger (i + s' - 1)))
+                    (setHash (fromInteger (i + s' - 1)) adrs')
                     (F seed adrs' X')
 ```
 
@@ -425,7 +425,7 @@ We'll assume it initially contains all-zero bytestrings.
 ```
 wots_SKgen : Seed -> Address -> [len]NBytes
 wots_SKgen seed adrs =
-  [ PRF seed (setChain adrs i) | i <- take`{len} [0...] ]
+  [ PRF seed (setChain i adrs) | i <- take`{len} [0...] ]
 ```
 
 ### 3.4 WOTS+ Public Key Generation
@@ -449,10 +449,10 @@ wots_PKgen sk_seed pk_seed adrs =
     T_l`{len} pk_seed wotspkADRS (join tmp)
   where
     tmp = [ mkTmp i | i <- take`{len} [0...] ]
-    wotspkADRS = setKeyPair (setType adrs WOTS_PK) (getKeyPair adrs)
+    wotspkADRS = setKeyPair (getKeyPair adrs) (setType WOTS_PK adrs)
     mkTmp i = chain sk 0 (`w - 1) pk_seed adrs'
       where
-        adrs' = setChain adrs i
+        adrs' = setChain i adrs
         sk = PRF sk_seed adrs'
 ```
 
@@ -484,7 +484,7 @@ wots_sign M sk_seed pk_seed adrs = sig
     sig = [ mkSig i msg_i | i <- take`{len} [0...] | msg_i <- msg' ]
     mkSig i msg_i = chain sk 0 (toInteger msg_i) pk_seed adrs'
       where
-        adrs' = setChain adrs i
+        adrs' = setChain i adrs
         sk = PRF sk_seed adrs'
 ```
 
@@ -515,10 +515,10 @@ wots_pkFromSig sig M pk_seed adrs =
     mkTmp i sig_i msg_i =
         chain sig_i (toInteger msg_i) (toInteger (~ msg_i)) pk_seed adrs'
       where
-        adrs' = setChain adrs i
+        adrs' = setChain i adrs
 
     wotspkADRS : Address
-    wotspkADRS = setKeyPair (setType adrs WOTS_PK) (getKeyPair adrs)
+    wotspkADRS = setKeyPair (getKeyPair adrs) (setType WOTS_PK adrs)
 ```
 
 
@@ -546,8 +546,8 @@ treehash sk_seed s z pk_seed adrs =
       // internal node case
       H pk_seed adrs' (hashL # hashR)
   where
-    adrs0 = setKeyPair (setType adrs WOTS_HASH) s
-    adrs' = setTreeHeight (setTreeIndex (setType adrs TREE) (s >> z)) z
+    adrs0 = setKeyPair s (setType WOTS_HASH adrs)
+    adrs' = setTreeHeight z (setTreeIndex (s >> z) (setType TREE adrs))
     z' = z - 1
     hashL = treehash sk_seed s z' pk_seed adrs
     hashR = treehash sk_seed (s + (1<<z')) z' pk_seed adrs
