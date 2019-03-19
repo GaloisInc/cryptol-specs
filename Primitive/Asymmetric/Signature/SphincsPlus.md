@@ -206,6 +206,7 @@ including type checks as appropriate.
 type Address     = [256]
 type AddressWord = [32]
 type TreeAddress = [96]
+type TreeHeight  = [32]
 
 WOTS_HASH  = 0 : AddressWord
 WOTS_PK    = 1 : AddressWord
@@ -277,7 +278,7 @@ setHash adrs hash =
     then take adrs # hash
     else wat
 
-getTreeHeight : Address -> AddressWord
+getTreeHeight : Address -> TreeHeight
 getTreeHeight adrs =
     if t == FORS_TREE  then height
      | t == FORS_ROOTS then height
@@ -286,7 +287,7 @@ getTreeHeight adrs =
     t      = getType adrs
     height = take (drop`{192} adrs)
 
-setTreeHeight : Address -> AddressWord -> Address
+setTreeHeight : Address -> TreeHeight -> Address
 setTreeHeight adrs height =
     if t == FORS_TREE  then adrs'
      | t == FORS_ROOTS then adrs'
