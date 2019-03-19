@@ -162,6 +162,11 @@ which abstract over the implementations of SHA2 or SHAKE.
 
 #### 2.7.1 Tweakable Hash Functions
 
+The spec describes `T_l` as a function that takes a byte-string of
+length `l*n`. In the pseudocode that appears later in the spec, the
+argument to `T_l` is generally given as a length-`l` array of `n`-byte
+strings, so we express its type accordingly.
+
 Translating the given function signatures:
 
 ```
@@ -169,13 +174,13 @@ parameter
 
   /** A tweakable hash function that takes an n-byte public seed, an
   address, and an n*l-byte message to produce an n-byte hash. */
-  T_l : {l} (fin l) => [n*8] -> Address -> [l*n*8] -> [n*8]
+  T_l : {l} (fin l) => [n*8] -> Address -> [l][n*8] -> [n*8]
 
 F : [n*8] -> Address -> [n*8] -> [n*8]
-F = T_l`{1}
+F seed adrs x = T_l`{1} seed adrs [x]
 
-H : [n*8] -> Address -> [n*16] -> [n*8]
-H = T_l`{2}
+H : [n*8] -> Address -> [2][n*8] -> [n*8]
+H seed adrs = T_l`{2} seed adrs
 ```
 
 #### 2.7.2 PRF and Message Digest
@@ -430,23 +435,17 @@ wots_SKgen seed adrs =
 
 ### 3.4 WOTS+ Public Key Generation
 
-The `T_l` function in the specification's pseudocode
+The `T_len` function in the specification's pseudocode
 denotes tweakable hash function `T_l` as defined in Section 2.7.1,
 instantiated at `len`.
 
 We infer the type of a public key from the final call to `T_l`,
 as the spec does not define it directly.
 
-In the pseudocode, the last argument of that call, `tmp`,
-is clearly a length-`len` array of *n*-byte strings,
-although the signature of `T_l` specifies a single flat bytestring.
-We respect that signature, and amend the pseudocode algorithm,
-by joining the array before passing it to `T_l`.
-
 ```
 wots_PKgen : Seed -> Seed -> Address -> NBytes
 wots_PKgen sk_seed pk_seed adrs =
-    T_l`{len} pk_seed wotspkADRS (join tmp)
+    T_l`{len} pk_seed wotspkADRS tmp
   where
     tmp = [ mkTmp i | i <- take`{len} [0...] ]
     wotspkADRS = setKeyPair (getKeyPair adrs) (setType WOTS_PK adrs)
@@ -497,7 +496,7 @@ wots_pkFromSig :
   [len]NBytes -> [i][8] -> Seed -> Address -> NBytes
 
 wots_pkFromSig sig M pk_seed adrs =
-    T_l`{len} pk_seed wotspkADRS (join tmp)
+    T_l`{len} pk_seed wotspkADRS tmp
   where
     msg : [len1][log_w]
     msg = base_w`{out_len=len1} M
@@ -544,7 +543,7 @@ treehash sk_seed s z pk_seed adrs =
       wots_PKgen sk_seed pk_seed adrs0
     else
       // internal node case
-      H pk_seed adrs' (hashL # hashR)
+      H pk_seed adrs' [hashL, hashR]
   where
     adrs0 = setKeyPair s (setType WOTS_HASH adrs)
     adrs' = setTreeHeight z (setTreeIndex (s >> z) (setType TREE adrs))
