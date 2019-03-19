@@ -460,3 +460,27 @@ we have `sk`. Since `sk` is the result of a call to **PRF**,
 it must be an *n*-byte string.
 Function `chain` only accepts values of that type as its first argument:
 a single-byte argument (denoted by `sk[i]`) does not type-check.
+
+
+### 3.5 WOTS+ Signature Generation
+
+
+```
+wots_sign : {wub} (8 * wub >= len1 * log_w) => [wub][8] -> Seed -> Seed -> Address -> [len]NBytes
+wots_sign M sk_seed pk_seed adrs = sig
+  where
+    msg : [len1][log_w]
+    msg = base_w`{out_len=len1} M
+
+    csum : [len2 * log_w]
+    csum = sum [ zext (~ msg_i) | msg_i <- msg ]
+
+    msg' : [len][log_w]
+    msg' = msg # split`{parts=len2} csum // FIXME: this fails without the type application
+
+    sig = [ mkSig i msg_i | i <- take`{len} [0...] | msg_i <- msg' ]
+    mkSig i msg_i = chain sk 0 (toInteger msg_i) pk_seed adrs'
+      where
+        adrs' = setChain adrs i
+        sk = PRF sk_seed adrs'
+```
