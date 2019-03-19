@@ -520,3 +520,35 @@ wots_pkFromSig sig M pk_seed adrs =
     wotspkADRS : Address
     wotspkADRS = setKeyPair (setType adrs WOTS_PK) (getKeyPair adrs)
 ```
+
+
+## 4. The SPHINCS+ Hypertree
+
+### 4.1 (Fixed Input-Length) XMSS
+
+#### 4.1.3. TreeHash (Function `treehash`)
+
+The specification document describes `treehash` in an imperative style
+using a stack of intermediate results. For the Cryptol version we
+translate it into a simpler recursive functional style.
+
+Function `treehash` has a precondition: `s` should be a multiple of
+`2^^z`. All recursive calls in the Cryptol implementation maintain
+this invariant.
+
+```
+treehash : Seed -> [32] -> TreeHeight -> Seed -> Address -> NBytes
+treehash sk_seed s z pk_seed adrs =
+    if z == 0 then
+      // leaf case
+      wots_PKgen sk_seed pk_seed adrs0
+    else
+      // internal node case
+      H pk_seed adrs' (hashL # hashR)
+  where
+    adrs0 = setKeyPair (setType adrs WOTS_HASH) s
+    adrs' = setTreeHeight (setTreeIndex (setType adrs TREE) (s >> z)) z
+    z' = z - 1
+    hashL = treehash sk_seed s z' pk_seed adrs
+    hashR = treehash sk_seed (s + (1<<z')) z' pk_seed adrs
+```
