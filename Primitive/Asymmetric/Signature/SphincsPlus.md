@@ -507,10 +507,10 @@ wots_pkFromSig sig M pk_seed adrs =
     msg' : [len][log_w]
     msg' = msg # split`{parts=len2} csum
 
-    tmp : [len]_
+    tmp : [len]NBytes
     tmp = [ mkTmp i sig_i msg_i | i <- take`{len} [0...] | sig_i <- sig | msg_i <- msg' ]
 
-    mkTmp : [32] -> _
+    mkTmp : [32] -> NBytes -> [log_w] -> NBytes
     mkTmp i sig_i msg_i =
         chain sig_i (toInteger msg_i) (toInteger (~ msg_i)) pk_seed adrs'
       where
