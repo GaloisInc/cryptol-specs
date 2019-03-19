@@ -569,3 +569,33 @@ xmss_PKgen : Seed -> Seed -> Address -> NBytes
 xmss_PKgen sk_seed pk_seed adrs = pk
   where pk = treehash sk_seed 0 `h' pk_seed adrs
 ```
+
+#### 4.1.5. XMSS Signature
+
+"The authentication path is an array of h′ n-byte strings. It contains
+the siblings of the nodes in on the path from the used leaf to the
+root. It does not contain the nodes on the path itself."
+
+```
+AUTH : Seed -> [32] -> Seed -> Address -> [h']NBytes
+AUTH sk_seed idx pk_seed adrs = [ mkAuth j | j <- take`{h'} [0...] ]
+  where
+    mkAuth j = treehash sk_seed (k << j) j pk_seed adrs
+      where k = (idx >> j) ^ 1
+// TODO : convert to lhs-indexing when we add that feature to cryptol.
+```
+
+#### 4.1.6. XMSS Signature Generation (Function `xmss_sign`)
+
+```
+xmms_sign :
+  {i} (8 * i >= len1 * log_w) =>
+  [i][8] -> Seed -> [32] -> Seed -> Address -> [len + h']NBytes
+xmms_sign M sk_seed idx pk_seed adrs = sig # auth
+  where
+    sig : [len]NBytes
+    sig = wots_sign M sk_seed pk_seed adrs
+
+    auth : [h']NBytes
+    auth = AUTH sk_seed idx pk_seed adrs
+```
