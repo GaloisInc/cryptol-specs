@@ -525,6 +525,16 @@ wots_pkFromSig sig M pk_seed adrs =
 
 ### 4.1 (Fixed Input-Length) XMSS
 
+#### 4.1.1. XMSS Parameters
+
+```
+parameter
+  /** The height (number of levels - 1) of the tree. There are 2^h'
+      leaves in the tree. */
+  type h' : #
+  type constraint (32 >= h')
+```
+
 #### 4.1.3. TreeHash (Function `treehash`)
 
 The specification document describes `treehash` in an imperative style
@@ -550,4 +560,12 @@ treehash sk_seed s z pk_seed adrs =
     z' = z - 1
     hashL = treehash sk_seed s z' pk_seed adrs
     hashR = treehash sk_seed (s + (1<<z')) z' pk_seed adrs
+```
+
+#### 4.1.4. XMSS Public Key Generation (Function `xmss_PKgen`)
+
+```
+xmss_PKgen : Seed -> Seed -> Address -> NBytes
+xmss_PKgen sk_seed pk_seed adrs = pk
+  where pk = treehash sk_seed 0 `h' pk_seed adrs
 ```
