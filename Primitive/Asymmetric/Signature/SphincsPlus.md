@@ -629,3 +629,25 @@ xmss_pkFromSig idx sig_xmss M pk_seed adrs = last nodes
       | k <- take`{h'} [0...]
       ]
 ```
+
+### 4.2. HT: The Hypertee [sic]
+
+#### 4.2.1. HT Parameters
+
+```
+parameter
+
+  /** The number or tree layers. */
+  type d : #
+  type constraint (fin d, 32 >= width d)
+```
+
+#### 4.2.2. HT Key Generation (Function `ht_PKgen`)
+
+```
+ht_PKgen : Seed -> Seed -> _
+ht_PKgen sk_seed pk_seed = root
+  where
+    adrs = setTree 0 (setLayer (`d-1) zero)
+    root = xmss_PKgen sk_seed pk_seed adrs
+```
