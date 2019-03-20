@@ -352,6 +352,7 @@ parameter
       parameter. A block may represent a message, private key, public
       key, or signature element. */
   type NBytes : *
+  type constraint (Cmp NBytes)
 
   /** The number of base-w digits necessary to represent a message. */
   type len1 : #
@@ -707,6 +708,25 @@ ht_sign M sk_seed pk_seed idx_tree idx_leaf = sig_ht
       [ xmss_sign r sk_seed l pk_seed (adrs t j)
       | (t, l) <- tree_leaf
       | r <- root
+      | j <- [0...]
+      ]
+```
+
+#### 4.2.5. HT Signature Verification (Function `ht_verify`)
+
+```
+ht_verify : Message -> SIG_HT -> Seed -> TreeAddress -> [32] -> NBytes -> Bool
+ht_verify M sig_ht pk_seed idx_tree idx_leaf pk_ht = (last ([M] # node) == pk_ht)
+  where
+    adrs : TreeAddress -> [32] -> Address
+    adrs t j = setTree t (setLayer j zero)
+
+    node : [d]NBytes
+    node =
+      [ xmss_pkFromSig l s n pk_seed (adrs t j)
+      | (t, l) <- tree_leaf_indexes (idx_tree, idx_leaf)
+      | s <- sig_ht
+      | n <- [M] # node
       | j <- [0...]
       ]
 ```
