@@ -597,10 +597,10 @@ type SIG_XMSS = ([len]NBytes, [h']NBytes)
 #### 4.1.6. XMSS Signature Generation (Function `xmss_sign`)
 
 ```
-xmms_sign :
+xmss_sign :
   {i} (8 * i >= len1 * log_w) =>
   [i][8] -> Seed -> [32] -> Seed -> Address -> SIG_XMSS
-xmms_sign M sk_seed idx pk_seed adrs = (sig, auth)
+xmss_sign M sk_seed idx pk_seed adrs = (sig, auth)
   where
     sig : [len]NBytes
     sig = wots_sign M sk_seed pk_seed adrs
