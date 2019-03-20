@@ -585,12 +585,16 @@ AUTH sk_seed idx pk_seed adrs = [ mkAuth j | j <- take`{h'} [0...] ]
 // TODO : convert to lhs-indexing when we add that feature to cryptol.
 ```
 
+```
+type SIG_XMSS = [len + h']NBytes
+```
+
 #### 4.1.6. XMSS Signature Generation (Function `xmss_sign`)
 
 ```
 xmms_sign :
   {i} (8 * i >= len1 * log_w) =>
-  [i][8] -> Seed -> [32] -> Seed -> Address -> [len + h']NBytes
+  [i][8] -> Seed -> [32] -> Seed -> Address -> SIG_XMSS
 xmms_sign M sk_seed idx pk_seed adrs = sig # auth
   where
     sig : [len]NBytes
@@ -605,7 +609,7 @@ xmms_sign M sk_seed idx pk_seed adrs = sig # auth
 ```
 xmss_pkFromSig :
   {i} (8 * i >= len1 * log_w) =>
-  [32] -> [len + h']NBytes -> [i][8] -> Seed -> Address -> NBytes
+  [32] -> SIG_XMSS -> [i][8] -> Seed -> Address -> NBytes
 xmss_pkFromSig idx sig_xmss M pk_seed adrs = last nodes
   where
     (sig, auth) = splitAt`{len,h'} sig_xmss
