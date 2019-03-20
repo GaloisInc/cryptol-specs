@@ -174,12 +174,12 @@ parameter
 
   /** A tweakable hash function that takes an n-byte public seed, an
   address, and an n*l-byte message to produce an n-byte hash. */
-  T_l : {l} (fin l) => [n][8] -> Address -> [l][n][8] -> [n][8]
+  T_l : {l} (fin l) => Seed -> Address -> [l]NBytes -> NBytes
 
-F : [n][8] -> Address -> [n][8] -> [n][8]
+F : Seed -> Address -> NBytes -> NBytes
 F seed adrs x = T_l`{1} seed adrs [x]
 
-H : [n][8] -> Address -> [2][n][8] -> [n][8]
+H : Seed -> Address -> [2]NBytes -> NBytes
 H seed adrs = T_l`{2} seed adrs
 ```
 
@@ -191,13 +191,13 @@ Translating their signatures, and guessing at the type constraints:
 ```
 parameter
   /** Pseudorandom function for pseudorandom key generation. */
-  PRF : [n][8] -> Address -> [n][8]
+  PRF : NBytes -> Address -> NBytes
 
   /** Pseudorandom function to generate randomness for message compression. */
-  PRF_msg : {k} (fin k) => [n][8] -> [n][8] -> [k][8] -> [n][8]
+  PRF_msg : {k} (fin k) => NBytes -> NBytes -> [k][8] -> NBytes
 
   // /** Keyed hash function that can process arbitrary-length messages. */
-  //H_msg : {k} (fin k) => [n][8] -> [n][8] -> [n][8] -> [k][8] -> [m][8]
+  //H_msg : {k} (fin k) => NBytes -> NBytes -> NBytes -> [k][8] -> [m][8]
   // (?) result type? Paper says "B^m" without defining m.
 ```
 
@@ -652,7 +652,7 @@ parameter
 #### 4.2.2. HT Key Generation (Function `ht_PKgen`)
 
 ```
-ht_PKgen : Seed -> Seed -> _
+ht_PKgen : Seed -> Seed -> NBytes
 ht_PKgen sk_seed pk_seed = root
   where
     adrs = setTree 0 (setLayer (`d-1) zero)
