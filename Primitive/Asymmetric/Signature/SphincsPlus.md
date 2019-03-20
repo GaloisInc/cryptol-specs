@@ -599,3 +599,33 @@ xmms_sign M sk_seed idx pk_seed adrs = sig # auth
     auth : [h']NBytes
     auth = AUTH sk_seed idx pk_seed adrs
 ```
+
+#### 4.1.7. XMSS Compute Public Key from Signature (Function `xmss_pkFromSig`)
+
+```
+xmss_pkFromSig :
+  {i} (8 * i >= len1 * log_w) =>
+  [32] -> [len + h']NBytes -> [i][8] -> Seed -> Address -> NBytes
+xmss_pkFromSig idx sig_xmss M pk_seed adrs = last nodes
+  where
+    (sig, auth) = splitAt`{len,h'} sig_xmss
+
+    adrs0 : Address
+    adrs0 = setKeyPair idx (setType WOTS_HASH adrs)
+
+    node0 : NBytes
+    node0 = wots_pkFromSig sig M pk_seed adrs0
+
+    adrs' : TreeHeight -> Address
+    adrs' k = setTreeHeight k (setTreeIndex (idx >> k) (setType TREE adrs))
+
+    nodes : [1 + h']NBytes
+    nodes =
+      [ node0 ] #
+      [ if idx!k then H pk_seed (adrs' k) [sib, prev]
+                 else H pk_seed (adrs' k) [prev, sib]
+      | sib <- auth
+      | prev <- nodes
+      | k <- take`{h'} [0...]
+      ]
+```
