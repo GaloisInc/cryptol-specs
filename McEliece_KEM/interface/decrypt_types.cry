@@ -1,0 +1,32 @@
+module Decrypt_types where
+
+import Types
+
+// parameter type
+type e_t = SYS_N8_t
+type sk_t = secretkey_t
+type c_t = ciphertext_t
+
+//decrypt specific types
+type g_t = [120]gf_t //SYS_T+1
+type s_t = SYS_T_double_t //SYS_T*2
+type L_t = SYS_N_t
+type r_t = SYS_N8_t
+
+//decrypt specific functions
+load2 : sk_t -> [32] -> gf_t
+load2 sk sk_index = zero
+
+support_gen : sk_t -> SYS_N_t
+support_gen sk  = zero
+
+synd : g_t -> L_t -> r_t -> s_t
+synd g L r = zero
+
+bm : s_t-> g_t
+bm = zero
+
+root : g_t ->  SYS_N_t -> SYS_N_t
+root locator L = zero
+
+gf_iszero _ = zero

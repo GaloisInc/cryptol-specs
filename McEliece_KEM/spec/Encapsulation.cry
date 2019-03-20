@@ -1,0 +1,86 @@
+module Encapsulation where
+
+parameter
+    type t : #
+    type constraint (fin t, t>=1, t-1>=1)
+    type n : #
+    type constraint (fin n, n>=1)
+    type m : #
+    type constraint (fin m, m>=1, t * n == min t n)
+    type d : #
+
+// in order of general algorithm spec
+type f2_T = Bit
+type n_T = [n]f2_T
+type k_T = [(n-m*t)]f2_T
+type t_T = [t]f2_T
+type m_T = [m]f2_T
+type mt_T = [m*t]f2_T  // also n-k
+type H_T = [t][n]field_element_T
+type d_T = [d]f2_T
+type field_element_T = m_T
+type poly_T =  [t]field_element_T
+type alphas_T = [n]field_element_T
+type gamma_T =
+    { p : poly_T                // [13]Bit
+    , a : alphas_T              // [6960][13]Bit  //[n][m]Bit
+    }
+type s_T  = n_T
+type private_key_T =
+    { s : n_T                   // [870][8]Bit
+    , g : gamma_T
+    }
+type public_key_T = [m*t][(n-m*t)]f2_T
+type C0_T = mt_T
+type C1_T = d_T
+type cipher_text_T =
+    { C0 : C0_T
+    , C1 : C1_T}
+type hash_input_T =
+    { n : Integer
+    , v : n_T
+    , C : cipher_text_T}
+
+// a bit string of length and Hamming weight T
+type weighted_T = n_T
+
+
+//--------------------------------------------------
+// Define H = (I_n-k |T )
+step_1 : mt_T -> public_key_T -> H_T
+step_1 I A = zero
+// get inverse A|I
+
+// reduce matrix I|B
+// Co = He
+step_2 : H_T -> weighted_T -> C0_T
+step_2 H e = zero
+
+//
+// encoding subroutine
+encoding_subroutine : weighted_T -> public_key_T -> C0_T
+encoding_subroutine e T = C0 where
+    (I: mt_T) = zero
+    (H:H_T) = step_1 I T     // not sure about H type here
+    (C0:C0_T) = step_2 H e
+
+
+type session_key_t = [32] //?
+// 2.6.3
+compute_hash_2e e = undefined
+// 2.6.4
+compute_hash_1e e C = undefined
+
+// step 1.) uniform random vector e
+encapsulation
+    : public_key_T ->  weighted_T
+    -> (session_key_t, cipher_text_T)
+encapsulation T e =  (K, C) where
+    // step 1. uniform random vector e (given as input)
+    // step 2. use encoding subroutine on e and public key T to compute Co
+    (C0 : C0_T) = encoding_subroutine e T
+    // step 3.
+    (C1: C1_T) = compute_hash_2e e
+    (C: cipher_text_T) = {C0 = C0, C1 = C1}
+    (K: session_key_t) = compute_hash_1e e C
+

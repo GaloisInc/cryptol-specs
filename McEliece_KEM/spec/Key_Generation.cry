@@ -9,34 +9,42 @@ parameter
     type constraint (fin m, m>=1, t * n == min t n)
     type d : #
 
+// in order of general algorithm spec
 type f2_T = Bit
-type m_T = [m]f2_T
-type d_T = [d]f2_T
 type n_T = [n]f2_T
-type t_T = [t]f2_T
-type mt_T = [m*t]f2_T
 type k_T = [(n-m*t)]f2_T
+type t_T = [t]f2_T
+type m_T = [m]f2_T
+type mt_T = [m*t]f2_T
+type H_T = [t][n]field_element_T
+type d_T = [d]f2_T
 type field_element_T = m_T
 type poly_T =  [t]field_element_T
 type alphas_T = [n]field_element_T
-type H_T = [t][n]field_element_T
-type session_key_T = d_T
-type cipher_text_T =
-    { C0 : mt_T
-    , C1 : d_T}
-type hash_input_T =
-    { n : Integer
-    , v : n_T
-    , C : cipher_text_T}
-type public_key_T = [m*t][(n-m*t)]f2_T
 type gamma_T =
     { p : poly_T                // [13]Bit
     , a : alphas_T              // [6960][13]Bit  //[n][m]Bit
     }
+type s_T  = n_T
 type private_key_T =
     { s : n_T                   // [870][8]Bit
     , g : gamma_T
     }
+type public_key_T = [m*t][(n-m*t)]f2_T
+type C0_T = mt_T
+type C1_T = d_T
+type cipher_text_T =
+    { C0 : C0_T
+    , C1 : C1_T}
+type hash_input_T =
+    { n : Integer
+    , v : n_T
+    , C : cipher_text_T}
+type e_T =
+    { length : n_T
+    , hammington_weight : t_T
+    }
+
 
 //--------------------------------------------------
 //TODO :)

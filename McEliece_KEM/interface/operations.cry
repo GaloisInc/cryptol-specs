@@ -1,0 +1,28 @@
+module Operations where
+
+import Encrypt
+import Types
+import Encrypt_types
+
+//--------------------------------------------------
+
+compute_hash_2e: [871]base_t -> [32]base_t
+compute_hash_2e in = undefined
+compute_hash_1e : [1097]base_t -> [32]base_t
+compute_hash_1e in = undefined
+
+// encapsulation
+crypto_kem_enc : ct_t -> key_t -> pk_t -> e_t
+    -> (ct_t, key_t)
+crypto_kem_enc c0 key pk e =  (c2, key2) where
+    // step 1. uniform random vector e (given as input)
+    (e:[872]base_t) = zero
+    // step 2. use encoding subroutine on e and public key T to compute Co
+    (c1: [226]base_t) = encrypt c0 pk e
+    // step 3.
+    (two_e:[871]base_t) = zero //FIXME make 2
+    (c2: [226]base_t) = (take `{194} c1 ) # (compute_hash_2e two_e)
+    (one_ec:[1097]base_t) = ([1])#(take `{870} e)#c2
+    (key2: key_t) = compute_hash_1e one_ec
+
+

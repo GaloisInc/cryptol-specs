@@ -4,5 +4,4 @@ import CM_Parameters
 import CM_696 
 import CM_819
 import `Key_Generation 
-
-
+import `Encapsulation

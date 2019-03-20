@@ -1,0 +1,47 @@
+module Decrypt where
+
+import Types
+import Decrypt_types
+
+decrypt : sk_t -> c_t -> (e_t, gf_t)
+decrypt sk c = (e, check) where
+    (r:r_t) = (take `{194} c)#zero
+    //(r:r_t) = (take `{SYND_BYTES} c)#zero
+    loop_1 g i sk_index =
+        if i < SYS_T
+        then loop_1 g' (i+1) (sk_index+2) where
+            (a:gf_t)= load2 sk sk_index
+            (b:gf_t) = a && GFMASK
+            g'= update g i b
+        else g
+    (g_0 : g_t) = zero
+    (g_1 : g_t) = loop_1 g_0 0 0
+    (L : L_t) = support_gen sk
+    (s : s_t) = synd g_1 L r
+    (locator : g_t) = bm s
+    (images : SYS_N_t) = root locator L
+    loop_2 : [32] -> e_t -> gf_t -> ( e_t, gf_t)
+    loop_2 i e w =
+        if (i<SYS_N)
+        then loop_2 (i+1) e' w' where
+            (t : gf_t) = (gf_iszero (images @i)) && 1
+            jx = i/8
+            val = (e@jx) || t << (i%8)
+            (e':e_t) = update e jx val
+            (w':gf_t) = w+t
+        else (e, w)
+    (e: e_t, w:gf_t) = loop_2 0 zero 0
+    (s_cmp : s_t) = synd g_1 L e
+    loop_3 i check =
+        if (i<SYS_T*2)
+        then  loop_3 (i+1) check' where
+            check' = check || ((s@i) ^ (s_cmp@i))
+        else check
+
+    (check_0:gf_t) = w ^ SYS_T
+    (check_1:gf_t) = loop_3 0 check_0
+    (check_2:gf_t) = (check_1 -1)>> 15
+    (check:gf_t) = check_2 ^ 1
+
+
+

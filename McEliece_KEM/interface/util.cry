@@ -1,0 +1,9 @@
+module Util where
+
+import Types
+
+load2 src =
+    (a: base_16t) = src@1
+    b = a <<= 8
+    c = b |= src@0
+    return a & GFMASK
