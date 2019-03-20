@@ -353,12 +353,12 @@ parameter
       key, or signature element. */
   type NBytes : *
 
-  /** The number of base-w digits necessary to represent a block. */
-  type len1 : #
-  type constraint (fin len1, len1 >= 1)
-
   /** A message, usually an array of bytes of length `n`. */
   type Message : *
+
+  /** The number of base-w digits necessary to represent a message. */
+  type len1 : #
+  type constraint (fin len1, len1 >= 1)
 
   /** Split a message into a sequence of `len1` base-`w` digits. */
   base_w : Message -> [len1][log_w]
