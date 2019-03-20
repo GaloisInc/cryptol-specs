@@ -585,8 +585,13 @@ AUTH sk_seed idx pk_seed adrs = [ mkAuth j | j <- take`{h'} [0...] ]
 // TODO : convert to lhs-indexing when we add that feature to cryptol.
 ```
 
+An XMSS signature is a `(len + h') * n`-byte string consisting of
+  * a WOTS+ signature sig taking `len*n` bytes,
+  * the authentication path AUTH for the leaf associated with the used
+    WOTS+ key pair taking `h'*n` bytes.
+
 ```
-type SIG_XMSS = [len + h']NBytes
+type SIG_XMSS = ([len]NBytes, [h']NBytes)
 ```
 
 #### 4.1.6. XMSS Signature Generation (Function `xmss_sign`)
@@ -595,7 +600,7 @@ type SIG_XMSS = [len + h']NBytes
 xmms_sign :
   {i} (8 * i >= len1 * log_w) =>
   [i][8] -> Seed -> [32] -> Seed -> Address -> SIG_XMSS
-xmms_sign M sk_seed idx pk_seed adrs = sig # auth
+xmms_sign M sk_seed idx pk_seed adrs = (sig, auth)
   where
     sig : [len]NBytes
     sig = wots_sign M sk_seed pk_seed adrs
@@ -610,10 +615,8 @@ xmms_sign M sk_seed idx pk_seed adrs = sig # auth
 xmss_pkFromSig :
   {i} (8 * i >= len1 * log_w) =>
   [32] -> SIG_XMSS -> [i][8] -> Seed -> Address -> NBytes
-xmss_pkFromSig idx sig_xmss M pk_seed adrs = last nodes
+xmss_pkFromSig idx (sig, auth) M pk_seed adrs = last nodes
   where
-    (sig, auth) = splitAt`{len,h'} sig_xmss
-
     adrs0 : Address
     adrs0 = setKeyPair idx (setType WOTS_HASH adrs)
 
