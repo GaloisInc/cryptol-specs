@@ -652,6 +652,8 @@ parameter
   /** The number or tree layers. */
   type d : #
   type constraint (fin d, 32 >= width d)
+
+type h = h' * d
 ```
 
 #### 4.2.2. HT Key Generation (Function `ht_PKgen`)
@@ -662,4 +664,51 @@ ht_PKgen sk_seed pk_seed = root
   where
     adrs = setTree 0 (setLayer (`d-1) zero)
     root = xmss_PKgen sk_seed pk_seed adrs
+```
+
+#### 4.2.3 HT Signature
+
+```
+type SIG_HT = [d]SIG_XMSS
+```
+
+#### 4.2.4 HT Signature Generation (Function `ht_sign`)
+
+BUG: The pseudocode includes the statement `SIG_HT = SIG_HT ||
+SIG_tmp` at a point where `SIG_HT` has not been initialized.
+
+```
+ht_sign : Message -> Seed -> Seed -> TreeAddress -> [32] -> SIG_HT
+ht_sign M sk_seed pk_seed idx_tree0 idx_leaf0 = sig_ht
+  where
+    idx_tree : [inf]TreeAddress
+    idx_tree = [ idx_tree0 ] # [ t >> (`h':[32]) | t <- idx_tree ]
+
+    idx_leaf : [inf][32]
+    idx_leaf = [ idx_leaf0 ] # [ zext (drop t : [h']) | t <- idx_tree ]
+
+    adrs : [d]Address
+    adrs =
+      [ setTree t (setLayer j zero)
+      | t <- idx_tree
+      | j <- take`{d} [0...]
+      ]
+
+    root : [d+1]NBytes
+    root =
+      [ M ] #
+      [ xmss_pkFromSig l s r pk_seed a
+      | l <- idx_leaf
+      | s <- sig_ht
+      | r <- root
+      | a <- adrs
+      ]
+
+    sig_ht : [d]SIG_XMSS
+    sig_ht =
+      [ xmss_sign r sk_seed l pk_seed a
+      | r <- root
+      | l <- idx_leaf
+      | a <- adrs
+      ]
 ```
