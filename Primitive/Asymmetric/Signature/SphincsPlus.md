@@ -133,12 +133,6 @@ we can just use type-level arguments to Cryptol's built-in `split` and `take`.
 
 Note that the value of `split`'s argument `each` is the base-2 log of the spec's function parameter `w`.
 
-```
-base_w : {len_X, out_len} (fin out_len, 8 * len_X >= out_len * log_w) =>
-  [len_X][8] -> [out_len][log_w]
-base_w X = split (take (join X))
-```
-
 ### 2.6 Member Functions
 
 Cryptol has record types, and uses a dot syntax for accessing record components.
@@ -329,14 +323,35 @@ chaining, key generation, signing, and computing public keys.
 
 ### 3.1 WOTS+ Parameters
 
+WOTS+ is parameterized by `n`, which is "the security parameter; it is
+the message length as well as the length of a private key, public key,
+or signature element in bytes." In this Cryptol version, we don't make
+`n` a parameter directly, but instead use a type parameter `NBytes`
+for some type representing an `n`-byte array, such as `[n][8]` or
+`[n*8]`.
+
+In the spec, the length `len1` is defined as `floor(n/log(w))`, which
+(if correct) would be the number of base-`w` digits required to
+represent a string of `n` bits. However, elsewhere in the spec it is
+clear that a message of `n` *bytes* is supposed to be represented in
+`len1` base-`w` digits. In the Cryptol version we avoid the confusion
+by making `len1` a parameter, along with a function `base_w` which
+converts from `NBytes` to an array of `len1` base-`w` digits.
+
 ```
 parameter
 
-  /** "n: the security parameter; it is the message length as well as
-      the length of a private key, public key, or signature element in
-      bytes." (Section 3.1) */
-  type n : #
-  type constraint (fin n, n >= 1)
+  /** An array of bytes of length n, where n is the security
+      parameter. A block may represent a message, private key, public
+      key, or signature element. */
+  type NBytes : *
+
+  /** The number of base-w digits necessary to represent a block. */
+  type len1 : #
+  type constraint (fin len1, len1 >= 1)
+
+  /** Split a block into a sequence of `len1` base-`w` digits. */
+  base_w : NBytes -> [len1][log_w]
 
   /** The base-2 log of the Winternitz parameter w. (Section 3.1) */
   type log_w : #
@@ -350,17 +365,13 @@ parameter
     256}." (Section 3.1) */
 type w = 2 ^^ log_w
 
-/** The number of base-w digits necessary to represent an n-bit number. */
-type len1 = n /^ log_w
-
 /** The number of base-w digits necessary to represent the number
-    (len1 * (w - 1)). */
+    `len1 * (w - 1)`. */
 type len2 = width (len1 * (w - 1)) /^ log_w
 
 /** The number of base-w digits in a WOTS+ private key, public key, or
     signature. */
 type len = len1 + len2
-
 ```
 
 The formula to compute values `len = len_1 + len2` are given in the spec
@@ -401,7 +412,6 @@ We'll assume it is intended to indicate an error.
 
 ```
 // TODO: Replace with actual private key structure
-type NBytes = [n][8]
 type Seed = NBytes
 type Pk = { seed : Seed }
 
@@ -466,13 +476,13 @@ a single-byte argument (denoted by `sk[i]`) does not type-check.
 
 
 ```
-wots_sign :
-  {i} (8 * i >= len1 * log_w) =>
-  [i][8] -> Seed -> Seed -> Address -> [len]NBytes
+type Message = NBytes
+
+wots_sign : Message -> Seed -> Seed -> Address -> [len]NBytes
 wots_sign M sk_seed pk_seed adrs = sig
   where
     msg : [len1][log_w]
-    msg = base_w`{out_len=len1} M
+    msg = base_w M
 
     csum : [len2 * log_w]
     csum = sum [ zext (~ msg_i) | msg_i <- msg ]
@@ -491,15 +501,12 @@ wots_sign M sk_seed pk_seed adrs = sig
 ### 3.6. WOTS+ Compute Public Key from Signature
 
 ```
-wots_pkFromSig :
-  {i} (8 * i >= len1 * log_w) =>
-  [len]NBytes -> [i][8] -> Seed -> Address -> NBytes
-
+wots_pkFromSig : [len]NBytes -> Message -> Seed -> Address -> NBytes
 wots_pkFromSig sig M pk_seed adrs =
     T_l`{len} pk_seed wotspkADRS tmp
   where
     msg : [len1][log_w]
-    msg = base_w`{out_len=len1} M
+    msg = base_w M
 
     csum : [len2 * log_w]
     csum = sum [ zext (~ msg_i) | msg_i <- msg ]
@@ -597,9 +604,7 @@ type SIG_XMSS = ([len]NBytes, [h']NBytes)
 #### 4.1.6. XMSS Signature Generation (Function `xmss_sign`)
 
 ```
-xmss_sign :
-  {i} (8 * i >= len1 * log_w) =>
-  [i][8] -> Seed -> [32] -> Seed -> Address -> SIG_XMSS
+xmss_sign : Message -> Seed -> [32] -> Seed -> Address -> SIG_XMSS
 xmss_sign M sk_seed idx pk_seed adrs = (sig, auth)
   where
     sig : [len]NBytes
@@ -612,9 +617,7 @@ xmss_sign M sk_seed idx pk_seed adrs = (sig, auth)
 #### 4.1.7. XMSS Compute Public Key from Signature (Function `xmss_pkFromSig`)
 
 ```
-xmss_pkFromSig :
-  {i} (8 * i >= len1 * log_w) =>
-  [32] -> SIG_XMSS -> [i][8] -> Seed -> Address -> NBytes
+xmss_pkFromSig : [32] -> SIG_XMSS -> Message -> Seed -> Address -> NBytes
 xmss_pkFromSig idx (sig, auth) M pk_seed adrs = last nodes
   where
     adrs0 : Address
