@@ -678,37 +678,35 @@ BUG: The pseudocode includes the statement `SIG_HT = SIG_HT ||
 SIG_tmp` at a point where `SIG_HT` has not been initialized.
 
 ```
-ht_sign : Message -> Seed -> Seed -> TreeAddress -> [32] -> SIG_HT
-ht_sign M sk_seed pk_seed idx_tree0 idx_leaf0 = sig_ht
+tree_leaf_indexes : (TreeAddress, [32]) -> [d](TreeAddress, [32])
+tree_leaf_indexes (t0, l0) = take`{d} (iterate next (t0, l0))
   where
-    idx_tree : [inf]TreeAddress
-    idx_tree = [ idx_tree0 ] # [ t >> (`h':[32]) | t <- idx_tree ]
+    next (t, _) = (t >> (`h':[32]), zext (drop t : [h']))
 
-    idx_leaf : [inf][32]
-    idx_leaf = [ idx_leaf0 ] # [ zext (drop t : [h']) | t <- idx_tree ]
+ht_sign : Message -> Seed -> Seed -> TreeAddress -> [32] -> SIG_HT
+ht_sign M sk_seed pk_seed idx_tree idx_leaf = sig_ht
+  where
+    tree_leaf : [d](TreeAddress, [32])
+    tree_leaf = tree_leaf_indexes (idx_tree, idx_leaf)
 
-    adrs : [d]Address
-    adrs =
-      [ setTree t (setLayer j zero)
-      | t <- idx_tree
-      | j <- take`{d} [0...]
-      ]
+    adrs : TreeAddress -> [32] -> Address
+    adrs t j = setTree t (setLayer j zero)
 
-    root : [d+1]NBytes
+    root : [d+1]NBytes // last element is not used
     root =
       [ M ] #
-      [ xmss_pkFromSig l s r pk_seed a
-      | l <- idx_leaf
+      [ xmss_pkFromSig l s r pk_seed (adrs t j)
+      | (t, l) <- tree_leaf
       | s <- sig_ht
       | r <- root
-      | a <- adrs
+      | j <- [0...]
       ]
 
     sig_ht : [d]SIG_XMSS
     sig_ht =
-      [ xmss_sign r sk_seed l pk_seed a
+      [ xmss_sign r sk_seed l pk_seed (adrs t j)
+      | (t, l) <- tree_leaf
       | r <- root
-      | l <- idx_leaf
-      | a <- adrs
+      | j <- [0...]
       ]
 ```
