@@ -357,8 +357,11 @@ parameter
   type len1 : #
   type constraint (fin len1, len1 >= 1)
 
-  /** Split a block into a sequence of `len1` base-`w` digits. */
-  base_w : NBytes -> [len1][log_w]
+  /** A message, usually an array of bytes of length `n`. */
+  type Message : *
+
+  /** Split a message into a sequence of `len1` base-`w` digits. */
+  base_w : Message -> [len1][log_w]
 
   /** The base-2 log of the Winternitz parameter w. (Section 3.1) */
   type log_w : #
@@ -479,8 +482,6 @@ a single-byte argument (denoted by `sk[i]`) does not type-check.
 
 
 ```
-type Message = NBytes
-
 wots_sign : Message -> Seed -> Seed -> Address -> [len]NBytes
 wots_sign M sk_seed pk_seed adrs = sig
   where
