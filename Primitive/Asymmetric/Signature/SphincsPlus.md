@@ -353,15 +353,12 @@ parameter
       key, or signature element. */
   type NBytes : *
 
-  /** A message, usually an array of bytes of length `n`. */
-  type Message : *
-
   /** The number of base-w digits necessary to represent a message. */
   type len1 : #
   type constraint (fin len1, len1 >= 1)
 
   /** Split a message into a sequence of `len1` base-`w` digits. */
-  base_w : Message -> [len1][log_w]
+  base_w : NBytes -> [len1][log_w]
 
   /** The base-2 log of the Winternitz parameter w. (Section 3.1) */
   type log_w : #
@@ -370,6 +367,7 @@ parameter
   // needed for wots_PKgen
   type constraint (32 >= width len)
 
+type Message = NBytes
 
 /** "w: the Winternitz parameter; it is an element of the set {4, 16,
     256}." (Section 3.1) */
