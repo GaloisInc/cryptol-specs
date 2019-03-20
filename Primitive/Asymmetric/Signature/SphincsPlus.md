@@ -161,10 +161,17 @@ length `l*n`. In the pseudocode that appears later in the spec, the
 argument to `T_l` is generally given as a length-`l` array of `n`-byte
 strings, so we express its type accordingly.
 
+The spec describes the seed argument to `T_l` as an `n`-byte string.
+However, the spec doesn't actually depend on the representation of the
+seed, so we make it into an abstract module parameter.
+
 Translating the given function signatures:
 
 ```
 parameter
+
+  /** A seed for a tweakable hash function or pseudo-random function. */
+  type Seed : *
 
   /** A tweakable hash function that takes an n-byte public seed, an
   address, and an n*l-byte message to produce an n-byte hash. */
@@ -185,7 +192,7 @@ Translating their signatures, and guessing at the type constraints:
 ```
 parameter
   /** Pseudorandom function for pseudorandom key generation. */
-  PRF : NBytes -> Address -> NBytes
+  PRF : Seed -> Address -> NBytes
 
   /** Pseudorandom function to generate randomness for message compression. */
   PRF_msg : {k} (fin k) => NBytes -> NBytes -> [k][8] -> NBytes
@@ -411,10 +418,6 @@ The return value "NULL" is used by the spec pseudocode, but never defined.
 We'll assume it is intended to indicate an error.
 
 ```
-// TODO: Replace with actual private key structure
-type Seed = NBytes
-type Pk = { seed : Seed }
-
 chain : NBytes -> Integer -> Integer -> Seed -> Address -> NBytes
 chain X i s seed adrs =
     if i + s > `w - 1 then error "spec says NULL"
