@@ -175,13 +175,13 @@ parameter
 
   /** A tweakable hash function that takes an n-byte public seed, an
   address, and an n*l-byte message to produce an n-byte hash. */
-  T_l : {l} (fin l) => Seed -> Address -> [l]NBytes -> NBytes
+  T : {l} (fin l) => Seed -> Address -> [l]NBytes -> NBytes
 
 F : Seed -> Address -> NBytes -> NBytes
-F seed adrs x = T_l`{1} seed adrs [x]
+F seed adrs x = T`{1} seed adrs [x]
 
 H : Seed -> Address -> [2]NBytes -> NBytes
-H seed adrs = T_l`{2} seed adrs
+H seed adrs = T`{2} seed adrs
 ```
 
 #### 2.7.2 PRF and Message Digest
@@ -451,16 +451,16 @@ wots_SKgen seed adrs =
 ### 3.4 WOTS+ Public Key Generation
 
 The `T_len` function in the specification's pseudocode
-denotes tweakable hash function `T_l` as defined in Section 2.7.1,
+denotes tweakable hash function `T` as defined in Section 2.7.1,
 instantiated at `len`.
 
-We infer the type of a public key from the final call to `T_l`,
+We infer the type of a public key from the final call to `T_len`,
 as the spec does not define it directly.
 
 ```
 wots_PKgen : Seed -> Seed -> Address -> NBytes
 wots_PKgen sk_seed pk_seed adrs =
-    T_l`{len} pk_seed wotspkADRS tmp
+    T`{len} pk_seed wotspkADRS tmp
   where
     tmp = [ mkTmp i | i <- take`{len} [0...] ]
     wotspkADRS = setKeyPair (getKeyPair adrs) (setType WOTS_PK adrs)
@@ -506,7 +506,7 @@ wots_sign M sk_seed pk_seed adrs = sig
 ```
 wots_pkFromSig : [len]NBytes -> Message -> Seed -> Address -> NBytes
 wots_pkFromSig sig M pk_seed adrs =
-    T_l`{len} pk_seed wotspkADRS tmp
+    T`{len} pk_seed wotspkADRS tmp
   where
     msg : [len1][log_w]
     msg = base_w M
@@ -803,7 +803,7 @@ fors_PKgen sk_seed pk_seed adrs = pk
     forspkADRS = setKeyPair (getKeyPair adrs) (setType FORS_ROOTS adrs)
 
     pk : NBytes
-    pk = T_l`{k} pk_seed forspkADRS root
+    pk = T`{k} pk_seed forspkADRS root
 ```
 
 ### 5.5. FORS Signature Generation (Function `fors_sign`)
@@ -871,5 +871,5 @@ fors_pkFromSig sig_fors M pk_seed adrs = pk
     forspkADRS = setKeyPair (getKeyPair adrs) (setType FORS_ROOTS adrs)
 
     pk : NBytes
-    pk = T_l`{k} pk_seed forspkADRS root
+    pk = T`{k} pk_seed forspkADRS root
 ```
