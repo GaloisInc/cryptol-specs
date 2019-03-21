@@ -195,7 +195,7 @@ parameter
   PRF : Seed -> Address -> NBytes
 
   /** Pseudorandom function to generate randomness for message compression. */
-  PRF_msg : {k} (fin k) => NBytes -> NBytes -> [k][8] -> NBytes
+  PRF_msg : {l} (fin l) => NBytes -> NBytes -> [l][8] -> NBytes
 
   // /** Keyed hash function that can process arbitrary-length messages. */
   //H_msg : {k} (fin k) => NBytes -> NBytes -> NBytes -> [k][8] -> [m][8]
@@ -729,4 +729,147 @@ ht_verify M sig_ht pk_seed idx_tree idx_leaf pk_ht = (last ([M] # node) == pk_ht
       | n <- [M] # node
       | j <- [0...]
       ]
+```
+
+
+## 5. FORS: Forest Of Random Subsets
+
+### 5.1. FORS Parameters
+
+```
+parameter
+
+  /** "k: the number of private key sets, trees and indices computed
+      from the input string." */
+  type k : #
+  type constraint (fin k, 32 >= width k)
+
+  /** "t: the number of elements per private key set, number of leaves
+      per hash tree and upper bound on the index values. The parameter
+      t MUST be a power of 2. If t = 2^a, then the trees have height a
+      and the input string is split into bit strings of length a." */
+  type a : #
+  type constraint (fin a, 32 >= a)
+
+type t = 2 ^^ a
+```
+
+### 5.2. FORS Private Key (Function `fors_SKgen`)
+
+```
+fors_SKgen : Seed -> Address -> [32] -> NBytes
+fors_SKgen sk_seed adrs idx = sk
+  where
+    adrs' = setTreeIndex idx (setTreeHeight 0 adrs)
+    sk = PRF sk_seed adrs'
+```
+
+### 5.3. FORS TreeHash (Function `fors_treehash`)
+
+The specification document describes `fors_treehash` in an imperative
+style using a stack of intermediate results. For the Cryptol version
+we translate it into a simpler recursive functional style.
+
+Function `fors_treehash` has a precondition: `s` should be a multiple
+of `2^^z`. All recursive calls in the Cryptol implementation maintain
+this invariant.
+
+```
+fors_treehash : Seed -> [32] -> TreeHeight -> Seed -> Address -> NBytes
+fors_treehash sk_seed s z pk_seed adrs =
+    if z == 0 then
+      // leaf case
+      F pk_seed adrs' (PRF sk_seed adrs')
+    else
+      // internal node case
+      H pk_seed adrs' [hashL, hashR]
+  where
+    adrs' = setTreeHeight z (setTreeIndex (s >> z) adrs)
+    z' = z - 1
+    hashL = fors_treehash sk_seed s z' pk_seed adrs
+    hashR = fors_treehash sk_seed (s + (1<<z')) z' pk_seed adrs
+```
+
+### 5.4. FORS Public Key (Function `fors_PKgen`)
+
+```
+fors_PKgen : Seed -> Seed -> Address -> NBytes
+fors_PKgen sk_seed pk_seed adrs = pk
+  where
+    root : [k]NBytes
+    root = [ fors_treehash sk_seed (i * `k) `a pk_seed adrs | i <- take`{k} [0...] ]
+
+    forspkADRS : Address
+    forspkADRS = setKeyPair (getKeyPair adrs) (setType FORS_ROOTS adrs)
+
+    pk : NBytes
+    pk = T_l`{k} pk_seed forspkADRS root
+```
+
+### 5.5. FORS Signature Generation (Function `fors_sign`)
+
+The data format for a FORS signature, as given in Figure 11 of the spec.
+
+```
+type SIG_FORS = [k](NBytes, [a]NBytes)
+```
+
+BUG: The spec for `fors_sign` says `unsigned int idx = bits i*t to
+(i+1)*t - 1 of M`, but `t` should really read `a`.
+
+```
+fors_sign : [k * a] -> Seed -> Seed -> Address -> SIG_FORS
+fors_sign M sk_seed pk_seed adrs = sig_fors
+  where
+    auth : [32] -> [a] -> Address -> [a]NBytes
+    auth i idx adrs' =
+      [ fors_treehash sk_seed (i * `k + (s << j)) j pk_seed adrs'
+          where s = (zext idx >> j) ^ 1
+      | j <- take`{a} [0...]
+      ]
+
+    sig_fors : [k](NBytes, [a]NBytes)
+    sig_fors =
+      [ (PRF sk_seed adrs', auth i idx adrs')
+          where adrs' = setTreeIndex (drop (i # idx)) (setTreeHeight 0 adrs)
+      | i <- take`{k} [0...]
+      | idx <- split M : [k][a]
+      ]
+```
+
+### 5.6. FORS Compute Public Key from Signature (Function `fors_pkFromSig`)
+
+BUG: The spec for `fors_pkFromSig` says `unsigned int idx = bits i*t
+to (i+1)*t - 1 of M`, but `t` should really read `a`.
+
+```
+fors_pkFromSig : SIG_FORS -> [k * a] -> Seed -> Address -> NBytes
+fors_pkFromSig sig_fors M pk_seed adrs = pk
+  where
+    root : [k]NBytes
+    root =
+      [ last node
+          where
+            adrs' : TreeHeight -> Address
+            adrs' j = setTreeHeight j (setTreeIndex (drop (i # idx) >> j) adrs)
+
+            node : [a + 1]NBytes
+            node =
+              [ F pk_seed (adrs' 0) sk ] #
+              [ if idx!j then H pk_seed (adrs' (j+1)) [sib, prev]
+                         else H pk_seed (adrs' (j+1)) [prev, sib]
+              | j <- take`{a} [0...]
+              | sib <- auth
+              | prev <- node
+              ]
+      | i : [32] <- take`{k} [0...]
+      | idx <- split M : [k][a]
+      | (sk, auth) <- sig_fors
+      ]
+
+    forspkADRS : Address
+    forspkADRS = setKeyPair (getKeyPair adrs) (setType FORS_ROOTS adrs)
+
+    pk : NBytes
+    pk = T_l`{k} pk_seed forspkADRS root
 ```
