@@ -635,8 +635,8 @@ xmss_pkFromSig idx (sig, auth) M pk_seed adrs = last nodes
     nodes : [1 + h']NBytes
     nodes =
       [ node0 ] #
-      [ if idx!k then H pk_seed (adrs' k) [sib, prev]
-                 else H pk_seed (adrs' k) [prev, sib]
+      [ if idx!k then H pk_seed (adrs' (k+1)) [sib, prev]
+                 else H pk_seed (adrs' (k+1)) [prev, sib]
       | sib <- auth
       | prev <- nodes
       | k <- take`{h'} [0...]
