@@ -196,10 +196,6 @@ parameter
 
   /** Pseudorandom function to generate randomness for message compression. */
   PRF_msg : {l} (fin l) => NBytes -> NBytes -> [l][8] -> NBytes
-
-  // /** Keyed hash function that can process arbitrary-length messages. */
-  //H_msg : {k} (fin k) => NBytes -> NBytes -> NBytes -> [k][8] -> [m][8]
-  // (?) result type? Paper says "B^m" without defining m.
 ```
 
 #### 2.7.3 Hash Function Address Scheme
@@ -652,7 +648,8 @@ parameter
 
   /** The number or tree layers. */
   type d : #
-  type constraint (fin d, 32 >= width d)
+  type constraint (fin d, 32 >= width d, d >= 1)
+  type constraint (96 >= h - h')
 
 type h = h' * d
 ```
@@ -872,4 +869,130 @@ fors_pkFromSig sig_fors M pk_seed adrs = pk
 
     pk : NBytes
     pk = T`{k} pk_seed forspkADRS root
+```
+
+
+## 6. SPHINCS+
+
+### 6.1. SPHINCS+ Parameters
+
+```
+parameter
+
+  type Digest : *
+
+  /** Keyed hash function that can process arbitrary-length messages. */
+  H_msg : {l} (fin l) => NBytes -> Seed -> NBytes -> [l][8] -> Digest
+
+  unpackDigest : Digest -> ([k * a], [h - h'], [h'])
+```
+
+### 6.2. SPHINCS+ Key Generation (Function `spx_keygen`)
+
+In the spec, function `spx_keygen` has no inputs, and obtains random
+bytes from function `sec_rand`, which is supposed to connect to a
+secure source of randomness. For the cryptol version, we pass in the
+random values as arguments.
+
+```
+type SK_SPHINCS = (Seed, NBytes, Seed, NBytes)
+type PK_SPHINCS = (Seed, NBytes)
+
+spx_keygen : (Seed, NBytes, Seed) -> (SK_SPHINCS, PK_SPHINCS)
+spx_keygen (sk_seed, sk_prf, pk_seed) = (sk, pk)
+  where
+    pk_root = ht_PKgen sk_seed pk_seed
+    sk = (sk_seed, sk_prf, pk_seed, pk_root)
+    pk = (pk_seed, pk_root)
+```
+
+### 6.3. SPHINCS+ Signature
+
+According to the spec, a SPHINCS+ signature "consists of an n-byte
+randomization string R, a FORS signature SIG_FORS consisting of k(a+1)
+n-byte strings, and a HT signature SIG_HT of (h + dlen)n bytes."
+
+```
+type SIG_SPHINCS = (NBytes, SIG_FORS, SIG_HT)
+```
+
+### 6.4. SPHINCS+ Signature Generation (Function `spx_sign`)
+
+According to the spec, the first step of generating a SPHINCS+
+signature is to generate an n-byte pseudorandom value R. To model this
+in Cryptol, we pass in a random n-byte value as an additional first
+argument to `spx_sign`.
+
+The spec doesn't explicitly state the length of the message `M`, but
+it is passed as the second argument to `fors_pkFromSig`, which
+requires the message to be a bit-string of length `k*a`.
+
+BUG: Upon further reflection, it seems that `M` should *not* be passed
+as the second argument to `fors_pkFromSig`; rather, `md` should be
+passed in its place. Value `md` has the right type, and `spx_verify`
+also calls `fors_pkFromSig` with `md` as the second argument.
+
+BUG: The spec pseudocode assigns `SIG = SIG || R` at a point where
+`SIG` is uninitialized.
+
+
+```
+spx_sign : {l} (fin l) => NBytes -> [l][8] -> SK_SPHINCS -> SIG_SPHINCS
+spx_sign opt M (sk_seed, sk_prf, pk_seed, pk_root) = sig
+  where
+    R : NBytes
+    R = PRF_msg sk_prf opt M
+
+    digest : Digest
+    digest = H_msg R pk_seed pk_root M
+
+    md : [k * a]
+    md = unpackDigest.0 digest
+
+    idx_tree : TreeAddress
+    idx_tree = zext (unpackDigest.1 digest)
+
+    idx_leaf : [32]
+    idx_leaf = zext (unpackDigest.2 digest)
+
+    adrs : Address
+    adrs = setKeyPair idx_leaf (setType FORS_TREE (setTree idx_tree zero))
+
+    sig_fors : SIG_FORS
+    sig_fors = fors_sign md sk_seed pk_seed adrs
+
+    pk_fors : NBytes
+    pk_fors = fors_pkFromSig sig_fors md pk_seed adrs
+
+    sig_ht : SIG_HT
+    sig_ht = ht_sign pk_fors sk_seed pk_seed idx_tree idx_leaf
+
+    sig : SIG_SPHINCS
+    sig = (R, sig_fors, sig_ht)
+```
+
+### 6.5. SPHINCS+ Signature Verification (Function `spx_verify`)
+
+```
+spx_verify : {l} (fin l) => [l][8] -> SIG_SPHINCS -> PK_SPHINCS -> Bool
+spx_verify M (R, sig_fors, sig_ht) (pk_seed, pk_root) =
+    ht_verify pk_fors sig_ht pk_seed idx_tree idx_leaf pk_root
+  where
+    digest : Digest
+    digest = H_msg R pk_seed pk_root M
+
+    md : [k * a]
+    md = unpackDigest.0 digest
+
+    idx_tree : TreeAddress
+    idx_tree = zext (unpackDigest.1 digest)
+
+    idx_leaf : [32]
+    idx_leaf = zext (unpackDigest.2 digest)
+
+    adrs : Address
+    adrs = setKeyPair idx_leaf (setType FORS_TREE (setTree idx_tree zero))
+
+    pk_fors : NBytes
+    pk_fors = fors_pkFromSig sig_fors md pk_seed adrs
 ```
