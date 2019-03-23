@@ -407,14 +407,13 @@ overflow on type `[log_w]`.
 
 ```
 chain : NBytes -> [log_w] -> [log_w] -> Seed -> Address -> NBytes
-chain X i s seed adrs = chain' s adrs X
+chain X i s seed adrs = go s
   where
-    chain' : [log_w] -> Address -> NBytes -> NBytes
-    chain' s' adrs' X' =
-        if s' == 0 then X'
-        else chain' (s' - 1)
-                    (setHash (zext (i + s' - 1)) adrs')
-                    (F seed adrs' X')
+    go : [log_w] -> NBytes
+    go s' =
+      if s' == 0 then X
+      else F seed adrs' (go (s' - 1))
+      where adrs' = setHash (zext (i + s' - 1)) adrs
 ```
 
 ### 3.3 WOTS+ Private Key
