@@ -209,12 +209,13 @@ type Address     = [256]
 type AddressWord = [32]
 type TreeAddress = [96]
 type TreeHeight  = [32]
+type AddressType = [32]
 
-WOTS_HASH  = 0 : AddressWord
-WOTS_PK    = 1 : AddressWord
-TREE       = 2 : AddressWord
-FORS_TREE  = 3 : AddressWord
-FORS_ROOTS = 4 : AddressWord
+WOTS_HASH  = 0 : AddressType
+WOTS_PK    = 1 : AddressType
+TREE       = 2 : AddressType
+FORS_TREE  = 3 : AddressType
+FORS_ROOTS = 4 : AddressType
 
 getLayer : Address -> AddressWord
 getLayer = take
@@ -228,12 +229,12 @@ getTree adrs = take (drop`{32} adrs)
 setTree : TreeAddress -> Address -> Address
 setTree tree adrs = take`{32} adrs # tree # drop`{128} adrs
 
-getType : Address -> AddressWord
+getType : Address -> AddressType
 getType adrs = take (drop`{128} adrs)
 
 // Setting the type field implicitly zeros out
 // the subsequent three address words
-setType : AddressWord -> Address -> Address
+setType : AddressType -> Address -> Address
 setType typ adrs = take`{128} adrs # typ # zero
 
 wat = error "wrong address type"
