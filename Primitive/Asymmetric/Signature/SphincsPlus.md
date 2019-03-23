@@ -349,7 +349,7 @@ parameter
 
   /** The base-2 log of the Winternitz parameter w. (Section 3.1) */
   type log_w : #
-  type constraint (fin log_w, log_w >= 1)
+  type constraint (32 >= log_w, log_w >= 1)
 
   // needed for wots_PKgen
   type constraint (32 >= width len)
@@ -402,20 +402,18 @@ Function **F** is a global parameter not yet defined.
 **F**, **H**, **H_msg**, **PRF**, and **PRF_msg**.)
 Similarly, public key **PK** is not yet defined.
 
-The return value "NULL" is used by the spec pseudocode, but never defined.
-We'll assume it is intended to indicate an error.
+Precondition: `i + s` should be less than `w`, i.e. it should not
+overflow on type `[log_w]`.
 
 ```
-chain : NBytes -> Integer -> Integer -> Seed -> Address -> NBytes
-chain X i s seed adrs =
-    if i + s > `w - 1 then error "spec says NULL"
-                     else chain' s adrs X
-    where
-    chain' : Integer -> Address -> NBytes -> NBytes
+chain : NBytes -> [log_w] -> [log_w] -> Seed -> Address -> NBytes
+chain X i s seed adrs = chain' s adrs X
+  where
+    chain' : [log_w] -> Address -> NBytes -> NBytes
     chain' s' adrs' X' =
         if s' == 0 then X'
         else chain' (s' - 1)
-                    (setHash (fromInteger (i + s' - 1)) adrs')
+                    (setHash (zext (i + s' - 1)) adrs')
                     (F seed adrs' X')
 ```
 
@@ -450,7 +448,7 @@ wots_PKgen sk_seed pk_seed adrs =
   where
     tmp = [ mkTmp i | i <- take`{len} [0...] ]
     wotspkADRS = setKeyPair (getKeyPair adrs) (setType WOTS_PK adrs)
-    mkTmp i = chain sk 0 (`w - 1) pk_seed adrs'
+    mkTmp i = chain sk 0 (-1) pk_seed adrs'
       where
         adrs' = setChain i adrs
         sk = PRF sk_seed adrs'
@@ -480,7 +478,7 @@ wots_sign M sk_seed pk_seed adrs = sig
     msg' = msg # split`{parts=len2} csum // FIXME: this fails without the type application
 
     sig = [ mkSig i msg_i | i <- take`{len} [0...] | msg_i <- msg' ]
-    mkSig i msg_i = chain sk 0 (toInteger msg_i) pk_seed adrs'
+    mkSig i msg_i = chain sk 0 msg_i pk_seed adrs'
       where
         adrs' = setChain i adrs
         sk = PRF sk_seed adrs'
@@ -508,7 +506,7 @@ wots_pkFromSig sig M pk_seed adrs =
 
     mkTmp : [32] -> NBytes -> [log_w] -> NBytes
     mkTmp i sig_i msg_i =
-        chain sig_i (toInteger msg_i) (toInteger (~ msg_i)) pk_seed adrs'
+        chain sig_i msg_i (~ msg_i) pk_seed adrs'
       where
         adrs' = setChain i adrs
 
