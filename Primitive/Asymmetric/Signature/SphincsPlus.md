@@ -205,12 +205,13 @@ we define member access and update functions for each field,
 including type checks as appropriate.
 
 ```
-type Address     = [256]
 type Layer       = [32]
 type AddressWord = [32]
 type TreeAddress = [96]
 type TreeHeight  = [32]
 type AddressType = [32]
+
+type Address = (Layer, TreeAddress, AddressType, [32], [32], [32])
 
 WOTS_HASH  = 0 : AddressType
 WOTS_PK    = 1 : AddressType
@@ -219,105 +220,92 @@ FORS_TREE  = 3 : AddressType
 FORS_ROOTS = 4 : AddressType
 
 getLayer : Address -> Layer
-getLayer = take
+getLayer (a, _, _, _, _, _) = a
 
 setLayer : Layer -> Address -> Address
-setLayer layer adrs = layer # (take adrs)
+setLayer layer (_, b, c, x, y, z) = (layer, b, c, x, y, z)
 
 getTree : Address -> TreeAddress
-getTree adrs = take (drop`{32} adrs)
+getTree (_, b, _, _, _, _) = b
 
 setTree : TreeAddress -> Address -> Address
-setTree tree adrs = take`{32} adrs # tree # drop`{128} adrs
+setTree tree (a, _, c, x, y, z) = (a, tree, c, x, y, z)
 
 getType : Address -> AddressType
-getType adrs = take (drop`{128} adrs)
+getType (_, _, c, _, _, _) = c
 
 // Setting the type field implicitly zeros out
 // the subsequent three address words
 setType : AddressType -> Address -> Address
-setType typ adrs = take`{128} adrs # typ # zero
+setType typ (a, b, _, _, _, _) = (a, b, typ, 0, 0, 0)
 
 wat = error "wrong address type"
 
 getKeyPair : Address -> AddressWord
-getKeyPair adrs =
-    if t == WOTS_HASH then kp
-     | t == WOTS_PK   then kp
+getKeyPair (_, _, c, x, _, _) =
+    if c == WOTS_HASH then x
+     | c == WOTS_PK   then x
     else wat
-    where
-    t  = getType adrs
-    kp = take (drop`{160} adrs)
 
 setKeyPair : AddressWord -> Address -> Address
-setKeyPair kp adrs =
-    if t == WOTS_HASH then adrs'
-     | t == WOTS_PK   then adrs'
+setKeyPair kp (a, b, c, _, y, z) =
+    if c == WOTS_HASH then adrs'
+     | c == WOTS_PK   then adrs'
     else wat
     where
-    t     = getType adrs
-    adrs' = take adrs # kp # drop`{160} adrs
+    adrs' = (a, b, c, kp, y, z)
 
 getChain : Address -> AddressWord
-getChain adrs =
-    if getType adrs == WOTS_HASH
-    then take (drop`{192} adrs)
+getChain (_, _, c, _, y, _) =
+    if c == WOTS_HASH
+    then y
     else wat
 
 setChain : AddressWord -> Address -> Address
-setChain chn adrs =
-    if getType adrs == WOTS_HASH
-    then take`{192} adrs # chn # drop adrs
+setChain chn (a, b, c, x, _, z) =
+    if c == WOTS_HASH
+    then (a, b, c, x, chn, z)
     else wat
 
 getHash : Address -> AddressWord
-getHash adrs =
-    if getType adrs == WOTS_HASH
-    then drop`{224} adrs
+getHash (_, _, c, _, _, z) =
+    if c == WOTS_HASH
+    then z
     else wat
 
 setHash : AddressWord -> Address -> Address
-setHash hash adrs =
-    if getType adrs == WOTS_HASH
-    then take adrs # hash
+setHash hash (a, b, c, x, y, _) =
+    if c == WOTS_HASH
+    then (a, b, c, x, y, hash)
     else wat
 
 getTreeHeight : Address -> TreeHeight
-getTreeHeight adrs =
-    if t == FORS_TREE  then height
-     | t == FORS_ROOTS then height
+getTreeHeight (_, _, c, _, y, _) =
+    if c == FORS_TREE  then y
+     | c == FORS_ROOTS then y
     else wat
-    where
-    t      = getType adrs
-    height = take (drop`{192} adrs)
 
 setTreeHeight : TreeHeight -> Address -> Address
-setTreeHeight height adrs =
-    if t == FORS_TREE  then adrs'
-     | t == FORS_ROOTS then adrs'
+setTreeHeight height (a, b, c, x, _, z) =
+    if c == FORS_TREE  then adrs'
+     | c == FORS_ROOTS then adrs'
     else wat
     where
-    t     = getType adrs
-    adrs' = take adrs # height # drop`{224} adrs
+    adrs' = (a, b, c, x, height, z)
 
 getTreeIndex : Address -> AddressWord
-getTreeIndex adrs =
-    if t == FORS_TREE  then ix
-     | t == FORS_ROOTS then ix
+getTreeIndex (_, _, c, _, _, z) =
+    if c == FORS_TREE  then z
+     | c == FORS_ROOTS then z
     else wat
-    where
-    t  = getType adrs
-    ix = drop adrs
 
 setTreeIndex : AddressWord -> Address -> Address
-setTreeIndex ix adrs =
-    if t == FORS_TREE  then adrs'
-     | t == FORS_ROOTS then adrs'
+setTreeIndex ix (a, b, c, x, y, _) =
+    if c == FORS_TREE  then adrs'
+     | c == FORS_ROOTS then adrs'
     else wat
     where
-    t     = getType adrs
-    adrs' = take adrs # ix
-
+    adrs' = (a, b, c, x, y, ix)
 ```
 
 
