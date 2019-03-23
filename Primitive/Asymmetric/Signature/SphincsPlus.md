@@ -206,6 +206,7 @@ including type checks as appropriate.
 
 ```
 type Address     = [256]
+type Layer       = [32]
 type AddressWord = [32]
 type TreeAddress = [96]
 type TreeHeight  = [32]
@@ -217,10 +218,10 @@ TREE       = 2 : AddressType
 FORS_TREE  = 3 : AddressType
 FORS_ROOTS = 4 : AddressType
 
-getLayer : Address -> AddressWord
+getLayer : Address -> Layer
 getLayer = take
 
-setLayer : AddressWord -> Address -> Address
+setLayer : Layer -> Address -> Address
 setLayer layer adrs = layer # (take adrs)
 
 getTree : Address -> TreeAddress
@@ -688,7 +689,7 @@ ht_sign M sk_seed pk_seed idx_tree idx_leaf = sig_ht
     tree_leaf : [d](TreeAddress, [32])
     tree_leaf = tree_leaf_indexes (idx_tree, idx_leaf)
 
-    adrs : TreeAddress -> [32] -> Address
+    adrs : TreeAddress -> Layer -> Address
     adrs t j = setTree t (setLayer j zero)
 
     root : [d+1]NBytes // last element is not used
@@ -716,7 +717,7 @@ ht_sign M sk_seed pk_seed idx_tree idx_leaf = sig_ht
 ht_verify : Message -> SIG_HT -> Seed -> TreeAddress -> [32] -> NBytes -> Bool
 ht_verify M sig_ht pk_seed idx_tree idx_leaf pk_ht = (last ([M] # node) == pk_ht)
   where
-    adrs : TreeAddress -> [32] -> Address
+    adrs : TreeAddress -> Layer -> Address
     adrs t j = setTree t (setLayer j zero)
 
     node : [d]NBytes
