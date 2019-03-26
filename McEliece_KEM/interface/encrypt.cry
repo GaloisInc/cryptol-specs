@@ -1,7 +1,7 @@
 module Encrypt where
 
 import Types
-import Encrypt_types
+import Util
 
 //--------------------------------------------------
 
@@ -15,8 +15,8 @@ mov_forward ind_0 = outer_loop 0 ind_0 False where
             else inner_loop (j+1) i ind found
         else (ind, found)
         where
-            (jval:base_t) = ind@j
-            (ind':ind_t) = update (update ind j (ind@i)) i jval
+            (jval : base_t) = ind@j
+            (ind' : ind_t) = update (update ind j (ind@i)) i jval
             found' = True
     outer_loop : _ -> ind_t -> Bool -> (ind_t, Bool)
     outer_loop i ind found =
@@ -49,7 +49,7 @@ loop_findEq ind i rtn = if (i<SYS_T) then rtn' else rtn
             then True
             else loop_findEq ind (i+1) rtn
 
-// While_loop: Might consider adding a limit to the counter here
+// While_loop : Might consider adding a limit to the counter here
 while_loop : ind_t -> ind_t
 while_loop ind =
     if(loop_findEq ind_2 1 False) then ind_2 else while_loop ind_2
@@ -70,20 +70,20 @@ loop_c : base_t ->  val_t -> ind_t -> e_int_t -> e_int_t
 loop_c i val ind e_int  =
     if(i < (SYS_N+63)/64) then e_int' else e_int
     where
-    (e_int':e_int_t) = loop_b 0 i val ind e_int
+    (e_int' : e_int_t) = loop_b 0 i val ind e_int
     loop_b : base_t -> base_t -> val_t -> ind_t -> e_int_t -> e_int_t
     loop_b j i val ind e_int =
         if (j<SYS_T) then loop_b (j+1) i val ind e_int' else e_int
         where
-            (mask_0 : base_t) =cvt (ind@j)
+            (mask_0 : base_t) =cvt_16 (ind@j)
             (mask_1 : base_t) = i^(mask_0 >> 6)
             (mask_2 : base_t) = mask_1-1
             (mask_3 : base_t) = mask_2 >> 63
             (mask : base_t) = -1* mask_2
             (m : base_t) = e_int@i
             (n : base_t) = (val@j) && mask
-            (o: base_t) = m ||  n
-            (e_int':e_int_t) = update e_int i o
+            (o : base_t) = m ||  n
+            (e_int' : e_int_t) = update e_int i o
 
 // store in groups of 8
 loop_d : _ ->  e_int_t -> e_pieces_t ->  e_t
@@ -92,32 +92,32 @@ loop_d i e_int e_pieces =
     then loop_d (i+1) e_int e_pieces'
     else join e_pieces
     where
-        (x:[8]base_t) = store8 (e_pieces@i) (e_int@i)
-        (e_pieces':e_pieces_t) = update e_pieces i x
+        (x : [8]base_t) = store8 (e_pieces@i) (e_int@i)
+        (e_pieces' : e_pieces_t) = update e_pieces i x
 
 //shift each value by j and && with 0xFF
 loop_e : _ -> _ -> e_int_t -> e_t -> e_t
 loop_e j i e_int e =
     if (j<(SYS_N % 64)) then loop_e (j+8) i e_int e' else e
     where
-        (w:base_t) = (e_int@i) >> j
-        (x:base_t) = w && (cvt 0xFF)
-        (e':[872]base_t) = update e (j/8) x
+        (w : base_t) = (e_int@i) >> j
+        (x : base_t) = w && (cvt_16 0xFF)
+        (e' : [872]base_t) = update e (j/8) x
 
 gen_e : e_t -> e_t
 gen_e e = undefined where
-    (val_1:val_t) = zero
-    (ind_1:ind_t) = zero
-    (e_int_1:e_int_t) = zero
-    (ind_2:ind_t)  = while_loop ind_1
-    (val_2:val_t) = loop_a 0 val_1 ind_2
-    (e_int_2:e_int_t) = loop_c 0 val_2 ind_2 e_int_1
-    (e_pieces_1:e_pieces_t) = groupBy `{8} e
-    (e_2:e_t) = loop_d 0 e_int_2 e_pieces_1
-    (i:[16]) = (SYS_N+63)/64 - 1 //max at previous loop
-    (e_3:e_t) = loop_e 0 i e_int_2 e_2
+    (val_1 : val_t) = zero
+    (ind_1 : ind_t) = zero
+    (e_int_1 : e_int_t) = zero
+    (ind_2 : ind_t)  = while_loop ind_1
+    (val_2 : val_t) = loop_a 0 val_1 ind_2
+    (e_int_2 : e_int_t) = loop_c 0 val_2 ind_2 e_int_1
+    (e_pieces_1 : e_pieces_t) = groupBy `{8} e
+    (e_2 : e_t) = loop_d 0 e_int_2 e_pieces_1
+    (i : [16]) = (SYS_N+63)/64 - 1 //max at previous loop
+    (e_3 : e_t) = loop_e 0 i e_int_2 e_2
 
-syndrome : pk_t -> e_t -> s_t -> s_t
+syndrome : g_pk_t -> e_t -> g_s_t -> g_s_t
 syndrome pk e s_in = s_out where
     tail = PK_NROWS % 8
     // PK_ROW_BYTES = 677
@@ -139,29 +139,29 @@ syndrome pk e s_in = s_out where
         if (j < (SYS_N/8))
         then loop_d (j+1) ((row@j) && (e@j)) row
         else b
-    second_loop : _ -> s_t -> s_t
+    second_loop : _ -> g_s_t -> g_s_t
     second_loop i s =
         if (i < PK_NROWS)
         then second_loop (i+1) s_out
         else s
         where
-            (row_1: SYS_N8_t) =  zero # (pk_ptr@i)
-            (row_2: SYS_N8_t) = loop_c (SYS_N/8-1) row_1
-            (d:base_t) =  (row_2@(i/8))|| (1 << (i%8))
-            (row_3: SYS_N8_t) =  update row_2 (i/8) d
-            (b_0:base_t) = loop_d 0 0 row_3
-            (b_1:base_t) = b_0 ^ (b_0>>4)
-            (b_2:base_t) = b_1 ^ (b_1>>2)
-            (b_3:base_t) = b_2 ^ (b_2>>1)
-            (b_4:base_t) = b_3 && 1
-            (sval:base_t) =  (s@(i/8)) || (b_4 << (i%8))
-            (s_out: s_t) =  update s (i/8) sval
-    (s: s_t) = zero # (drop `{194} s_in)
+            (row_1 : SYS_N8_t) =  zero # (pk_ptr@i)
+            (row_2 : SYS_N8_t) = loop_c (SYS_N/8-1) row_1
+            (d : base_t) =  (row_2@(i/8))|| (1 << (i%8))
+            (row_3 : SYS_N8_t) =  update row_2 (i/8) d
+            (b_0 : base_t) = loop_d 0 0 row_3
+            (b_1 : base_t) = b_0 ^ (b_0>>4)
+            (b_2 : base_t) = b_1 ^ (b_1>>2)
+            (b_3 : base_t) = b_2 ^ (b_2>>1)
+            (b_4 : base_t) = b_3 && 1
+            (sval : base_t) =  (s@(i/8)) || (b_4 << (i%8))
+            (s_out : g_s_t) =  update s (i/8) sval
+    (s : g_s_t) = zero # (drop `{194} s_in)
     s_out = second_loop 0 s
 
-encrypt : s_t -> pk_t -> e_t -> s_t
+encrypt : g_s_t -> g_pk_t -> e_t -> g_s_t
 encrypt s pk e = s where
     (e' : e_t) = gen_e e
-    (s : s_t) = syndrome pk e' s
+    (s : g_s_t) = syndrome pk e' s
 
 

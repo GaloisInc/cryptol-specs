@@ -1,0 +1,85 @@
+module Decrypt_helpers where
+
+import Types
+import GF
+import Util
+
+//Root
+eval f a = out where
+    loop_i i r =
+        if (i<0) then r
+        else loop_i i' r' where
+            r' = gf_add (gf_mul r a) (f@i)
+            i' = i-1
+    r_init = f@SYS_T
+    i_init = SYS_T-1
+    out = loop_i i_init r_init
+
+root : g_t ->  SYS_N_t -> SYS_N_t
+root f L = out where
+    out = [ eval f l | l <- L]
+
+synd : g_t -> L_t -> r_t -> s_t
+synd f L r = out' where
+    loop_j i j out e_inv c =
+        if (j<SYS_T_double)
+        then (loop_j i j' out' e_inv' c) where
+            j' = j+1
+            x = gf_mul e_inv c
+            y = gf_add (out@j) x
+            out' = update out j y
+            e_inv' = gf_mul e_inv (L@i)
+        else (out, e_inv)
+
+    loop_i i out e_inv c =
+        if (i<SYS_N)
+        then loop_i i' out' e_inv' c where
+            c = (r@(i/8) >> (i%8)) && (1:[16])
+            e = eval f (L@i)
+            e_inv = gf_inv (gf_mul e e)
+            (out', e_inv') = loop_j i 0 out e_inv c
+            i' = i+1
+        else out
+    out' = loop_i 0 zero 0 0
+
+bm : s_t-> g_t
+bm s = out where
+    N_limit =  2 * SYS_T
+    outer_loop N B C T L b =
+        if (N<N_limit) then (outer_loop N_2 B_3 C_2 T_2 L_2 b_2) where
+            (d_0 : gf_t) = zero
+            limit = min N SYS_T
+            loop_1 i d  =
+                if(i < limit)
+                then loop_1 i' d' where
+                    d' = d ^ (gf_mul (C@i) (s@(N-i)))
+                    i' = i+1
+                else d
+            (d_1 : gf_t) = loop_1 0 d_0
+            (mne: uint16t) = ((d_1 - (1:[16]))>> 15) - (1:[16])
+            (mle_0: uint16t)= ((N - (2:[16])*L) >> 15) - (1:[16])
+            (mle_1: uint16t) = mle_0 && mne
+            (T_2 : SYS_T_plus1) = C
+            (f: gf_t) = gf_frac b d_1
+            (C_2: SYS_T_plus1) =
+                [c ^ ((gf_mul f (B@i)) && mne)
+                | i <- [0.. 120]
+                | c <- C]
+            (L_2: uint16t) = (L && ~mle_1) || ((N+1-L) && mle_1)
+            (B_2: SYS_T_plus1) =
+                [((b && ~mle_1) || (t && mle_1)) | b <- B | t <- T]
+            b_2 = (b && ~mle_1) || (d_1 && mle_1)
+            (B_3: SYS_T_plus1) = zero # (take `{119} B_2)
+            N_2 = N+1
+        else C
+    (N : uint16t) = 0
+    (L : uint16t) = 0
+    (B_0 : SYS_T_plus1) = zero
+    (B_1 : SYS_T_plus1) = update B_0 1 1
+    (C_0 : SYS_T_plus1) = zero
+    (C_1 : SYS_T_plus1) = update C_0 0 1
+    (T : SYS_T_plus1) = zero
+    (b : gf_t) = 1
+    (C_2 : SYS_T_plus1)= outer_loop N B_1 C_1 T L b
+    out = reverse C_2
+

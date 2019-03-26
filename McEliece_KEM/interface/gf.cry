@@ -1,0 +1,106 @@
+module GF where
+
+import Types
+
+
+// Ask Aaron (convert to 32 then cast to 16? check against C code)
+gf_iszero : base_t  -> base_t
+gf_iszero a = t_3 where
+    (t_1 : uint32t ) = cvt_16_to_32 a
+    (t_2 : uint32t ) = (t_1-1)>> 19
+    (t_3 : base_t) = cvt_32_to_16 t_2
+
+gf_add : base_t -> base_t -> base_t
+gf_add a b = a^b
+
+gf_mul : gf_t  -> gf_t  -> gf_t
+gf_mul a b = rtn  where
+    (t0:base_64t) = cvt_16_to_64 a
+    (t1:base_64t) = cvt_16_to_64 b
+    loop_i i tmp =
+        if (i>= GFBITS) then tmp
+        else loop_i (i+1) tmp' where
+            tmp' = t0 * (t1 && (1 << i))
+    (tmp_0 : base_64t) = t0 * (t1 && 1)
+    (tmp_1 : base_64t) = loop_i 0 tmp_0
+    // Ask Aaron convert to 28 then cast to 64
+    (k_0: base_64t) =  cvt_20_to_64 0x1FF0000
+    (k_1: base_64t) =  cvt_20_to_64 0x000E000
+    (t_0: base_64t) = tmp_1 && k_0
+    (t_1: base_64t) = tmp_2 && k_1
+    (tmp_2 : base_64t) = tmp_1 ^ ((t_0 >> 9) ^ (t_0 >> 10) ^ (t_0 >> 12) ^ (t_0 >> 13))
+    (tmp_3 : base_64t) = tmp_2 ^ ((t_1 >> 9) ^ (t_1 >> 10) ^ (t_1 >> 12) ^ (t_1 >> 13))
+    (rtn : gf_t ) = cvt_64_to_16 (tmp_3 && GFMASK)
+
+loop_i i x limit M =
+    if(i<limit) then loop_i i' x' limit M where
+        t = x && (M@i)
+        x'= x^ (t >> 9) ^ (t >> 10) ^ (t >> 12) ^ (t >> 13)
+        i' = i+1
+    else  cvt_64_to_16 (x&& GFMASK)
+
+gf_sqmul : gf_t -> gf_t -> gf_t
+gf_sqmul a b = rtn where
+    M = [0x0000001FF0000000, 0x000000000FF80000, 0x000000000007E000]
+    (t0:uint64t) = cvt_16_to_64  a
+    (t1:uint64t) = cvt_16_to_64  b
+    (x1:uint64t) = (t1 << 6) * (t0 && (1 << 6))
+    (t2:uint64t) = t0^(t0 << 7)
+    (x2:uint64t) = x1^ (t1 * (t2 && (cvt_20_to_64 0x04001)))
+    (x3:uint64t) = x2^ (t1 * (t2 && (cvt_20_to_64 0x08002))) << 1
+    (x4:uint64t) = x3^ (t1 * (t2 && (cvt_20_to_64 0x10004))) << 2
+    (x5:uint64t) = x4^ (t1 * (t2 && (cvt_20_to_64 0x20008))) << 3
+    (x6:uint64t) = x5^ (t1 * (t2 && (cvt_20_to_64 0x40010))) << 4
+    (x7:uint64t) = x6^ (t1 * (t2 && (cvt_20_to_64 0x80020))) << 5
+    rtn = loop_i 0 x7 3 M
+
+gf_sq2mul : gf_t -> gf_t -> gf_t
+gf_sq2mul a b = rtn where
+    (M:[6][64]) = [0x1FF0000000000000,
+        0x000FF80000000000,
+        0x000007FC00000000,
+        0x00000003FE000000,
+        0x0000000001FE0000,
+        0x000000000001E000]
+    (t0:uint64t) = cvt_16_to_64 a
+    (t1:uint64t) = cvt_16_to_64 b
+    (x_1:uint64t) = (t1 << 18) * (t0 && (1 << 6))
+    t2 = t0^(t0 << 21)
+    (x_2:uint64t) = x_1^(t1 * (t0 && (cvt_36_to_64 0x010000001)))
+    (x_3:uint64t) = x_2^(t1 * (t0 && (cvt_36_to_64 0x020000002))) << 3
+    (x_4:uint64t) = x_3^(t1 * (t0 && (cvt_36_to_64 0x040000004))) << 6
+    (x_5:uint64t) = x_4^(t1 * (t0 && (cvt_36_to_64 0x080000008))) << 9
+    (x_6:uint64t) = x_5^(t1 * (t0 && (cvt_36_to_64 0x100000010))) << 12
+    (x_7:uint64t) = x_6^(t1 * (t0 && (cvt_36_to_64 0x200000020))) << 15
+    rtn = loop_i 0 x_7 6 M
+
+gf_sq2 : gf_t -> gf_t
+gf_sq2 in = rtn where
+    (B:[4][64]) = [0x1111111111111111,
+        0x0303030303030303,
+        0x000F000F000F000F,
+        0x000000FF000000FF]
+    (M:[4][64]) = [0x0001FF0000000000,
+        0x000000FF80000000,
+        0x000000007FC00000,
+        0x00000000003FE000]
+    (x_1:uint64t) = cvt_16_to_64 in
+    (x_2:uint64t) = (x_1 || (x_1 << 24)) && (B@3)
+    (x_3:uint64t) = (x_2 || (x_2 << 12)) && (B@2)
+    (x_4:uint64t) = (x_3 || (x_3 << 6)) && (B@1)
+    (x_5:uint64t) = (x_4 || (x_3 << 3)) && (B@0)
+    rtn = loop_i 0 x_5 4 M
+
+gf_frac : gf_t -> gf_t -> gf_t
+gf_frac d n = t7 where
+    t1 = gf_sqmul d d
+    t2 = gf_sq2mul t1 t1
+    t3 = gf_sq2 t2
+    t4 = gf_sq2mul t3 t2
+    t5 = gf_sq2 t4
+    t6 = gf_sq2mul t5 t2
+    t7 = gf_sqmul t7 n
+
+gf_inv : gf_t -> gf_t
+gf_inv d = gf_frac d 1
+

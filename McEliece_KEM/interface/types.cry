@@ -4,9 +4,10 @@ module Types where
 // Values
 SYS_T = 119
 SYS_N = 6960
-SYS_Nd8 = SYS_N/8
+SYS_Nd8 = SYS_N/8 // 870
 
 GFBITS =  13
+type GFBITS_t =  13
 COND_BYTES  = ((1 << (GFBITS-4))*(2*GFBITS - 1))
 IRR_BYTES = (SYS_T * 2)
 PK_NROWS  =  (SYS_T*GFBITS)
@@ -17,11 +18,16 @@ SK_BYTES  =  (SYS_Nd8 + IRR_BYTES + COND_BYTES)
 SYND_BYTES  =  ((PK_NROWS + 7)/8)
 type SYND_BYTES_t = [194]
 GFMASK  =  ((1 << GFBITS) - 1)
+type j_size_t =  1024 // ((1:[32])<<13) /8
 
 
 // Base Types
 type base_16t = [16]
+type base_32t = [32]
 type base_64t = [64]
+type uint16t = [16]
+type uint64t = [64]
+type uint32t = [32]
 type base_t = base_16t
 type gf_t = base_t
 
@@ -31,10 +37,49 @@ type keybytes_t = [32] base_t // crypto_kem_BYTES
 type publickey_t = [1047319]base_t // crypto_kem_PUBLICKEYBYTES
 type secretkey_t = [13908] base_t // crypto_kem_SECRETKEYBYTES
 
+// parameter type
+type g_s_t =   ciphertext_t
+type g_ct_t =  ciphertext_t
+type g_key_t = keybytes_t
+type g_pk_t =  publickey_t
+type g_sk_t = secretkey_t
 
 // SYS Types
 type SYS_N8_t = [870] base_t
-type SYS_T_double_t = [238]base_t   // SYS_T*2
-type SYS_N_t = [6960]base_t
+type SYS_N8_plus1_t = [871] base_t
+type SYS_N8_plus2_t = [872]base_t
 
+SYS_T_double = 238// SYS_T*2
+type SYS_T_double_t = [238]base_t
+type SYS_N_t = [6960]base_t
+type SYS_T_plus1 = [120]base_t
+
+//decrypt specific types
+type L_t = SYS_N_t //[6960]base_t
+type f_t = SYS_N8_t
+type r_t = SYS_N8_t
+type g_t = SYS_T_plus1
+type s_t = SYS_T_double_t //SYS_T*2
+
+//encap specific types
+type e_t = SYS_N8_plus2_t
+type ind_t = SYS_T_double_t
+type e_int_t = [109]base_t
+type val_t = [119] base_t
+type e_pieces_t = [109][8]base_t
+
+
+// used in operations module
+type pm_t =  [1097]base_t //  1 + SYS_N/8 + (SYND_BYTES + 32) ]
+
+
+cvt_16 e = fromInteger `{[16]} (toInteger e)
+cvt_32 e = fromInteger `{[32]} (toInteger e)
+cvt_64 e = fromInteger `{[64]} (toInteger e)
+cvt_32_to_16 e = cvt_16 e
+cvt_64_to_16 e = cvt_16 e
+cvt_16_to_32 e = cvt_32 e
+cvt_20_to_64 e = cvt_64 e
+cvt_16_to_64 e = cvt_64 e
+cvt_36_to_64 e = cvt_64 e
 

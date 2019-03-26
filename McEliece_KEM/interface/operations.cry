@@ -1,28 +1,61 @@
 module Operations where
 
-import Encrypt
+
 import Types
-import Encrypt_types
+import Encrypt
+import Decrypt
 
 //--------------------------------------------------
 
-compute_hash_2e: [871]base_t -> [32]base_t
+compute_hash_2e : SYS_N8_plus1_t -> [32]base_t
 compute_hash_2e in = undefined
-compute_hash_1e : [1097]base_t -> [32]base_t
+compute_hash_1e : pm_t -> [32]base_t
 compute_hash_1e in = undefined
 
+crypto_hash_32b_1 : SYS_N8_plus1_t -> [32]base_t
+crypto_hash_32b_1 in = undefined
+
+crypto_hash_32b_2 : pm_t -> g_key_t
+crypto_hash_32b_2 in = undefined
+
+//defined externally
+// KeccakWidth1600_Sponge
+
+(two_e : SYS_N8_plus1_t) = [ 2 | x <- [0..870]]
+
 // encapsulation
-crypto_kem_enc : ct_t -> key_t -> pk_t -> e_t
-    -> (ct_t, key_t)
+crypto_kem_enc : g_ct_t -> g_key_t -> g_pk_t -> SYS_N8_plus2_t
+    -> (g_ct_t, g_key_t)
 crypto_kem_enc c0 key pk e =  (c2, key2) where
     // step 1. uniform random vector e (given as input)
-    (e:[872]base_t) = zero
+    (e :  SYS_N8_plus2_t) = zero
     // step 2. use encoding subroutine on e and public key T to compute Co
-    (c1: [226]base_t) = encrypt c0 pk e
+    (c1 : g_ct_t) = encrypt c0 pk e
     // step 3.
-    (two_e:[871]base_t) = zero //FIXME make 2
-    (c2: [226]base_t) = (take `{194} c1 ) # (compute_hash_2e two_e)
-    (one_ec:[1097]base_t) = ([1])#(take `{870} e)#c2
-    (key2: key_t) = compute_hash_1e one_ec
+    (c2 : g_ct_t) = (take `{194} c1 ) # (compute_hash_2e two_e)
+    (one_ec : pm_t) = ([1])#(take `{870} e)#c2
+    (key2 : g_key_t) = compute_hash_1e one_ec
 
 
+crypto_kem_dec : g_ct_t -> g_sk_t -> g_key_t
+crypto_kem_dec c sk = key where
+    // decryption
+    (e : SYS_N8_t, ret_decrypt : gf_t) = decrypt sk c
+    // calls KeccakWidth1
+    (conf : [32]base_t) = crypto_hash_32b_1 two_e
+    loop_i i rc =
+        if (i<32)
+        then loop_i i' rc' where
+            i' = i+1
+            rc' = rc || ((conf@i) ^ c@(SYND_BYTES + i))
+        else rc
+    (ret_confirm : base_16t) = loop_i 0 0
+    (m_0 : base_16t) = ret_decrypt || ret_confirm
+    (m_1 : base_16t) = m_0 - 1
+    (m : base_16t) = m_1 >> 8
+    x_1 = [(~m && 0) || (m && 1)]
+    x_2 = [(~m && (sk@i)) || (m && (e@i)) | i <- [0..(870-1)]]
+    x_3 = [(c@i) | i <- [0..(194-1+32)]]
+    (preimage: pm_t) = x_1 # x_2 # x_3
+    // 1 + SYS_N/8 + (SYND_BYTES + 32)
+    (key : g_key_t) = crypto_hash_32b_2 preimage

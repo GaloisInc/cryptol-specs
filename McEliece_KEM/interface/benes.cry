@@ -1,0 +1,63 @@
+module Benes where
+
+import Types
+import GF
+import Util
+
+
+type La_t = [32]
+type Lb_t = [j_size_t][32]
+type Lc_t = [GFBITS_t][j_size_t][32]
+
+apply_benes l c i = zero
+
+
+
+support_gen : g_sk_t  -> L_t
+support_gen c  = s where
+    k_size = (1:La_t) << GFBITS
+    loop_i : La_t -> Lc_t -> Lc_t
+    loop_i ix L =
+        if(ix<k_size)
+        then  loop_i ix' L' where
+            (_, a) = bitrev ix
+            loop_j : La_t -> Lc_t -> Lc_t
+            loop_j jx M =
+                if (jx < GFBITS)
+                then loop_j jx' M' where
+                    (kx:La_t) = ix/8
+                    (val_jx:Lb_t) = M@jx
+                    (val_kx:La_t) = val_jx@kx
+                    (c:La_t) = (ix%8:La_t)
+                    (d:La_t)  = (((a >> jx) && (1:La_t)) << c)
+                    (val_0:La_t) =  val_kx || d
+                    (val_1:Lb_t) = (update val_jx kx val_0)
+                    (M':Lc_t) = update M jx val_1
+                    (jx':La_t) = jx+1
+                else M
+            L' = loop_j 0 L
+            ix' = ix+1
+        else L
+    (L_0:Lc_t) = zero
+    (L_1:Lc_t) = loop_i 0 L_0
+    (L_2:Lc_t) =[(apply_benes l c 0) | l <- L_1]
+    loop_ix : La_t -> L_t -> L_t
+    loop_ix ix s =
+        if (ix<SYS_N)
+        then loop_ix (ix+1) s_2  where
+            loop_jx : La_t -> L_t -> L_t
+            loop_jx jx s =
+                if(jx>=0)
+                then loop_jx jx' s' where
+                    (x : La_t) = (L_2@jx)@(ix/8)
+                    (y : La_t) = (x >> (ix%8)) && 1
+                    (z : base_t) = (s@ix << (1:base_t)) || ( cvt_32_to_16 y)
+                    (jx': La_t) = jx-1
+                    s' = update s ix z
+                else s
+
+            //(ix', a) = bitrev ix
+            s_1 = update s ix 0
+            s_2 = loop_jx (GFBITS-1) s_1
+        else s
+    (s:L_t) = loop_ix 0 zero
