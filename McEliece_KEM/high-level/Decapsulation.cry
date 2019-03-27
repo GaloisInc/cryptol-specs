@@ -1,0 +1,57 @@
+module Decapsulation where
+
+import Types
+import Shared
+
+get_goppa : gamma_T -> (n_T, Bool)
+get_goppa gamma = undefined //TODO
+
+//checks that  "wt (e) = t"
+check1 e =  undefined //TODO
+// checks that "C0 = He"
+check2 e C0 =  undefined //TODO
+
+decrypt : C0_T -> private_key_T -> (e_T, Bool)
+decrypt C0 private_key = (e, dec_pass) where
+    (failure : (e_T, Bool)) = (zero, False)
+    (s : n_T) = private_key.s
+    (gamma : gamma_T) = private_key.g
+    // step 1 : extend C0 to v
+    (v:n_T) = C0#zero
+    //step2 : find unique codeword in the Goppa code
+    (c:n_T, goppa_pass) = get_goppa gamma
+    (e, dec_pass) =
+        if(~ goppa_pass)
+        then failure
+        else if((check1 e) && (check2 e C0)) // step 4
+            then (e, True)
+            else failure
+            where
+            //step 3 : set e to v plus c
+            (e :e_T) = v+c
+
+decapsulation
+    : cipher_text_T -> private_key_T -> session_key_T
+decapsulation C private_key =  K where
+    //step 1 :split ciphertext
+    C0 = C.C0
+    C1 = C.C1
+    s = private_key.s
+    gamma = private_key.g
+    //step 2 : set b to 1
+    b_1 = 1
+    //step 3 : use decoding subroutine
+    (e_1:e_T, dec_pass) = decrypt C0 private_key
+    (e_2:e_T, b_2) =
+        if(dec_pass)
+        then (e_1, b_1)
+        else (s, 0) // case of failure
+    //step 4 : compute C1 for H input encoding
+    (C1': C1_T) = compute_hash_e e_2
+    //step 5 : Compare C1
+    (e_3:e_T, b_3) =
+        if(C1==C1')
+        then (e_2, b_2)
+        else (s, 0)
+    //step 6 : H input encodings
+    (K: session_key_T) = compute_hash_eC e_3 C

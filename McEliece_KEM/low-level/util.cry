@@ -19,4 +19,7 @@ bitrev a = (cvt_16_to_32 a_4, cvt_16_to_32(a_4>>3)) where
     a_4 = ((a_3 && 0x5555) << 1) || ((a_3 && 0xAAAA) >> 1)
 
 
-store8 out in = out //undefined TODO
+//undefined TODO
+store8 out in = out
+load8 in = zero
+transpose_64x64 in = zero

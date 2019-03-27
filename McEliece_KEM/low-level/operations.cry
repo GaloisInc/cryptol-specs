@@ -39,7 +39,7 @@ crypto_kem_enc c0 key pk e =  (c2, key2) where
 
 crypto_kem_dec : g_ct_t -> g_sk_t -> g_key_t
 crypto_kem_dec c sk = key where
-    // decryption
+    // calls decoding subroutine
     (e : SYS_N8_t, ret_decrypt : gf_t) = decrypt sk c
     // calls KeccakWidth1
     (conf : [32]base_t) = crypto_hash_32b_1 two_e

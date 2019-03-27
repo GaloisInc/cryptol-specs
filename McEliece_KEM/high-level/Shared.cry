@@ -1,0 +1,10 @@
+module Shared where
+
+import Types
+
+compute_hash_e : e_T -> C1_T
+compute_hash_e e = undefined //TODO
+compute_hash_eC : e_T -> cipher_text_T -> session_key_T
+compute_hash_eC e C = undefined //TODO
+
+

@@ -9,9 +9,28 @@ type La_t = [32]
 type Lb_t = [j_size_t][32]
 type Lc_t = [GFBITS_t][j_size_t][32]
 
-apply_benes l c i = zero
+apply_benes r bits rev = zero
+/* where
+    (bits_ptr, inc) =
+        if rev
+        then (bits_ptr, inc) where
+            bits_ptr = bits + 12288
+            inc = -1024
+        else (bits_ptr, inc) where
+            bits_ptr = bits
+            inc = 0
 
+    (r_int_v_0:[64][64]) = [ load8 (r + i*16 + 0) | i<- [0..63]]
+    (r_int_v_1:[64][64]) = [ load8 (r + i*16 + 8) | i<- [0..63]]
+    (r_int_v:[2][64][64]) = [r_int_v_0, r_int_v_1]
 
+    r_int_h_0 = transpose_64x64 r_int_v_0
+    r_int_h_1 = transpose_64x64 r_int_v_1
+
+    ////--- fixme
+    r_int_v_0 = transpose_64x64 r_int_h_0
+    r_int_v_1 = transpose_64x64 r_int_h_1
+*/
 
 support_gen : g_sk_t  -> L_t
 support_gen c  = s where
