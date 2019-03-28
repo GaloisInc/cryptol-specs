@@ -3,16 +3,24 @@ module Decapsulation where
 import Types
 import Shared
 
-get_goppa : gamma_T -> (n_T, Bool)
-get_goppa gamma = undefined //TODO
+// Hamming weight. Number of ones
+get_weight : n_T  -> Integer
+get_weight e = sum ([cvt_bit_int i | i <- e])
 
-//checks that  "wt (e) = t"
-check1 e =  undefined //TODO
-// checks that "C0 = He"
-check2 e C0 =  undefined //TODO
+check_e : e_T -> public_key_T -> C0_T -> (e_T, Bool)
+check_e e public_key C0 =
+    if((get_weight e == glob_t) && (C0 == C0'))
+    then (e, True)
+    else (zero, False)
+    where
+        // checks that "C0 = He"
+        (H: H_T) = compute_H public_key
+        (C0':C0_T) = compute_He H e
 
-decrypt : C0_T -> private_key_T -> (e_T, Bool)
-decrypt C0 private_key = (e, dec_pass) where
+decrypt
+    : C0_T -> private_key_T -> public_key_T
+    -> (e_T, Bool)
+decrypt C0 private_key public_key = (e, dec_pass) where
     (failure : (e_T, Bool)) = (zero, False)
     (s : n_T) = private_key.s
     (gamma : gamma_T) = private_key.g
@@ -23,16 +31,15 @@ decrypt C0 private_key = (e, dec_pass) where
     (e, dec_pass) =
         if(~ goppa_pass)
         then failure
-        else if((check1 e) && (check2 e C0)) // step 4
-            then (e, True)
-            else failure
+        else (check_e e public_key C0) // step 4
             where
             //step 3 : set e to v plus c
             (e :e_T) = v+c
 
 decapsulation
-    : cipher_text_T -> private_key_T -> session_key_T
-decapsulation C private_key =  K where
+    : cipher_text_T -> private_key_T -> public_key_T 
+    -> session_key_T
+decapsulation C private_key public_key =  K where
     //step 1 :split ciphertext
     C0 = C.C0
     C1 = C.C1
@@ -41,17 +48,17 @@ decapsulation C private_key =  K where
     //step 2 : set b to 1
     b_1 = 1
     //step 3 : use decoding subroutine
-    (e_1:e_T, dec_pass) = decrypt C0 private_key
+    (e_1:e_T, dec_pass) = decrypt C0 private_key public_key
     (e_2:e_T, b_2) =
         if(dec_pass)
         then (e_1, b_1)
         else (s, 0) // case of failure
     //step 4 : compute C1 for H input encoding
-    (C1': C1_T) = compute_hash_e e_2
+    (C1': C1_T) = compute_hash_e 2 e_2
     //step 5 : Compare C1
     (e_3:e_T, b_3) =
         if(C1==C1')
         then (e_2, b_2)
         else (s, 0)
     //step 6 : H input encodings
-    (K: session_key_T) = compute_hash_eC e_3 C
+    (K: session_key_T) = compute_hash_eC b_2 e_3 C

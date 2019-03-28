@@ -1,27 +1,9 @@
 module Key_Generation where
 
 import Types
+import Shared
 
-//TODO
-random_element : field_element_T
-random_element = ([True | i <- [1..m]])
-random_elements : {t0}(fin t0, t0>=1) => [t0]field_element_T
-random_elements = ([random_element | i <- [1..t0]])
-
-//TODO: make irreducible poly
-step_1 = random_elements `{ t0 = t-1}#[1]
-
-// TODO: add power operation
-step_3 : poly_T -> alphas_T -> H_T
-step_3 g alphas = [[ f i j | j <- [1..n]] | i <- [1..t]]
-    where f i j = aj / (g @ aj)
-            where aj = alphas@j
-
-// TODO: apply gaussian elimination
-step_5 : H_T -> (Bool, public_key_T)
-step_5 H_tilde = undefined
-
-mk_gamma : Integer -> (gamma_T,public_key_T)
+mk_gamma : Integer -> (gamma_T, public_key_T)
 mk_gamma counter =
     if(flag) then ({p=g, a=alphas}, public_key)
     else if (counter < 100)

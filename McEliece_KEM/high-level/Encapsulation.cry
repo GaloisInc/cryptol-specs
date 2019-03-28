@@ -2,24 +2,12 @@ module Encapsulation where
 
 import Types
 import Shared 
-//--------------------------------------------------
-// Define H = (I_n-k |T )
-step_1 : mt_T -> public_key_T -> H_T
-step_1 I A = zero
-// get inverse A|I //TODO
 
-// reduce matrix I|B //TODO
-// Co = He
-step_2 : H_T -> e_T -> C0_T
-step_2 H e = zero
-
-//
 // encoding subroutine
 encoding_subroutine : e_T -> public_key_T -> C0_T
 encoding_subroutine e T = C0 where
-    (I: mt_T) = zero
-    (H:H_T) = step_1 I T     
-    (C0:C0_T) = step_2 H e
+    (H:H_T) = compute_H T
+    (C0:C0_T) = compute_He H e
 
 encapsulation
     : public_key_T ->  e_T
@@ -29,7 +17,7 @@ encapsulation T e =  (K, C) where
     // step 2. use encoding subroutine on e and public key T to compute Co
     (C0 : C0_T) = encoding_subroutine e T
     // step 3.
-    (C1: C1_T) = compute_hash_e e
+    (C1: C1_T) = compute_hash_e 2 e
     (C: cipher_text_T) = {C0 = C0, C1 = C1}
-    (K: session_key_T) = compute_hash_eC e C
+    (K: session_key_T) = compute_hash_eC 1 e C
 

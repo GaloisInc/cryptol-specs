@@ -1,10 +1,94 @@
 module Shared where
 
 import Types
-
-compute_hash_e : e_T -> C1_T
-compute_hash_e e = undefined //TODO
-compute_hash_eC : e_T -> cipher_text_T -> session_key_T
-compute_hash_eC e C = undefined //TODO
+import Keccak
 
 
+compute_hash_e : Integer -> e_T -> C1_T
+compute_hash_e  i e = out where
+    (a: [8]) = fromInteger `{[8]} i
+    (x:[inf]) = SHAKE256 ((fromInteger `{[8]} i) # e)
+    (out: C1_T) = take `{256} x
+
+compute_hash_eC
+    : Integer -> e_T -> cipher_text_T -> session_key_T
+compute_hash_eC  i e C = out where
+    (a: [8]) = fromInteger `{[8]} i
+    (x:[inf]) = SHAKE256 (a # e # C.C0 # C.C1)
+    (out: session_key_T) = take `{32} x
+
+// Hash functions is given as input
+// and conversions to Hash input as defined by 2.8
+/*
+compute_hash_e
+    : hash1_T -> Integer -> e_T -> C1_T
+compute_hash_e hash1 i e = out where
+    if converting to bytes then using an input hash function
+    (a: byte_int_T) = [(fromInteger `{[8]} i)]
+    (b: byte_n_T) = groupBy `{8} e
+    (input: hash1_in_T) = a#b
+    (out:  C1_T) = hash1 input
+compute_hash_eC
+    : hash2_T -> Integer -> e_T -> cipher_text_T -> session_key_T
+compute_hash_eC hash2 i e C = out where
+    (a: byte_int_T) = [(fromInteger `{[8]} i)]
+    (b: byte_n_T) = groupBy `{8} e
+    (c1: [ 8*byte_k_T]Bit) = (C.C0)#zero
+    (c : [byte_k_T][8]Bit) = groupBy `{8} c1
+    (d:  byte_d_T) = groupBy `{8}  C.C1
+    (input: hash2_in_T) = a#b#c#d
+    (out: session_key_T) = hash2 input
+
+*/
+
+cvt_bit_int b = if(b) then 1 else 0
+cvt_int_bit i = if(i==1) then True else False
+
+// matrix multiplication
+compute_He : H_T -> e_T -> C0_T
+// also [n-k][n]f2_T ->  [n]f2_T -> [n-k]f2_T
+compute_He H e =
+    [ cvt_int_bit (sum (f hi)) | hi <- H ]
+        where f hi = [ (cvt_bit_int hij) * (cvt_bit_int ej)
+            |  ej <- e | hij <- hi]
+
+
+//*----------------------------------------------------------*/
+//H = I_{n-k}  | T
+//type public_key_T = [m*t][k]f2_T
+//type H_T = [t][n]field_element_T
+// Define H = (I_n-k |T )
+// get inverse A|I //TODO
+compute_H : public_key_T -> H_T
+compute_H T = undefined
+//brian
+
+
+//used by decap //TODO
+// look at [7] and [17]
+get_goppa : gamma_T -> (n_T, Bool)
+get_goppa gamma = undefined //TODO
+// see interface/decrypt
+
+
+//used by key generation
+//TODO
+random_element : field_element_T
+random_element = ([True | i <- [1..m]])
+random_elements : {t0}(fin t0, t0>=1) => [t0]field_element_T
+random_elements = ([random_element | i <- [1..t0]])
+
+//TODO: make irreducible poly
+step_1 = random_elements `{ t0 = t-1}#[1]
+
+// TODO: add power operation
+step_3 : poly_T -> alphas_T -> H_T
+step_3 g alphas = zero /*
+    [[ f i j | j <- [1..n]] | i <- [1..t]]
+    where f i j = aj / (g @ aj)
+            where aj = alphas@j
+*/
+
+// TODO: apply gaussian elimination
+step_5 : H_T -> (Bool, public_key_T)
+step_5 H_tilde = undefined
