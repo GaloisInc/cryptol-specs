@@ -14,6 +14,8 @@ module Primitive::Asymmetric::Signature::SphincsPlus where
 The present document's heading structure follows the SPHINCS+ [specification](https://sphincs.org/data/sphincs+-specification.pdf),
 and can be read as a supplement to that document.
 
+Note that this module requires a build of Cryptol newer than 2019-03-19.
+
 ---
 
 ## 2. Notation
