@@ -18,9 +18,9 @@ check_e e public_key C0 =
         (C0':C0_T) = compute_He H e
 
 decrypt
-    : C0_T -> private_key_T -> public_key_T
+    : C0_T -> private_key_T -> public_key_T -> fn_get_goppa_T
     -> (e_T, Bool)
-decrypt C0 private_key public_key = (e, dec_pass) where
+decrypt C0 private_key public_key get_goppa = (e, dec_pass) where
     (failure : (e_T, Bool)) = (zero, False)
     (s : n_T) = private_key.s
     (gamma : gamma_T) = private_key.g
@@ -37,9 +37,9 @@ decrypt C0 private_key public_key = (e, dec_pass) where
             (e :e_T) = v+c
 
 decapsulation
-    : cipher_text_T -> private_key_T -> public_key_T 
+    : cipher_text_T -> private_key_T -> public_key_T -> fn_get_goppa_T
     -> session_key_T
-decapsulation C private_key public_key =  K where
+decapsulation C private_key public_key get_goppa =  K where
     //step 1 :split ciphertext
     C0 = C.C0
     C1 = C.C1
@@ -48,7 +48,7 @@ decapsulation C private_key public_key =  K where
     //step 2 : set b to 1
     b_1 = 1
     //step 3 : use decoding subroutine
-    (e_1:e_T, dec_pass) = decrypt C0 private_key public_key
+    (e_1:e_T, dec_pass) = decrypt C0 private_key public_key get_goppa
     (e_2:e_T, b_2) =
         if(dec_pass)
         then (e_1, b_1)
