@@ -17,6 +17,7 @@ check_e e public_key C0 =
         (H: H_T) = compute_H public_key
         (C0':C0_T) = compute_He H e
 
+//[mt]-> {[n],{[t],[n]}} -> [mt][k] 
 decrypt
     : C0_T -> private_key_T -> public_key_T -> fn_get_goppa_T
     -> (e_T, Bool)
@@ -36,6 +37,11 @@ decrypt C0 private_key public_key get_goppa = (e, dec_pass) where
             //step 3 : set e to v plus c
             (e :e_T) = v+c
 
+/* Note without get_goppa function can use decrypt_1()
+    but it hase different type spec
+    decrypt_1 : ciphertext_t ->  secretkey_t -> (SYS_N8_t, gf_t)
+    It was written based on the reference spec
+*/
 decapsulation
     : cipher_text_T -> private_key_T -> public_key_T -> fn_get_goppa_T
     -> session_key_T

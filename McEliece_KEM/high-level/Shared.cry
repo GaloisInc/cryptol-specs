@@ -33,3 +33,76 @@ compute_hash_eC  i e C = out where
     (a: [8]) = fromInteger `{[8]} i
     (x:[inf]) = SHAKE256 (a # e # C.C0 # C.C1)
     (out: session_key_T) = take `{32} x
+
+index a i j = cvt_bit_int ((a@i)@j)
+abs_index a i j  = (index a i j) //absolute
+// a[i] = a[j]
+update_val a i j = update a i (a@j)
+swap_val a_0 i k = a_2 where
+    a_1 = update_val a_0 i k
+    a_2 = update_val a_1 k i
+
+type a_len1 = 7
+a_len1 = 7
+type a_len2 = 7
+a_len2 = 7
+type b_len2 = 7
+b_len2 = 7
+type a_in_T = [a_len1][a_len2]
+type b_in_T = [a_len1][b_len2]
+
+
+// M[j][k]-= tmp*M[i][k]
+scale M i tmp k_len = zero 
+/*
+    [(index M j k)- (tmp *(index i M k))
+        | j <- [i'..(a_len1-1)]
+        | k <- [i'..(k_len-1)]]
+    where
+        i' = i+1
+*/
+
+loop_1 : a_in_T -> [32] -> [32]
+loop_1 a i = k where
+    inner j =
+        if(j<a_len1)
+        then
+            if((abs_index a j i) > (abs_index a k i))
+            then j
+            else inner (j+1)
+        else i // k=i
+    k = inner (i+1)
+
+loop_2 : a_in_T -> b_in_T -> [32] -> [32] -> [32]
+    -> (a_in_T, b_in_T, [32])
+loop_2 a b i k det =
+    if (k!=i)
+    then (a', b', det') where
+        a' = swap_val a i k
+        b' = swap_val b i k
+        det' = -1 * det
+    else (a, b, det)
+
+
+loop_3 : a_in_T -> b_in_T -> [32] -> (a_in_T, b_in_T)
+loop_3 a_in b_in i =
+    inner (i+1) a_in b_in where
+    inner j a b =
+        if(j < a_len1)
+        then
+            (a', b') where
+            tmp = (index a j i)/ (index a i i)
+            a' = scale a i tmp a_len1 a_len2
+            b' = scale a i tmp a_len1 b_len2
+        else (a ,b)
+
+big_loop_1
+    : [32] -> a_in_T -> b_in_T -> [32]
+     -> (a_in_T, b_in_T, [32])
+big_loop_1 i a b det =
+    if (i< (a_len1-1))
+    then big_loop_1 (i+1) a_2 b_2 det_1 where
+        k = loop_1 a i
+        (a_1, b_1, det_1) = loop_2 a b i k det
+        (a_2, b_2) = loop_3 a_1 b_1 i
+    else (a, b, det)

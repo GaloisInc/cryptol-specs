@@ -8,7 +8,7 @@ SYS_Nd8 = SYS_N/8 // 870
 
 GFBITS =  13
 type GFBITS_t =  13
-COND_BYTES  = ((1 << (GFBITS-4))*(2*GFBITS - 1))
+COND_BYTES  = (((1:[32]) << (GFBITS-(4:[32])))*(2*GFBITS - (1:[32])))
 IRR_BYTES = (SYS_T * 2)
 PK_NROWS  =  (SYS_T*GFBITS)
 PK_NCOLS  =  (SYS_N - PK_NROWS)
@@ -17,7 +17,7 @@ type PK_ROW_BYTES_t = [677]
 SK_BYTES  =  (SYS_Nd8 + IRR_BYTES + COND_BYTES)
 SYND_BYTES  =  ((PK_NROWS + 7)/8)
 type SYND_BYTES_t = [194]
-GFMASK  =  ((1 << GFBITS) - 1)
+GFMASK  =  (((1:[32]) << GFBITS) - 1)
 type j_size_t =  1024 // ((1:[32])<<13) /8
 
 

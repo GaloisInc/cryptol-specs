@@ -7,8 +7,10 @@ glob_n = 6960
 type n = 6960
 type m = 13
 type d = 256
-type mt = m*t
-
+type mt = m*t //1547
+//--------------------------------------------
+// Structure Defined by spec
+//--------------------------------------------
 type k = (n-m*t) // 5413
 // in order of general algorithm spec
 type f2_T = Bit
@@ -52,3 +54,43 @@ type session_key_T = [32]
 
 type fn_get_goppa_T = gamma_T -> (n_T, Bool)
 type fn_gauss_T = H_tilde_T -> (Bool, public_key_T)
+
+
+//--------------------------------------------
+// Structure Defined by reference implementation
+//--------------------------------------------
+// Base Types
+type base_16t = [16]
+type base_32t = [32]
+type base_64t = [64]
+type uint16t = [16]
+type uint64t = [64]
+type uint32t = [32]
+type gf_t = base_t
+//conversions
+cvt_16 e = fromInteger `{[16]} (toInteger e)
+cvt_32 e = fromInteger `{[32]} (toInteger e)
+cvt_64 e = fromInteger `{[64]} (toInteger e)
+
+
+//specific to low level implementation of goppa code
+GFBITS =  13
+type GFBITS_t =  13
+type base_t = base_16t
+// crypto_kem_SECRETKEYBYTES
+type secretkey_t = [13908] base_t
+type ciphertext_t = [226] base_t  // crypto_kem_CIPHERTEXTBYTES
+
+type SYS_N_t = [n]base_t
+type SYS_N8_t = [n/8] base_t
+type SYS_T_double_t = [t*2]base_t
+type SYS_T_plus1 = [t+1]base_t
+SYS_T_double =  glob_t*2 // 238
+
+// support_gen in benes
+GFMASK  =  cvt_64 (((1:[32]) << GFBITS) - 1)
+type j_size_t =  1024 //((1:[32]) << GFBITS)/8
+type La_t = [32]
+type Lb_t = [j_size_t][32]
+type Lc_t = [GFBITS_t][j_size_t][32]
+

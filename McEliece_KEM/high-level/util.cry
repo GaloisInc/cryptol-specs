@@ -1,0 +1,25 @@
+module Util where
+
+import Types
+
+load2 : secretkey_t -> [32] -> gf_t
+load2 src sk_index = (a && (cvt_16 GFMASK)) where
+    (a: base_16t) = src@(1+sk_index)
+    b = a << 8
+    c = b || src@(0+sk_index)
+
+
+
+bitrev : [32] -> ([32],  [32])
+bitrev a = (cvt_32 a_4, cvt_32(a_4>>3)) where
+    a_0 = cvt_16 a
+    a_1 = ((a_0 && 0x00FF) << 8) || ((a_0 && 0xFF00) >> 8)
+    a_2 = ((a_1 && 0x0F0F) << 4) || ((a_1 && 0xF0F0) >> 4)
+    a_3 = ((a_2 && 0x3333) << 2) || ((a_2 && 0xCCCC) >> 2)
+    a_4 = ((a_3 && 0x5555) << 1) || ((a_3 && 0xAAAA) >> 1)
+
+
+//undefined TODO
+store8 out in = out
+load8 in = zero
+transpose_64x64 in = zero
