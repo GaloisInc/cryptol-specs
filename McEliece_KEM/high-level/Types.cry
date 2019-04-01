@@ -5,12 +5,14 @@ glob_t = 119
 type t = 119
 glob_n = 6960
 type n = 6960
+glob_m = 13
 type m = 13
 type d = 256
 type mt = m*t //1547
 //--------------------------------------------
 // Structure Defined by spec
 //--------------------------------------------
+glob_k = (glob_n-glob_m*glob_t) // 5413
 type k = (n-m*t) // 5413
 // in order of general algorithm spec
 type f2_T = Bit

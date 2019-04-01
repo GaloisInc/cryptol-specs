@@ -35,8 +35,8 @@ mk_gamma counter counter_limit gs alphas fn_gauss =
 // g: uniform random monic irreducible polynomial 
 // alpha :uniform random sequence
 // counter_limit : how many times should to go back to step 1 if H can be transformed to systematic form
-// fn_gauss_T : apply Gaussian elimination function
-//            see also Shared.cry for example
+// fn_gauss_T : function to apply Gaussian elimination
+//            see also Gauss.cry for example
 // failed state in this case is zero
 key_generation
 	 : [n]Bit -> [inf]poly_T -> [inf]alphas_T -> [32] -> fn_gauss_T

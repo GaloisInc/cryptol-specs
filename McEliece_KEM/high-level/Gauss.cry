@@ -3,115 +3,138 @@ module Gauss where
 import Types
 import Keccak
 import Shared
-// ----------------------- Gaussian Elimination
-index a i j = cvt_bit_int ((a@i)@j)
-abs_index a i j  = (index a i j) //absolute
-// a[i] = a[j]
-update_val a i j = update a i (a@j)
-swap_val a_0 i k = a_2 where
-    a_1 = update_val a_0 i k
-    a_2 = update_val a_1 k i
 
-type a_len1 = 7
-a_len1 = 7
-type a_len2 = 7
-a_len2 = 7
-type b_len2 = 7
-b_len2 = 7
-type a_in_T = [a_len1][a_len2]
-type b_in_T = [a_len1][b_len2]
+type M_len1 = n-k
+glob_M_len1 = glob_n-glob_k
+type b_len2 = k
+glob_b_len2 = glob_k
+type a_in_T = [M_len1][M_len1]
+type b_in_T = [M_len1][b_len2]
 
+// ----------------------- Gaussian Elimination -----------------------
+// reference https://rosettacode.org/wiki/Gaussian_elimination
+//index Matrix a
+index M i j = cvt_bit_int ((M@i)@j)
 
-// M[j][k]-= tmp*M[i][k]
-scale M i tmp k_len = zero 
-/*
-    [(index M j k)- (tmp *(index i M k))
-        | j <- [i'..(a_len1-1)]
-        | k <- [i'..(k_len-1)]]
-    where
-        i' = i+1
-*/
+//b[i][j] = val
+update_M M i j v =
+    update M i val' where
+    N =  index M i j
+    val = cvt_int_bit v
+    val' = update N j val
 
-loop_1 : a_in_T -> [32] -> [32]
-loop_1 a i = k where
-    inner j =
-        if(j<a_len1)
-        then
-            if((abs_index a j i) > (abs_index a k i))
-            then j
-            else inner (j+1)
-        else i // k=i
-    k = inner (i+1)
-
-loop_2 : a_in_T -> b_in_T -> [32] -> [32] -> [32]
-    -> (a_in_T, b_in_T, [32])
-loop_2 a b i k det =
-    if (k!=i)
-    then (a', b', det') where
-        a' = swap_val a i k
-        b' = swap_val b i k
-        det' = -1 * det
-    else (a, b, det)
-
-
-loop_3 : a_in_T -> b_in_T -> [32] -> (a_in_T, b_in_T)
+loop_3
+    : a_in_T -> b_in_T -> [32]
+    -> (a_in_T, b_in_T)
 loop_3 a_in b_in i =
     inner (i+1) a_in b_in where
-    inner j a b =
-        if(j < a_len1)
+    inner j A B =
+        if(j < glob_M_len1)
         then
-            (a', b') where
-            tmp = (index a j i)/ (index a i i)
-            a' = scale a i tmp a_len1 a_len2
-            b' = scale a i tmp a_len1 b_len2
-        else (a ,b)
+            (A_1, B_1) where
+            tmp = (index A j i)/ (index A i i)
+            i' = i+1
+            // M[j][k]-= tmp*M[i][k]
+            /* one way we want to write it
+            A_1 = [(index A j k)- (tmp *(index A i k))
+                    | j <- [i'..(M_len1-1)]
+                    | k <- [i'..(M_len1-1)]]
+            B_1 = [(index B j k)- (tmp *(index B i k))
+                    | j <- [i'..(M_len1-1)]
+                    | k <- [i'..(b_len2-1)]]
+            */
+            loop_j1 k k_limit M  =
+                if (k<k_limit)
+                then loop_j2 k' k_limit M' where
+                    k' = k+1
+                    val = (index M j k) - ((index M i k) * tmp)
+                    M' = update_M M j k val
+                else M
+            loop_j2 k k_limit M  =
+                if (k<k_limit)
+                then loop_j2 k' k_limit M' where
+                    k' = k+1
+                    val = (index M j k) - ((index M i k) * tmp)
+                    M' = update_M M j k val
+                else M
+            A_1 = loop_j1 (i+1) glob_M_len1 A
+            B_1 = B // FIXME loop_j2 0 `b_len2 B
+        else (A ,B)
 
 big_loop_1
     : [32] -> a_in_T -> b_in_T -> [32]
      -> (a_in_T, b_in_T, [32])
-big_loop_1 i a b det =
-    if (i< (a_len1-1))
-    then big_loop_1 (i+1) a_2 b_2 det_1 where
-        k = loop_1 a i
-        (a_1, b_1, det_1) = loop_2 a b i k det
-        (a_2, b_2) = loop_3 a_1 b_1 i
-    else (a, b, det)
+big_loop_1 i A B det =
+    if (i< (glob_M_len1-1))
+    then big_loop_1 (i+1) A_2 B_2 det_1 where
+        inner_1 : [32] -> [32] -> [32]
+        inner_1 j k =
+            if(j<glob_M_len1)
+            then
+                if((abs_index A j i) > (abs_index A k i))
+                then j
+                else inner_1 (j+1) k
+            else i // k=i
+        inner_2 k = (A_1, B_1, det_1) where
+                //swap values a[i]=a[k], a[k]=a[i]
+                v1 = index A i k
+                v2 = index A k i
+                A_1 = update_M (update_M A i k v2) k i v1
+                u1 = index B i k
+                u2 = index B k i
+                B_1 = update_M (update_M B i k u2) k i u1
+                det_1 = -1 * det
+        //absolute
+        abs_index M i j  = if (val<0)then -1* val else val
+            where val = index M i j
+        k = inner_1 (i+1) i
+        (A_1, B_1, det_1) =
+            if (k!=i) then inner_2 det else (A, B, det)
+        (A_2, B_2) = loop_3 A_1 B_1 i
+    else (A, B, det)
 
-//b[i][j] = val
-update_M M i j val = M
-    /*update M i val' where
-    N =  (M @i)@ j
-    val' = update N j val
-*/
-
-loop_j i j a b =
-    if (j<a_len1)
-    then loop_j i j' a b' where
-        tmp = (a@i)@j
-        loop_k k b =
-            if (k<b_len2)
-            then loop_k (k+1) b' where
-                val = (index b i k) - (tmp* (index b j k))
-                b' = update_M b i k val
-            else b
-        b' = loop_k 0 b
-        j' = j+1
-    else b
-
-
-big_loop_2 i a b det = zero /*
+big_loop_2
+    : [32] -> a_in_T -> b_in_T -> [32]
+    -> b_in_T
+big_loop_2 i A B_in det =
     if(i>=0)
-    then big_loop_2 (i+1) a b' det' where
-        j = i+1
-        b' = loop_j i j a b
-        val = index a i i
+    then big_loop_2 (i+1) A B_3 det_1 where
+        loop_j : [32] -> b_in_T -> b_in_T
+        loop_j j B =
+            if (j<glob_M_len1)
+            then loop_j j' B_1 where
+                tmp = index A i j
+                loop_k k B =
+                    if (k<glob_b_len2)
+                    then loop_k k' B_1 where
+                        k' = k+1
+                        val = (index B i k) - (tmp* (index B j k))
+                        B_1 = update_M  B i k val
+                    else B
+                B_1 = loop_k 0 B
+                j' = j+1
+            else B
+        B_1 = loop_j (i+1) B_in
+        val = index A i i
         t = 1/val
-        det' = det * val
-    else b
-*/
+        det_1 = det * val
+        loop_j2 j B_2 =
+            if (j<glob_b_len2)
+            then loop_j2 j' B_3 where
+                j' = j+1
+                val = ((index B_2 i j) * t)
+                B_3 = update_M B_2 i j val
+            else B_2
+        B_3 = loop_j2 0 B_1
+    else B_in
 
-guassian a b  = b_2 where
+//guassian : H_tilde_T -> (Bool, public_key_T)
+// H_tilde_T    =   [t][n][m]f2_T
+// public_key_T = [n-k][k]f2_T
+guassian : a_in_T ->  (Bool, b_in_T)
+guassian a  = (True, B_2) where
     det = 1
-    (a_1, b_1, det_1) = big_loop_1 0 a b det
-    (b_2) = (big_loop_2 0 a_1 b_1 det_1)
+    (b : b_in_T) = zero
+    (A_1, B_1, det_1) = big_loop_1 0 a b det
+    (B_2) = (big_loop_2 0 A_1 B_1 det_1)
 
