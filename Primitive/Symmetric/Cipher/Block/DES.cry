@@ -10,13 +10,13 @@ import Primitive::Symmetric::Cipher::Block::Cipher
 // DES API
 DES : Cipher 64 64
 DES =
-    { encrypt key pt = des pt (expandKey key)
-    , decrypt key ct = des ct (reverse (expandKey key))
+    { encrypt key pt = des (expandKey key) pt
+    , decrypt key ct = des (reverse (expandKey key)) ct
     }
 
 // Encryption
 
-des pt keys = (swap (split lst)) @@ FPz
+des keys pt = (swap (split lst)) @@ FPz
   where
         pt' = pt @@ IPz
         iv  = [ round (k, split lr)
@@ -171,7 +171,7 @@ sbox8 = [[13, 2, 8, 4, 6, 15, 11, 1, 10, 9, 3, 14, 5, 0, 12, 7],
         ]
 
 
-property DESCorrect msg key = DES.decrypt key (DES.encrypt key msg) == msg
+property DESCorrect key msg = DES.decrypt key (DES.encrypt key msg) == msg
 
 
 testmsgs = [0x1122334455667788
