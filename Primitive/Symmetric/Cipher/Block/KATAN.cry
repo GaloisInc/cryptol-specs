@@ -62,9 +62,9 @@ y = [38, 25, 33, 21, 14, 9]
 
 // Split and load the plaintext into two registers L1||L2
 
-split: [KatanBlock] -> ([L1Size], [L2Size])
+splitBlock: [KatanBlock] -> ([L1Size], [L2Size])
 
-split pt = (l1, l2)
+splitBlock pt = (l1, l2)
             where l1 = take`{L1Size} pt
                   l2 = drop`{L1Size} pt
 
@@ -153,14 +153,14 @@ updateLfsr l1 l2 x y key i = if `(L1Size) == 13
                                   else (l1''', l2''')
 
                  where pt = (aply_fb l1 l2 y key i) # (aply_fa l1 l2 x key i)
-                       l1' = (split pt).0
-                       l2' = (split pt).1
+                       l1' = (splitBlock pt).0
+                       l2' = (splitBlock pt).1
                        pt' = (aply_fb l1' l2' y key i) # (aply_fa l1' l2' x key i)
-                       l1'' = (split pt').0
-                       l2'' =  (split pt').1
+                       l1'' = (splitBlock pt').0
+                       l2'' =  (splitBlock pt').1
                        pt'' = (aply_fb l1'' l2'' y key i) # (aply_fa l1'' l2'' x key i)
-                       l1''' = (split pt'').0
-                       l2''' =  (split pt'').1
+                       l1''' = (splitBlock pt'').0
+                       l2''' =  (splitBlock pt'').1
 
 //Encryption
 
@@ -168,8 +168,8 @@ katanEncrypt : ( [KatanKeySize], [KatanBlock]) -> _ // [KatanBlock]
 
 katanEncrypt (key, pt) =  (hs!0).0 # (hs!0).1
                where hs = [(l1, l2)] # [ ( (updateLfsr pT.0 pT.1 x y key i).0, (updateLfsr pT.0 pT.1 x y key i).1)  | i<- [0,1..253] | pT <- hs ]
-                     l1 = (split pt).0
-                     l2 = (split pt).1
+                     l1 = (splitBlock pt).0
+                     l2 = (splitBlock pt).1
 
 // wrapper to do experiments
 
@@ -212,21 +212,21 @@ decUpdateLfsr  l1 l2 x y key i = if `(L1Size) == 13
                                       then (l1'', l2'')
                                       else (l1''', l2''')
                                where ct = (aply_decFa_once l1 l2 x key i) # (aply_decFb_once l2 l1 y key i)
-                                     l1' = (split ct).0
-                                     l2' = (split ct).1
+                                     l1' = (splitBlock ct).0
+                                     l2' = (splitBlock ct).1
                                      ct' = (aply_decFa_once l1' l2' x key i) # (aply_decFb_once l2' l1' y key i)
-                                     l1'' = (split ct').0
-                                     l2'' = (split ct').1
+                                     l1'' = (splitBlock ct').0
+                                     l2'' = (splitBlock ct').1
                                      ct'' = (aply_decFa_once l1'' l2'' x key i) # (aply_decFb_once l2'' l1'' y key i)
-                                     l1''' = (split ct'').0
-                                     l2''' = (split ct'').1
+                                     l1''' = (splitBlock ct'').0
+                                     l2''' = (splitBlock ct'').1
 //Decryption
 
 katanDecrypt : ([KatanKeySize], [KatanBlock]) -> [KatanBlock]
 katanDecrypt (key, pt) = (hs!0).0 # (hs!0).1
                where hs = [(l1, l2)] #[ ((decUpdateLfsr pT.0 pT.1 x y key i).0 , (decUpdateLfsr pT.0 pT.1 x y key i).1)  | i <-[253,252..0] |pT <- hs ]
-                     l1 = (split pt).0
-                     l2 = (split pt).1
+                     l1 = (splitBlock pt).0
+                     l2 = (splitBlock pt).1
 
 
 // Correctness
@@ -322,14 +322,14 @@ updateLfsrTan l1 l2 x y key i = if `(L1Size) == 13
                                   else (l1''', l2''')
 
                  where pt = (tanAplyFb l1 l2 y key i) # (tanAplyFa l1 l2 x key i)
-                       l1' = (split pt).0
-                       l2' = (split pt).1
+                       l1' = (splitBlock pt).0
+                       l2' = (splitBlock pt).1
                        pt' = (tanAplyFb l1' l2' y key i) # (tanAplyFa l1' l2' x key i)
-                       l1'' = (split pt').0
-                       l2'' =  (split pt').1
+                       l1'' = (splitBlock pt').0
+                       l2'' =  (splitBlock pt').1
                        pt'' = (tanAplyFb l1'' l2'' y key i) # (tanAplyFa l1'' l2'' x key i)
-                       l1''' = (split pt'').0
-                       l2''' =  (split pt'').1
+                       l1''' = (splitBlock pt'').0
+                       l2''' =  (splitBlock pt'').1
 
 //Encryption
 
@@ -337,8 +337,8 @@ katantanEncrypt : ([KatanKeySize], [KatanBlock]) -> [KatanBlock]
 
 katantanEncrypt (key, pt) = (hs!0).0 # (hs!0).1
                where hs = [(l1, l2)] # [((updateLfsrTan pT.0 pT.1 x y key i).0, (updateLfsrTan pT.0 pT.1 x y key i).1) | i<- [0,1..253] | pT <- hs ]
-                     l1 = (split pt).0
-                     l2 = (split pt).1
+                     l1 = (splitBlock pt).0
+                     l2 = (splitBlock pt).1
 // Wrapper to do experiments
 
 katantanEncrypt64 : ([KatanBlock], [KatanBlock]) -> [KatanBlock]
@@ -380,21 +380,21 @@ decUpdateLfsrTan  l1 l2 x y key i = if `(L1Size) == 13
                                       then (l1'', l2'')
                                       else (l1''', l2''')
                                where ct = (tanAplydecFa l1 l2 x key i) # (tanAplydecFb l2 l1 y key i)
-                                     l1' = (split ct).0
-                                     l2' = (split ct).1
+                                     l1' = (splitBlock ct).0
+                                     l2' = (splitBlock ct).1
                                      ct' = (tanAplydecFa l1' l2' x key i) # (tanAplydecFb l2' l1' y key i)
-                                     l1'' = (split ct').0
-                                     l2'' = (split ct').1
+                                     l1'' = (splitBlock ct').0
+                                     l2'' = (splitBlock ct').1
                                      ct'' = (tanAplydecFa l1'' l2'' x key i) # (tanAplydecFb l2'' l1'' y key i)
-                                     l1''' = (split ct'').0
-                                     l2''' = (split ct'').1
+                                     l1''' = (splitBlock ct'').0
+                                     l2''' = (splitBlock ct'').1
 //Decryption
 
 katantanDecrypt : ([KatanKeySize], [KatanBlock]) -> [KatanBlock]
 katantanDecrypt (key, pt) = (hs!0).0 # (hs!0).1
                where hs = [(l1, l2)] #[ ((decUpdateLfsrTan pT.0 pT.1 x y key i).0 , (decUpdateLfsrTan pT.0 pT.1 x y key i).1)  | i <-[253,252..0] |pT <- hs ]
-                     l1 = (split pt).0
-                     l2 = (split pt).1
+                     l1 = (splitBlock pt).0
+                     l2 = (splitBlock pt).1
 // Correcteness
 
 property katantanCorrect key m = katantanDecrypt(key, katantanEncrypt(key, m)) == m
