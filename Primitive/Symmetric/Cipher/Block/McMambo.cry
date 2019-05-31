@@ -1,79 +1,177 @@
-/* 
-   Copyright (c) 2018, Galois Inc.
-   www.cryptol.net
-   You can freely use this source code for educational purposes.
-*/
+module McMambo where
 
-module Primitive::Symmetric::Cipher::Block::McMambo where
+type word = [32]
+type state = [4][4]word
+type key = [8]word
+type tweak = [16]word
+type block = [16]word
 
-and : [32] -> [32] -> [32]
-and xs ys = [ x /\ y | x <- xs | y <- ys ]
-or : [32] -> [32] -> [32]
-or xs ys = [ x \/ y | x <- xs | y <- ys ]
-nand : [32] -> [32] -> [32]
-nand xs ys = [ ~(x /\ y) | x <- xs | y <- ys ]
-nor : [32] -> [32] -> [32]
-nor xs ys = [ ~(x \/ y) | x <- xs | y <- ys ]
+nand : {a} [a] -> [a] -> [a]
+nand x y = ~(x && y)
 
-T : [16][32] -> [16][32] -> [16][32]
-T ts ms = [t ^ m | m <- ms | t <- ts] 
+nor : {a} [a] -> [a] -> [a]
+nor x y = ~(x || y)
 
-Q : [4][32] -> [4][32]
+(↑) = nand
+(↓) = nor
+(⊕) = (^)
+(∧) = (&&)
+(∨) = (||)
+
+R : (word, word) -> word
+R (x, c) = x <<< c
+
+T : word -> tweak -> state -> state
+T n t s = s ⊕ (if n == 5 then split t else zero)
+
+property T_bijective t n s s' =
+  (s != s') == (T n t s != T n t s')
+
+property T_inverse n t s =
+  T n t (T n t s) == s
+
+Q : [4]word -> [4]word
 Q [x0, x1, x2, x3] = [y0, y1, y2, y3]
   where
-    y1 = x1 ^ ((and x0 x2) <<< 7)
-    y2 = x2 ^ ((or   x0 x3) <<< 9)
-    y3 = x3 ^ ((nand y1 x0) <<< 13)
-    y0 = x0 ^ ((nor  y1 y2) <<< 18)
+    y1 = x1 ⊕ R (x0 ∧ x2, 7)
+    y2 = x2 ⊕ R (x0 ∨ x3, 9)
+    y3 = x3 ⊕ R (y1 ↑ x0, 13)
+    y0 = x0 ⊕ R (y1 ↓ y2, 18)
 
-D : [16][32] -> [16][32]
-D [x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15] =
-  [z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10, z11, z12, z13, z14, z15]
+property Q_bijective x x' =
+  (x != x') == (Q x != Q x')
+
+D : state -> state
+D X = Z
   where
-    [y0, y1, y2, y3]     = Q [x0, x1, x2, x3]
-    [y4, y5, y6, y7]     = Q [x4, x5, x6, x7]
-    [y8, y9, y10, y11]   = Q [x8, x9, x10, x11]
+    Y = transpose [ Q xs | xs <- X ]
+    Z = transpose [ Q ys | ys <- Y ]
+
+D' : state -> state
+D' X = Z
+  where
+    Y = [ Q xs | xs <- transpose X ]
+    Z = [ Q ys | ys <- transpose Y ]
+
+D_verbose : state -> state
+D_verbose [ [ x0,  x1,  x2,  x3]
+          , [ x4,  x5,  x6,  x7]
+          , [ x8,  x9, x10, x11]
+          , [x12, x13, x14, x15] ] = Z
+  where
+    [ y0,  y1,  y2,  y3] = Q [ x0,  x1,  x2,  x3]
+    [ y4,  y5,  y6,  y7] = Q [ x4,  x5,  x6,  x7]
+    [ y8,  y9, y10, y11] = Q [ x8,  x9, x10, x11]
     [y12, y13, y14, y15] = Q [x12, x13, x14, x15]
-    [z0, z4, z8, z12]    = Q [y0, y4, y8, y12]
-    [z1, z5, z9, z13]    = Q [y1, y5, y9, y13]
-    [z2, z6, z10, z14]   = Q [y2, y6, y10, y14]
-    [z3, z7, z11, z15]   = Q [y3, y7, y11, y15]
+    [ z0,  z4,  z8, z12] = Q [ y0,  y4,  y8, y12]
+    [ z1,  z5,  z9, z13] = Q [ y1,  y5,  y9, y13]
+    [ z2,  z6, z10, z14] = Q [ y2,  y6, y10, y14]
+    [ z3,  z7, z11, z15] = Q [ y3,  y7, y11, y15]
+    Z = [ [ z0,  z1,  z2,  z3]
+        , [ z4,  z5,  z6,  z7]
+        , [ z8,  z9, z10, z11]
+        , [z12, z13, z14, z15] ]
 
-K : [32] -> [8][32] -> [16][32] -> [16][32]
-K j [k0, k1, k2, k3, k4, k5, k6, k7]
-  [x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15] =
-  [z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10, z11, z12, z13, z14, z15]
+D'_verbose : state -> state
+D'_verbose [ [ x0,  x1,  x2,  x3]
+           , [ x4,  x5,  x6,  x7]
+           , [ x8,  x9, x10, x11]
+           , [x12, x13, x14, x15] ] = Z
   where
-    z0 = x0 ^ j
-    z1 = x1 ^ k0
-    z2 = x2
-    z3 = x3 ^ k1
-    z4 = x4 ^ k2
-    z5 = x5 ^ j
-    z6 = x6 ^ k3
-    z7 = x7
-    z8 = x8
-    z9 = x9 ^ k4
-    z10 = x10 ^ j
-    z11 = x11 ^ k5
-    z12 = x12 ^ k6
-    z13 = x13
-    z14 = x14 ^ k7
-    z15 = x15 ^ j
+    [ y0,  y4,  y8, y12] = Q [ x0,  x4,  x8, x12]
+    [ y1,  y5,  y9, y13] = Q [ x1,  x5,  x9, x13]
+    [ y2,  y6, y10, y14] = Q [ x2,  x6, x10, x14]
+    [ y3,  y7, y11, y15] = Q [ x3,  x7, x11, x15]
+    [ z0,  z1,  z2,  z3] = Q [ y0,  y1,  y2,  y3]
+    [ z4,  z5,  z6,  z7] = Q [ y4,  y5,  y6,  y7]
+    [ z8,  z9, z10, z11] = Q [ y8,  y9, y10, y11]
+    [z12, z13, z14, z15] = Q [y12, y13, y14, y15]
+    Z = [ [ z0,  z1,  z2,  z3]
+        , [ z4,  z5,  z6,  z7]
+        , [ z8,  z9, z10, z11]
+        , [z12, z13, z14, z15] ]
 
-cipher : [8][32] -> ([16][32], [16][32]) -> [16][32]
-cipher ks (xs, ts) = ys
+property D_matches =
+  D === D_verbose
+
+property D'_matches =
+  D' === D'_verbose
+
+// Not yet true
+/*property*/
+D_D'_correct s =
+  D' (D s) == s
+
+K : key -> word -> state -> state
+K [k0, k1, k2, k3, k4, k5, k6, k7] j x =
+  x ⊕ [ [  j, k0,  0, k1 ]
+      , [ k2,  j, k3,  0 ]
+      , [  0, k4,  j, k5 ]
+      , [ k6,  0, k7,  j ]
+      ]
+
+property K_inverse k j s =
+  K k j (K k j s) == s
+
+C1 : key -> tweak -> state -> state
+C1 k t s0 = K k 0 (T 1 t (D (K k 1 (T 0 t (D (K k 0 s0))))))
+
+C : key -> tweak -> state -> state
+C k t s0 = K k 0 (ss!0)
   where
-    y1 = K 0 ks xs
-    y2 = K 1 ks y1
-    y3 = K 2 ks y2
-    y4 = K 3 ks y3
-    y5 = T ts (D (K 4 ks y4))
-    y6 = K 6 ks y5
-    y7 = K 7 ks y6
-    y8 = K 8 ks y7
-    y9 = K 9 ks y8
-    y10 = D (K 10 ks y9)
-    y11 = D (K 11 ks y10)
-    ys = K 0 ks y11
-    
+    ss : [13]state
+    ss = [s0] # [ T n t (D (K k n s)) | s <- ss | n <- [0..11] ]
+
+C' : key -> tweak -> state -> state
+C' k t s0 = ss!0
+  where
+    ss : [13]state
+    ss = [K k 0 s0] # [ K k n (D' (T n t s)) | s <- ss | n <- reverse [0..11] ]
+
+from_bytes : {a} [a*4][8] -> [a][32]
+from_bytes bytes = [ join (reverse xs) | (xs : [4][8]) <- blocks ]
+  where blocks : [a][4][8]
+        blocks = split bytes
+
+to_bytes : {a} [a][32] -> [a*4][8]
+to_bytes words = join [ reverse (split word : [4][8]) | word <- words ]
+
+property from_to_bytes (words : [16][32]) =
+  from_bytes (to_bytes words) == words
+
+property to_from_bytes (bytes : [64][8]) =
+  to_bytes (from_bytes bytes) == bytes
+
+// Not yet true
+/*property*/
+C_C'_correct k t s0 =
+  C' k t (C k t s0) == s0
+
+pad : {n, b} (fin n, b == (n+8) /^ 512) => [n] -> [b][512]
+pad m = split (m # 0x01 # zero)
+
+pad_bytes : {n, b} (fin n, b == (n+1) /^ 64) => [n][8] -> [b*64][8]
+pad_bytes m = m # [0x01] # zero
+
+Mambo : key -> tweak -> block -> block
+Mambo k t m = join (C k t (split m))
+
+Mambo' : key -> tweak -> block -> block
+Mambo' k t m = join (C' k t (split m))
+
+Mambo_bytes : [_][8] -> [_][8] -> [_][8] -> _
+Mambo_bytes k t m = to_bytes (Mambo (from_bytes k) (from_bytes t) (from_bytes m))
+
+Mambo_bytes' : [_][8] -> [_][8] -> [_][8] -> _
+Mambo_bytes' k t m = to_bytes (Mambo' (from_bytes k) (from_bytes t) (from_bytes m))
+
+property Mambo_test =
+  join (Mambo_bytes ("Me" # zero) ("Try" # zero) ("Test" # zero)) ==
+  0xeb514a1ff2609f3a81ccfdd5e5342dba332d7b159a1571cee66d14bb6fd48ceb1ae956a91d3f54c8a545262c26611245a917d0a1582ecbc1d397b612baf7a62d
+
+McMambo k ad npub M = undefined
+  where
+    Us = [zero] # [ u ^ Mambo_bytes k u a | u <- Us | a <- split (pad_bytes ad) ]
+    τ = Mambo_bytes k (Us!0) npub
+    u' = (Us!0) ^ τ
+    Cs = [ Mambo_bytes k u m | u <- undefined | m <- split (pad_bytes M # τ)]
