@@ -1,0 +1,25 @@
+
+
+// Cryptol CBC Implementation
+// Copyright (c) 2010-2018, Galois Inc.
+// www.cryptol.net
+// You can freely use this source code for educational purposes.
+// Author: Ajay Kumar Eeralla
+
+module Primitive::Symmetric::Cipher::Block::Modes::CTR where
+import Primitive::Symmetric::Cipher::Block::AES
+// set the sizes
+type ic = [128]
+type block = [128]
+type key = [128] //or [192] or [256]
+
+ctrEnc : {n} (fin n) => ((block, key) -> block) -> key -> ic -> block -> block
+ctrEnc enc k c pt = (enc (c, k)^pt)
+
+ctrDec : {n} (fin n) => ((block, key) -> block) -> key -> ic -> block -> block
+ctrDec enc k c ct = (enc (c, k) ^ct)
+
+property ctrEncCorrect enc k c pt = (ctrDec enc k c (ctrEnc enc k c pt)) == pt
+
+// :prove ctrEncCorrect aesEncrypt
+

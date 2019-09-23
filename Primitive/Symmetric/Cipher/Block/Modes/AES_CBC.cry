@@ -4,8 +4,8 @@
 // You can freely use this source code for educational purposes.
 // Author: Ajay Kumar Eeralla
 
-module Primitive::Symmetric::Cipher::Block::AES_CBC where
-import Primitive::Symmetric::Cipher::Block::CBC
+module Primitive::Symmetric::Cipher::Block::Modes::AES_CBC where
+import Primitive::Symmetric::Cipher::Block::Modes::CBC
 import Primitive::Symmetric::Cipher::Block::AES
 
 // Test vectors from https://tools.ietf.org/html/rfc3602
