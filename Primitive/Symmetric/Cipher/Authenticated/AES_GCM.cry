@@ -1,0 +1,16 @@
+
+// Cryptol AES GCM test vectors
+// Copyright (c) 2010-2018, Galois Inc.
+// www.cryptol.net
+// You can freely use this source code for educational purposes.
+// Author: Ajay Kumar Eeralla
+
+//Test vectors from http://luca-giuzzi.unibs.it/corsi/Support/papers-cryptography/gcm-spec.pdf
+
+module Primitive::Symmetric::Cipher::Authenticated::AES_GCM where
+import `Primitive::Symmetric::Cipher::Authenticated::GCM
+import Primitive::Symmetric::Cipher::Block::AES
+
+
+property testPass0 = encrypt `{K=128, IV=96, AAD=0, T=128} {E=aesEncrypt} {key=zero, iv=zero, pt=[], aad=[]} == {ct = [], tag = 0x58e2fccefa7e3061367f1d57a4e7455a}
+
