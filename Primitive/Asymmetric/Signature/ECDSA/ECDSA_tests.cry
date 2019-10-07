@@ -34,11 +34,20 @@ property p192_double_example =
   where R = {x = BVtoZ 0x30c5bc6b8c7da25354b373dc14dd8a0eba42d25a3f6e6962,
              y = BVtoZ 0x0dde14bc4249a721c407aedbf011e2ddbbcb2968c9d889cf}
 
-property p192_scalar_multiply_example =
+property p192_scalar_multiply_example0 =
   p192::scalar_multiply_example R p192_S d
   where d = BVtoZ 0xa78a236d60baec0c5dd41b33a542463a8255391af64c74ee
         R = {x = BVtoZ 0x1faee4205a4f669d2d0a8f25e3bcec9a62a6952965bf6d31,
              y = BVtoZ 0x5ff2cdfa508a2581892367087c696f179e7a4d7e8260fb06}
+
+p192_S' = {x = BVtoZ 0x188da80eb03090f67cbf20eb43a18800f4ff0afd82ff1012,
+           y = BVtoZ 0x07192b95ffc8da78631011ed6b24cdd573f977a11e794811}
+
+property p192_scalar_multiply_example1=
+    p192::scalar_multiply_example R p192_S' d
+    where d = BVtoZ 0xe14f37b3d1374ff8b03f41b9b3fdd2f0ebccf275d660d7f3
+          R = {x = BVtoZ 0x07008ea40b08dbe76432096e80a2494c94982d2d5bcf98e6,
+               y = BVtoZ 0x76fab681d00b414ea636ba215de26d98c41bd7f2e4d65477}
 
 property p192_joint_scalar_multiply_example =
   p192::joint_scalar_multiply_example R p192_S p192_T d e

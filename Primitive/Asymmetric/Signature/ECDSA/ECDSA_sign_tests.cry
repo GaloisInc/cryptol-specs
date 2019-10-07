@@ -1,0 +1,28 @@
+module Primitive::Asymmetric::Signature::ECDSA::ECDSA_sign_tests where
+import Common::utils
+import Primitive::Asymmetric::Signature::ECDSA::p192
+
+
+//p192 SHA1 signing tests
+
+testCase0 = {
+Msg = BVtoZ 0x608079423f12421de616b7493ebe551cf4d65b92, // Message digest
+d = BVtoZ 0xe14f37b3d1374ff8b03f41b9b3fdd2f0ebccf275d660d7f3,
+k = BVtoZ 0xcb0abc7043a10783684556fb12c4154d57bc31a289685f25,
+Qx = BVtoZ 0x07008ea40b08dbe76432096e80a2494c94982d2d5bcf98e6,
+Qy = BVtoZ 0x76fab681d00b414ea636ba215de26d98c41bd7f2e4d65477,
+R = BVtoZ 0x6994d962bdd0d793ffddf855ec5bf2f91a9698b46258a63e,
+S = BVtoZ 0x02ba6465a234903744ab02bc8521405b73cf5fc00e1a9f41 }
+
+testCase1 = {
+Msg = BVtoZ 0x98cff299c35616bfd081543998a5a367b43214e1,
+d = BVtoZ 0x7a0235bea3d70445f14d56f9b7fb80ec8ff4eb2f76865244,
+Qx = BVtoZ 0x0ea3c1fa1f124f26530cbfddeb831eecc67df31e08889d1d,
+Qy = BVtoZ 0x7215a0cce0501b47903bd8fe1179c2dfe07bd076f89f5225,
+k = BVtoZ 0x3c646b0f03f5575e5fd463d4319817ce8bd3022eaf551cef,
+R = BVtoZ 0xa3ba51c39c43991d87dff0f34d0bec7c883299e04f60f95e,
+S = BVtoZ 0x8a7f9c59c6d65ad390e4c19636ba92b53be5d0f848b4e1f7 }
+
+property test192 = and [((i.R, i.S) == (sign i.d i.Msg i.k)) | i <- [ testCase0, testCase1] ]
+
+
