@@ -1,0 +1,19 @@
+// Cryptol CBC Implementation
+// Copyright (c) 2010-2018, Galois Inc.
+// www.cryptol.net
+// You can freely use this source code for educational purposes.
+// Author: Ajay Kumar Eeralla
+
+module Primitive::Symmetric::Cipher::Block::Modes::CFB where
+// set the sizes
+type iv = [128]
+type block = [128]
+type key = [128] // or [192] or [256] for AES
+
+cbcEnc : {n} (fin n) => ((block, key) -> block) -> key -> iv -> [n]block -> [n]block
+cbcEnc enc k iv ps = cs
+    where cs = [ enc (c', k)^p | p <- ps | c' <- [iv] # cs ]
+
+cbcDec : {n} (fin n) => ((block, key) -> block) -> key -> iv -> [n]block -> [n]block
+cbcDec enc k iv cs = [ (enc (c', k)) ^ c | c <- cs | c' <- [iv] # cs ]
+
