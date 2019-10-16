@@ -28,4 +28,11 @@ property testPass3 = encrypt `{K=128, IV=96, AAD=160, T=128} {E=aesEncrypt} {key
     {ct=0x42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091,
     tag=0x5bc94fbc3221a5db94fae95ae7121a47}
 
+// A test case from aesgcmtest.c
+// Test passes
+//property testPass4 = encrypt `{K=256, IV=96, AAD=128, T=128} {E=aesEncrypt} {key=0xeebc1f57487f51921c0465665f8ae6d1658bb26de6f8a069a3520293a572078f,
+  //  iv=0x99aa3e68ed8173a0eed06684, pt=0xf56e87055bc32d0eeb31b2eacc2bf2a5, aad=0x4d23c3cec334b49bdb370c437fec78de} ==
+   // {ct=0xf7264413a84c0e7cd536867eb9f21736, tag=0x67ba0510262ae487d737ee6298f77e0c}
+
+
 
