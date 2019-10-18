@@ -1,0 +1,31 @@
+// Cryptol TDES CFB test vectors
+// Copyright (c) 2010-2018, Galois Inc.
+// www.cryptol.net
+// You can freely use this source code for educational purposes.
+// Author: Ajay Kumar Eeralla
+
+module Primitive::Symmetric::Cipher::Block::Modes::TDES_CFB where
+//import Primitive::Symmetric::Cipher::Block::Modes::CFB
+import Primitive::Symmetric::Cipher::Block::TripleDES
+
+// Test vectors from https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/TDES_CFB.pdf
+
+type iv = [64]
+type block = [64]
+
+type k1 = [64]
+type k2 = [64]
+type k3 = [64]
+
+cfbTDesEnc : {n} (fin n) => k1 -> k2 -> k3->iv -> [n]block -> [n]block
+cfbTDesEnc k1 k2 k3 iv ps = cs
+    where cs = [ blockEncrypt (k1, k2, k3,  c')^p | p <- ps | c' <- [iv] # cs ]
+
+// Number of blocks := 4
+
+testKey ={ k1=0x0123456789ABCDEF, k2=0x23456789ABCDEF01, k3=0x456789ABCDEF0123,      iv=0xF69F2445DF4F9B17 }
+testPt = [[0x6BC1BEE22E409F96, 0xE93D7E117393172A, 0xAE2D8A571E03AC9C, 0x9EB76FAC45AF8E51]]
+testCt = [[0x078BB74E59CE7ED6, 0x7666DE9CF95EAF3F, 0xE9ED6BB460F45152, 0x8A5F9FE4ED710918]]
+
+property testPass = and [(cfbTDesEnc testKey.k1 testKey.k2 testKey.k3 testKey.iv ps) == cs
+                        | ps <- testPt | cs <- testCt]

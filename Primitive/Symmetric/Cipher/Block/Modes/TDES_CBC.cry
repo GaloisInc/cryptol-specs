@@ -20,7 +20,7 @@ cbcTDesEnc : {n} (fin n) => k1 -> k2 -> k3->iv -> [n]block -> [n]block
 cbcTDesEnc k1 k2 k3 iv ps = cs
     where cs = [ blockEncrypt (k1, k2, k3, (p ^ c')) | p <- ps | c' <- [iv] # cs ]
 
-// No. of blocks := 1
+// Number of blocks := 2
 
 testKey ={ k1=0x0123456789ABCDEF, k2=0x23456789ABCDEF01, k3=0x456789ABCDEF0123,      iv=0xF69F2445DF4F9B17 }
 testPt = [[0x6BC1BEE22E409F96, 0xE93D7E117393172A, 0xAE2D8A571E03AC9C, 0x9EB76FAC45AF8E51]]
