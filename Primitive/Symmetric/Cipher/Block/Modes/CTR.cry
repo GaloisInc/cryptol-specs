@@ -7,7 +7,6 @@
 // Author: Ajay Kumar Eeralla
 
 module Primitive::Symmetric::Cipher::Block::Modes::CTR where
-import Primitive::Symmetric::Cipher::Block::AES
 
 // set the sizes
 type ic = [128]
@@ -17,13 +16,13 @@ type key = [128] //or [192] or [256]
 ctrEnc : {n} (fin n) => ((block, key) -> block) -> key -> ic -> [n]block -> [n]block
 ctrEnc enc k c ps = cs
     where cs = [(enc (c', k)^p) | p <- ps | c' <- ctrs]
-          ctrs = [ c+i | i<- [0...]]
+          ctrs = [c+i | i<- [0...]]
 
 ctrDec : {n} (fin n) => ((block, key) -> block) -> key -> ic -> [n]block ->[n]block
 ctrDec enc k c cs = ps
     where ps = [(enc (c', k) ^ct) | ct <- cs | c' <- ctrs]
-          ctrs = [ c+i | i<- [0...]]
+          ctrs = [c+i | i<- [0...]]
 
-//property ctrEncCorrect enc k c ps = and [(ctrDec enc k c (ctrEnc enc k c pt)) == pt | pt <- ps ]
+
 
 

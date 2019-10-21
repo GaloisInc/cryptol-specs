@@ -8,6 +8,8 @@ module Primitive::Symmetric::Cipher::Block::Modes::AES_CFB where
 import Primitive::Symmetric::Cipher::Block::Modes::CFB
 import Primitive::Symmetric::Cipher::Block::AES
 
+property cfbEncCorrect aesEncrypt k c ps = (cfbDec aesEncrypt k c (cfbEnc aesEncrypt k c ps)) == ps
+
 // Test vectors from https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf
 // No. of blocks := 1
 

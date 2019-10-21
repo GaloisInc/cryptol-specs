@@ -28,17 +28,17 @@ parameter
   /** Block encryption function */
   E : ([128], [K]) -> [128]
 
-encrypt :
+gcmEnc :
   {n} (2^^39 - 256 >= n) =>
       { key : [K], iv : [IV], aad : [AAD], pt : [n] } -> { ct : [n], tag : [T] }
-encrypt input = { ct = C, tag = T }
+gcmEnc input = { ct = C, tag = T }
   where (C,T) = enc_dec input.key input.iv input.aad input.pt
 
-decrypt :
+gcmDec :
   {n} (2^^39 - 256 >= n) =>
   { key : [K], iv  : [IV], aad : [AAD], ct  : [n], tag : [T] } ->
   { valid : Bool, pt : [n] }
-decrypt input = if input.tag == T then { valid = True, pt = P }
+gcmDec input = if input.tag == T then { valid = True, pt = P }
                                   else { valid = False, pt = 0 }
   where (P,T) = enc_dec input.key input.iv input.aad input.ct
 

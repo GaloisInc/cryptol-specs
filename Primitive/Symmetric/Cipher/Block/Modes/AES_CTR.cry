@@ -3,11 +3,13 @@
 // www.cryptol.net
 // You can freely use this source code for educational purposes.
 // Author: Ajay Kumar Eeralla
-// Test vectors from https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf
+// Test vectors from https://nvlpubs.nist.gov/nistpubs/Legacy/SP nistspecialpublication800-38a.pdf
 
 module Primitive::Symmetric::Cipher::Block::Modes::AES_CTR where
 import Primitive::Symmetric::Cipher::Block::Modes::CTR
 import Primitive::Symmetric::Cipher::Block::AES
+
+property ctrEncCorrect enc k c ps = (ctrDec enc k c (ctrEnc enc k c ps)) == ps
 
 k = 0x2b7e151628aed2a6abf7158809cf4f3c
 ic = 0xf0f1f2f3f4f5f6f7f8f9fafbfcfdfeff

@@ -8,6 +8,8 @@ module Primitive::Symmetric::Cipher::Block::Modes::AES_CBC where
 import Primitive::Symmetric::Cipher::Block::Modes::CBC
 import Primitive::Symmetric::Cipher::Block::AES
 
+property cbcEncCorrect aesEncrypt k c ps = (cbcDec aesEncrypt k c (cbcEnc aesEncrypt k c ps)) == ps
+
 // Test vectors from https://tools.ietf.org/html/rfc3602
 
 // No. of blocks := 1
