@@ -9,13 +9,13 @@ module Primitive::Symmetric::Cipher::Block::Modes::CBC where
 // set the sizes
 type iv = [128]
 type block = [128]
-type key = [128]
 
-cbcEnc : {n} (fin n) => ((block, key) -> block) -> key -> iv -> [n]block -> [n]block
+
+cbcEnc : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> iv -> [n]block -> [n]block
 cbcEnc enc k iv ps = cs
-    where cs = [ enc ((p ^ c'), k) | p <- ps | c' <- [iv] # cs ]
+    where cs = [ enc k (p ^ c') | p <- ps | c' <- [iv] # cs ]
 
-cbcDec : {n} (fin n) => ((block, key) -> block) -> key -> iv -> [n]block -> [n]block
-cbcDec dec k iv cs = [ (dec (c, k)) ^ c' | c <- cs | c' <- [iv] # cs ]
+cbcDec : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> iv -> [n]block -> [n]block
+cbcDec dec k iv cs = [ (dec k c) ^ c' | c <- cs | c' <- [iv] # cs ]
 
 

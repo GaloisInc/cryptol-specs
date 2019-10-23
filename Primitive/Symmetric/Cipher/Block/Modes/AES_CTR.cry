@@ -7,7 +7,7 @@
 
 module Primitive::Symmetric::Cipher::Block::Modes::AES_CTR where
 import Primitive::Symmetric::Cipher::Block::Modes::CTR
-import Primitive::Symmetric::Cipher::Block::AES
+import Primitive::Symmetric::Cipher::Block::AES_parameterized
 
 property ctrEncCorrect enc k c ps = (ctrDec enc k c (ctrEnc enc k c ps)) == ps
 
@@ -16,5 +16,5 @@ ic = 0xf0f1f2f3f4f5f6f7f8f9fafbfcfdfeff
 plaintext = [0x6bc1bee22e409f96e93d7e117393172a, 0xae2d8a571e03ac9c9eb76fac45af8e51, 0x30c81c46a35ce411e5fbc1191a0a52ef, 0xf69f2445df4f9b17ad2b417be66c3710]
 ciphertext = [0x874d6191b620e3261bef6864990db6ce, 0x9806f66b7970fdff8617187bb9fffdff, 0x5ae4df3edbd5d35e5b4f09020db03eab, 0x1e031dda2fbe03d1792170a0f3009cee]
 
-property testPass = (ctrEnc aesEncrypt k ic plaintext) == ciphertext
+property testPass = (ctrEnc encrypt k ic plaintext) == ciphertext
 

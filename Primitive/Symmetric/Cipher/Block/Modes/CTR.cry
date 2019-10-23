@@ -11,16 +11,16 @@ module Primitive::Symmetric::Cipher::Block::Modes::CTR where
 // set the sizes
 type ic = [128]
 type block = [128]
-type key = [128] //or [192] or [256]
 
-ctrEnc : {n} (fin n) => ((block, key) -> block) -> key -> ic -> [n]block -> [n]block
+
+ctrEnc : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> ic -> [n]block -> [n]block
 ctrEnc enc k c ps = cs
-    where cs = [(enc (c', k)^p) | p <- ps | c' <- ctrs]
+    where cs = [(enc k c')^p | p <- ps | c' <- ctrs]
           ctrs = [c+i | i<- [0...]]
 
-ctrDec : {n} (fin n) => ((block, key) -> block) -> key -> ic -> [n]block ->[n]block
+ctrDec : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> ic -> [n]block -> [n]block
 ctrDec enc k c cs = ps
-    where ps = [(enc (c', k) ^ct) | ct <- cs | c' <- ctrs]
+    where ps = [(enc k c')^ct | ct <- cs | c' <- ctrs]
           ctrs = [c+i | i<- [0...]]
 
 

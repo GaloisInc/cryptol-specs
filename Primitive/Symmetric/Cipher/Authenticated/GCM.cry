@@ -26,7 +26,7 @@ parameter
   type constraint (128 >= T, T >= 64)
 
   /** Block encryption function */
-  E : ([128], [K]) -> [128]
+  E : [K] -> [128] -> [128]
 
 gcmEnc :
   {n} (2^^39 - 256 >= n) =>
@@ -52,17 +52,17 @@ enc_dec :
   {n} ((2^^39 - 256) >= n) => [K] -> [IV] -> [AAD] -> [n] -> ([n], [T])
 enc_dec K IV A P = (C,T)
   where
-  H  = E (0, K)
+  H  = (E K 0)
 
   Y0 = ifWidth`{96} IV (\IV96 -> IV96 # 1)
                        (GHASH H [] IV)
 
   Ys = [Y0] # [ y+1 | y <- Ys ]
 
-  Cs = [ p ^ E (y, K) | p <- blockify P | y <- drop`{1} Ys ]
+  Cs = [ p ^ (E K y) | p <- blockify P | y <- drop`{1} Ys ]
   C  = unblockify Cs
 
-  T = take (GHASH H A C ^ E (Y0, K))
+  T = take (GHASH H A C ^ (E K Y0))
 
 
 /** Section 2.3, equation (2) */

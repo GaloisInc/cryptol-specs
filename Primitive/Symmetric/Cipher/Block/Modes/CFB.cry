@@ -9,13 +9,13 @@ module Primitive::Symmetric::Cipher::Block::Modes::CFB where
 // set the sizes
 type iv = [128]
 type block = [128]
-type key = [128] // or [192] or [256] for AES
 
-cfbEnc : {n} (fin n) => ((block, key) -> block) -> key -> iv -> [n]block -> [n]block
+
+cfbEnc : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> iv -> [n]block -> [n]block
 cfbEnc enc k iv ps = cs
-    where cs = [ enc (c', k)^p | p <- ps | c' <- [iv] # cs ]
+    where cs = [ (enc k c')^p | p <- ps | c' <- [iv] # cs ]
 
-cfbDec : {n} (fin n) => ((block, key) -> block) -> key -> iv -> [n]block -> [n]block
-cfbDec enc k iv cs = [ (enc (c', k)) ^ c | c <- cs | c' <- [iv] # cs ]
+cfbDec : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> iv -> [n]block -> [n]block
+cfbDec enc k iv cs = [ (enc k c')^c | c <- cs | c' <- [iv] # cs ]
 
 
