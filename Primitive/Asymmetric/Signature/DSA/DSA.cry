@@ -1,14 +1,38 @@
+/* Cryptol DSA Implementation
+Copyright (c) 2010-2018, Galois Inc.
+www.cryptol.net
+You can freely use this source code for educational purposes.
+Author: Ajay Kumar Eeralla
+source: https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf */
+
 module Primitive::Asymmetric::Signature::DSA::DSA where
 import Common::mod_arith
 import Common::utils
 
+type p1024 = 1024
+type p2048 = 2048
+type p3072 = 3072
+type q160 = 160
+type q224 = 224
+type q256 = 256
+
+// NIST recommended bit lengths of p and q
+//L: the size of p, N: the size of q
+//L = 1024, N = 160
+//L = 2048, N = 224
+//L = 2048, N = 256
+//L = 3072, N = 256
+
 sign : Z q -> Z q -> Z q -> (Z q, Z q)
 sign x k z = (r, s)
-    where r = ZtoZ`{q=q} (BVtoZ `{p=p}(mod_pow (pv, g', k')))
+    where r =  ZtoZ (BVtoZ `{p=p}(mod_pow (pv, g', k')))
           pv = ZtoBV `{a=1024} `p
           g' = ZtoBV `{a=1024} g
           k' = ZtoBV `{a=1024} (ZtoZ `{q=q} k)
-          s = BVtoZ `{p=q}  (mod_mul (q', (ZtoBV `{a=160}(mp_mod_inv k)), (mod_add(q', mod_mul(q', x', r'), z'))))
+          s = BVtoZ `{p=q}  (mod_mul (q', (ZtoBV `{a=160} kinv), zpxr))
+          kinv = mp_mod_inv k
+          xr = mod_mul(q', x', r')
+          zpxr = mod_add(q', xr, z')
           r' = ZtoBV `{a=160} r
           x' = ZtoBV `{a=160} x
           z' = ZtoBV `{a=160} z
@@ -46,4 +70,4 @@ private
     type constraint Constraints a = (fin a, isOdd a, a >= 4)
 
 
-//property sign_correct x k z = (verify g^x z (sign x k z) ) == True
+//property sign_correct x k z = (verify g^^x z (sign x k z) ) == True
