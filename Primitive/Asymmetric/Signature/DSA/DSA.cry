@@ -9,34 +9,21 @@ module Primitive::Asymmetric::Signature::DSA::DSA where
 import Common::mod_arith
 import Common::utils
 
-type p1024 = 1024
-type p2048 = 2048
-type p3072 = 3072
-type q160 = 160
-type q224 = 224
-type q256 = 256
-
-// NIST recommended bit lengths of p and q
-//L: the size of p, N: the size of q
-//L = 1024, N = 160
-//L = 2048, N = 224
-//L = 2048, N = 256
-//L = 3072, N = 256
 
 sign : Z q -> Z q -> Z q -> (Z q, Z q)
 sign x k z = (r, s)
     where r =  ZtoZ (BVtoZ `{p=p}(mod_pow (pv, g', k')))
-          pv = ZtoBV `{a=1024} `p
-          g' = ZtoBV `{a=1024} g
-          k' = ZtoBV `{a=1024} (ZtoZ `{q=q} k)
-          s = BVtoZ `{p=q}  (mod_mul (q', (ZtoBV `{a=160} kinv), zpxr))
+          pv = ZtoBV `{a=L} `p
+          g' = ZtoBV `{a=L} g
+          k' = ZtoBV `{a=L} (ZtoZ `{q=q} k)
+          s = BVtoZ `{p=q}  (mod_mul (q', (ZtoBV `{a=N} kinv), zpxr))
           kinv = mp_mod_inv k
           xr = mod_mul(q', x', r')
           zpxr = mod_add(q', xr, z')
-          r' = ZtoBV `{a=160} r
-          x' = ZtoBV `{a=160} x
-          z' = ZtoBV `{a=160} z
-          q' = ZtoBV `{a=160} `q
+          r' = ZtoBV `{a=N} r
+          x' = ZtoBV `{a=N} x
+          z' = ZtoBV `{a=N} z
+          q' = ZtoBV `{a=N} `q
 
 
 verify : Z p -> Z q -> (Z q, Z q) -> Bit
@@ -47,10 +34,10 @@ verify y z (r, s) = ((BVtoZ `{p=q} v) == r)
          v = mod_mul (pv, gu1, yu2)
          gu1 =  mod_pow(pv, g', u1)
          yu2 =  mod_pow(pv, y', u2)
-         pv = ZtoBV `{a=1024} `p
-         g' = ZtoBV `{a=1024} g
-         y' = ZtoBV `{a=1024} y
-         q' = ZtoBV `{a=160} `q
+         pv = ZtoBV `{a=L} `p
+         g' = ZtoBV `{a=L} g
+         y' = ZtoBV `{a=L} y
+         q' = ZtoBV `{a=N} `q
 
 
 parameter
@@ -64,10 +51,28 @@ parameter
 
     type constraint (fin q, isOdd q, q >= 4)
 
+// NIST recommended bit lengths of p and q
+//L: the size of p, N: the size of q
+//L = 1024, N = 160
+//L = 2048, N = 224
+//L = 2048, N = 256
+//L = 3072, N = 256
+
+    type L : #
+    type constraint (L==1024)
+
+    type N : #
+    type constraint (N==160)
+
+
+
+
 
 private
 
     type constraint Constraints a = (fin a, isOdd a, a >= 4)
+    //type constraint validPsize L x = (L==1024*x, 2>=x)
+    //type constraint validQsize N = (N==160) //N==224, N==256
 
 
-//property sign_correct x k z = (verify g^^x z (sign x k z) ) == True
+property signDsaCorrect x k z = (verify (BVtoZ `{p=p} (mod_pow ((ZtoBV `{a=L} `p), ZtoBV `{a=L} g, (zero#(ZtoBV`{p=q}x):[1024])))) z (sign x k z) ) == True
