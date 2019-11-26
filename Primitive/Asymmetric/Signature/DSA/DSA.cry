@@ -29,8 +29,8 @@ sign x k z = (r, s)
 verify : Z p -> Z q -> (Z q, Z q) -> Bit
 verify y z (r, s) = ((BVtoZ `{p=q} v) == r)
    where w = (mp_mod_inv s)
-         u1 = (zero#mod_mul (q', (ZtoBV z), (ZtoBV w))) :[1024]
-         u2 = (zero#mod_mul (q', (ZtoBV r), (ZtoBV w))) :[1024]
+         u1 = (zero#mod_mul (q', (ZtoBV z), (ZtoBV w))) :[L]
+         u2 = (zero#mod_mul (q', (ZtoBV r), (ZtoBV w))) :[L]
          v = mod_mul (pv, gu1, yu2)
          gu1 =  mod_pow(pv, g', u1)
          yu2 =  mod_pow(pv, y', u2)
@@ -53,16 +53,15 @@ parameter
 
 // NIST recommended bit lengths of p and q
 //L: the size of p, N: the size of q
-//L = 1024, N = 160
-//L = 2048, N = 224
-//L = 2048, N = 256
-//L = 3072, N = 256
 
     type L : #
-    type constraint (L==1024)
 
     type N : #
-    type constraint (N==160)
+//Comment/uncomment according to the instantiated parameters
+    //type constraint (L==1024,N==160)
+    type constraint (L==2048,N==224)
+    //type constraint (L==2048,N==256)
+    //type constraint (L==3072,N==256)
 
 
 
@@ -75,4 +74,4 @@ private
     //type constraint validQsize N = (N==160) //N==224, N==256
 
 
-property signDsaCorrect x k z = (verify (BVtoZ `{p=p} (mod_pow ((ZtoBV `{a=L} `p), ZtoBV `{a=L} g, (zero#(ZtoBV`{p=q}x):[1024])))) z (sign x k z) ) == True
+//property signDsaCorrect x k z = (verify (BVtoZ `{p=p} (mod_pow ((ZtoBV `{a=L} `p), ZtoBV `{a=L} g, (zero#(ZtoBV`{p=q}x):[1024])))) z (sign x k z) ) == True
