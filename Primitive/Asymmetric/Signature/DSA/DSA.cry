@@ -13,7 +13,7 @@ import Common::utils
 sign : Z q -> Z q -> Z q -> (Z q, Z q)
 sign x k z = (r, s)
     where r =  ZtoZ (BVtoZ `{p=p}(mod_pow (pv, g', k')))
-          pv = ZtoBV `{a=L} `p
+          pv = ZtoBV `{1+p,L} `p
           g' = ZtoBV `{a=L} g
           k' = ZtoBV `{a=L} (ZtoZ `{q=q} k)
           s = BVtoZ `{p=q}  (mod_mul (q', (ZtoBV `{a=N} kinv), zpxr))
@@ -23,7 +23,7 @@ sign x k z = (r, s)
           r' = ZtoBV `{a=N} r
           x' = ZtoBV `{a=N} x
           z' = ZtoBV `{a=N} z
-          q' = ZtoBV `{a=N} `q
+          q' = ZtoBV `{1+q,N} `q
 
 
 verify : Z p -> Z q -> (Z q, Z q) -> Bit
@@ -34,10 +34,10 @@ verify y z (r, s) = ((BVtoZ `{p=q} v) == r)
          v = mod_mul (pv, gu1, yu2)
          gu1 =  mod_pow(pv, g', u1)
          yu2 =  mod_pow(pv, y', u2)
-         pv = ZtoBV `{a=L} `p
+         pv = ZtoBV `{1+p,L} `p
          g' = ZtoBV `{a=L} g
          y' = ZtoBV `{a=L} y
-         q' = ZtoBV `{a=N} `q
+         q' = ZtoBV `{1+q,N} `q
 
 
 parameter
