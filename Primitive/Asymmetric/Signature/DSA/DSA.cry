@@ -74,4 +74,4 @@ private
     //type constraint validQsize N = (N==160) //N==224, N==256
 
 
-//property signDsaCorrect x k z = (verify (BVtoZ `{p=p} (mod_pow ((ZtoBV `{a=L} `p), ZtoBV `{a=L} g, (zero#(ZtoBV`{p=q}x):[1024])))) z (sign x k z) ) == True
+property signDsaCorrect x k z = (verify (BVtoZ `{p=p} (mod_pow ((ZtoBV `{1+p,L} `p), ZtoBV `{a=L} g, (zero#(ZtoBV`{p=q}x):[L])))) z (sign x k z) ) == True
