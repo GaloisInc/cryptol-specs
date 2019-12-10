@@ -15,6 +15,8 @@ module Primitive::Asymmetric::Signature::Dilithium where
 import Primitive::Keyless::Hash::keccak as SHA3
 import Common::utils
 import Primitive::Asymmetric::Signature::testDilithium
+//import Primitive::Asymmetric::Signature::signFinal
+//import Primitive::Asymmetric::Signature::testCase2
 
 
 // Recommended Parameters
@@ -29,6 +31,10 @@ gamma2 = ( gamma1 / 2 )
 eta    = 5
 beta   = 275
 omega  = 96 : Integer
+qbits  = 23
+//POLZ_SIZE_PACKED = ((`n*(qbits - 3))/8)
+//SIG_SIZE_PACKED = (`l*POLZ_SIZE_PACKED + (omega + `k) + (`n/8 + 8))
+
 
 
 // Parameters for Number Theoretic Transform (NTT)
@@ -74,10 +80,11 @@ Gen seed = (pk, sk)
       t       = paddV As1 s2
       (t1,t0) = Power2RoundV t
       tr      = CRH (rho#(pack_t1 t1))
-      pk      = { rho = rho, t1 = t1 }
+      pk      = { rho = rho, t1 = t1}
       sk      = { rho = rho, K = K, tr = tr, s1 = s1, s2 = s2, t0 = t0}
 
 // Known Answer Test
+// To check this property, it is necessary to import testDilithium
 
 test_key_gen = (pk.rho#(pack_t1 pk.t1) == testCase0.pk) /\
     ((sk.rho#sk.K#sk.tr#(pack_polyeta sk.s1)#(pack_polyeta sk.s2)#(pack_t0 sk.t0)) == testCase0.sk)
@@ -89,12 +96,12 @@ test_key_gen = (pk.rho#(pack_t1 pk.t1) == testCase0.pk) /\
 Sign : {mbytes} (fin mbytes, mbytes>=1) => SecretKey -> [mbytes*8] -> (polyVec l, [k][n], poly)
 Sign sk M = (final_state.z, h, nttinv final_state.c')
      where
-      A     = ExpandA sk.rho
+      A     = ExpandA sk.rho //checked
       mu    = CRH`{b=48+mbytes} (sk.tr#M) // checked
       kappa = zero:Integer
-      s1'   = map ntt sk.s1
-      s2'   = map ntt sk.s2
-      t0'   = map ntt (IPVtoPV sk.t0)
+      s1'   = map ntt sk.s1 //checked
+      s2'   = map ntt sk.s2 // checked
+      t0'   = map ntt (IPVtoPV sk.t0) //checked
 
       init : sign_var_types
       init = {z=zero,r0=zero,r1=zero,t0'=t0',c'=zero,w=zero,w1=zero
@@ -144,11 +151,11 @@ private
     sign_body sv = {z=z,r0=r0,r1=r1,t0'=sv.t0',c'=c',w=w,w1=w1,s1'=sv.s1',s2'=sv.s2',
                    cs2=cs2,K=sv.K,mu=sv.mu,A=sv.A,kappa=(sv.kappa+1)}
               where
-                y   = ExpandMask(sv.K,sv.mu,sv.kappa)
-                y'  = map ntt y
-                w   = map nttinv (nttMatMul sv.A y')
-                w1  = HighBitsV (w, 2 * gamma2)
-                c'  = ntt ( H (sv.mu,w1) )
+                y   = ExpandMask(sv.K,sv.mu,sv.kappa)// checked
+                y'  = map ntt y // checked
+                w   = map nttinv (nttMatMul sv.A y') // checked
+                w1  = HighBitsV (w, 2 * gamma2) // checked
+                c'  = ntt ( H (sv.mu,w1) ) // corrected it
                 cs1 = map nttinv (nttVecConstMul c' sv.s1')
                 cs2 = map nttinv (nttVecConstMul c' sv.s2')
                 z   = paddV y cs1
@@ -231,6 +238,14 @@ private
                                       ]
               pack_poly p = join [join (pack8 xs) | xs <- split p : [32][8][_]]
 
+    /*pack_sig : (polyVec l, [k][n], poly) -> [SIG_SIZE_PACKED]
+    pack_sig (z, h, c) =
+            where s0 = polyz_pack (z)
+                  s1 = encode (h)
+                  s2 = encode (c)
+    polyz_pack : poly ->[n*qbits]
+    polyz_pack a = [  | i <- [0..n/2] ] */
+
     // Only works when n=256
     PolyUniformEtaV : {dim} (fin dim, dim>=1,width (dim-1) <= 8) => [256] -> [8] -> polyVec dim
     PolyUniformEtaV rho nonce = [PolyUniformEta rho (nonce + j) | j <- [0..(dim-1)]:[dim][8]]
@@ -255,7 +270,7 @@ private
       where
         w_packed = pack_w w
         randoms  = join (SHA3::toBytes (take`{4352} (SHA3::SHAKE256 (join (SHA3::toBytes (mu#w_packed))))))
-        ss       = take`{60} randoms
+        ss       = take`{60}(reverse (join (reverse (split (take`{64} randoms):[8][8]))))
 
         extByte : [8] -> [8]
         extByte x = x
@@ -285,7 +300,7 @@ private
                 where
                 upper      = fromInteger (2*gamma1-2) : [20]
                 kappaBytes = join (reverse (split (fromInteger (dim*kappa+i):[16]):[2][8])) // LEB order
-                s          = join (SHA3::toBytes (take`{5*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes (K#mu#kappaBytes))))))
+                s          = join (SHA3::toBytes (take`{5*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes (K#mu#kappaBytes)))))) // checked
                 coeffs     = take`{n} (randomsInRangeDouble extractPolyElt upper (s#zero))
 
 
@@ -296,8 +311,8 @@ private
                     int1 = b2'*2^^16 + b1*2^^8 +  b0
                     int2 = b4*2^^12 + b3*2^^4 +  b2''
                     b2'  = b2 && 15
-                    b2'' = b2/(16:[20])
-
+                    //b2'' = b2/(16:[20])
+                    b2'' = b2/16
     // seed should be in little endian byte order
     CRH : {b} (fin b, b>=1) => [b*8] -> [384]
     CRH seed = join (SHA3::toBytes (take`{48*8} (SHA3::SHAKE256 (join (SHA3::toBytes seed)))))
@@ -443,8 +458,10 @@ private
                       randomTail   = drop`{a} randoms
                       uppersRotate = uppers <<< 1
 
+
     randomsInRangeDouble : {a} (fin a) => ([2*a]-> [2][a]) -> [a] -> [inf] -> [inf][a]
-    randomsInRangeDouble createElt upper randoms =
+//wrong code
+    /*randomsInRangeDouble createElt upper randoms =
                     if (elts@0 <= upper) /\ (elts@1 <= upper)
                     then  elts#(randomsInRangeDouble createElt upper randomTail)
                     else
@@ -456,8 +473,14 @@ private
                         else randomsInRangeDouble createElt upper randomTail
                     where
                       elts       = createElt (take`{2*a} randoms) 
-                      randomTail = drop`{2*a} randoms
-
+                      randomTail = drop`{2*a} randoms*/
+// Correction and checked with the C code
+    randomsInRangeDouble createElt upper randoms =
+                    if (elts@1 <= upper) then [elts@1, elts@1] # (randomsInRangeDouble createElt upper randomTail)
+                    else (randomsInRangeDouble createElt upper randomTail)
+                    where
+                    elts       = createElt (take`{2*a} randoms)
+                    randomTail = drop`{2*a} randoms
 
     /*
 
