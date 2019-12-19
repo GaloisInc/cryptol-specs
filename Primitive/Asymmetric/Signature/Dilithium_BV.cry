@@ -10,18 +10,6 @@
 
 */
 
-/*
-This module implements the digital signature scheme Dilithium
-submitted to the NIST post-quantum project.
-
-See https://pq-crystals.org/dilithium/data/dilithium-specification.pdf
-See https://csrc.nist.gov/Projects/post-quantum-cryptography/Round-1-Submissions
-
-Copyright (c) 2018, Galois Inc.
-www.cryptol.net
-You can freely use this source code for educational purposes.
-
-*/
 
 module Primitive::Asymmetric::Signature::Dilithium_BV where
 
@@ -60,7 +48,7 @@ parameter
     omega : [8]
 
 // Integer polynomials; a superset of ring R referenced in specification
-type intPoly        = [n][uint32_t]
+type intPoly        = [n][qbits]
 type intPolyVec dim = [dim]intPoly
 
 // Polynomials; a superset of ring R_q referenced in specification
@@ -131,7 +119,7 @@ Sign sk M = (final_state.z, h, nttinv final_state.c')
                               )
 
 
-private
+
 
     type sign_var_types = { z   : polyVec l
                           , r0  : intPolyVec k
@@ -200,391 +188,389 @@ Verify pk M (z, h, c) = crit1 && crit2 && crit3
 
 
 
-private
-    pack_w : intPolyVec k -> [4*n*k]
-    pack_w w = join [pack_poly p | p <- wBV ]
-        where
-        wBV = map (\p -> map (\x -> drop`{24} x:[8]) p) w
 
-        pack2 : [2][8] -> [8]
-        pack2 xs = xs@0 || (xs@1 << 4)
-
-        pack_poly p = join [ pack2 xs | xs <- split p : [128][2][_] ]
+pack_w : intPolyVec k -> [4*n*k]
+pack_w w = join [pack_poly p | p <- wBV ]
+    where
+    wBV = map (\p -> map (\x -> drop`{24} x:[8]) p) w
+    pack2 : [2][8] -> [8]
+    pack2 xs = xs@0 || (xs@1 << 4)
+    pack_poly p = join [ pack2 xs | xs <- split p : [128][2][_] ]
 
     /*pack_polyeta : {m} (fin m, m >= 1) =>  polyVec m -> [4*n*m]
-    pack_polyeta s = join [ join [elt p i | i <- [0..(n/2)-1]:[_][8] ] | p <- s ]
-                 where
-                  elt : poly -> [uint32_t] -> [uint32_t]
-                  elt p i = (c (toInteger (p@(2*i+0)))) || ((c (toInteger (p@(2*i+1)))) << 4)
-                  c : Integer -> [uint32_t]
-                  c num = if num > eta then  (`q + eta - num) else  (eta - num)*/
+pack_polyeta s = join [ join [elt p i | i <- [0..(n/2)-1]:[_][8] ] | p <- s ]
+             where
+              elt : poly -> [uint32_t] -> [uint32_t]
+              elt p i = (c (toInteger (p@(2*i+0)))) || ((c (toInteger (p@(2*i+1)))) << 4)
+              c : Integer -> [uint32_t]
+              c num = if num > eta then  (`q + eta - num) else  (eta - num)*/
 
-    pack_t0 : intPolyVec k -> [k*3584]
-    pack_t0 t0 = join [ pack_poly p | p <- t0 ]
-            where
-              tmp : intPoly -> [8] -> [8] -> [32]
-              tmp p i j =  (2^^13 - p@(4*i+j))
-
-              pack_poly : intPoly -> [3584]
-              pack_poly p = join [ join [drop`{24} (tmp p i 0),
-                         drop`{24} (((tmp p i 0) >> 8) || ((tmp p i 1) << 6)),
-                         drop`{24} ((tmp p i 1) >> 2),
-                         drop`{24} (((tmp p i 1) >> 10) || ((tmp p i 2) << 4)),
-                         drop`{24} ((tmp p i 2) >> 4),
-                         drop`{24} (((tmp p i 2) >> 12) || ((tmp p i 3) << 2)),
-                         drop`{24} ((tmp p i 3) >> 6)
-                         ] | i <- [0..(n/4-1)] ]
-
-
-    // d must be 14 for this to work, and n must be 256
-
-    pack_t1 : intPolyVec k -> [k*288*8]
-    pack_t1 t1 = join [pack_poly p | p <- t1BV]
-            where
-                  t1BV = map (\p -> map (\x -> drop`{23} x) p) t1
-                  pack8 : [8][9] -> [9][8]
-                  pack8 xs = map drop`{1} [ xs@0 && zero#0xFF
-                                          , xs@0 >> 8 || ((xs@1 && zero#0x7F) << 1)
-                                          , xs@1 >> 7 || ((xs@2 && zero#0x3F) << 2)
-                                          , xs@2 >> 6 || ((xs@3 && zero#0x1F) << 3)
-                                          , xs@3 >> 5 || ((xs@4 && zero#0x0F) << 4)
-                                          , xs@4 >> 4 || ((xs@5 && zero#0x07) << 5)
-                                          , xs@5 >> 3 || ((xs@6 && zero#0x03) << 6)
-                                          , xs@6 >> 2 || ((xs@7 && zero#0x01) << 7)
-                                          , xs@7 >> 1
-                                          ]
-                  pack_poly p = join [join (pack8 xs) | xs <- split p : [32][8][_]]
-
-    /*pack_sig : (polyVec l, [k][n], poly) -> [SIG_SIZE_PACKED]
-    pack_sig (z, h, c) =
-            where s0 = polyz_pack (z)
-                  s1 = encode (h)
-                  s2 = encode (c)
-    polyz_pack : poly ->[n*uint32_t]
-    polyz_pack a = [  | i <- [0..n/2] ] */
-
-    // Only works when n=256
-    PolyUniformEtaV : {dim} (fin dim, dim>=1,width (dim-1) <= 8) => [256] -> [8] -> polyVec dim
-    PolyUniformEtaV rho nonce = [PolyUniformEta rho (nonce + j) | j <- [0..(dim-1)]:[dim][8]]
-
-    PolyUniformEta : [SEEDBYTES*8] -> [8] -> poly
-    PolyUniformEta rho nonce = map (\x -> (zero#eta:[23]) - x) (map (\x-> (zero#x):[23]) (take`{n} withinEta))
+pack_t0 : intPolyVec k -> [k*3584]
+pack_t0 t0 = join [ pack_poly p | p <- t0 ]
         where
-            seed = rho#nonce
-            randoms = ((join (SHA3::toBytes (take`{2*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes seed))))))#zero)
-            withinEta = randomsInRangeDouble genS (2*eta) randoms
+          tmp : intPoly -> [8] -> [8] -> [32]
+          tmp p i j =  (2^^13 - p@(4*i+j))
 
-            genS : [8] -> [2][4]
-            genS byte = [t0, t1]
-                where
-                t0 = drop`{4} (byte && 0x0F)
-                t1 = drop`{4} (byte >> 4)
-
-
-
-    H : ([384],intPolyVec k) -> poly
-    H (mu,w) = map fromInteger (SampleInBall ss samples)
-      where
-        w_packed = pack_w w
-        randoms  = join (SHA3::toBytes (take`{4352} (SHA3::SHAKE256 (join (SHA3::toBytes (mu#w_packed))))))
-        ss       = take`{60}(reverse (join (reverse (split (take`{64} randoms):[8][8]))))
-
-        extByte : [8] -> [8]
-        extByte x = x
-
-        samples : [60][8]
-        samples = take`{60} (randomsInRanges extByte [196..255] (drop`{64} randoms#zero))
+          pack_poly : intPoly -> [3584]
+          pack_poly p = join [ join [drop`{24} (tmp p i 0),
+                     drop`{24} (((tmp p i 0) >> 8) || ((tmp p i 1) << 6)),
+                     drop`{24} ((tmp p i 1) >> 2),
+                     drop`{24} (((tmp p i 1) >> 10) || ((tmp p i 2) << 4)),
+                     drop`{24} ((tmp p i 2) >> 4),
+                     drop`{24} (((tmp p i 2) >> 12) || ((tmp p i 3) << 2)),
+                     drop`{24} ((tmp p i 3) >> 6)
+                     ] | i <- [0..(n/4-1)] ]
 
 
-    SampleInBall : [60] -> [60][8] -> [256]Integer
-    SampleInBall signs jsamples = ys ! 0
-                  where
-                  ys = [ zero:[256]Integer ]
-                        # [ if i==j then update y i ((-1:Integer)^^(toInteger [s]))
-                            else updates y [j,i] [(-1:Integer)^^(toInteger [s]),y@j] | i <- [196..255]
-                                                                      | j <- jsamples
-                                                                      | s <- signs
-                                                                      | y <- ys
-                          ]
+// d must be 14 for this to work, and n must be 256
 
-
-    ExpandMask : ([SEEDBYTES*8], [384], Integer) -> polyVec l
-    ExpandMask  (K, mu, kappa) = [samplePoly K mu kappa i `l | i <- [0..(l-1)] ]
-
-
-    samplePoly : [SEEDBYTES*8] -> [384] -> Integer -> Integer -> Integer -> poly
-    samplePoly K mu kappa i dim = (map (\x -> (`q+gamma1-1-(zero#x))) coeffs)
+pack_t1 : intPolyVec k -> [k*288*8]
+pack_t1 t1 = join [pack_poly p | p <- t1BV]
         where
-            (upper:[20])      =  drop`{3}(2*gamma1-2):[20]
-            kappaBytes = join (reverse (split (fromInteger (dim*kappa+i):[16]):[2][8])) // LEB order
-            s          = join (SHA3::toBytes (take`{5*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes (K#mu#kappaBytes)))))) // checked
-            (coeffs:[n][20])   = take`{n} (randomsInRangeDouble extractPolyElt upper (s#zero))
+              t1BV = map (\p -> map (\x -> drop`{23} x) p) t1
+              pack8 : [8][9] -> [9][8]
+              pack8 xs = map drop`{1} [ xs@0 && zero#0xFF
+                                      , xs@0 >> 8 || ((xs@1 && zero#0x7F) << 1)
+                                      , xs@1 >> 7 || ((xs@2 && zero#0x3F) << 2)
+                                      , xs@2 >> 6 || ((xs@3 && zero#0x1F) << 3)
+                                      , xs@3 >> 5 || ((xs@4 && zero#0x0F) << 4)
+                                      , xs@4 >> 4 || ((xs@5 && zero#0x07) << 5)
+                                      , xs@5 >> 3 || ((xs@6 && zero#0x03) << 6)
+                                      , xs@6 >> 2 || ((xs@7 && zero#0x01) << 7)
+                                      , xs@7 >> 1
+                                      ]
+              pack_poly p = join [join (pack8 xs) | xs <- split p : [32][8][_]]
 
+/*pack_sig : (polyVec l, [k][n], poly) -> [SIG_SIZE_PACKED]
+pack_sig (z, h, c) =
+        where s0 = polyz_pack (z)
+              s1 = encode (h)
+              s2 = encode (c)
+polyz_pack : poly ->[n*uint32_t]
+polyz_pack a = [  | i <- [0..n/2] ] */
 
-    extractPolyElt : [40] -> [2][20]
-    extractPolyElt bits = [zero#int1, zero#int2]
-                    where
-                    [b0,b1,b2,b3,b4] = [(zero#b):[20] | b <- split bits : [5][8]]
-                    int1 = b2'*2^^16 + b1*2^^8 +  b0
-                    int2 = b4*2^^12 + b3*2^^4 +  b2''
-                    b2'  = b2 && 15
-                    //b2'' = b2/(16:[20])
-                    b2'' = b2/16
-    // seed should be in little endian byte order
-    CRH : {b} (fin b, b>=1) => [b*8] -> [384]
-    CRH seed = join (SHA3::toBytes (take`{48*8} (SHA3::SHAKE256 (join (SHA3::toBytes seed)))))
+// Only works when n=256
+PolyUniformEtaV : {dim} (fin dim, dim>=1,width (dim-1) <= 8) => [256] -> [8] -> polyVec dim
+PolyUniformEtaV rho nonce = [PolyUniformEta rho (nonce + j) | j <- [0..(dim-1)]:[dim][8]]
 
+PolyUniformEta : [SEEDBYTES*8] -> [8] -> poly
+PolyUniformEta rho nonce = map (\x -> (zero#eta:[23]) - x) (map (\x-> (zero#x):[23]) (take`{n} withinEta))
+    where
+        seed = rho#nonce
+        randoms = ((join (SHA3::toBytes (take`{2*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes seed))))))#zero)
+        withinEta = randomsInRangeDouble genS (2*eta) randoms
 
-    ExpandA : [SEEDBYTES*8] -> [k][l]nttPoly
-    ExpandA rho = [ [elt i j | j <- [0..(l-1)] ] |  i <- [0..(k-1)] ]
+        genS : [8] -> [2][4]
+        genS byte = [t0, t1]
             where
-              elt i j = matrixPoly rho i j
+            t0 = drop`{4} (byte && 0x0F)
+            t1 = drop`{4} (byte >> 4)
 
 
-    matrixPoly : [SEEDBYTES*8] -> [width k] -> [width l] -> nttPoly
-    matrixPoly rho i j = take`{n} [ drop`{1} elt | elt <- randomElts ]
-                where
-                randomElts = randomsInRange extractMatElt ((>=) (`q)) (s#zero)
-                s          = join (SHA3::toBytes (take`{6720} (SHA3::SHAKE128 (join (SHA3::toBytes (rho#b))))))
-                b          = 2^^4*(zero#j:[8])+(zero#i:[8])
+
+H : ([384],intPolyVec k) -> poly
+H (mu,w) = map fromInteger (SampleInBall ss samples)
+  where
+    w_packed = pack_w w
+    randoms  = join (SHA3::toBytes (take`{4352} (SHA3::SHAKE256 (join (SHA3::toBytes (mu#w_packed))))))
+    ss       = take`{60}(reverse (join (reverse (split (take`{64} randoms):[8][8]))))
+
+    extByte : [8] -> [8]
+    extByte x = x
+
+    samples : [60][8]
+    samples = take`{60} (randomsInRanges extByte [196..255] (drop`{64} randoms#zero))
 
 
-    extractMatElt : [24] -> [24]
-    extractMatElt rands = zero#(2^^16 * b2' + 2^^8 * b1 + b0):[24]
-                    where
-                      [b0, b1, b2] = [(zero#b):[23] | b <- split`{3} rands]
-                      b2' = (2^^23-1) && b2 // Typo in paper; following C implementation
-
-
-    /*
-
-      Supporting Algorithms; see Figure 3
-
-    */
-
-    Power2Round : [qbits] -> ([uint32_t],[uint32_t]) -> ([uint32_t],[uint32_t])
-    Power2Round q (r,d') = ((r'-r0)/2^^d',r0)
-                where r' = mod_pow (zero#q, r, 1)
-                      r0 = centered_mod r' (2^^d')
-
-    Power2RoundV : {dim} (fin dim, dim >= 1) => polyVec dim -> ([dim]intPoly,[dim]intPoly)
-    Power2RoundV v = unzip (map polyPower2Round v)
-                  where
-                  polyPower2Round p = unzip [ Power2Round `q (zero#r, zero#d)
-                                            | r <- p
-                                            ]
-
-    Decompose : [qbits] -> ([uint32_t],[uint32_t]) -> ([uint32_t],[uint32_t])
-    Decompose q (r,a) = if (r' - r0) == ((zero#q-1):[32]) then (zero:[32], (zero#r0 - 1):[32])
-                                            else (((r' - r0) / a):[32], (zero#r0):[32])
-              where r' =  mod_pow (zero#q, r, 1)
-                    r0 = centered_mod r' a
-
-    DecomposeV : (polyVec k , [uint32_t]) -> (intPolyVec k, intPolyVec k)
-    DecomposeV (r,a) = unzip [ DecomposePoly p | p <- r ]
-                where
-                DecomposePoly p = unzip [Decompose `q (zero#x,a) | x <- p]
-
-    HighBits : [qbits] -> ([uint32_t],[uint32_t]) -> [uint32_t]
-    HighBits q (r,a) = (Decompose q (r,a)).0
-
-    HighBitsV : (polyVec k , [uint32_t]) -> intPolyVec k
-    HighBitsV (r,a) = r1
+SampleInBall : [60] -> [60][8] -> [256]Integer
+SampleInBall signs jsamples = ys ! 0
               where
-                (r1,r0) = DecomposeV (r,a)
+              ys = [ zero:[256]Integer ]
+                    # [ if i==j then update y i ((-1:Integer)^^(toInteger [s]))
+                        else updates y [j,i] [(-1:Integer)^^(toInteger [s]),y@j] | i <- [196..255]
+                                                                  | j <- jsamples
+                                                                  | s <- signs
+                                                                  | y <- ys
+                      ]
 
 
-    LowBits : [qbits] -> ([uint32_t],[uint32_t]) -> [uint32_t]
-    LowBits q (r,a) = (Decompose q (r,a)).1
+ExpandMask : ([SEEDBYTES*8], [384], Integer) -> polyVec l
+ExpandMask  (K, mu, kappa) = [samplePoly K mu kappa i `l | i <- [0..(l-1)] ]
 
 
-    MakeHint : [qbits] -> ([uint32_t],[uint32_t], [uint32_t]) -> Bit
-    MakeHint q (z,r,a) = r1 != v1
-              where r1 = HighBits q (r,a)
-                    v1 = HighBits q (r + z,a)
-
-    MakeHintV : (polyVec k, polyVec k, [uint32_t]) -> [k][n]
-    MakeHintV (z,r,a) = [[x1 != x2 | x1 <- p1 | x2 <- p2] | p1 <- r1 | p2 <- v1]
-              where
-                r1 = HighBitsV (r,a)
-                v1 = HighBitsV (polyVecSum z r,a)
+samplePoly : [SEEDBYTES*8] -> [384] -> Integer -> Integer -> Integer -> poly
+samplePoly K mu kappa i dim = (map (\x -> (`q+gamma1-1-(zero#x))) coeffs)
+    where
+        (upper:[20])      =  drop`{3}(2*gamma1-2):[20]
+        kappaBytes = join (reverse (split (fromInteger (dim*kappa+i):[16]):[2][8])) // LEB order
+        s          = join (SHA3::toBytes (take`{5*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes (K#mu#kappaBytes)))))) // checked
+        (coeffs:[n][20])   = take`{n} (randomsInRangeDouble extractPolyElt upper (s#zero))
 
 
-    UseHint : [qbits] -> (Bit,[uint32_t], [uint32_t]) -> [uint32_t]
-    UseHint q (h,r,a) = if h then zero#r1' else r1
+extractPolyElt : [40] -> [2][20]
+extractPolyElt bits = [zero#int1, zero#int2]
+                where
+                [b0,b1,b2,b3,b4] = [(zero#b):[20] | b <- split bits : [5][8]]
+                int1 = b2'*2^^16 + b1*2^^8 +  b0
+                int2 = b4*2^^12 + b3*2^^4 +  b2''
+                b2'  = b2 && 15
+                //b2'' = b2/(16:[20])
+                b2'' = b2/16
+// seed should be in little endian byte order
+CRH : {b} (fin b, b>=1) => [b*8] -> [384]
+CRH seed = join (SHA3::toBytes (take`{48*8} (SHA3::SHAKE256 (join (SHA3::toBytes seed)))))
+
+
+ExpandA : [SEEDBYTES*8] -> [k][l]nttPoly
+ExpandA rho = [ [elt i j | j <- [0..(l-1)] ] |  i <- [0..(k-1)] ]
+        where
+          elt i j = matrixPoly rho i j
+
+
+matrixPoly : [SEEDBYTES*8] -> [width k] -> [width l] -> nttPoly
+matrixPoly rho i j = take`{n} [ drop`{1} elt | elt <- randomElts ]
             where
-              (m :[32]) = ((zero#q - 1) / a)
-              (r1, r0) = Decompose q (r, a)
-              r1'      = if r0 > 0 then mod_pow (m, (r1 + 1), 1) else mod_pow (m, (r1 - 1), 1)
+            randomElts = randomsInRange extractMatElt ((>=) (`q)) (s#zero)
+            s          = join (SHA3::toBytes (take`{6720} (SHA3::SHAKE128 (join (SHA3::toBytes (rho#b))))))
+            b          = 2^^4*(zero#j:[8])+(zero#i:[8])
 
 
-    UseHintV : ([k][n], polyVec k, [uint32_t]) -> intPolyVec k
-    UseHintV (hvec, rvec, a) = [polyUseHint hpoly rpoly
-                                  | hpoly <- hvec
-                                  | rpoly <- rvec
-                                  ]
+extractMatElt : [24] -> [24]
+extractMatElt rands = zero#(2^^16 * b2' + 2^^8 * b1 + b0):[24]
                 where
-                polyUseHint hpoly rpoly = [ UseHint `q (h, zero#r, a)
-                                          | h <- hpoly
-                                          | r <- rpoly
-                                          ]
+                  [b0, b1, b2] = [(zero#b):[23] | b <- split`{3} rands]
+                  b2' = (2^^23-1) && b2 // Typo in paper; following C implementation
 
 
+/*
 
+  Supporting Algorithms; see Figure 3
 
-    /*
+*/
 
-      Utility functions
+Power2Round : [qbits] -> ([uint32_t],[uint32_t]) -> ([uint32_t],[uint32_t])
+Power2Round q (r,d') = ((r'-r0)/2^^d',r0)
+            where r' = mod_pow (zero#q, r, 1)
+                  r0 = centered_mod r' (2^^d')
 
-    */
+Power2RoundV : {dim} (fin dim, dim >= 1) => polyVec dim -> ([dim]intPoly,[dim]intPoly)
+Power2RoundV v = unzip (map polyPower2Round v)
+              where
+              polyPower2Round p = unzip [ Power2Round `q (zero#r, zero#d)
+                                        | r <- p
+                                        ]
 
-    ones : {a} (fin a, a >= 1) => [a] -> Integer
-    ones bv = foldl (+) 0 bva
+Decompose : [qbits] -> ([uint32_t],[uint32_t]) -> ([uint32_t],[uint32_t])
+Decompose q (r,a) = if (r' - r0) == ((zero#q-1):[32]) then (zero:[32], (zero#r0 - 1):[32])
+                                        else (((r' - r0) / a):[32], (zero#r0):[32])
+          where r' =  mod_pow (zero#q, r, 1)
+                r0 = centered_mod r' a
+
+DecomposeV : (polyVec k , [uint32_t]) -> (intPolyVec k, intPolyVec k)
+DecomposeV (r,a) = unzip [ DecomposePoly p | p <- r ]
+            where
+            DecomposePoly p = unzip [Decompose `q (zero#x,a) | x <- p]
+
+HighBits : [qbits] -> ([uint32_t],[uint32_t]) -> [uint32_t]
+HighBits q (r,a) = (Decompose q (r,a)).0
+
+HighBitsV : (polyVec k , [uint32_t]) -> intPolyVec k
+HighBitsV (r,a) = r1
           where
-          bva = map toInteger (split bv:[_][1])
-
-    IPVtoPV : {dim} (fin dim, dim >= 1) => intPolyVec dim -> polyVec dim
-    IPVtoPV intp = map (\p -> map drop`{uint32_t-qbits}p) intp
+            (r1,r0) = DecomposeV (r,a)
 
 
-    PVtoIPV : {dim} (fin dim, dim >= 1) => polyVec dim -> intPolyVec dim
-    PVtoIPV pvec = map (\p -> map (\i -> zero#i) p) pvec
+LowBits : [qbits] -> ([uint32_t],[uint32_t]) -> [uint32_t]
+LowBits q (r,a) = (Decompose q (r,a)).1
 
 
-    centered_mod : [uint32_t] -> [uint32_t] -> [uint32_t]
-    centered_mod x n = if r > (n/2) then r - n
-                        else r
-                  where r = x % n
+MakeHint : [qbits] -> ([uint32_t],[uint32_t], [uint32_t]) -> Bit
+MakeHint q (z,r,a) = r1 != v1
+          where r1 = HighBits q (r,a)
+                v1 = HighBits q (r + z,a)
+
+MakeHintV : (polyVec k, polyVec k, [uint32_t]) -> [k][n]
+MakeHintV (z,r,a) = [[x1 != x2 | x1 <- p1 | x2 <- p2] | p1 <- r1 | p2 <- v1]
+          where
+            r1 = HighBitsV (r,a)
+            v1 = HighBitsV (polyVecSum z r,a)
 
 
-    randomsInRange : {a} (fin a) => ([a]-> [a]) -> ([a] -> Bit) -> [inf] -> [inf][a]
-    randomsInRange createElt upperCrit randoms = if (upperCrit elt )
-                                    then  [ elt ]#(randomsInRange createElt upperCrit randomTail)
-                                    else randomsInRange createElt upperCrit randomTail
-                                    where
-                                    elt        = createElt (take`{a} randoms) 
-                                    randomTail = drop`{a} randoms
-
-    randomsInRanges : {a,m} (fin a,fin m, m>=1) => ([a]-> [a]) -> [m][a] -> [inf] -> [inf][a]
-    randomsInRanges createElt uppers randoms =
-                    if elt <= head uppers
-                    then  [ elt ]#(randomsInRanges createElt uppersRotate randomTail)
-                    else randomsInRanges createElt uppers randomTail
-                    where
-                      elt          = createElt (take`{a} randoms) 
-                      randomTail   = drop`{a} randoms
-                      uppersRotate = uppers <<< 1
+UseHint : [qbits] -> (Bit,[uint32_t], [uint32_t]) -> [uint32_t]
+UseHint q (h,r,a) = if h then zero#r1' else r1
+        where
+          (m :[32]) = ((zero#q - 1) / a)
+          (r1, r0) = Decompose q (r, a)
+          r1'      = if r0 > 0 then mod_pow (m, (r1 + 1), 1) else mod_pow (m, (r1 - 1), 1)
 
 
-    randomsInRangeDouble : {a} (fin a) => ([2*a]-> [2][a]) -> [a] -> [inf] -> [inf][a]
-//wrong code
-    /*randomsInRangeDouble createElt upper randoms =
-                    if (elts@0 <= upper) /\ (elts@1 <= upper)
-                    then  elts#(randomsInRangeDouble createElt upper randomTail)
-                    else
-                      if (elts@0 <= upper)
-                      then [ elts@0 ]#(randomsInRangeDouble createElt upper randomTail)
-                      else
-                        if (elts@1 <= upper)
-                        then [ elts@1 ]#(randomsInRangeDouble createElt upper randomTail)
-                        else randomsInRangeDouble createElt upper randomTail
-                    where
-                      elts       = createElt (take`{2*a} randoms) 
-                      randomTail = drop`{2*a} randoms*/
-// Correction and checked with the C code
-    randomsInRangeDouble createElt upper randoms =
-                    if (elts@1 <= upper) then [elts@1, elts@1] # (randomsInRangeDouble createElt upper randomTail)
-                    else (randomsInRangeDouble createElt upper randomTail)
-                    where
-                    elts       = createElt (take`{2*a} randoms)
-                    randomTail = drop`{2*a} randoms
-
-    /*
-
-      Supporting polynomial and polynomial vector functions
-
-    */
-
-    ntt : poly -> nttPoly
-    ntt p = nttp
-         where
-          r k = rootOfUnity^^k
-          exponents = join [ [BVtoZ`{q} i, (256+(BVtoZ`{q} i))] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
-          nttp = [ fromInteger (fromZ (sum [ (BVtoZ`{q} (p@idx)) | idx<-[0..(n-1)]:[n][width n] | i<-[0..(n-1)]:[n](Z q)]))
-                 | k <- exponents 
-                 ]
-
-    nttinv : nttPoly -> poly
-    nttinv p' = p'
-        /*   where
-            pu = reorder p'
-            r' i = rootOfUnityInv^^(i*2)
-            p = [fromInteger (fromZ`{q} (sum [(r' (BVtoZ`{q}(i*j)))
-                                                    | jdx<-[0..(n-1)]:[n][width n]
-                                                    | j<-[0..(n-1)]:[n](Z q)
-                                             ])):[23]
-                | i <- [0..255]
-                ]*/
-
-    // Dilithium uses a non-standard ordering of elements in the NTT domain; this function reorders the elements.
-    reorder : nttPoly -> nttPoly
-    reorder a = join [ [a1 @ i, a2 @ i] | i <- [0..127]:[_][8] ]
+UseHintV : ([k][n], polyVec k, [uint32_t]) -> intPolyVec k
+UseHintV (hvec, rvec, a) = [polyUseHint hpoly rpoly
+                              | hpoly <- hvec
+                              | rpoly <- rvec
+                              ]
             where
-              a1 = a @@ [ (i-1)/2 | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
-              a2 = reverse (a @@ [ (511 - (zero#i):[9])/2 | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ])
+            polyUseHint hpoly rpoly = [ UseHint `q (h, zero#r, a)
+                                      | h <- hpoly
+                                      | r <- rpoly
+                                      ]
 
 
 
-    // Operations on NTT polynomials
 
-    nttMatMul : {dim1,dim2} (fin dim1,fin dim2) => nttMat dim1 dim2 -> nttVec dim2 -> nttVec dim1
-    nttMatMul mat vec = [ nttDotProduct v vec | v <- mat ]
+/*
 
-    nttDotProduct : {dim} (fin dim) => nttVec dim -> nttVec dim -> nttPoly
-    nttDotProduct v1 v2 = foldl padd (zero:nttPoly) [ nttPolyMult p1 p2 | p1 <- v1 | p2 <- v2 ]
+  Utility functions
 
-    nttPolyMult : nttPoly -> nttPoly -> nttPoly
-    nttPolyMult p1 p2 = [ x * y | x <- p1 | y <- p2]
+*/
 
-    nttVecConstMul : {dim} (fin dim) => nttPoly -> nttVec dim -> nttVec dim
-    nttVecConstMul c v = map (nttPolyMult c) v
+ones : {a} (fin a, a >= 1) => [a] -> Integer
+ones bv = foldl (+) 0 bva
+      where
+      bva = map toInteger (split bv:[_][1])
 
-    polyVecSum :  {dim} (fin dim) => polyVec dim -> polyVec dim -> polyVec dim
-    polyVecSum v1 v2 = map nttinv (paddV v1' v2')
+IPVtoPV : {dim} (fin dim, dim >= 1) => intPolyVec dim -> polyVec dim
+IPVtoPV intp = map (\p -> map drop`{uint32_t-qbits}p) intp
+
+
+PVtoIPV : {dim} (fin dim, dim >= 1) => polyVec dim -> intPolyVec dim
+PVtoIPV pvec = map (\p -> map (\i -> zero#i) p) pvec
+
+
+centered_mod : [uint32_t] -> [uint32_t] -> [uint32_t]
+centered_mod x n = if r > (n/2) then r - n
+                    else r
+              where r = x % n
+
+
+randomsInRange : {a} (fin a) => ([a]-> [a]) -> ([a] -> Bit) -> [inf] -> [inf][a]
+randomsInRange createElt upperCrit randoms = if (upperCrit elt )
+                                then  [ elt ]#(randomsInRange createElt upperCrit randomTail)
+                                else randomsInRange createElt upperCrit randomTail
+                                where
+                                elt        = createElt (take`{a} randoms)
+                                randomTail = drop`{a} randoms
+
+randomsInRanges : {a,m} (fin a,fin m, m>=1) => ([a]-> [a]) -> [m][a] -> [inf] -> [inf][a]
+randomsInRanges createElt uppers randoms =
+                if elt <= head uppers
+                then  [ elt ]#(randomsInRanges createElt uppersRotate randomTail)
+                else randomsInRanges createElt uppers randomTail
                 where
-                v1' = map ntt v1
-                v2' = map ntt v2
-
-    // Polynomial addition and subtraction
-    padd : [n][qbits] -> [n][qbits] -> [n][qbits]
-    padd p1 p2 = [ x + y | x <- p1 | y <- p2 ]
+                  elt          = createElt (take`{a} randoms)
+                  randomTail   = drop`{a} randoms
+                  uppersRotate = uppers <<< 1
 
 
-    psub : [n][qbits] -> [n][qbits] -> [n][qbits]
-    psub p1 p2 = [ x - y | x <- p1 | y <- p2 ]
-
-
-    psubV : {dim} (fin dim) => [dim][n][qbits] -> [dim][n][qbits] -> [dim][n][qbits]
-    psubV v1 v2 = zipWith psub v1 v2
-
-
-    paddV : {dim} (fin dim) => [dim][n][qbits] -> [dim][n][qbits] -> [dim][n][qbits]
-    paddV v1 v2 = zipWith padd v1 v2
-
-
-
-    // Aux functions
-
-    infNorm : [uint32_t] -> [uint32_t]
-    infNorm x =  (centered_mod x `q)
-
-    infNormPoly : intPoly -> [uint32_t]
-    infNormPoly p = foldl max 0 p_centered
+randomsInRangeDouble : {a} (fin a) => ([2*a]-> [2][a]) -> [a] -> [inf] -> [inf][a]
+//wrong code
+/*randomsInRangeDouble createElt upper randoms =
+                if (elts@0 <= upper) /\ (elts@1 <= upper)
+                then  elts#(randomsInRangeDouble createElt upper randomTail)
+                else
+                  if (elts@0 <= upper)
+                  then [ elts@0 ]#(randomsInRangeDouble createElt upper randomTail)
+                  else
+                    if (elts@1 <= upper)
+                    then [ elts@1 ]#(randomsInRangeDouble createElt upper randomTail)
+                    else randomsInRangeDouble createElt upper randomTail
                 where
-                  p_centered = map infNorm p
+                  elts       = createElt (take`{2*a} randoms)
+                  randomTail = drop`{2*a} randoms*/
+// Correction and checked with the C code
+randomsInRangeDouble createElt upper randoms =
+                if (elts@1 <= upper) then [elts@1, elts@1] # (randomsInRangeDouble createElt upper randomTail)
+                else (randomsInRangeDouble createElt upper randomTail)
+                where
+                elts       = createElt (take`{2*a} randoms)
+                randomTail = drop`{2*a} randoms
 
-    infNormPolyVec : {dim} (fin dim, dim>=1) => intPolyVec dim -> [uint32_t]
-    infNormPolyVec v = foldl max 0 (map infNormPoly v)
+/*
+
+  Supporting polynomial and polynomial vector functions
+
+*/
+
+ntt : poly -> nttPoly
+ntt p = nttp
+     where
+      r k = rootOfUnity^^k
+      exponents = join [ [BVtoZ`{q} i, (256+(BVtoZ`{q} i))] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
+      nttp = [ fromInteger (fromZ (sum [ (BVtoZ`{q} (p@idx)) | idx<-[0..(n-1)]:[n][width n] | i<-[0..(n-1)]:[n](Z q)]))
+             | k <- exponents
+             ]
+
+nttinv : nttPoly -> poly
+nttinv p' = p'
+    /*   where
+        pu = reorder p'
+        r' i = rootOfUnityInv^^(i*2)
+        p = [fromInteger (fromZ`{q} (sum [(r' (BVtoZ`{q}(i*j)))
+                                                | jdx<-[0..(n-1)]:[n][width n]
+                                                | j<-[0..(n-1)]:[n](Z q)
+                                         ])):[23]
+            | i <- [0..255]
+            ]*/
+
+// Dilithium uses a non-standard ordering of elements in the NTT domain; this function reorders the elements.
+reorder : nttPoly -> nttPoly
+reorder a = join [ [a1 @ i, a2 @ i] | i <- [0..127]:[_][8] ]
+        where
+          a1 = a @@ [ (i-1)/2 | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
+          a2 = reverse (a @@ [ (511 - (zero#i):[9])/2 | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ])
+
+
+
+// Operations on NTT polynomials
+
+nttMatMul : {dim1,dim2} (fin dim1,fin dim2) => nttMat dim1 dim2 -> nttVec dim2 -> nttVec dim1
+nttMatMul mat vec = [ nttDotProduct v vec | v <- mat ]
+
+nttDotProduct : {dim} (fin dim) => nttVec dim -> nttVec dim -> nttPoly
+nttDotProduct v1 v2 = foldl padd (zero:nttPoly) [ nttPolyMult p1 p2 | p1 <- v1 | p2 <- v2 ]
+
+nttPolyMult : nttPoly -> nttPoly -> nttPoly
+nttPolyMult p1 p2 = [ x * y | x <- p1 | y <- p2]
+
+nttVecConstMul : {dim} (fin dim) => nttPoly -> nttVec dim -> nttVec dim
+nttVecConstMul c v = map (nttPolyMult c) v
+
+polyVecSum :  {dim} (fin dim) => polyVec dim -> polyVec dim -> polyVec dim
+polyVecSum v1 v2 = map nttinv (paddV v1' v2')
+            where
+            v1' = map ntt v1
+            v2' = map ntt v2
+
+// Polynomial addition and subtraction
+padd : [n][qbits] -> [n][qbits] -> [n][qbits]
+padd p1 p2 = [ x + y | x <- p1 | y <- p2 ]
+
+
+psub : [n][qbits] -> [n][qbits] -> [n][qbits]
+psub p1 p2 = [ x - y | x <- p1 | y <- p2 ]
+
+
+psubV : {dim} (fin dim) => [dim][n][qbits] -> [dim][n][qbits] -> [dim][n][qbits]
+psubV v1 v2 = zipWith psub v1 v2
+
+
+paddV : {dim} (fin dim) => [dim][n][qbits] -> [dim][n][qbits] -> [dim][n][qbits]
+paddV v1 v2 = zipWith padd v1 v2
+
+
+
+// Aux functions
+
+infNorm : [uint32_t] -> [uint32_t]
+infNorm x =  (centered_mod x `q)
+
+infNormPoly : intPoly -> [uint32_t]
+infNormPoly p = foldl max 0 p_centered
+            where
+              p_centered = map infNorm p
+
+infNormPolyVec : {dim} (fin dim, dim>=1) => intPolyVec dim -> [uint32_t]
+infNormPolyVec v = foldl max 0 (map infNormPoly v)
 
 
 
