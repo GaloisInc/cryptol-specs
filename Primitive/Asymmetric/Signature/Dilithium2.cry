@@ -9,7 +9,7 @@
     You can freely use this source code for educational purposes.
 */
 
-module Primitive::Asymmetric::Signature::Dilithium2 = Primitive::Asymmetric::Signature::Dilithium_BV where
+module Primitive::Asymmetric::Signature::Dilithium2=Primitive::Asymmetric::Signature::Dilithium_BV where
 
     type k = 4
     type l = 3
