@@ -263,24 +263,27 @@ polyz_pack a = [  | i <- [0..n/2] ] */
 // Only works when n=256
 
 // This function has been modified in round2
-//PolyUniformEtaV : {dim} (fin dim, dim>=1,width (dim-1) <= 8) => [256] -> [8] -> polyVec dim
+//PolyUniformEtaV : {dim} (fin dim, dim>=1,width (dim-1) <= 8) => [256] -> [8] -> polyVec dim // round1
 PolyUniformEtaV : {dim} (fin dim, dim>=1,width (dim-1) <= 8) => [256] -> [16] -> polyVec dim
-PolyUniformEtaV r nonce = [PolyUniformEta r (nonce + (zero#j)) | j <- [0..(dim-1)]:[dim][8]]
+PolyUniformEtaV r nonce = [PolyUniformEta r (nonce + j) | j <- [0..(dim-1)]:[dim][16]]
+
+genS : [8] -> [2][4]
+genS byte = [t0, t1]
+    where
+    t0 = drop`{4} (byte && 0x0F)
+    t1 = drop`{4} (byte >> 4)
 
 // This function has been modified in round2
+//(uint8_t) D means taking 8 LSBs from D
 //PolyUniformEta : [SEEDBYTES*8] -> [8] -> poly
 PolyUniformEta : [SEEDBYTES*8] -> [16] -> poly
-PolyUniformEta rho nonce = map (\x -> ((zero#(eta:[4])):[23]) - x) (map (\x-> (zero#x):[23]) (take`{n} withinEta))
+PolyUniformEta rho nonce = map (\x -> if ((toInteger eta) - (toInteger x)) < 0 then (fromInteger  (((toInteger eta) - (toInteger x))+`q):[23]) else (fromInteger ((toInteger eta) - (toInteger x)):[23])) (take`{n} withinEta)
     where
-        seed = rho#(take`{8} nonce)# (drop`{8} nonce)
+        seed = rho#(drop`{8} nonce)# (take`{8} nonce)
         randoms = ((join (SHA3::toBytes (take`{2*8*168} (SHA3::SHAKE128 (join (SHA3::toBytes seed))))))#zero)
         withinEta = randomsInRangeDouble genS (2*eta) randoms
 
-        genS : [8] -> [2][4]
-        genS byte = [t0, t1]
-            where
-            t0 = drop`{4} (byte && 0x0F)
-            t1 = drop`{4} (byte >> 4)
+
 
 
 
@@ -336,7 +339,7 @@ extractPolyElt bits = [zero#int1, zero#int2]
 CRH : {b} (fin b, b>=1) => [b*8] -> [384]
 CRH seed = join (SHA3::toBytes (take`{48*8} (SHA3::SHAKE256 (join (SHA3::toBytes seed)))))
 
-
+// Fixed for round2 submission
 ExpandA : [SEEDBYTES*8] -> [k][l]nttPoly
 ExpandA rho = [ [ (matrixPoly rho i j) | j <- [0..(l-1)] ] |  i <- [0..(k-1)] ]
 
@@ -437,6 +440,13 @@ UseHintV (hvec, rvec, a) = [polyUseHint hpoly rpoly
   Utility functions
 
 */
+/* Conversion */
+
+BVtoIntpolyVec : {dim} (fin dim, dim >= 1) => polyVec dim -> [dim][n]Integer
+BVtoIntpolyVec pvec = map (\x -> map (\y -> toInteger y) x) pvec
+
+BVtoIntNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => nttMat dim1 dim2 -> [dim1][dim2][n]Integer
+BVtoIntNttMat nttmat = map (\x -> map (\y -> map (\z -> toInteger z) y) x) nttmat
 
 ones : {a} (fin a, a >= 1) => [a] -> Integer
 ones bv = foldl (+) 0 bva
@@ -478,7 +488,7 @@ randomsInRanges createElt uppers randoms =
 
 randomsInRangeDouble : {a} (fin a) => ([2*a]-> [2][a]) -> [a] -> [inf] -> [inf][a]
 //wrong code
-/*randomsInRangeDouble createElt upper randoms =
+randomsInRangeDouble createElt upper randoms =
                 if (elts@0 <= upper) /\ (elts@1 <= upper)
                 then  elts#(randomsInRangeDouble createElt upper randomTail)
                 else
@@ -490,14 +500,14 @@ randomsInRangeDouble : {a} (fin a) => ([2*a]-> [2][a]) -> [a] -> [inf] -> [inf][
                     else randomsInRangeDouble createElt upper randomTail
                 where
                   elts       = createElt (take`{2*a} randoms)
-                  randomTail = drop`{2*a} randoms*/
+                  randomTail = drop`{2*a} randoms
 // Correction and checked with the C code
-randomsInRangeDouble createElt upper randoms =
+/*randomsInRangeDouble createElt upper randoms =
                 if (elts@1 <= upper) then [elts@1, elts@1] # (randomsInRangeDouble createElt upper randomTail)
                 else (randomsInRangeDouble createElt upper randomTail)
                 where
                 elts       = createElt (take`{2*a} randoms)
-                randomTail = drop`{2*a} randoms
+                randomTail = drop`{2*a} randoms*/
 
 /*
 
