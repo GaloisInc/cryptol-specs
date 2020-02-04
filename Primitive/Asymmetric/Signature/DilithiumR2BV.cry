@@ -101,11 +101,10 @@ Gen s = (pk, sk)
 // Known Answer Test
 // To check this property, it is necessary to import testDilithium
 
-/*test_key_gen = (pk.rho#(pack_t1 pk.t1) == testCase0.pk) /\
-    ((sk.rho#sk.K#sk.tr#(pack_polyeta sk.s1)#(pack_polyeta sk.s2)#(pack_t0 sk.t0)) == testCase0.sk)
+test_key_gen = (pk.rho#(pack_t1 pk.t1) == testCase1.pk) /\
+    ((sk.rho#sk.K#sk.tr#(pack_polyeta sk.s1)#(pack_polyeta sk.s2)#(pack_t0 sk.t0)) == testCase1.sk)
     where
-    seed     = 0x86E1868C5D164027CE440C96CDA44D30EBE956E1B707E82F4E8B78A826A1F48C7885964A2D2797E6C116C660318A6B816F1E12C4EF7ECAFB699226B3F6613CCA1D810F9C5506A003B538C46D9C6F53737115A1DDBDEA55B38D6B268BDAFF1B31
-    (pk, sk) = Gen seed */
+    (pk, sk) = Gen (join testCase1.seed)
 
 /* Generate signature for message M */      
 /*Sign : {mbytes} (fin mbytes, mbytes>=1) => SecretKey -> [mbytes*8] -> (polyVec l, [k][n], poly)
@@ -208,13 +207,16 @@ pack_w w = join [pack_poly p | p <- wBV ]
     pack2 xs = xs@0 || (xs@1 << 4)
     pack_poly p = join [ pack2 xs | xs <- split p : [128][2][_] ]
 
-    /*pack_polyeta : {m} (fin m, m >= 1) =>  polyVec m -> [4*n*m]
+pack_polyeta : {m} (fin m, m >= 1) =>  polyVec m -> [4*n*m]
 pack_polyeta s = join [ join [elt p i | i <- [0..(n/2)-1]:[_][8] ] | p <- s ]
-             where
-              elt : poly -> [8] -> [8]
-              elt p i = (c (toInteger (p@(2*i+0)))) || ((c (toInteger (p@(2*i+1)))) << 4)
-              c : Integer -> [8]
-              c num = if num > eta then  (`q + eta - num) else  (eta - num)*/
+    where
+    elt : poly -> [8] -> [8]
+    elt p i = (c (fromZ`{q} (BVtoZ`{q}(p@(2*i+0))))) || ((c (fromZ`{q} (BVtoZ`{q}(p@(2*i+1))))) << 4)
+    c : Integer -> [8]
+    c num = if num > eta then fromInteger (`q + eta - num) else fromInteger (eta - num)
+
+
+
 
 pack_t0 : intPolyVec k -> [k*3584]
 pack_t0 t0 = join [ pack_poly p | p <- t0 ]
@@ -552,14 +554,6 @@ randomsInRangeDouble createElt upper randoms =
 
 */
 
-/*ntt : poly -> nttPoly
-ntt p = nttp
-     where
-      r k = rootOfUnity^^k
-      exponents = join [ [BVtoZ`{q} i, (256+(BVtoZ`{q} i))] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
-      nttp = [ fromInteger (fromZ (sum [ (BVtoZ`{q} (p@idx)) | idx<-[0..(n-1)]:[n][width n] | i<-[0..(n-1)]:[n](Z q)]))
-             | k <- exponents
-             ]*/
 
 ntt : poly -> nttPoly
 ntt p = nttp
@@ -571,16 +565,16 @@ ntt p = nttp
            ]
 
 nttinv : nttPoly -> poly
-nttinv p' = p'//p
-    /*where
+nttinv p' = p
+    where
         pu = reorder p'
         r' i = rootOfUnityInv^^(i*2)
-        p = [ZtoBV(ninv*(rootOfUnityInv^^i) * sum [pu@jdx * (r' ((i*j)))
-                                            | jdx<-[0..(n-1)]:[n][width n]
-                                            | j<-[0..(n-1)]:[n](Z q)
-                                            ])
+        p = [ ZtoBV`{q} (ninv*(rootOfUnityInv^^i)*(sum [BVtoZ`{q}(pu@jdx) * (r' ((i*j)))
+            | jdx<-[0..(n-1)]:[n][width n]
+            | j<-[0..(n-1)]:[n](Z q)
+            ]))
             | i <- [0..255]:[n](Z q)
-            ]*/
+            ]
 
 
 
@@ -603,24 +597,24 @@ nttDotProduct : {dim} (fin dim) => nttVec dim -> nttVec dim -> nttPoly
 nttDotProduct v1 v2 = foldl padd (zero:nttPoly) [ nttPolyMult p1 p2 | p1 <- v1 | p2 <- v2 ]
 
 nttPolyMult : nttPoly -> nttPoly -> nttPoly
-nttPolyMult p1 p2 = [ x * y | x <- p1 | y <- p2]
+nttPolyMult p1 p2 = [ ZtoBV`{q}(fromInteger (toInteger x * toInteger y):(Z q)) | x <- p1 | y <- p2]
 
 nttVecConstMul : {dim} (fin dim) => nttPoly -> nttVec dim -> nttVec dim
 nttVecConstMul c v = map (nttPolyMult c) v
 
 polyVecSum :  {dim} (fin dim) => polyVec dim -> polyVec dim -> polyVec dim
 polyVecSum v1 v2 = map nttinv (paddV v1' v2')
-            where
-            v1' = map ntt v1
-            v2' = map ntt v2
+        where
+        v1' = map ntt v1
+        v2' = map ntt v2
 
 // Polynomial addition and subtraction
 padd : [n][qbits] -> [n][qbits] -> [n][qbits]
-padd p1 p2 = [ x + y | x <- p1 | y <- p2 ]
+padd p1 p2 = [ ZtoBV`{q}(fromInteger (toInteger x + toInteger y):(Z q)) | x <- p1 | y <- p2 ]
 
 
 psub : [n][qbits] -> [n][qbits] -> [n][qbits]
-psub p1 p2 = [ x - y | x <- p1 | y <- p2 ]
+psub p1 p2 = [ ZtoBV`{q}(fromInteger (toInteger x - toInteger y):(Z q)) | x <- p1 | y <- p2 ]
 
 
 psubV : {dim} (fin dim) => [dim][n][qbits] -> [dim][n][qbits] -> [dim][n][qbits]
@@ -629,6 +623,7 @@ psubV v1 v2 = zipWith psub v1 v2
 
 paddV : {dim} (fin dim) => [dim][n][qbits] -> [dim][n][qbits] -> [dim][n][qbits]
 paddV v1 v2 = zipWith padd v1 v2
+
 
 
 
