@@ -38,9 +38,9 @@ alpha = (2*gamma2):[_]
 qinv  = 0x00000000fc7fdfff
 
 // Parameters for Number Theoretic Transform (NTT)
-rootOfUnity    = 1753 :[qbits]
-rootOfUnityInv = 731434 : [qbits]
-ninv           = 8347681 : [qbits]
+rootOfUnity    = 1753 : (Z q)
+rootOfUnityInv = 731434 : (Z q)
+ninv           = 8347681 : (Z q)
 
 // Parameterize the types based on the following implemenations
 /* Weak, Medium, Recommended, and VeryHigh*/
@@ -86,10 +86,10 @@ type SEEDBYTES = 32
 Gen : [96*8] -> (PublicKey,SecretKey)
 Gen s = (pk, sk)
     where
-      (rho, rho', K) = ((take`{256} s), (drop`{256} s), (drop`{512} s))
+      [rho, rho', K] = split`{3} s
       A       = ExpandA rho
-      s1      = PolyUniformEtaV`{dim=l} (take`{256} rho') zero
-      s2      = PolyUniformEtaV`{dim=k} (take`{256} rho') (zero + `l)
+      s1      = PolyUniformEtaV`{dim=l} rho' zero
+      s2      = PolyUniformEtaV`{dim=k} rho' `l
       s1ntt   = map ntt s1
       As1     = map nttinv (nttMatMul A s1ntt)
       t       = paddV As1 s2
@@ -432,21 +432,58 @@ UseHintV (hvec, rvec, a) = [polyUseHint hpoly rpoly
                                       | r <- rpoly
                                       ]
 
-
-
-
 /*
 
   Utility functions
 
 */
-/* Conversion */
 
-BVtoIntpolyVec : {dim} (fin dim, dim >= 1) => polyVec dim -> [dim][n]Integer
-BVtoIntpolyVec pvec = map (\x -> map (\y -> toInteger y) x) pvec
+/* Conversion functions */
+
+//Bit-Vector to Integer type
+
+BVtoIntPoly : poly -> [n]Integer
+BVtoIntPoly p = map (\x -> toInteger x) p
+
+BVtoIntPolyVec : {dim} (fin dim, dim >= 1) => polyVec dim -> [dim][n]Integer
+BVtoIntPolyVec pvec = map (\x -> BVtoIntPoly x) pvec
 
 BVtoIntNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => nttMat dim1 dim2 -> [dim1][dim2][n]Integer
-BVtoIntNttMat nttmat = map (\x -> map (\y -> map (\z -> toInteger z) y) x) nttmat
+BVtoIntNttMat nttmat = map (\x -> BVtoIntPolyVec x) nttmat
+
+//Bit-Vector to (Z q) type
+
+BVtoZPoly : poly -> [n](Z q)
+BVtoZPoly p = map (\x -> BVtoZ`{q} x) p
+
+BVtoZPolyVec : {dim} (fin dim, dim >= 1) => polyVec dim -> [dim][n](Z q)
+BVtoZPolyVec pvec = map (\x -> BVtoZPoly x) pvec
+
+BVtoZNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => nttMat dim1 dim2 -> [dim1][dim2][n](Z q)
+BVtoZNttMat nttmat = map (\x -> BVtoZPolyVec x) nttmat
+
+// Integer to Bit-Vector type
+
+InttoZPoly : [n]Integer -> [n](Z q)
+InttoZPoly p = map (\x -> fromInteger x:(Z q)) p
+
+InttoZPolyVec : {dim} (fin dim, dim >= 1) => [dim][n]Integer -> [dim][n](Z q)
+InttoZPolyVec pvec = map (\x -> InttoZPoly x) pvec
+
+InttoZNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => [dim1][dim2][n]Integer -> [dim1][dim2][n](Z q)
+InttoZNttMat nttmat = map (\x -> InttoZPolyVec x) nttmat
+
+// (Z q) to Integer type
+
+fromZPoly : [n](Z q) -> [n]Integer
+fromZPoly p = map (\x -> fromZ x) p
+
+fromZPolyVec : {dim} (fin dim, dim >= 1) => [dim][n](Z q) -> [dim][n]Integer
+fromZPolyVec pvec = map (\x -> fromZPoly x) pvec
+
+fromZNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => [dim1][dim2][n](Z q) -> [dim1][dim2][n]Integer
+fromZNttMat nttmat = map (\x -> fromZPolyVec x) nttmat
+
 
 ones : {a} (fin a, a >= 1) => [a] -> Integer
 ones bv = foldl (+) 0 bva
@@ -515,26 +552,38 @@ randomsInRangeDouble createElt upper randoms =
 
 */
 
-ntt : poly -> nttPoly
+/*ntt : poly -> nttPoly
 ntt p = nttp
      where
       r k = rootOfUnity^^k
       exponents = join [ [BVtoZ`{q} i, (256+(BVtoZ`{q} i))] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
       nttp = [ fromInteger (fromZ (sum [ (BVtoZ`{q} (p@idx)) | idx<-[0..(n-1)]:[n][width n] | i<-[0..(n-1)]:[n](Z q)]))
              | k <- exponents
-             ]
+             ]*/
+
+ntt : poly -> nttPoly
+ntt p = nttp
+    where
+    r k = rootOfUnity^^ k
+    exponents = join [ [BVtoZ`{q} i, (256+(BVtoZ`{q} i))] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
+    nttp = [ ZtoBV`{q, qbits} (sum [ (BVtoZ`{q} (p@idx):(Z q)) * (r k)^^(i) | idx<-[0..(n-1)]:[n][width n] | i<-[0..(n-1)]:[n](Z q)])
+           | k <- exponents
+           ]
 
 nttinv : nttPoly -> poly
-nttinv p' = p
-    where
+nttinv p' = p'//p
+    /*where
         pu = reorder p'
         r' i = rootOfUnityInv^^(i*2)
-        p = [ninv*(rootOfUnityInv^^i) * sum [pu@jdx * (r' ((i*j)))
+        p = [ZtoBV(ninv*(rootOfUnityInv^^i) * sum [pu@jdx * (r' ((i*j)))
                                             | jdx<-[0..(n-1)]:[n][width n]
-                                            | j<-[0..(n-1)]:[n][qbits]
-                                            ]
-            | i <- [0..255]
-            ]
+                                            | j<-[0..(n-1)]:[n](Z q)
+                                            ])
+            | i <- [0..255]:[n](Z q)
+            ]*/
+
+
+
 
 // Dilithium uses a non-standard ordering of elements in the NTT domain; this function reorders the elements.
 reorder : nttPoly -> nttPoly
