@@ -107,12 +107,12 @@ test_key_gen = (pk.rho#(pack_t1 pk.t1) == testCase1.pk) /\
     (pk, sk) = Gen (join testCase1.seed)
 
 /* Generate signature for message M */      
-/*Sign : {mbytes} (fin mbytes, mbytes>=1) => SecretKey -> [mbytes*8] -> (polyVec l, [k][n], poly)
+Sign : {mbytes} (fin mbytes, mbytes>=1) => SecretKey -> [mbytes*8] -> (polyVec l, [k][n], poly)
 Sign sk M = (final_state.z, h, nttinv final_state.c')
      where
       A     = ExpandA sk.rho //checked
       mu    = CRH`{b=48+mbytes} (sk.tr#M) // checked
-      kappa = zero:[23]
+      kappa = zero
       s1'   = map ntt sk.s1 //checked
       s2'   = map ntt sk.s2 // checked
       t0'   = map ntt (IPVtoPV sk.t0) //checked
@@ -131,7 +131,7 @@ Sign sk M = (final_state.z, h, nttinv final_state.c')
 
 
 
-    type sign_var_types = { z   : polyVec l
+type sign_var_types = { z   : polyVec l
                           , r0  : intPolyVec k
                           , r1  : intPolyVec k
                           , t0' : nttVec k
@@ -144,11 +144,11 @@ Sign sk M = (final_state.z, h, nttinv final_state.c')
                           , K   : [256]
                           , mu  : [384]
                           , A   : nttMat k l
-                          , kappa: [23]}
+                          , kappa: Integer}
 
 
-    sign_condition : sign_var_types -> Bit
-    sign_condition sv = fail1 \/ fail2 
+sign_condition : sign_var_types -> Bit
+sign_condition sv = fail1 \/ fail2
                    where
                     fail1 = ((infNormPolyVec (PVtoIPV sv.z)) >= (gamma1-beta))
                             \/ ((infNormPolyVec sv.r0) >= (gamma2-beta))
@@ -162,8 +162,8 @@ Sign sk M = (final_state.z, h, nttinv final_state.c')
                                       )
 
 
-    sign_body : sign_var_types -> sign_var_types
-    sign_body sv = {z=z,r0=r0,r1=r1,t0'=sv.t0',c'=c',w=w,w1=w1,s1'=sv.s1',s2'=sv.s2',
+sign_body : sign_var_types -> sign_var_types
+sign_body sv = {z=z,r0=r0,r1=r1,t0'=sv.t0',c'=c',w=w,w1=w1,s1'=sv.s1',s2'=sv.s2',
                    cs2=cs2,K=sv.K,mu=sv.mu,A=sv.A,kappa=(sv.kappa+1)}
               where
                 y   = ExpandMask(sv.K,sv.mu,sv.kappa)// checked
@@ -174,7 +174,7 @@ Sign sk M = (final_state.z, h, nttinv final_state.c')
                 cs1 = map nttinv (nttVecConstMul c' sv.s1')
                 cs2 = map nttinv (nttVecConstMul c' sv.s2')
                 z   = paddV y cs1
-                (r1, r0) = DecomposeV (psubV w cs2, 2 * gamma2) */
+                (r1, r0) = DecomposeV (psubV w cs2, 2 * gamma2)
 
 
 
