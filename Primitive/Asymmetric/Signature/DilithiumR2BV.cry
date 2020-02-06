@@ -219,20 +219,20 @@ pack_polyeta s = join [ join [elt p i | i <- [0..(n/2)-1]:[_][8] ] | p <- s ]
 
 
 pack_t0 : intPolyVec k -> [k*3584]
-pack_t0 t0 = join [ pack_poly p | p <- t0 ]
+pack_t0 t0 = join [ polyt0_pack p | p <- t0 ]
+
+polyt0_pack : intPoly -> [3584]
+polyt0_pack p = join [ join [drop`{24} (tmp p i 0),
+                       drop`{24} (((tmp p i 0) >> 8) || ((tmp p i 1) << 6)),
+                       drop`{24} ((tmp p i 1) >> 2),
+                       drop`{24} (((tmp p i 1) >> 10) || ((tmp p i 2) << 4)),
+                       drop`{24} ((tmp p i 2) >> 4),
+                       drop`{24} (((tmp p i 2) >> 12) || ((tmp p i 3) << 2)),
+                       drop`{24} ((tmp p i 3) >> 6)
+                     ] | i <- [0..(n/4-1)] ]
         where
           tmp : intPoly -> [8] -> [8] -> [32]
           tmp p i j =  (2^^13 - p@(4*i+j))
-
-          pack_poly : intPoly -> [3584]
-          pack_poly p = join [ join [drop`{24} (tmp p i 0),
-                     drop`{24} (((tmp p i 0) >> 8) || ((tmp p i 1) << 6)),
-                     drop`{24} ((tmp p i 1) >> 2),
-                     drop`{24} (((tmp p i 1) >> 10) || ((tmp p i 2) << 4)),
-                     drop`{24} ((tmp p i 2) >> 4),
-                     drop`{24} (((tmp p i 2) >> 12) || ((tmp p i 3) << 2)),
-                     drop`{24} ((tmp p i 3) >> 6)
-                     ] | i <- [0..(n/4-1)] ]
 
 
 // d must be 14 for this to work, and n must be 256
@@ -610,11 +610,11 @@ polyVecSum v1 v2 = map nttinv (paddV v1' v2')
 
 // Polynomial addition and subtraction
 padd : [n][qbits] -> [n][qbits] -> [n][qbits]
-padd p1 p2 = [ ZtoBV`{q}(fromInteger (toInteger x + toInteger y):(Z q)) | x <- p1 | y <- p2 ]
+padd p1 p2 = [ (x + y) % `q | x <- p1 | y <- p2 ]
 
 
 psub : [n][qbits] -> [n][qbits] -> [n][qbits]
-psub p1 p2 = [ ZtoBV`{q}(fromInteger (toInteger x - toInteger y):(Z q)) | x <- p1 | y <- p2 ]
+psub p1 p2 = [ (x - y) % `q | x <- p1 | y <- p2 ]
 
 
 psubV : {dim} (fin dim) => [dim][n][qbits] -> [dim][n][qbits] -> [dim][n][qbits]
