@@ -492,12 +492,20 @@ ones bv = foldl (+) 0 bva
       where
       bva = map toInteger (split bv:[_][1])
 
+IPtoP : intPoly -> poly
+IPtoP p = map (drop `{uint32_t-qbits}) p
+
+
+PtoIP : poly -> intPoly
+PtoIP p = map (\i -> zero#i) p
+
+
 IPVtoPV : {dim} (fin dim, dim >= 1) => intPolyVec dim -> polyVec dim
-IPVtoPV intp = map (\p -> map drop`{uint32_t-qbits}p) intp
+IPVtoPV intp = map IPtoP intp
 
 
 PVtoIPV : {dim} (fin dim, dim >= 1) => polyVec dim -> intPolyVec dim
-PVtoIPV pvec = map (\p -> map (\i -> zero#i) p) pvec
+PVtoIPV pvec = map PtoIP pvec
 
 
 centered_mod : [uint32_t] -> [uint32_t] -> [uint32_t]
