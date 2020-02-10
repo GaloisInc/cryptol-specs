@@ -618,12 +618,13 @@ polyVecSum v1 v2 = map nttinv (paddV v1' v2')
 
 // Polynomial addition and subtraction
 padd : [n][qbits] -> [n][qbits] -> [n][qbits]
-padd p1 p2 = [ (x + y) % `q | x <- p1 | y <- p2 ]
+//padd p1 p2 = [ (x + y) % `q | x <- p1 | y <- p2 ]
+padd p1 p2 = [ ZtoBV`{q}(fromInteger (toInteger x + toInteger y):(Z q)) | x <- p1 | y <- p2 ]
 
 
 psub : [n][qbits] -> [n][qbits] -> [n][qbits]
-psub p1 p2 = [ (x - y) % `q | x <- p1 | y <- p2 ]
-
+//psub p1 p2 = [ (x - y) % `q | x <- p1 | y <- p2 ]
+psub p1 p2 = [ ZtoBV`{q}(fromInteger (toInteger x - toInteger y):(Z q)) | x <- p1 | y <- p2 ]
 
 psubV : {dim} (fin dim) => [dim][n][qbits] -> [dim][n][qbits] -> [dim][n][qbits]
 psubV v1 v2 = zipWith psub v1 v2
