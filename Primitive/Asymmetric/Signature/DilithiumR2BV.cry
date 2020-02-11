@@ -38,9 +38,9 @@ alpha = (2*gamma2):[_]
 qinv  = 0x00000000fc7fdfff
 
 // Parameters for Number Theoretic Transform (NTT)
-rootOfUnity    = 1753 : (Z q)
-rootOfUnityInv = 731434 : (Z q)
-ninv           = 8347681 : (Z q)
+rootOfUnity    = 1753 : [qbits]
+rootOfUnityInv = 731434 : [qbits]
+ninv           = 8347681 : [qbits]
 
 // Parameterize the types based on the following implemenations
 /* Weak, Medium, Recommended, and VeryHigh*/
@@ -83,7 +83,7 @@ type SecretKey = {rho : [256]
 type SEEDBYTES = 32
 
 /* Generate public and private keys */
-Gen : [96*8] -> (PublicKey,SecretKey)
+Gen : [3*SEEDBYTES*8] -> (PublicKey,SecretKey)
 Gen s = (pk, sk)
     where
       [rho, rho', K] = split`{3} s
@@ -534,7 +534,6 @@ randomsInRanges createElt uppers randoms =
 
 
 randomsInRangeDouble : {a} (fin a) => ([2*a]-> [2][a]) -> [a] -> [inf] -> [inf][a]
-//wrong code
 randomsInRangeDouble createElt upper randoms =
                 if (elts@0 <= upper) /\ (elts@1 <= upper)
                 then  elts#(randomsInRangeDouble createElt upper randomTail)
@@ -548,40 +547,36 @@ randomsInRangeDouble createElt upper randoms =
                 where
                   elts       = createElt (take`{2*a} randoms)
                   randomTail = drop`{2*a} randoms
-// Correction and checked with the C code
-/*randomsInRangeDouble createElt upper randoms =
-                if (elts@1 <= upper) then [elts@1, elts@1] # (randomsInRangeDouble createElt upper randomTail)
-                else (randomsInRangeDouble createElt upper randomTail)
-                where
-                elts       = createElt (take`{2*a} randoms)
-                randomTail = drop`{2*a} randoms*/
-
 /*
 
   Supporting polynomial and polynomial vector functions
 
 */
 
+mod_sum : {s, m} (fin s, fin m) => ([s], [m][s]) -> [s]
+mod_sum (p, l) = sums!0
+    where
+    sums = [zero]#[mod_add`{s}(p, x, y) | x <- l | y <- sums]
 
 ntt : poly -> nttPoly
 ntt p = nttp
     where
-    r k = rootOfUnity^^ k
-    exponents = join [ [BVtoZ`{q} i, (256+(BVtoZ`{q} i))] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
-    nttp = [ ZtoBV`{q, qbits} (sum [ (BVtoZ`{q} (p@idx):(Z q)) * (r k)^^(i) | idx<-[0..(n-1)]:[n][width n] | i<-[0..(n-1)]:[n](Z q)])
-           | k <- exponents
+    r k = mod_pow(`q, rootOfUnity, k)
+    exponents = join [ [toInteger i, (256+(toInteger i))] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
+    nttp = [(mod_sum (`q, [ (mod_mul(`q, (p@idx), (mod_pow (`q, (r k), i)))) | idx<-[0..(n-1)]:[n][width n] | i<-[0..(n-1)]:[n][23]]))
+           | k <- (map (\x -> fromInteger x:[23]) exponents)
            ]
 
 nttinv : nttPoly -> poly
 nttinv p' = p
     where
         pu = reorder p'
-        r' i = rootOfUnityInv^^(i*2)
-        p = [ ZtoBV`{q} (ninv*(rootOfUnityInv^^i)*(sum [BVtoZ`{q}(pu@jdx) * (r' ((i*j)))
+        r' i = mod_pow (`q, rootOfUnityInv, (i*2))
+        p = [ mod_mul(`q, ninv, mod_mul(`q, mod_pow(`q, rootOfUnityInv, i), (mod_sum (`q, [mod_mul(`q, (pu@jdx), (r' ((i*j))))
             | jdx<-[0..(n-1)]:[n][width n]
-            | j<-[0..(n-1)]:[n](Z q)
-            ]))
-            | i <- [0..255]:[n](Z q)
+            | j<-[0..(n-1)]:[n][qbits]
+            ]))))
+            | i <- [0..255]:[n][qbits]
             ]
 
 
@@ -605,7 +600,7 @@ nttDotProduct : {dim} (fin dim) => nttVec dim -> nttVec dim -> nttPoly
 nttDotProduct v1 v2 = foldl padd (zero:nttPoly) [ nttPolyMult p1 p2 | p1 <- v1 | p2 <- v2 ]
 
 nttPolyMult : nttPoly -> nttPoly -> nttPoly
-nttPolyMult p1 p2 = [ ZtoBV`{q}(fromInteger (toInteger x * toInteger y):(Z q)) | x <- p1 | y <- p2]
+nttPolyMult p1 p2 = [ mod_mul(`q, x, y) | x <- p1 | y <- p2]
 
 nttVecConstMul : {dim} (fin dim) => nttPoly -> nttVec dim -> nttVec dim
 nttVecConstMul c v = map (nttPolyMult c) v
@@ -618,13 +613,10 @@ polyVecSum v1 v2 = map nttinv (paddV v1' v2')
 
 // Polynomial addition and subtraction
 padd : [n][qbits] -> [n][qbits] -> [n][qbits]
-//padd p1 p2 = [ (x + y) % `q | x <- p1 | y <- p2 ]
-padd p1 p2 = [ ZtoBV`{q}(fromInteger (toInteger x + toInteger y):(Z q)) | x <- p1 | y <- p2 ]
-
+padd p1 p2 = [ mod_add(`q, x, y) | x <- p1 | y <- p2 ]
 
 psub : [n][qbits] -> [n][qbits] -> [n][qbits]
-//psub p1 p2 = [ (x - y) % `q | x <- p1 | y <- p2 ]
-psub p1 p2 = [ ZtoBV`{q}(fromInteger (toInteger x - toInteger y):(Z q)) | x <- p1 | y <- p2 ]
+psub p1 p2 = [ mod_sub(`q, x, y) | x <- p1 | y <- p2 ]
 
 psubV : {dim} (fin dim) => [dim][n][qbits] -> [dim][n][qbits] -> [dim][n][qbits]
 psubV v1 v2 = zipWith psub v1 v2
