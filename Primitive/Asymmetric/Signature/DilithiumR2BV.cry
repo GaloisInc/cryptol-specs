@@ -60,7 +60,7 @@ beta = 325
 omega = 80
 
 // Integer polynomials; a superset of ring R referenced in specification
-type intPoly        = [n][uint32_t]
+type intPoly        = [n][qbits]
 type intPolyVec dim = [dim]intPoly
 
 // Polynomials; a superset of ring R_q referenced in specification
@@ -112,10 +112,12 @@ Sign sk M = (final_state.z, h, nttinv final_state.c')
      where
       A     = ExpandA sk.rho //checked
       mu    = CRH`{b=48+mbytes} (sk.tr#M) // checked
+      rhoprime = CRH`{b=48+32} (sk.K#mu)
       kappa = zero
       s1'   = map ntt sk.s1 //checked
       s2'   = map ntt sk.s2 // checked
-      t0'   = map ntt (IPVtoPV sk.t0) //checked
+      t0'   = map ntt (sk.t0) //Looks like IPVtoPV is wrong.
+      //TODO: fix IPVtoPV
 
       init : sign_var_types
       init = {z=zero,r0=zero,r1=zero,t0'=t0',c'=zero,w=zero,w1=zero
@@ -131,7 +133,7 @@ Sign sk M = (final_state.z, h, nttinv final_state.c')
 
 
 
-type sign_var_types = { z   : polyVec l
+type sign_var_types = { z : polyVec l
                           , r0  : intPolyVec k
                           , r1  : intPolyVec k
                           , t0' : nttVec k
@@ -150,10 +152,10 @@ type sign_var_types = { z   : polyVec l
 sign_condition : sign_var_types -> Bit
 sign_condition sv = fail1 \/ fail2
                    where
-                    fail1 = ((infNormPolyVec (PVtoIPV sv.z)) >= (gamma1-beta))
+                    fail1 = ((infNormPolyVec (sv.z)) >= (gamma1-beta))
                             \/ ((infNormPolyVec sv.r0) >= (gamma2-beta))
                             \/ (sv.r1 != sv.w1)
-                    fail2 = ((infNormPolyVec (PVtoIPV ct0)) >= gamma2) 
+                    fail2 = ((infNormPolyVec (ct0)) >= gamma2)
                             \/ ( (foldl (+) 0 (map ones h)) > omega )
                     ct0   = map nttinv (nttVecConstMul sv.c' sv.t0')
                     h     = MakeHintV (psubV zero ct0
@@ -202,7 +204,7 @@ Verify pk M (z, h, c) = crit1 && crit2 && crit3
 pack_w : intPolyVec k -> [4*n*k]
 pack_w w = join [pack_poly p | p <- wBV ]
     where
-    wBV = map (\p -> map (\x -> drop`{24} x:[8]) p) w
+    wBV = map (\p -> map (\x -> drop`{15} x:[8]) p) w
     pack2 : [2][8] -> [8]
     pack2 xs = xs@0 || (xs@1 << 4)
     pack_poly p = join [ pack2 xs | xs <- split p : [128][2][_] ]
@@ -222,16 +224,16 @@ pack_t0 : intPolyVec k -> [k*3584]
 pack_t0 t0 = join [ polyt0_pack p | p <- t0 ]
 
 polyt0_pack : intPoly -> [3584]
-polyt0_pack p = join [ join [drop`{24} (tmp p i 0),
-                       drop`{24} (((tmp p i 0) >> 8) || ((tmp p i 1) << 6)),
-                       drop`{24} ((tmp p i 1) >> 2),
-                       drop`{24} (((tmp p i 1) >> 10) || ((tmp p i 2) << 4)),
-                       drop`{24} ((tmp p i 2) >> 4),
-                       drop`{24} (((tmp p i 2) >> 12) || ((tmp p i 3) << 2)),
-                       drop`{24} ((tmp p i 3) >> 6)
+polyt0_pack p = join [ join [drop`{15} (tmp p i 0),
+                       drop`{15} (((tmp p i 0) >> 8) || ((tmp p i 1) << 6)),
+                       drop`{15} ((tmp p i 1) >> 2),
+                       drop`{15} (((tmp p i 1) >> 10) || ((tmp p i 2) << 4)),
+                       drop`{15} ((tmp p i 2) >> 4),
+                       drop`{15} (((tmp p i 2) >> 12) || ((tmp p i 3) << 2)),
+                       drop`{15} ((tmp p i 3) >> 6)
                      ] | i <- [0..(n/4-1)] ]
         where
-          tmp : intPoly -> [8] -> [8] -> [32]
+          tmp : intPoly -> [8] -> [8] -> [23]
           tmp p i j =  (2^^13 - p@(4*i+j))
 
 
@@ -240,7 +242,7 @@ polyt0_pack p = join [ join [drop`{24} (tmp p i 0),
 pack_t1 : intPolyVec k -> [k*288*8]
 pack_t1 t1 = join [pack_poly p | p <- t1BV]
         where
-              t1BV = map (\p -> map (\x -> drop`{23} x) p) t1
+              t1BV = map (\p -> map (\x -> drop`{14} x) p) t1
               pack8 : [8][9] -> [9][8]
               pack8 xs = map drop`{1} [ xs@0 && zero#0xFF
                                       , xs@0 >> 8 || ((xs@1 && zero#0x7F) << 1)
@@ -286,9 +288,6 @@ PolyUniformEta rho nonce = map (\x -> if ((toInteger eta) - (toInteger x)) < 0 t
         withinEta = randomsInRangeDouble genS (2*eta) randoms
 
 
-
-
-
 H : ([384],intPolyVec k) -> poly
 H (mu,w) = map fromInteger (SampleInBall ss samples)
   where
@@ -320,11 +319,12 @@ ExpandMask  (K, mu, kappa) = [samplePoly K mu kappa i `l | i <- [0..(l-1)] ]
 
 
 samplePoly : [SEEDBYTES*8] -> [384] -> Integer -> Integer -> Integer -> poly
-samplePoly K mu kappa i dim = (map (\x -> (`q+gamma1-1-(zero#x))) coeffs)
+//samplePoly K mu kappa i dim = (map (\x -> (`q+gamma1-1-(zero#x))) coeffs)
+samplePoly K mu kappa i dim = (map (\x -> mod_sub(`q, mod_sub(`q, gamma1, 1), zero#x)) coeffs)
     where
-        (upper:[20])      =  drop`{3}(2*gamma1-2):[20]
+        (upper:[20])      =  drop`{4}(2*gamma1-2):[20]
         kappaBytes = join (reverse (split (fromInteger (dim*kappa+i):[16]):[2][8])) // LEB order
-        s          = join (SHA3::toBytes (take`{5*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes (K#mu#kappaBytes)))))) // checked
+        s          = join (SHA3::toBytes (take`{5*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes (CRH`{b=48+32}(K#mu)#kappaBytes)))))) // checked
         (coeffs:[n][20])   = take`{n} (randomsInRangeDouble extractPolyElt upper (s#zero))
 
 
@@ -367,7 +367,7 @@ extractMatElt rands = zero#(2^^16 * b2' + 2^^8 * b1 + b0):[24]
 
 */
 
-Power2Round : [qbits] -> ([uint32_t],[uint32_t]) -> ([uint32_t],[uint32_t])
+Power2Round : [qbits] -> ([qbits],[qbits]) -> ([qbits],[qbits])
 Power2Round q (r,d') = ((r'-r0)/2^^d',r0)
             where r' = mod_pow (zero#q, r, 1)
                   r0 = centered_mod r' (2^^d')
@@ -379,51 +379,51 @@ Power2RoundV v = unzip (map polyPower2Round v)
                                         | r <- p
                                         ]
 
-Decompose : [qbits] -> ([uint32_t],[uint32_t]) -> ([uint32_t],[uint32_t])
-Decompose q (r,a) = if (r' - r0) == ((zero#q-1):[32]) then (zero:[32], (zero#r0 - 1):[32])
-                                        else (((r' - r0) / a):[32], (zero#r0):[32])
-          where r' =  mod_pow (zero#q, r, 1)
+Decompose : [qbits] -> ([qbits],[qbits]) -> ([qbits],[qbits])
+Decompose q (r,a) = if (r' - r0) == (q - 1) then (0, r0 - 1)
+                    else ((r' - r0) / a, r0)
+          where r' =  mod_pow (q, r, 1)
                 r0 = centered_mod r' a
 
-DecomposeV : (polyVec k , [uint32_t]) -> (intPolyVec k, intPolyVec k)
+DecomposeV : (polyVec k , [qbits]) -> (polyVec k, polyVec k)
 DecomposeV (r,a) = unzip [ DecomposePoly p | p <- r ]
             where
             DecomposePoly p = unzip [Decompose `q (zero#x,a) | x <- p]
 
-HighBits : [qbits] -> ([uint32_t],[uint32_t]) -> [uint32_t]
+HighBits : [qbits] -> ([qbits],[qbits]) -> [qbits]
 HighBits q (r,a) = (Decompose q (r,a)).0
 
-HighBitsV : (polyVec k , [uint32_t]) -> intPolyVec k
+HighBitsV : (polyVec k , [qbits]) -> polyVec k
 HighBitsV (r,a) = r1
           where
             (r1,r0) = DecomposeV (r,a)
 
 
-LowBits : [qbits] -> ([uint32_t],[uint32_t]) -> [uint32_t]
+LowBits : [qbits] -> ([qbits],[qbits]) -> [qbits]
 LowBits q (r,a) = (Decompose q (r,a)).1
 
 
-MakeHint : [qbits] -> ([uint32_t],[uint32_t], [uint32_t]) -> Bit
+MakeHint : [qbits] -> ([qbits],[qbits], [qbits]) -> Bit
 MakeHint q (z,r,a) = r1 != v1
           where r1 = HighBits q (r,a)
                 v1 = HighBits q (r + z,a)
 
-MakeHintV : (polyVec k, polyVec k, [uint32_t]) -> [k][n]
+MakeHintV : (polyVec k, polyVec k, [qbits]) -> [k][n]
 MakeHintV (z,r,a) = [[x1 != x2 | x1 <- p1 | x2 <- p2] | p1 <- r1 | p2 <- v1]
           where
             r1 = HighBitsV (r,a)
             v1 = HighBitsV (polyVecSum z r,a)
 
 
-UseHint : [qbits] -> (Bit,[uint32_t], [uint32_t]) -> [uint32_t]
+UseHint : [qbits] -> (Bit,[qbits], [qbits]) -> [qbits]
 UseHint q (h,r,a) = if h then zero#r1' else r1
         where
-          (m :[32]) = ((zero#q - 1) / a)
+          m = ((zero#q - 1) / a)
           (r1, r0) = Decompose q (r, a)
           r1'      = if r0 > 0 then mod_pow (m, (r1 + 1), 1) else mod_pow (m, (r1 - 1), 1)
 
 
-UseHintV : ([k][n], polyVec k, [uint32_t]) -> intPolyVec k
+UseHintV : ([k][n], polyVec k, [qbits]) -> intPolyVec k
 UseHintV (hvec, rvec, a) = [polyUseHint hpoly rpoly
                               | hpoly <- hvec
                               | rpoly <- rvec
@@ -440,59 +440,13 @@ UseHintV (hvec, rvec, a) = [polyUseHint hpoly rpoly
 
 */
 
-/* Conversion functions */
-
-//Bit-Vector to Integer type
-
-BVtoIntPoly : poly -> [n]Integer
-BVtoIntPoly p = map (\x -> toInteger x) p
-
-BVtoIntPolyVec : {dim} (fin dim, dim >= 1) => polyVec dim -> [dim][n]Integer
-BVtoIntPolyVec pvec = map (\x -> BVtoIntPoly x) pvec
-
-BVtoIntNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => nttMat dim1 dim2 -> [dim1][dim2][n]Integer
-BVtoIntNttMat nttmat = map (\x -> BVtoIntPolyVec x) nttmat
-
-//Bit-Vector to (Z q) type
-
-BVtoZPoly : poly -> [n](Z q)
-BVtoZPoly p = map (\x -> BVtoZ`{q} x) p
-
-BVtoZPolyVec : {dim} (fin dim, dim >= 1) => polyVec dim -> [dim][n](Z q)
-BVtoZPolyVec pvec = map (\x -> BVtoZPoly x) pvec
-
-BVtoZNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => nttMat dim1 dim2 -> [dim1][dim2][n](Z q)
-BVtoZNttMat nttmat = map (\x -> BVtoZPolyVec x) nttmat
-
-// Integer to Bit-Vector type
-
-InttoZPoly : [n]Integer -> [n](Z q)
-InttoZPoly p = map (\x -> fromInteger x:(Z q)) p
-
-InttoZPolyVec : {dim} (fin dim, dim >= 1) => [dim][n]Integer -> [dim][n](Z q)
-InttoZPolyVec pvec = map (\x -> InttoZPoly x) pvec
-
-InttoZNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => [dim1][dim2][n]Integer -> [dim1][dim2][n](Z q)
-InttoZNttMat nttmat = map (\x -> InttoZPolyVec x) nttmat
-
-// (Z q) to Integer type
-
-fromZPoly : [n](Z q) -> [n]Integer
-fromZPoly p = map (\x -> fromZ x) p
-
-fromZPolyVec : {dim} (fin dim, dim >= 1) => [dim][n](Z q) -> [dim][n]Integer
-fromZPolyVec pvec = map (\x -> fromZPoly x) pvec
-
-fromZNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => [dim1][dim2][n](Z q) -> [dim1][dim2][n]Integer
-fromZNttMat nttmat = map (\x -> fromZPolyVec x) nttmat
-
 
 ones : {a} (fin a, a >= 1) => [a] -> Integer
 ones bv = foldl (+) 0 bva
       where
       bva = map toInteger (split bv:[_][1])
 
-IPtoP : intPoly -> poly
+/*IPtoP : intPoly -> poly
 IPtoP p = map (drop `{uint32_t-qbits}) p
 
 
@@ -505,10 +459,10 @@ IPVtoPV intp = map IPtoP intp
 
 
 PVtoIPV : {dim} (fin dim, dim >= 1) => polyVec dim -> intPolyVec dim
-PVtoIPV pvec = map PtoIP pvec
+PVtoIPV pvec = map PtoIP pvec*/
 
 
-centered_mod : [uint32_t] -> [uint32_t] -> [uint32_t]
+centered_mod : [qbits] -> [qbits] -> [qbits]
 centered_mod x n = if r > (n/2) then r - n
                     else r
               where r = x % n
@@ -548,9 +502,7 @@ randomsInRangeDouble createElt upper randoms =
                   elts       = createElt (take`{2*a} randoms)
                   randomTail = drop`{2*a} randoms
 /*
-
   Supporting polynomial and polynomial vector functions
-
 */
 
 mod_sum : {s, m} (fin s, fin m) => ([s], [m][s]) -> [s]
@@ -625,23 +577,66 @@ psubV v1 v2 = zipWith psub v1 v2
 paddV : {dim} (fin dim) => [dim][n][qbits] -> [dim][n][qbits] -> [dim][n][qbits]
 paddV v1 v2 = zipWith padd v1 v2
 
-
-
-
 // Aux functions
 
-infNorm : [uint32_t] -> [uint32_t]
+infNorm : [qbits] -> [qbits]
 infNorm x =  (centered_mod x `q)
 
-infNormPoly : intPoly -> [uint32_t]
+infNormPoly : intPoly -> [qbits]
 infNormPoly p = foldl max 0 p_centered
             where
               p_centered = map infNorm p
 
-infNormPolyVec : {dim} (fin dim, dim>=1) => intPolyVec dim -> [uint32_t]
+infNormPolyVec : {dim} (fin dim, dim>=1) => intPolyVec dim -> [qbits]
 infNormPolyVec v = foldl max 0 (map infNormPoly v)
 
+/************************************/
+/* Conversion functions helpful in Testing */
+/************************************/
 
+//Bit-Vector to Integer type
+
+BVtoIntPoly : poly -> [n]Integer
+BVtoIntPoly p = map (\x -> toInteger x) p
+
+BVtoIntPolyVec : {dim} (fin dim, dim >= 1) => polyVec dim -> [dim][n]Integer
+BVtoIntPolyVec pvec = map (\x -> BVtoIntPoly x) pvec
+
+BVtoIntNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => nttMat dim1 dim2 -> [dim1][dim2][n]Integer
+BVtoIntNttMat nttmat = map (\x -> BVtoIntPolyVec x) nttmat
+
+//Bit-Vector to (Z q) type
+
+BVtoZPoly : poly -> [n](Z q)
+BVtoZPoly p = map (\x -> BVtoZ`{q} x) p
+
+BVtoZPolyVec : {dim} (fin dim, dim >= 1) => polyVec dim -> [dim][n](Z q)
+BVtoZPolyVec pvec = map (\x -> BVtoZPoly x) pvec
+
+BVtoZNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => nttMat dim1 dim2 -> [dim1][dim2][n](Z q)
+BVtoZNttMat nttmat = map (\x -> BVtoZPolyVec x) nttmat
+
+// Integer to Bit-Vector type
+
+InttoZPoly : [n]Integer -> [n](Z q)
+InttoZPoly p = map (\x -> fromInteger x:(Z q)) p
+
+InttoZPolyVec : {dim} (fin dim, dim >= 1) => [dim][n]Integer -> [dim][n](Z q)
+InttoZPolyVec pvec = map (\x -> InttoZPoly x) pvec
+
+InttoZNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => [dim1][dim2][n]Integer -> [dim1][dim2][n](Z q)
+InttoZNttMat nttmat = map (\x -> InttoZPolyVec x) nttmat
+
+// (Z q) to Integer type
+
+fromZPoly : [n](Z q) -> [n]Integer
+fromZPoly p = map (\x -> fromZ x) p
+
+fromZPolyVec : {dim} (fin dim, dim >= 1) => [dim][n](Z q) -> [dim][n]Integer
+fromZPolyVec pvec = map (\x -> fromZPoly x) pvec
+
+fromZNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => [dim1][dim2][n](Z q) -> [dim1][dim2][n]Integer
+fromZNttMat nttmat = map (\x -> fromZPolyVec x) nttmat
 
 
 
