@@ -289,7 +289,7 @@ PolyUniformEta rho nonce = map (\x -> if ((toInteger eta) - (toInteger x)) < 0 t
 
 
 H : ([384],intPolyVec k) -> poly
-H (mu,w) = map fromInteger (SampleInBall ss samples)
+H (mu,w) = (SampleInBall ss samples)
   where
     w_packed = pack_w w
     randoms  = join (SHA3::toBytes (take`{4352} (SHA3::SHAKE256 (join (SHA3::toBytes (mu#w_packed))))))
@@ -302,12 +302,12 @@ H (mu,w) = map fromInteger (SampleInBall ss samples)
     samples = take`{60} (randomsInRanges extByte [196..255] (drop`{64} randoms#zero))
 
 
-SampleInBall : [60] -> [60][8] -> [256]Integer
+SampleInBall : [60] -> [60][8] -> [256][qbits]
 SampleInBall signs jsamples = ys ! 0
               where
-              ys = [ zero:[256]Integer ]
-                    # [ if i==j then update y i ((-1:Integer)^^(toInteger [s]))
-                        else updates y [j,i] [(-1:Integer)^^(toInteger [s]),y@j] | i <- [196..255]
+              ys = [ zero:[256][qbits]]
+                    # [ if i==j then (if [s]==1 then (update y i (`q-1)) else (update y i 1))  //((-1:Integer)^^(toInteger [s]))
+                        else (if [s]==1 then (updates y [j,i] [`q-1,y@j]) else (updates y [j,i] [1,y@j]))  | i <- [196..255]
                                                                   | j <- jsamples
                                                                   | s <- signs
                                                                   | y <- ys
