@@ -86,15 +86,15 @@ type SEEDBYTES = 32
 Gen : [3*SEEDBYTES*8] -> (PublicKey,SecretKey)
 Gen s = (pk, sk)
     where
-      [rho, rho', K] = split`{3} s
-      A       = ExpandA rho
-      s1      = PolyUniformEtaV`{dim=l} rho' zero
-      s2      = PolyUniformEtaV`{dim=k} rho' `l
+      [rho, rho', K] = split`{3} s //rho <- {0, 1}^256, K <- {0,1}^256
+      A       = ExpandA rho //A ∈ R^(k×l)_q := ExpandA(rho)
+      s1      = PolyUniformEtaV`{dim=l} rho' zero // s1<-s^l_η
+      s2      = PolyUniformEtaV`{dim=k} rho' `l // s2<-s^k_η
       s1ntt   = map ntt s1
       As1     = map nttinv (nttMatMul A s1ntt)
-      t       = paddV As1 s2
-      (t1,t0) = Power2RoundV t
-      tr      = CRH (rho#(pack_t1 t1))
+      t       = paddV As1 s2     //t:= As1 + s2
+      (t1,t0) = Power2RoundV t  //(t1, t0):= Power2Round_q(t, d=4)
+      tr      = CRH (rho#(pack_t1 t1)) //tr ∈ {0,1}^384 := CRH(rho||t1)
       pk      = { rho = rho, t1 = t1}
       sk      = { rho = rho, K = K, tr = tr, s1 = s1, s2 = s2, t0 = t0}
 
@@ -106,18 +106,17 @@ test_key_gen = (pk.rho#(pack_t1 pk.t1) == testCase1.pk) /\
     where
     (pk, sk) = Gen (join testCase1.seed)
 
-/* Generate signature for message M */      
+/* Generate signature for message M */
 Sign : {mbytes} (fin mbytes, mbytes>=1) => SecretKey -> [mbytes*8] -> (polyVec l, [k][n], poly)
 Sign sk M = (final_state.z, h, nttinv final_state.c')
      where
-      A     = ExpandA sk.rho //checked
-      mu    = CRH`{b=48+mbytes} (sk.tr#M) // checked
-      rhoprime = CRH`{b=48+32} (sk.K#mu)
-      kappa = zero
-      s1'   = map ntt sk.s1 //checked
-      s2'   = map ntt sk.s2 // checked
-      t0'   = map ntt (sk.t0) //Looks like IPVtoPV is wrong.
-      //TODO: fix IPVtoPV
+      A     = ExpandA sk.rho // A ∈ R^(k×l)_q := ExpandA(ρ)
+      mu    = CRH`{b=48+mbytes} (sk.tr#M) // μ ∈{0,1}^384 := CRH(tr||M)
+      kappa = zero // κ := 0
+      s1'   = map ntt sk.s1
+      s2'   = map ntt sk.s2
+      t0'   = map ntt (sk.t0)
+      //TODO: check t0' back later
 
       init : sign_var_types
       init = {z=zero,r0=zero,r1=zero,t0'=t0',c'=zero,w=zero,w1=zero
@@ -152,51 +151,52 @@ type sign_var_types = { z : polyVec l
 sign_condition : sign_var_types -> Bit
 sign_condition sv = fail1 \/ fail2
                    where
-                    fail1 = ((infNormPolyVec (sv.z)) >= (gamma1-beta))
-                            \/ ((infNormPolyVec sv.r0) >= (gamma2-beta))
-                            \/ (sv.r1 != sv.w1)
-                    fail2 = ((infNormPolyVec (ct0)) >= gamma2)
-                            \/ ( (foldl (+) 0 (map ones h)) > omega )
+                    fail1 = ((infNormPolyVec (sv.z)) >= (gamma1-beta)) // ||z||_∞ ≥ γ1 - β
+                            \/ ((infNormPolyVec sv.r0) >= (gamma2-beta)) // ||r0||_∞ ≥ γ2 - β
+                            \/ (sv.r1 != sv.w1) // r1 ≂̸ w1
+                    fail2 = ((infNormPolyVec (ct0)) >= gamma2) // ||ct0||_∞ ≥ γ2
+                            \/ ( (foldl (+) 0 (map ones h)) > omega ) // number of ones in h > ω
                     ct0   = map nttinv (nttVecConstMul sv.c' sv.t0')
                     h     = MakeHintV (psubV zero ct0
                                       ,paddV (psubV sv.w sv.cs2) (ct0)
                                       ,2*gamma2
-                                      )
+                                      )  // h := MakeHintV(-ct0, w-cs2+ct0, 2γ2)
 
 
 sign_body : sign_var_types -> sign_var_types
 sign_body sv = {z=z,r0=r0,r1=r1,t0'=sv.t0',c'=c',w=w,w1=w1,s1'=sv.s1',s2'=sv.s2',
                    cs2=cs2,K=sv.K,mu=sv.mu,A=sv.A,kappa=(sv.kappa+1)}
               where
-                y   = ExpandMask(sv.K,sv.mu,sv.kappa)// checked
+                ρ'  = CRH`{b=48+32} (sv.K#sv.mu) // ρ' ∈ {0,1}^384 := CRH(K||μ) (or ρ' <- {0,1}^384 for randomized signing)
+                y   = ExpandMask(ρ', sv.kappa)// y ∈ S^l_(γ1-1) := ExpandMask(ρ',κ)
                 y'  = map ntt y // checked
-                w   = map nttinv (nttMatMul sv.A y') // checked
-                w1  = HighBitsV (w, 2 * gamma2) // checked
-                c'  = ntt ( H (sv.mu,w1) ) // corrected it
-                cs1 = map nttinv (nttVecConstMul c' sv.s1')
-                cs2 = map nttinv (nttVecConstMul c' sv.s2')
-                z   = paddV y cs1
-                (r1, r0) = DecomposeV (psubV w cs2, 2 * gamma2)
+                w   = map nttinv (nttMatMul sv.A y') // w := Ay
+                w1  = HighBitsV (w, 2 * gamma2) // w1 := HighBitsV(w, 2γ2)
+                c'  = ntt ( H (sv.mu,w1) ) // c ∈ B_(60) := H(μ||w1)
+                cs1 = map nttinv (nttVecConstMul c' sv.s1') // cs1 := c'.s1'
+                cs2 = map nttinv (nttVecConstMul c' sv.s2') // cs2 := c'.s2'
+                z   = paddV y cs1 // z:= y+cs1
+                (r1, r0) = DecomposeV (psubV w cs2, 2 * gamma2) // Decompose_q(w-cs2, 2γ2)
 
 
 
 
-/*Verify : {mbytes} (fin mbytes, mbytes>=1) => PublicKey -> [mbytes*8] -> (polyVec l, [k][n], poly) -> Bit
+Verify : {mbytes} (fin mbytes, mbytes>=1) => PublicKey -> [mbytes*8] -> (polyVec l, [k][n], poly) -> Bit
 Verify pk M (z, h, c) = crit1 && crit2 && crit3
        where
-        A        = ExpandA pk.rho
-        mu       = CRH`{b=48+mbytes} ((CRH (pk.rho#(pack_t1 pk.t1)))#M)
-        zntt     = map ntt z
-        t1ntt    = map ntt (IPVtoPV pk.t1)
-        ct1ntt   = nttVecConstMul (psub zero c) t1ntt
-        ct1ntt2d = map (\p -> map (\x -> x*(2^^d)) p) ct1ntt 
+        A        = ExpandA pk.rho // A ∈ R^(k×l)_q := ExpandA(ρ)
+        mu       = CRH`{b=48+mbytes} ((CRH (pk.rho#(pack_t1 pk.t1)))#M) // μ ∈{0,1}^384 := CRH(CRH(ρ||t1)||M)
+        zntt     = map ntt z // NTT(z)
+        t1dot2d  = map ntt (map (\p -> map (\x ->  mod_mul(`q, x, (2^^14))) p) pk.t1) // t1.2^^d where d=14
+        nttt1dot2d = map ntt t1dot2d
+        ct1ntt   = nttVecConstMul (psub zero c) nttt1dot2d   // -ct1
         Az       = nttMatMul A zntt
-        w1'      = UseHintV (h, paddV Az ct1ntt2d, 2*gamma2)
-        zint     = PVtoIPV z
-        zinf     = infNormPolyVec zint
+        w1'      = UseHintV (h, paddV Az ct1ntt, 2*gamma2)
+        zint     = z
+        zinf     = infNormPolyVec zint // ||z||_∞
         crit1    = zinf < gamma1 - beta
         crit2    = c == H(mu,w1')
-        crit3    = (foldl (+) 0 (map ones h)) <= omega*/
+        crit3    = (foldl (+) 0 (map ones h)) <= omega // number of 1's in h ≤ ω
 
 
 
@@ -314,17 +314,17 @@ SampleInBall signs jsamples = ys ! 0
                       ]
 
 
-ExpandMask : ([SEEDBYTES*8], [384], Integer) -> polyVec l
-ExpandMask  (K, mu, kappa) = [samplePoly K mu kappa i `l | i <- [0..(l-1)] ]
+ExpandMask : ([384], Integer) -> polyVec l
+ExpandMask  ( ρ', kappa) = [samplePoly ρ' kappa i `l | i <- [0..(l-1)] ]
 
 
-samplePoly : [SEEDBYTES*8] -> [384] -> Integer -> Integer -> Integer -> poly
+samplePoly : [384] -> Integer -> Integer -> Integer -> poly
 //samplePoly K mu kappa i dim = (map (\x -> (`q+gamma1-1-(zero#x))) coeffs)
-samplePoly K mu kappa i dim = (map (\x -> mod_sub(`q, mod_sub(`q, gamma1, 1), zero#x)) coeffs)
+samplePoly ρ' kappa i dim = (map (\x -> mod_sub(`q, mod_sub(`q, gamma1, 1), zero#x)) coeffs)
     where
         (upper:[20])      =  drop`{4}(2*gamma1-2):[20]
         kappaBytes = join (reverse (split (fromInteger (dim*kappa+i):[16]):[2][8])) // LEB order
-        s          = join (SHA3::toBytes (take`{5*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes (CRH`{b=48+32}(K#mu)#kappaBytes)))))) // checked
+        s          = join (SHA3::toBytes (take`{5*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes (ρ'#kappaBytes)))))) // checked
         (coeffs:[n][20])   = take`{n} (randomsInRangeDouble extractPolyElt upper (s#zero))
 
 
@@ -637,6 +637,3 @@ fromZPolyVec pvec = map (\x -> fromZPoly x) pvec
 
 fromZNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => [dim1][dim2][n](Z q) -> [dim1][dim2][n]Integer
 fromZNttMat nttmat = map (\x -> fromZPolyVec x) nttmat
-
-
-
