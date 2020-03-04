@@ -213,9 +213,9 @@ pack_polyeta : {m} (fin m, m >= 1) =>  polyVec m -> [4*n*m]
 pack_polyeta s = join [ join [elt p i | i <- [0..(n/2)-1]:[_][8] ] | p <- s ]
     where
     elt : poly -> [8] -> [8]
-    elt p i = (c (fromZ`{q} (BVtoZ`{q}(p@(2*i+0))))) || ((c (fromZ`{q} (BVtoZ`{q}(p@(2*i+1))))) << 4)
-    c : Integer -> [8]
-    c num = if num > eta then fromInteger (`q + eta - num) else fromInteger (eta - num)
+    elt p i = (c (((p@(2*i+0))) % `q)) || ((c (((p@(2*i+1))) % `q)) << 4)
+    c : [qbits] -> [8]
+    c num = drop (if num > eta then `q + eta - num else eta - num)
 
 
 
