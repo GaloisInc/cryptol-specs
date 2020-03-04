@@ -385,12 +385,13 @@ Power2Round q (r,d') = ((r'-r0)/2^^d',r0)
             where r' = mod_pow (zero#q, r, 1)
                   r0 = centered_mod r' (2^^d')
 
+polyPower2Round : {m} [m][qbits] -> ([m][qbits], [m][qbits])
+polyPower2Round p = unzip [ Power2Round `q (zero#r, zero#0xe)
+                          | r <- p
+                          ]
+
 Power2RoundV : {dim} (fin dim, dim >= 1) => polyVec dim -> ([dim]intPoly,[dim]intPoly)
 Power2RoundV v = unzip (map polyPower2Round v)
-              where
-              polyPower2Round p = unzip [ Power2Round `q (zero#r, zero# 0xe)
-                                        | r <- p
-                                        ]
 
 Decompose : [qbits] -> ([qbits],[qbits]) -> ([qbits],[qbits])
 Decompose q (r,a) = if (r' - r0) == (q - 1) then (0, r0 - 1)
@@ -398,10 +399,11 @@ Decompose q (r,a) = if (r' - r0) == (q - 1) then (0, r0 - 1)
           where r' =  mod_pow (q, r, 1)
                 r0 = centered_mod r' a
 
+DecomposePoly : {m} [qbits] -> [m][qbits] -> ([m][qbits], [m][qbits])
+DecomposePoly a p = unzip [Decompose `q (zero#x,a) | x <- p]
+
 DecomposeV : (polyVec k , [qbits]) -> (polyVec k, polyVec k)
-DecomposeV (r,a) = unzip [ DecomposePoly p | p <- r ]
-            where
-            DecomposePoly p = unzip [Decompose `q (zero#x,a) | x <- p]
+DecomposeV (r,a) = unzip [ DecomposePoly a p | p <- r ]
 
 HighBits : [qbits] -> ([qbits],[qbits]) -> [qbits]
 HighBits q (r,a) = (Decompose q (r,a)).0
