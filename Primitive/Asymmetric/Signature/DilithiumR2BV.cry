@@ -555,9 +555,9 @@ ntt : poly -> nttPoly
 ntt p = nttp
     where
     r k = mod_pow(`q, rootOfUnity, k)
-    exponents = join [ [toInteger i, (256+(toInteger i))] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
+    exponents = join [ [zext i, (256+(zext i))] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
     nttp = [(mod_sum (`q, [ (mod_mul(`q, (p@idx), (mod_pow (`q, (r k), i)))) | idx<-[0..(n-1)]:[n][width n] | i<-[0..(n-1)]:[n][23]]))
-           | k <- (map (\x -> fromInteger x:[23]) exponents)
+           | k <- exponents
            ]
 
 nttinv : nttPoly -> poly
