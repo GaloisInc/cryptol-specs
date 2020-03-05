@@ -241,6 +241,8 @@ polyt0_pack p = join [ join [drop`{15} (tmp p i 0),
 
 // d must be 14 for this to work, and n must be 256
 
+// polyt1_pack
+
 poly_pack : poly -> [POLT1_SIZE_PACKED*8]
 poly_pack p = join [ join (pack8 xs) | xs <- split (map (\x -> drop`{14} x) p) : [32][8][_]]
     where   pack8 : [8][9] -> [9][8]
@@ -258,16 +260,39 @@ poly_pack p = join [ join (pack8 xs) | xs <- split (map (\x -> drop`{14} x) p) :
 pack_t1 : polyVec k -> [k*POLT1_SIZE_PACKED*8]
 pack_t1 pvk = (join [ poly_pack p | p <- pvk])
 
+// polyt1_unpack
+
+poly_unpack : [POLT1_SIZE_PACKED][8] -> poly
+poly_unpack p = map (\x -> zero#x) (join [unpack8 xs | xs <- (split p): [32][9][_] ])
+    where unpack8: [9][8] -> [8][12]
+          unpack8 xs = [ zero#xs@0 || ((zero#xs@1 << 8) && 0x1FF)
+                        , zero#xs@1 >> 1 || ((zero#xs@2 << 7) && 0x1FF)
+                        , zero#xs@2 >> 2 || ((zero#xs@3 << 6) && 0x1FF)
+                        , zero#xs@3 >> 3 || ((zero#xs@4 << 5) && 0x1FF)
+                        , zero#xs@4 >> 4 || ((zero#xs@5 << 4) && 0x1FF)
+                        , zero#xs@5 >> 5 || ((zero#xs@6 << 3) && 0x1FF)
+                        , zero#xs@6 >> 6 || ((zero#xs@7 << 2) && 0x1FF)
+                        , zero#xs@7 >> 7 || ((zero#xs@8 << 1) && 0x1FF)
+                        ]
+
+
+polyt1_unpack : [k*POLT1_SIZE_PACKED][8] -> polyVec k
+polyt1_unpack  pv = [ (poly_unpack p) |  p <- split pv:[k][POLT1_SIZE_PACKED][8]]
+
+
+
 pack_pk :  [32][8] -> polyVec k -> [CRYPTO_PUBLICKEYBYTES*8]
 pack_pk rho t1 = (join rho) # (pack_t1 t1)
 
 /****Packing SK *********/
 type CRHBYTES = 48
 type POLT0_SIZE_PACKED = 256 * 0xe
-type CRYPTO_SECRETKEYBYTES = 2*SEEDBYTES+CRHBYTES+ (k+l)*POLT1_SIZE_PACKED + (k*POLT0_SIZE_PACKED)
+type CRYPTO_SECRETKEYBYTES = 2800
 
-pack_sk : [SEEDBYTES][8] -> [SEEDBYTES][8] -> [CRHBYTES][8] -> polyVec l -> polyVec k -> polyVec k -> [_]
+pack_sk : [SEEDBYTES][8] -> [SEEDBYTES][8] -> [CRHBYTES][8] -> polyVec l -> polyVec k -> polyVec k -> [CRYPTO_SECRETKEYBYTES*8]
 pack_sk rho key tr s1 s2 t0 = (join rho) # (join key) # (join tr)# (pack_polyeta s1)#(pack_polyeta s2) # (pack_t0 t0)
+
+
 
 /*pack_sig : (polyVec l, [k][n], poly) -> [SIG_SIZE_PACKED]
 pack_sig (z, h, c) =
