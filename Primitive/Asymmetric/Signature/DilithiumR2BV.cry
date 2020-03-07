@@ -58,7 +58,7 @@ type l = 3
 
 eta = 6
 beta = 325
-omega = 80
+type omega = 80
 
 // Integer polynomials; a superset of ring R referenced in specification
 type intPoly        = [n][qbits]
@@ -157,7 +157,7 @@ sign_condition sv = fail1 \/ fail2
                             \/ ((infNormPolyVec sv.r0) >= (gamma2-beta)) // ||r0||_∞ ≥ γ2 - β
                             \/ (sv.r1 != sv.w1) // r1 ≂̸ w1
                     fail2 = ((infNormPolyVec (ct0)) >= gamma2) // ||ct0||_∞ ≥ γ2
-                            \/ ( (foldl (+) 0 (map ones h)) > omega ) // number of ones in h > ω
+                            \/ ( (foldl (+) 0 (map ones h)) > `omega ) // number of ones in h > ω
                     ct0   = map nttinv (nttVecConstMul sv.c' sv.t0')
                     h     = MakeHintV (psubV zero ct0
                                       ,paddV (psubV sv.w sv.cs2) (ct0)
@@ -198,7 +198,7 @@ Verify pk M (z, h, c) = crit1 && crit2 && crit3
         zinf     = infNormPolyVec zint // ||z||_∞
         crit1    = zinf < gamma1 - beta
         crit2    = c == H(mu,w1')
-        crit3    = (foldl (+) 0 (map ones h)) <= omega // number of 1's in h ≤ ω
+        crit3    = (foldl (+) 0 (map ones h)) <= `omega // number of 1's in h ≤ ω
 
 
 
@@ -219,6 +219,15 @@ pack_polyeta s = join [ join [elt p i | i <- [0..(n/2)-1]:[_][8] ] | p <- s ]
     c : [qbits] -> [8]
     c num = drop (if num > eta then `q + eta - num else eta - num)
 
+//unpack_polyeta
+
+unpack_polyeta :  {m} (fin m, m>=1) => [128*m][8] -> polyVec m
+unpack_polyeta t = [ elt a | a <- (split t):[m][128][8]]
+      where
+      elt : [128][8] -> poly
+      elt a = (join coeffs)
+            where coeffs = [ [ (`q+eta)- (zext (a@i&&0x0F)), (`q+eta)- (zext (a@(i+1)>>4))] |i <- [0..(n/2)-1]:[_][8] ]
+
 
 
 
@@ -237,6 +246,21 @@ polyt0_pack p = join [ join [drop`{15} (tmp p i 0),
         where
           tmp : intPoly -> [8] -> [8] -> [23]
           tmp p i j =  (2^^13 - p@(4*i+j))
+type POLT0_SIZE_PACKED = 448
+polyt0_unpack : [POLT0_SIZE_PACKED][8] -> intPoly
+polyt0_unpack p = join[ [ (tmp p i 0) || (zext ((tmp p i 1) && zext 0x3F)) << 8,
+                          (zext ((tmp p i 1) >> 6)) || (zext (tmp p i 2)) << 2 || (zext ((tmp p i 3) && zext 0x0F)) << 10,
+                          (zext ((tmp p i 3) >> 4)) || (zext (tmp p i 4)) << 4 || (zext ((tmp p i 5) && zext 0x03)) << 12,
+                          (zext ((tmp p i 5) >> 2)) || (zext (tmp p i 6)) << 6
+                        ] | i <- [0..(n/4-1)]
+                      ]
+          where
+            tmp :[POLT0_SIZE_PACKED][8] -> [8] -> [8] -> [23]
+            tmp p i j =  zext (2^^13 - p@(7*i+j))
+
+
+unpack_t0 : [k][POLT0_SIZE_PACKED][8] -> intPolyVec k
+unpack_t0 pv = [ (polyt0_unpack pv') | pv' <- pv]
 
 
 // d must be 14 for this to work, and n must be 256
@@ -263,8 +287,8 @@ pack_t1 pvk = (join [ poly_pack p | p <- pvk])
 
 // polyt1_unpack
 
-poly_unpack : [POLT1_SIZE_PACKED][8] -> poly
-poly_unpack p = map (\x -> zero#x) (join [unpack8 xs | xs <- (split p): [32][9][_] ])
+polyt1_unpack : [POLT1_SIZE_PACKED][8] -> poly
+polyt1_unpack p = map (\x -> zero#x) (join [unpack8 xs | xs <- (split p): [32][9][_] ])
     where unpack8: [9][8] -> [8][12]
           unpack8 xs = [ zero#xs@0 || ((zero#xs@1 << 8) && 0x1FF)
                         , zero#xs@1 >> 1 || ((zero#xs@2 << 7) && 0x1FF)
@@ -277,31 +301,89 @@ poly_unpack p = map (\x -> zero#x) (join [unpack8 xs | xs <- (split p): [32][9][
                         ]
 
 
-polyt1_unpack : [k*POLT1_SIZE_PACKED][8] -> polyVec k
-polyt1_unpack  pv = [ (poly_unpack p) |  p <- split pv:[k][POLT1_SIZE_PACKED][8]]
+unpack_t1 : [k][POLT1_SIZE_PACKED][8] -> polyVec k
+unpack_t1  pv = [ (polyt1_unpack p) |  p <- pv]
 
-
+//pack_pk
 
 pack_pk :  [32][8] -> polyVec k -> [CRYPTO_PUBLICKEYBYTES*8]
 pack_pk rho t1 = (join rho) # (pack_t1 t1)
 
+//unpack_pk
+
+unpack_pk : [CRYPTO_PUBLICKEYBYTES][8] -> ([SEEDBYTES][8], polyVec k)
+unpack_pk pk = (take`{32} pk, [polyt1_unpack p | p <- (split (drop`{32} pk):[k][288][_])])
+
 /****Packing SK *********/
+
 type CRHBYTES = 48
-type POLT0_SIZE_PACKED = 256 * 0xe
 type CRYPTO_SECRETKEYBYTES = 2800
+
+
+
+//pack_sk
 
 pack_sk : [SEEDBYTES][8] -> [SEEDBYTES][8] -> [CRHBYTES][8] -> polyVec l -> polyVec k -> polyVec k -> [CRYPTO_SECRETKEYBYTES*8]
 pack_sk rho key tr s1 s2 t0 = (join rho) # (join key) # (join tr)# (pack_polyeta s1)#(pack_polyeta s2) # (pack_t0 t0)
 
+//unpack_sk
+//TODO: To fix t0 later as now it takes 23 but should be converted to [32] later
+
+unpack_sk : [CRYPTO_SECRETKEYBYTES][8] -> ([SEEDBYTES][8], [SEEDBYTES][8], [CRHBYTES][8], polyVec l, polyVec k, intPolyVec k)
+unpack_sk sk = (rho, key, tr, s1, s2, t0)
+        where rho = (take`{32} sk)
+              key = (take`{32}(drop`{32} sk))
+              tr = (take`{48}(drop`{32} sk))
+              s1 = unpack_polyeta`{m=l} (take`{128*l}(drop`{48} sk))
+              s2 = unpack_polyeta`{m=k} (take`{128*k}(drop`{48+(128*l)} sk))
+              t0 = unpack_t0 (split (drop`{48+(128*l)+(128*k)+64} sk):[k][POLT0_SIZE_PACKED][8])
+
+type POLZ_SIZE_PACKED = 640
+
+polyz_pack : poly -> [POLZ_SIZE_PACKED][8]
+polyz_pack p =  join [ (tmp p i) | i<- [0..(n/2)-1]]
+      where tmp: poly -> [8] -> [5][8]
+            tmp p i  = [r0, r1, r2, r3, r4]
+              where
+                    t x = gamma1-1-p@(2*i+x)
+                    t0 = (t 0) + ((zext (t 0))>>31) && `q
+                    t1 = (t 1) + ((zext (t 1))>>31) && `q
+                    r0 = drop t0
+                    r1 = drop (t0>>8)
+                    r2 = drop (t0>>16) || drop (t1 << 4)
+                    r3 = drop (t1 >> 4)
+                    r4 = drop (t1 >> 12)
+
+polyz_unpack : [POLZ_SIZE_PACKED][8] -> poly
+polyz_unpack pp =  (join [ (tmp pp i) | i<-[0..(n/2)-1]])
+    where tmp : [POLZ_SIZE_PACKED][8] -> [8]-> [2][23]
+          tmp pp i = [rcoeff0, rcoeff1]
+                where
+                  coeff0 = (zero#pp@(5*i+0):[32]) || (((zero#pp@(5*i+1)):[32]) << 8) || (zero#(((zero#pp@(5*i+2)):[8]) && 0x0F):[32]) << 16
+                  coeff1 = ((zero#(pp@(5*i+2) >> 4)):[32]) || ((zero#pp@(5*i+3):[32]) << 4) || ((zero#pp@(5*i+4):[32]) << 12)
+                  rcoeff0 = drop`{9}((gamma1 - 1 - coeff0) + ((zext coeff0:[32]) >> 31) && `q):[23]
+                  rcoeff1 = drop`{9}((gamma1 - 1 - coeff1) + ((zext coeff1:[32]) >> 31) && `q):[23]
+
+type SIG_SIZE_PACKED = l*POLZ_SIZE_PACKED+omega+k+n
+
+pack_sig : (polyVec l, polyVec k, poly) -> [SIG_SIZE_PACKED*8]
+pack_sig (z, h, c) = s0#s1#s2
+        where s0 = join [join (polyz_pack z') | z' <- z ]
+              s2 = zero  //encodec : poly -> [n*8] //TODO: fix this
+              s1 = encodeh (h)
+                where encodeh : polyVec k -> [(omega+k)*8]
+                      encodeh h = zero // TODO: fix me
 
 
-/*pack_sig : (polyVec l, [k][n], poly) -> [SIG_SIZE_PACKED]
-pack_sig (z, h, c) =
-        where s0 = polyz_pack (z)
-              s1 = encode (h)
-              s2 = encode (c)
-polyz_pack : poly ->[n*uint32_t]
-polyz_pack a = [  | i <- [0..n/2] ] */
+
+unpack_sig : [SIG_SIZE_PACKED][8] -> (polyVec l, polyVec k, poly)
+unpack_sig sig = (z, h, c)
+        where z = [ (polyz_unpack p) | p<- (split (take`{l*POLZ_SIZE_PACKED} sig):[l][_][_])]
+              c = zero // decodec(c)
+              sig' = take`{omega+k}(drop`{l*POLZ_SIZE_PACKED} sig)
+              h = decodeh(sig')
+                where decodeh:[(omega+k)][8] -> polyVec k
+                      decodeh = zero // TODO: fix me
 
 // Only works when n=256
 
