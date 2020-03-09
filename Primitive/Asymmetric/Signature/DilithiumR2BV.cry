@@ -147,7 +147,7 @@ type sign_var_types = { z : polyVec l
                           , K   : [256]
                           , mu  : [384]
                           , A   : nttMat k l
-                          , kappa: Integer}
+                          , kappa: [16]}
 
 
 sign_condition : sign_var_types -> Bit
@@ -170,7 +170,7 @@ sign_body sv = {z=z,r0=r0,r1=r1,t0'=sv.t0',c'=c',w=w,w1=w1,s1'=sv.s1',s2'=sv.s2'
                    cs2=cs2,K=sv.K,mu=sv.mu,A=sv.A,kappa=(sv.kappa+1)}
               where
                 ρ'  = CRH`{b=48+32} (sv.K#sv.mu) // ρ' ∈ {0,1}^384 := CRH(K||μ) (or ρ' <- {0,1}^384 for randomized signing)
-                y   = ExpandMask(ρ', sv.kappa)// y ∈ S^l_(γ1-1) := ExpandMask(ρ',κ)
+                y   = ExpandMask((split ρ'), sv.kappa)// y ∈ S^l_(γ1-1) := ExpandMask(ρ',κ)
                 y'  = map ntt y // checked
                 w   = map nttinv (nttMatMul sv.A y') // w := Ay
                 w1  = HighBitsV (w, 2 * gamma2) // w1 := HighBitsV(w, 2γ2)
@@ -393,7 +393,7 @@ unpack_sig sig = (z, h, c)
 // This function has been modified in round2
 //PolyUniformEtaV : {dim} (fin dim, dim>=1,width (dim-1) <= 8) => [256] -> [8] -> polyVec dim // round1
 PolyUniformEtaV : {dim} (fin dim, dim>=1,width (dim-1) <= 8) => [256] -> [16] -> polyVec dim
-PolyUniformEtaV r nonce = [PolyUniformEta r (nonce + j) | j <- [0..(dim-1)]:[dim][16]]
+PolyUniformEtaV r nonce = [PolyUniformEta (split r) (nonce + j) | j <- [0..(dim-1)]:[dim][16]]
 
 genS : [8] -> [2][4]
 genS byte = [t0, t1]
@@ -404,10 +404,10 @@ genS byte = [t0, t1]
 // This function has been modified in round2
 //(uint8_t) D means taking 8 LSBs from D
 //PolyUniformEta : [SEEDBYTES*8] -> [8] -> poly
-PolyUniformEta : [SEEDBYTES*8] -> [16] -> poly
+PolyUniformEta : [SEEDBYTES][8] -> [16] -> poly
 PolyUniformEta rho nonce = map (\x -> if ((toInteger eta) - (toInteger x)) < 0 then (fromInteger  (((toInteger eta) - (toInteger x))+`q):[23]) else (fromInteger ((toInteger eta) - (toInteger x)):[23])) (take`{n} withinEta)
     where
-        seed = rho#(drop`{8} nonce)# (take`{8} nonce)
+        seed = (join rho)#(drop`{8} nonce)# (take`{8} nonce)
         randoms = ((join (SHA3::toBytes (take`{2*8*168} (SHA3::SHAKE128 (join (SHA3::toBytes seed))))))#zero)
         withinEta = randomsInRangeDouble genS (2*eta) randoms
 
@@ -438,17 +438,17 @@ SampleInBall signs jsamples = ys ! 0
                       ]
 
 
-ExpandMask : ([384], Integer) -> polyVec l
+ExpandMask : ([CRHBYTES][8], [16]) -> polyVec l
 ExpandMask  ( ρ', kappa) = [samplePoly ρ' kappa i `l | i <- [0..(l-1)] ]
 
 
-samplePoly : [384] -> Integer -> Integer -> Integer -> poly
+samplePoly : [CRHBYTES][8] -> [16] -> [2] -> [2] -> poly
 //samplePoly K mu kappa i dim = (map (\x -> (`q+gamma1-1-(zero#x))) coeffs)
 samplePoly ρ' kappa i dim = (map (\x -> mod_sub(`q, mod_sub(`q, gamma1, 1), zero#x)) coeffs)
     where
         (upper:[20])      =  drop`{4}(2*gamma1-2):[20]
-        kappaBytes = join (reverse (split (fromInteger (dim*kappa+i):[16]):[2][8])) // LEB order
-        s          = join (SHA3::toBytes (take`{5*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes (ρ'#kappaBytes)))))) // checked
+        kappaBytes = join (reverse (split ((zext dim)*kappa+(zext i)):[2][8])) // LEB order
+        s          = join (SHA3::toBytes (take`{5*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes ((join ρ')#kappaBytes)))))) // checked
         (coeffs:[n][20])   = take`{n} (randomsInRangeDouble extractPolyElt upper (s#zero))
 
 
