@@ -89,7 +89,7 @@ Gen : [3*SEEDBYTES*8] -> (PublicKey,SecretKey)
 Gen s = (pk, sk)
     where
       [rho, rho', K] = split`{3} s //rho <- {0, 1}^256, K <- {0,1}^256
-      A       = ExpandA rho //A ∈ R^(k×l)_q := ExpandA(rho)
+      A       = ExpandA (split rho) //A ∈ R^(k×l)_q := ExpandA(rho)
       s1      = PolyUniformEtaV`{dim=l} rho' zero // s1<-s^l_η
       s2      = PolyUniformEtaV`{dim=k} rho' `l // s2<-s^k_η
       s1ntt   = map ntt s1
@@ -112,7 +112,7 @@ test_key_gen = (pk.rho#(pack_t1 pk.t1) == testCase1.pk) /\
 Sign : {mbytes} (fin mbytes, mbytes>=1) => SecretKey -> [mbytes*8] -> (polyVec l, [k][n], poly)
 Sign sk M = (final_state.z, h, nttinv final_state.c')
      where
-      A     = ExpandA sk.rho // A ∈ R^(k×l)_q := ExpandA(ρ)
+      A     = ExpandA (split sk.rho) // A ∈ R^(k×l)_q := ExpandA(ρ)
       mu    = CRH`{b=48+mbytes} (sk.tr#M) // μ ∈{0,1}^384 := CRH(tr||M)
       kappa = zero // κ := 0
       s1'   = map ntt sk.s1
@@ -186,7 +186,7 @@ sign_body sv = {z=z,r0=r0,r1=r1,t0'=sv.t0',c'=c',w=w,w1=w1,s1'=sv.s1',s2'=sv.s2'
 Verify : {mbytes} (fin mbytes, mbytes>=1) => PublicKey -> [mbytes*8] -> (polyVec l, [k][n], poly) -> Bit
 Verify pk M (z, h, c) = crit1 && crit2 && crit3
        where
-        A        = ExpandA pk.rho // A ∈ R^(k×l)_q := ExpandA(ρ)
+        A        = ExpandA (split pk.rho) // A ∈ R^(k×l)_q := ExpandA(ρ)
         mu       = CRH`{b=48+mbytes} ((CRH (pk.rho#(pack_t1 pk.t1)))#M) // μ ∈{0,1}^384 := CRH(CRH(ρ||t1)||M)
         zntt     = map ntt z // NTT(z)
         t1dot2d  = map ntt (map (\p -> map (\x ->  mod_mul(`q, x, (2^^14))) p) pk.t1) // t1.2^^d where d=14
@@ -366,6 +366,9 @@ polyz_unpack pp =  (join [ (tmp pp i) | i<-[0..(n/2)-1]])
 
 type SIG_SIZE_PACKED = l*POLZ_SIZE_PACKED+omega+k+n
 
+//encodeh : poly -> [_]
+//encodeh p = join [ (if p@j !=0 then j else p@j) | j<- [0..255]]
+
 pack_sig : (polyVec l, polyVec k, poly) -> [SIG_SIZE_PACKED*8]
 pack_sig (z, h, c) = s0#s1#s2
         where s0 = join [join (polyz_pack z') | z' <- z ]
@@ -463,8 +466,9 @@ CRH : {b} (fin b, b>=1) => [b*8] -> [384]
 CRH seed = join (SHA3::toBytes (take`{48*8} (SHA3::SHAKE256 (join (SHA3::toBytes seed)))))
 
 // Fixed for round2 submission
-ExpandA : [SEEDBYTES*8] -> [k][l]nttPoly
-ExpandA rho = [ [ (matrixPoly rho i j) | j <- [0..(l-1)] ] |  i <- [0..(k-1)] ]
+
+ExpandA : [SEEDBYTES][8] -> [k][l]nttPoly
+ExpandA rho = [ [ (matrixPoly (join rho) i j) | j <- [0..(l-1)] ] |  i <- [0..(k-1)] ]
 
 matrixPoly : [SEEDBYTES*8] -> [width k] -> [width l] -> nttPoly
 matrixPoly rho i j = take`{n} [drop`{1} elt | elt <- randomElts ]
