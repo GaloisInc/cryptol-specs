@@ -1,20 +1,19 @@
 /*
-   Copyright (c) 2013-2018 Galois, Inc.
-   www.cryptol.net
-   You can freely use this source code for educational purposes.
-
-   See http://cr.yp.to/snuffle/spec.pdf
+ * Copyright (c) 2013-2016 Galois, Inc.
+ * Distributed under the terms of the BSD3 license (see LICENSE file)
  */
+
+// see http://cr.yp.to/snuffle/spec.pdf
 
 module Primitive::Symmetric::Cipher::Stream::Salsa20 where
 
 quarterround : [4][32] -> [4][32]
 quarterround [y0, y1, y2, y3] = [z0, z1, z2, z3]
   where
-    z1 = y1 ^ ((y0 + y3) <<< 0x00000007)
-    z2 = y2 ^ ((z1 + y0) <<< 0x00000009)
-    z3 = y3 ^ ((z2 + z1) <<< 0x0000000d)
-    z0 = y0 ^ ((z3 + z2) <<< 0x00000012)
+    z1 = y1 ^ ((y0 + y3) <<< 0x7)
+    z2 = y2 ^ ((z1 + y0) <<< 0x9)
+    z3 = y3 ^ ((z2 + z1) <<< 0xd)
+    z0 = y0 ^ ((z3 + z2) <<< 0x12)
 
 property quarterround_passes_tests =
   (quarterround [0x00000000, 0x00000000, 0x00000000, 0x00000000] == [0x00000000, 0x00000000, 0x00000000, 0x00000000]) /\
@@ -116,91 +115,68 @@ property doubleround_passes_tests =
                 0xca531c29, 0x8e7943db, 0xac1680cd, 0xd503ca00,
                 0xa74b2ad6, 0xbc331c5c, 0x1dda24c7, 0xee928277])
 
-// littleendian : [4][8] -> [32]
-// littleendian b = join(reverse b)
+littleendian : [4][8] -> [32]
+littleendian b = join(reverse b)
 
-littleendian : [32] -> [32]
-littleendian b = reverse b
+property littleendian_passes_tests =
+  (littleendian [  0,   0,   0,   0] == 0x00000000) /\
+  (littleendian [ 86,  75,  30,   9] == 0x091e4b56) /\
+  (littleendian [255, 255, 255, 250] == 0xfaffffff)
 
-// property littleendian_passes_tests =
-//   (littleendian [  0,   0,   0,   0] == 0x00000000) /\
-//   (littleendian [ 86,  75,  30,   9] == 0x091e4b56) /\
-//   (littleendian [255, 255, 255, 250] == 0xfaffffff)
-
-littleendian_inverse : [32] -> [32]
-littleendian_inverse b = reverse b
-
-// littleendian_inverse : [32] -> [4][8]
-// littleendian_inverse b = reverse(split b)
+littleendian_inverse : [32] -> [4][8]
+littleendian_inverse b = reverse(split b)
 
 property littleendian_is_invertable b = littleendian_inverse(littleendian b) == b
 
-Salsa20 : [16][32] -> [16][32]
-Salsa20 xs = ar
+Salsa20 : [64][8] -> [64][8]
+Salsa20 xs = join ar
   where
-    [x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15] = xs
-    [y0, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15] =
-      columnround [x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15]
-    [z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10, z11, z12, z13, z14, z15] =
-      rowround [y0, y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15]
-    [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15] =
-      columnround [z0, z1, z2, z3, z4, z5, z6, z7, z8, z9, z10, z11, z12, z13, z14, z15]
-    ar = [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15] +
-         [x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15]
+    ar = [ littleendian_inverse words | words <- xw + zs@10 ]
+    xw = [ littleendian xi | xi <- split xs ]
+    zs = [xw] # [ doubleround zi | zi <- zs ]
 
-// Salsa20_opt : [16][32] -> [16][32]
-// Salsa20_opt xs = ar
-//   where
-//     ar = [ words | words <- xw + zs@3 ]
-//     xw = [ xi | xi <- xs ]
-//     // ar = [ littleendian_inverse words | words <- xw + zs@3 ]
-//     // xw = [ littleendian xi | xi <- xs ]
-//     zs = [xw] # [ doubleround zi | zi <- zs ]
+property Salsa20_passes_tests =
+  (Salsa20 [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+              0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+              0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+              0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0] ==
+           [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+              0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+              0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+              0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0]) /\
+  (Salsa20 [211, 159,  13, 115,  76,  55,  82, 183,   3, 117, 222,  37, 191, 187, 234, 136,
+             49, 237, 179,  48,   1, 106, 178, 219, 175, 199, 166,  48,  86,  16, 179, 207,
+             31, 240,  32,  63,  15,  83,  93, 161, 116, 147,  48, 113, 238,  55, 204,  36,
+             79, 201, 235,  79,   3,  81, 156,  47, 203,  26, 244, 243,  88, 118, 104,  54] ==
+           [109,  42, 178, 168, 156, 240, 248, 238, 168, 196, 190, 203,  26, 110, 170, 154,
+             29,  29, 150,  26, 150,  30, 235, 249, 190, 163, 251,  48,  69, 144,  51,  57,
+            118,  40, 152, 157, 180,  57,  27,  94, 107,  42, 236,  35,  27, 111, 114, 114,
+            219, 236, 232, 135, 111, 155, 110,  18,  24, 232,  95, 158, 179,  19,  48, 202]) /\
+  (Salsa20 [ 88, 118, 104,  54,  79, 201, 235,  79,   3,  81, 156,  47, 203,  26, 244, 243,
+            191, 187, 234, 136, 211, 159,  13, 115,  76,  55,  82, 183,   3, 117, 222,  37,
+             86,  16, 179, 207,  49, 237, 179,  48,   1, 106, 178, 219, 175, 199, 166,  48,
+            238,  55, 204,  36,  31, 240,  32,  63,  15,  83,  93, 161, 116, 147,  48, 113] ==
+           [179,  19,  48, 202, 219, 236, 232, 135, 111, 155, 110,  18,  24, 232,  95, 158,
+             26, 110, 170, 154, 109,  42, 178, 168, 156, 240, 248, 238, 168, 196, 190, 203,
+             69, 144,  51,  57,  29,  29, 150,  26, 150,  30, 235, 249, 190, 163, 251,  48,
+             27, 111, 114, 114, 118,  40, 152, 157, 180,  57,  27,  94, 107,  42, 236,  35])
 
-// property Salsa20_compare xs = Salsa20 xs == Salsa20_opt xs
-
-// property Salsa20_passes_tests =
-//   (Salsa20 [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-//               0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-//               0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-//               0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0] ==
-//            [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-//               0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-//               0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-//               0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0]) /\
-//   (Salsa20 [211, 159,  13, 115,  76,  55,  82, 183,   3, 117, 222,  37, 191, 187, 234, 136,
-//              49, 237, 179,  48,   1, 106, 178, 219, 175, 199, 166,  48,  86,  16, 179, 207,
-//              31, 240,  32,  63,  15,  83,  93, 161, 116, 147,  48, 113, 238,  55, 204,  36,
-//              79, 201, 235,  79,   3,  81, 156,  47, 203,  26, 244, 243,  88, 118, 104,  54] ==
-//            [109,  42, 178, 168, 156, 240, 248, 238, 168, 196, 190, 203,  26, 110, 170, 154,
-//              29,  29, 150,  26, 150,  30, 235, 249, 190, 163, 251,  48,  69, 144,  51,  57,
-//             118,  40, 152, 157, 180,  57,  27,  94, 107,  42, 236,  35,  27, 111, 114, 114,
-//             219, 236, 232, 135, 111, 155, 110,  18,  24, 232,  95, 158, 179,  19,  48, 202]) /\
-//   (Salsa20 [ 88, 118, 104,  54,  79, 201, 235,  79,   3,  81, 156,  47, 203,  26, 244, 243,
-//             191, 187, 234, 136, 211, 159,  13, 115,  76,  55,  82, 183,   3, 117, 222,  37,
-//              86,  16, 179, 207,  49, 237, 179,  48,   1, 106, 178, 219, 175, 199, 166,  48,
-//             238,  55, 204,  36,  31, 240,  32,  63,  15,  83,  93, 161, 116, 147,  48, 113] ==
-//            [179,  19,  48, 202, 219, 236, 232, 135, 111, 155, 110,  18,  24, 232,  95, 158,
-//              26, 110, 170, 154, 109,  42, 178, 168, 156, 240, 248, 238, 168, 196, 190, 203,
-//              69, 144,  51,  57,  29,  29, 150,  26, 150,  30, 235, 249, 190, 163, 251,  48,
-//              27, 111, 114, 114, 118,  40, 152, 157, 180,  57,  27,  94, 107,  42, 236,  35])
-
-// property Salsa20_has_no_collisions x1 x2 =
-//   if(x1 != x2) then (doubleround x1) != (doubleround x2) else True
+property Salsa20_has_no_collisions x1 x2 =
+  if(x1 != x2) then (doubleround x1) != (doubleround x2) else True
 
 // Salsa 20 supports two key sizes, [16][8] and [32][8]
-// Salsa20_expansion : {a} (a >= 1, 2 >= a) => ([16*a][8], [16][8]) -> [64][8]
-// Salsa20_expansion(k, n) = z
-//   where
-//     [s0, s1, s2, s3] = split "expand 32-byte k" : [4][4][8]
-//     [t0, t1, t2, t3] = split "expand 16-byte k" : [4][4][8]
-//     x = if(`a == 2) then s0 # k0 # s1 # n # s2 # k1 # s3
-//                     else t0 # k0 # t1 # n # t2 # k0 # t3
-//     z = Salsa20(x)
-//     [k0, k1] = (split(k#zero)):[2][16][8]
+Salsa20_expansion : {a} (a >= 1, 2 >= a) => ([16*a][8], [16][8]) -> [64][8]
+Salsa20_expansion(k, n) = z
+  where
+    [s0, s1, s2, s3] = split "expand 32-byte k" : [4][4][8]
+    [t0, t1, t2, t3] = split "expand 16-byte k" : [4][4][8]
+    x = if(`a == 2) then s0 # k0 # s1 # n # s2 # k1 # s3
+                    else t0 # k0 # t1 # n # t2 # k0 # t3
+    z = Salsa20(x)
+    [k0, k1] = (split(k#zero)):[2][16][8]
 
-// Salsa20_encrypt : {a, l} (a >= 1, 2 >= a, l <= 2^^70) => ([16*a][8], [8][8], [l][8]) -> [l][8]
-// Salsa20_encrypt(k, v, m) = c
-//   where
-//     salsa = take (join [ Salsa20_expansion(k, v#(split i)) | i <- [0, 1 ... ] ])
-//     c = m ^ salsa
+Salsa20_encrypt : {a, l} (a >= 1, 2 >= a, l <= 2^^70) => ([16*a][8], [8][8], [l][8]) -> [l][8]
+Salsa20_encrypt(k, v, m) = c
+  where
+    salsa = take (join [ Salsa20_expansion(k, v#(reverse (split i))) | i <- [0, 1 ... ] ])
+    c = m ^ salsa
