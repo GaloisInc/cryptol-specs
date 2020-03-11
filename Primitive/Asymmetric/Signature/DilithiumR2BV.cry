@@ -371,9 +371,6 @@ polyz_unpack pp =  (join [ (tmp pp i) | i<-[0..(n/2)-1]])
 
 type SIG_SIZE_PACKED = l*POLZ_SIZE_PACKED+omega+k+n/8+8
 
-//encodeh : poly -> [_]
-//encodeh p = join [ (if p@j !=0 then j else p@j) | j<- [0..255]]
-
 encodec : poly -> [(n/8+8)*8]
 encodec p = (join [ [ p@(8*i+j)!=0 | j <- [0..7] ] | i<- [0..(n/8)-1]])# (join sigSigns)
       where
@@ -401,17 +398,34 @@ pack_sig (z, h, c) = s0#s1#s2
                         kUpdates3=[kUpdates2!0]#[(if (nzcoeffsIndcs@3)@i==True then ((update sig' i) i) else ((update sig' i) 0))| i <- [0..255]| sig' <- kUpdates3]
                         omegaUpdates = (updates (kUpdates3!0) [`omega+0, `omega+1, `omega+2, `omega+3] [0, 1, 2, 3])
 
+decodec : [(n/8+8)][8] -> poly
+decodec xs = coeffs'!0
+  where coeffs = zero:poly
+        signs = [0]#[ ((sext s) || ((sext (xs@(`n/8+i))):[64]) << (8*i)) | i<-[0..7] | s<-signs] :[9][64]
+        signs' = [signs!0]#[ (if ((((xs@i) >> j) && 0x01) == 1) then (s >> 1) else s) | j<- [0..255] | s <- signs' | i<- [0..3]]
+        coeffs' = [coeffs]#[(if ((((xs@i) >> j) && 0x01)==1) then (update coeff (8*i+j) (1^(-((drop s)&&1))&&(1^(`q-1)))) else coeff) | i<- [0..7] | j<- [0..255] | s <- signs' | coeff <-coeffs' ]
 
-
+decodeh: [(omega+k)][8] -> polyVec k
+decodeh xs = pv // it is supposed to be pv'!0
+      where
+        pv = zero : polyVec k
+        ks = [0]#[xs@(`omega+i) | i<- [0..3]]
+        //pv' = [pv] # join [ [ (if j < (xs@(`omega+i)) then (updateCoeffs p i j' 1)  else p) | j' <- [xs@j] ]| j<-ks | i<- [0..3] | p <- pv' ] // TODO: fix this
 
 unpack_sig : [SIG_SIZE_PACKED][8] -> (polyVec l, polyVec k, poly)
 unpack_sig sig = (z, h, c)
         where z = [ (polyz_unpack p) | p<- (split (take`{l*POLZ_SIZE_PACKED} sig):[l][_][_])]
-              c = zero // decodec(c) : [(n/8+8)*8] -> poly
-              sig' = take`{omega+k}(drop`{l*POLZ_SIZE_PACKED} sig)
-              h = decodeh(sig')
-                where decodeh:[(omega+k)][8] -> polyVec k
-                      decodeh = zero // TODO: fix me
+              c = decodec sig'' // decodec(c) : [(n/8+8)*8] -> poly
+              sig' = take`{84}(drop`{l*POLZ_SIZE_PACKED} sig)
+              sig'' = drop`{84}(drop`{l*POLZ_SIZE_PACKED} sig)
+              h = decodeh sig'
+
+updateCoeffs :  polyVec n -> [k] -> [8] -> [qbits] -> polyVec n
+updateCoeffs pv i j a =  upv
+      where  upv = (update pv i up)
+             up = (update p j a)
+             p = pv@i
+
 
 // Only works when n=256
 
