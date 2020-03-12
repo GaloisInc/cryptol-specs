@@ -351,8 +351,8 @@ polyz_pack p =  join [ (tmp p i) | i<- [0..(n/2)-1]]
             tmp p i  = [r0, r1, r2, r3, r4]
               where
                     t x = gamma1-1-p@(2*i+x)
-                    t0 = (t 0) + ((zext (t 0))>>31) && `q
-                    t1 = (t 1) + ((zext (t 1))>>31) && `q
+                    t0 = (t 0) + (((sext (t 0))>>31) && `q)
+                    t1 = (t 1) + (((sext (t 1))>>31) && `q)
                     r0 = drop t0
                     r1 = drop (t0>>8)
                     r2 = drop (t0>>16) || drop (t1 << 4)
