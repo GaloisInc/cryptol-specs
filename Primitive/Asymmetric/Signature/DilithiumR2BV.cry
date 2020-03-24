@@ -230,8 +230,13 @@ unpack_polyeta :  {m} (fin m, m>=1) => [POLETA_SIZE_PACKED*m][8] -> polyVec m
 unpack_polyeta t = [ elt a | a <- (split t):[m][128][8]]
       where
       elt : [128][8] -> poly
-      elt a = (join coeffs)
-            where coeffs = [ [ (`q+eta)- (zext (a@i&&0x0F)), (`q+eta)- (zext (a@(i+1)>>4))] |i <- [0..(n/2)-1]:[_][8] ]
+      elt a = (join (coeffs a))
+      coeffs : [128][8] -> [_][2][23]
+      coeffs a = [ [ `q + eta - zext ( (a@i) && 0x0F )
+                   , `q + eta - zext ( (a@(i+1)) >> 4 )
+                   ]
+                 | i <- [0..(n/2)-1]:[_][16]
+                 ]
 
 
 
