@@ -576,12 +576,24 @@ LowBits : [qbits] -> [qbits]
 LowBits r = (Decompose r).1
 
 
-MakeHint : ([qbits],[qbits]) -> [qbits]
-MakeHint (z,r) = zero#[r1 != v1]
+MakeHint : ([qbits],[qbits]) -> Bit
+MakeHint (z,r) = r1 != v1
           where r1 = HighBits r
                 v1 = HighBits r+z
+
+CLEAN_Make_hint: ([qbits],[qbits]) -> Bit
+CLEAN_Make_hint (z, r) = if ((z <= gamma2) || (z > `q - gamma2) || (z == (`q - gamma2)) && (r == 0)) then False else True
+
+MakeHintP': (poly, poly) -> [qbits]
+MakeHintP' (zp, rp) = foldl (+) 0 [ zext [CLEAN_Make_hint (z, r)] | z <- zp | r <- rp]
+
+MakeHintV': {k} (fin k, k>=1) => (polyVec k, polyVec k) -> [qbits]
+MakeHintV' (zv, rv) = foldl (+) 0 [MakeHintP' (zp, rp) | zp <- zv | rp <- rv ]
+
 MakeHintP: (poly, poly) -> poly
-MakeHintP (zp, rp) = [MakeHint (z, r) | z <- zp | r <- rp]
+MakeHintP (zp, rp) =  drop res
+    where res = [0]#[coeff+r | r<- res | coeff<- p]
+          p = [zext [CLEAN_Make_hint (z, r)] | z <- zp | r <- rp]
 
 MakeHintV : {k} (fin k, k>=1) => (polyVec k, polyVec k) -> polyVec k
 MakeHintV (zv, rv) =  [MakeHintP (zp, rp) | zp <- zv | rp <- rv ]
@@ -589,11 +601,10 @@ MakeHintV (zv, rv) =  [MakeHintP (zp, rp) | zp <- zv | rp <- rv ]
 
 
 UseHint : ([qbits],[qbits]) -> [qbits]
-UseHint  (r,h) = (if h==1 then r1' else r1):[23]
+UseHint  (r,h) = (if h==0 then r1 else (sext r1')):[23]
         where
-          m = ((`q - 1) / ALPHA)
           (r1, r0) = Decompose r
-          r1'      = if (r0 > 0) then mod_pow (m, (r1 + 1), 1) else mod_pow (m, (r1 - 1), 1)
+          r1'      = if (r0>0) then take`{4}(r1+1) else take`{4}(r1 - 1)
 UseHintPoly : poly -> poly -> poly
 UseHintPoly rp hp = [ UseHint (r, h) | r <- rp | h <- hp ]
 
