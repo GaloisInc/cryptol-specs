@@ -224,16 +224,17 @@ pack_polyeta s = join [ join [elt p i | i <- [0..(n/2)-1]:[_][8] ] | p <- s ]
     c : [qbits] -> [8]
     c num = drop (if num > eta then `q + eta - num else eta - num)
 
+type SETABITS = 4
 //unpack_polyeta
-type POLETA_SIZE_PACKED = 128
-unpack_polyeta :  {m} (fin m, m>=1) => [POLETA_SIZE_PACKED*m][8] -> polyVec m
+type POLETA_SIZE_PACKED = n*4/8
+unpack_polyeta :  {m} (fin m, m>=1) => [m*POLETA_SIZE_PACKED][8] -> polyVec m
 unpack_polyeta t = [ elt a | a <- (split t):[m][128][8]]
       where
       elt : [128][8] -> poly
       elt a = (join (coeffs a))
       coeffs : [128][8] -> [_][2][23]
-      coeffs a = [ [ `q + eta - zext ( (a@i) && 0x0F )
-                   , `q + eta - zext ( (a@(i+1)) >> 4 )
+      coeffs a = [ [ `q + eta - sext ( (a@i) && 0x0F )
+                   , `q + eta - sext ( (a@(i+1)) >> 4 )
                    ]
                  | i <- [0..(n/2)-1]:[_][16]
                  ]
@@ -536,15 +537,13 @@ extractMatElt rands = zero#(2^^16 * b2' + 2^^8 * b1 + b0):[24]
 
 */
 
-Power2Round : [qbits] -> ([qbits],[qbits]) -> ([qbits],[qbits])
-Power2Round q (r,d') = ((r'-r0)/2^^d',r0)
-            where r' = mod_pow (zero#q, r, 1)
-                  r0 = centered_mod r' (2^^d')
+Power2Round : [qbits] -> ([qbits],[qbits])
+Power2Round r = ((r'-r0)/2^^`d,r0) // d = 14
+            where r' = mod_pow (`q, r, 1)
+                  r0 = centered_mod r' (2^^`d)
 
 polyPower2Round : {m} [m][qbits] -> ([m][qbits], [m][qbits])
-polyPower2Round p = unzip [ Power2Round `q (zero#r, zero#0xe)
-                          | r <- p
-                          ]
+polyPower2Round p = unzip [ Power2Round r | r<- p]
 
 Power2RoundV : {dim} (fin dim, dim >= 1) => polyVec dim -> ([dim]intPoly,[dim]intPoly)
 Power2RoundV v = unzip (map polyPower2Round v)
@@ -557,8 +556,14 @@ Decompose r = if (r' - r0) == (`q - 1) then (0, r0 - 1)
           where r' =  mod_pow (`q, r, 1)
                 r0 = centered_mod r' ALPHA
 
+Decompose' : [qbits] -> ([qbits],[qbits])
+Decompose' r = if (r' - r0) == (`q - 1) then (0, r0 - 1+`q)
+                    else ((r' - r0) / ALPHA, r0+`q)
+          where r' =  mod_pow (`q, r, 1)
+                r0 = centered_mod r' ALPHA
+
 DecomposePoly : {m} [m][qbits] -> ([m][qbits], [m][qbits])
-DecomposePoly p = unzip [Decompose (zero#x) | x <- p]
+DecomposePoly p = unzip [Decompose x | x <- p]
 
 DecomposeV : {n} (fin n, n>=1) => polyVec n  -> (polyVec n, polyVec n)
 DecomposeV r = unzip [ DecomposePoly p | p <- r ]
@@ -601,10 +606,10 @@ MakeHintV (zv, rv) =  [MakeHintP (zp, rp) | zp <- zv | rp <- rv ]
 
 
 UseHint : ([qbits],[qbits]) -> [qbits]
-UseHint  (r,h) = (if h==0 then r1 else (sext r1')):[23]
+UseHint  (r,h) = zext (if  ~((h ==0) || (r0+`q>`q)) then drop`{19}(r1 - 1) else (if (r0+`q>`q) then drop`{19}(r1+1) else drop`{19}(r1 - 1)))
         where
           (r1, r0) = Decompose r
-          r1'      = if (r0>0) then take`{4}(r1+1) else take`{4}(r1 - 1)
+          //r1'      = if (r0+`q> `q) then (drop`{19}(r1+1) else drop`{19}(r1 - 1)
 UseHintPoly : poly -> poly -> poly
 UseHintPoly rp hp = [ UseHint (r, h) | r <- rp | h <- hp ]
 
