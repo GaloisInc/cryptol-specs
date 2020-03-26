@@ -556,11 +556,23 @@ Decompose r = if (r' - r0) == (`q - 1) then (0, r0 - 1)
           where r' =  mod_pow (`q, r, 1)
                 r0 = centered_mod r' ALPHA
 
-Decompose' : [qbits] -> ([qbits],[qbits])
-Decompose' r = if (r' - r0) == (`q - 1) then (0, r0 - 1+`q)
-                    else ((r' - r0) / ALPHA, r0+`q)
-          where r' =  mod_pow (`q, r, 1)
-                r0 = centered_mod r' ALPHA
+Decompose' : [qbits] -> ([32],[32])
+Decompose' r = (  af, b0)
+        where t0 = (drop r) && (0x7FFFF)
+              t1 =  t0 + (drop ((r>>19) << 9))
+              t2 = (sext t1:[32]) - ALPHA/2-1
+              t3 = t2 +   (t2 >>$ 31) && ALPHA
+              t4 = t3 - (ALPHA/2)+ 1
+              a0 = (zext r) - (zext t4)
+              u0 = (sext a0:[32]) -1
+              u1 = u0 >>$ 31
+              a1 = (a0 >>$ 19) + 1
+              a2 = a1 - u1 && 1
+              b0 =  t4-(a2>>4) // adds q here in C
+              af =  a2 && (sext 0xf)
+
+
+
 
 DecomposePoly : {m} [m][qbits] -> ([m][qbits], [m][qbits])
 DecomposePoly p = unzip [Decompose x | x <- p]
