@@ -227,17 +227,18 @@ pack_polyeta s = join [ join [elt p i | i <- [0..(n/2)-1]:[_][8] ] | p <- s ]
 type SETABITS = 4
 //unpack_polyeta
 type POLETA_SIZE_PACKED = n*4/8
-unpack_polyeta :  {m} (fin m, m>=1) => [m*POLETA_SIZE_PACKED][8] -> polyVec m
-unpack_polyeta t = [ elt a | a <- (split t):[m][128][8]]
+
+unpack_polyeta :  {m} (fin m, m >= 1) =>[m*POLETA_SIZE_PACKED][8] -> polyVec m
+unpack_polyeta t =  [ elt a | a <- split t:[m][128][8]]
       where
-      elt : [128][8] -> poly
-      elt a = (join (coeffs a))
-      coeffs : [128][8] -> [_][2][23]
-      coeffs a = [ [ `q + eta - sext ( (a@i) && 0x0F )
-                   , `q + eta - sext ( (a@(i+1)) >> 4 )
-                   ]
-                 | i <- [0..(n/2)-1]:[_][16]
-                 ]
+        elt :[128][8] -> poly
+        elt a = join [ [ zext (x && 0x0F), zext (x >> 4)] | x <- a]
+
+unpack_polyeta' :  {m} (fin m, m >= 1) =>[m*POLETA_SIZE_PACKED][8] -> [m][256][32]
+unpack_polyeta' t =  [ elt a | a <- split t:[m][128][8]]
+      where
+        elt :[128][8] -> [256][32]
+        elt a = join [ [ `q+eta- (zext (x && 0x0F)), `q+eta-(zext (x >> 4))] | x <- a]
 
 
 
@@ -301,15 +302,16 @@ pack_t1 pvk = (join [ poly_pack p | p <- pvk])
 polyt1_unpack : [POLT1_SIZE_PACKED][8] -> poly
 polyt1_unpack p = map (\x -> zero#x) (join [unpack8 xs | xs <- (split p): [32][9][_] ])
     where unpack8: [9][8] -> [8][12]
-          unpack8 xs = [ zero#xs@0 || ((zero#xs@1 << 8) && 0x1FF)
-                        , zero#xs@1 >> 1 || ((zero#xs@2 << 7) && 0x1FF)
-                        , zero#xs@2 >> 2 || ((zero#xs@3 << 6) && 0x1FF)
-                        , zero#xs@3 >> 3 || ((zero#xs@4 << 5) && 0x1FF)
-                        , zero#xs@4 >> 4 || ((zero#xs@5 << 4) && 0x1FF)
-                        , zero#xs@5 >> 5 || ((zero#xs@6 << 3) && 0x1FF)
-                        , zero#xs@6 >> 6 || ((zero#xs@7 << 2) && 0x1FF)
-                        , zero#xs@7 >> 7 || ((zero#xs@8 << 1) && 0x1FF)
+          unpack8 xs = [ (zero#xs@0 || (zero#xs@1 << 8)) && 0x1FF
+                        , (zero#xs@1 >> 1 || (zero#xs@2 << 7)) && 0x1FF
+                        , (zero#xs@2 >> 2 || (zero#xs@3 << 6)) && 0x1FF
+                        , (zero#xs@3 >> 3 || (zero#xs@4 << 5)) && 0x1FF
+                        , (zero#xs@4 >> 4 || (zero#xs@5 << 4)) && 0x1FF
+                        , (zero#xs@5 >> 5 || (zero#xs@6 << 3)) && 0x1FF
+                        , (zero#xs@6 >> 6 || (zero#xs@7 << 2)) && 0x1FF
+                        , (zero#xs@7 >> 7 || (zero#xs@8 << 1)) && 0x1FF
                         ]
+
 
 
 unpack_t1 : [k][POLT1_SIZE_PACKED][8] -> polyVec k
@@ -556,20 +558,20 @@ Decompose r = if (r' - r0) == (`q - 1) then (0, r0 - 1)
           where r' =  mod_pow (`q, r, 1)
                 r0 = centered_mod r' ALPHA
 
-Decompose' : [qbits] -> ([32],[32])
-Decompose' r = (  af, b0)
-        where t0 = (drop r) && (0x7FFFF)
-              t1 =  t0 + (drop ((r>>19) << 9))
-              t2 = (sext t1:[32]) - ALPHA/2-1
-              t3 = t2 +   (t2 >>$ 31) && ALPHA
-              t4 = t3 - (ALPHA/2)+ 1
-              a0 = (zext r) - (zext t4)
-              u0 = (sext a0:[32]) -1
+Decompose' : [23] -> ([8],[32])
+Decompose' r = ( zext af,  (`q+(zext b0)))
+        where t0 = drop r :[19]
+              t1 =  (zext t0) +  ((r>>19) << 9)
+              t2 = t1 - ALPHA/2-1
+              t3 = drop t2 +  drop (((sext t2:[32]) >>$31) && ALPHA):[20]
+              t4 =  (zext t3) - (ALPHA/2)+ 1
+              a0 = r - t4
+              u0 = zext (a0 -1):[24]
               u1 = u0 >>$ 31
-              a1 = (a0 >>$ 19) + 1
-              a2 = a1 - u1 && 1
-              b0 =  t4-(a2>>4) // adds q here in C
-              af =  a2 && (sext 0xf)
+              a1 = (a0 >> 19) + 1
+              a2 = (zext a1) - (u1 && 1)
+              b0 = (zext t4)- (a2 >> 4) // adds q here in C
+              af = drop a2 && 0xf
 
 
 
