@@ -3,9 +3,10 @@ module Common::Field where
 import Common::Morphism
 import Common::Set
 
-type Field fv =
+// Field representations
+type FieldRep fv =
   { is_val : Set fv         // carrier set
-  , norm : fv -> fv
+  , normalize : fv -> fv
   , add : (fv,fv) -> fv
   , sub : (fv,fv) -> fv
   , neg : fv -> fv
@@ -20,4 +21,3 @@ type Field fv =
   /* Return true if two field elements are equal. */
   , is_equal : (fv, fv) -> Bit
   }
-
