@@ -36,21 +36,29 @@ mul8 x = mul2(mul4 x)
 type constraint isOdd a = (a / 2) * 2 == a - 1
 
 half : {p} (fin p, p >= 3, isOdd p) => Z p -> Z p
-half x = if isEven (fromZ x) then x/2 else (fromInteger ((fromZ x + `p) / 2))
+half x = fromInteger (if isEven xint then xint/2 else ((xint + `p) / 2))
+  where
+  xint = fromZ x
 
-mp_mod_inv : {a} (fin a, a >= 1) => Z a -> Z a
+half_correct : {p} (fin p, p >= 3, isOdd p) => Z p -> Bit
+property half_correct x = half x + half x == x
+
+mp_mod_inv : {n} (fin n, n >= 1) => Z n -> Z n
 mp_mod_inv c = if c == 0 then error "Zero does not have a multiplicative inverse"
                else fromInteger (if u'' == 1 then x1'' else x2'')
   where
     innercond (a, x) = isEven a
-    innerbody (a, x) = (a / 2, if isEven x then x / 2 else (x + `a) / 2)
+    innerbody (a, x) = (a / 2, if isEven x then x / 2 else (x + `n) / 2)
 
     outtercond (u, v, x1, x2) = (u != 1) /\ (v != 1)
-    outterbody (u, v, x1, x2) = if(u' >= v') then (u' - v', v', x1' - x2' % `a, x2')
-                                             else (u', v' - u', x1', x2' - x1' % `a)
+    outterbody (u, v, x1, x2) = if(u' >= v') then (u' - v', v', x1' - x2' % `n, x2')
+                                             else (u', v' - u', x1', x2' - x1' % `n)
       where
         (u', x1') = while innercond innerbody (u, x1)
         (v', x2') = while innercond innerbody (v, x2)
 
-    (u'', _, x1'', x2'') = while outtercond outterbody (fromZ c, `a, 1, 0)
+    (u'', _, x1'', x2'') = while outtercond outterbody (fromZ c, `n, 1, 0)
 
+// Note, this property will only hold when the modulus is prime
+mp_mod_inv_correct : {a} (fin a, a >=2) => Z a -> Bit
+property mp_mod_inv_correct x = x != 0 ==> x * mp_mod_inv x == 1
