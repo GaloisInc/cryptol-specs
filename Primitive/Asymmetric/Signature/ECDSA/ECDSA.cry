@@ -44,6 +44,16 @@ joint_scalar_multiply_example R S T d e =
 
 mp_mod_sqrt_correct x = (mp_mod_sqrt (x ^^ 2)) ^^ 2 == (x ^^ 2)
 
+// This only holds for proper affine points
+affine_decompress_correct : AffinePoint p -> Bit
+affine_decompress_correct R = ~err /\ R == R'
+  where
+  (R',err) = ec_decompress (ec_compress`{width p+2} R)
+
+// Use the generator G to produce random affine points and test
+// the compression/decompression algorithm
+decompress_correct : Z p -> Bit
+property decompress_correct k = affine_decompress_correct (ec_affinify (ec_mult k G))
 
 parameter
 
@@ -80,14 +90,14 @@ private
     where Sx = ZtoBV S.x : [width p]
           Sy = ZtoBV S.y : [r - width p]
 
-  ec_decompress : {a, b} (fin a, a >= width p + 2, fin b, p >= 1 + b) => [a] -> (AffinePoint p, Bit)
+  ec_decompress : {a} (fin a, a >= width p + 2) => [a] -> (AffinePoint p, Bit)
   ec_decompress S = ({x = Rx, y = Ry}, err)
-    where c = BVtoZ  (take S : [2])
+    where c  = toInteger (take S : [2])
           Rx = BVtoZ (drop S : [a-2])
-          t0 = Rx ^^ 3 - (mul3 Rx) + `b
+          t0 = Rx ^^ 3 - (mul3 Rx) + b
           t1 = mp_mod_sqrt t0
           err = t1 ^^ 2 != t0
-          Ry = if t1 == c%2 then t1 else -t1
+          Ry = if (fromZ t1)%2 == c%2 then t1 else -t1
 
   ec_is_point_affine : AffinePoint p -> Bit
   ec_is_point_affine S = S.y ^^ 2 == t

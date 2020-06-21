@@ -19,6 +19,9 @@ p192_S = {x = BVtoZ 0xd458e7d127ae671b0c330266d246769353a012073e97acf8,
 p192_T = {x = BVtoZ 0xf22c4395213e9ebe67ddecdd87fdbd01be16fb059b9753a4,
           y = BVtoZ 0x264424096af2b3597796db48f8dfb41fa9cecc97691a9c79}
 
+property p192_decompress_S = p192::affine_decompress_correct p192_S
+property p192_decompress_T = p192::affine_decompress_correct p192_T
+
 property p192_full_add_example =
   p192::full_add_example R p192_S p192_T
   where R = {x = BVtoZ 0x48e1e4096b9b8e5ca9d0f1f077b8abf58e843894de4d0290,
