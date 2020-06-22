@@ -48,7 +48,7 @@ mp_mod_sqrt_correct x = (mp_mod_sqrt (x ^^ 2)) ^^ 2 == (x ^^ 2)
 affine_decompress_correct : AffinePoint p -> Bit
 affine_decompress_correct R = ~err /\ R == R'
   where
-  (R',err) = ec_decompress (ec_compress`{width p+2} R)
+    (R',err) = ec_decompress (ec_compress`{width p+2} R)
 
 // Use the generator G to produce random affine points and test
 // the compression/decompression algorithm
