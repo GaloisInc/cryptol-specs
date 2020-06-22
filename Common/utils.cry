@@ -38,7 +38,7 @@ type constraint isOdd a = (a / 2) * 2 == a - 1
 half : {p} (fin p, p >= 3, isOdd p) => Z p -> Z p
 half x = fromInteger (if isEven xint then xint/2 else ((xint + `p) / 2))
   where
-  xint = fromZ x
+    xint = fromZ x
 
 half_correct : {p} (fin p, p >= 3, isOdd p) => Z p -> Bit
 property half_correct x = half x + half x == x
