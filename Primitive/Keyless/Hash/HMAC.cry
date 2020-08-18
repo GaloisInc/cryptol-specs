@@ -1,0 +1,42 @@
+/*
+   Copyright (c) 2020, Galois Inc.
+   www.cryptol.net
+   You can freely use this source code for educational purposes.
+*/
+
+/*
+ * This is a simple implementation of HMAC with SHA-384
+ */
+
+module HMAC where
+
+import SHA512Imp
+
+// Hash `key` and convert the digest to little endian
+hash_key_le : {key_size} (fin key_size) => [key_size][8] -> [48][8]
+hash_key_le key =
+  reverse (split`{48} (join (reverse (split`{each=64} (SHA384Imp key)))))
+
+// Pad or hash `key`, depending on its length, until it is 128 bytes long
+key_init : {key_size} (fin key_size) => [key_size][8] -> [128][8]
+key_init key =
+  take`{128} (if `key_size <= 128
+              then key # (zero : [inf][8])
+              else (hash_key_le key) # (zero : [inf][8]))
+
+type HMACState = { i_ctx  : SHA512State
+                 , o_ctx  : SHA512State
+                 , md_ctx : SHA512State
+                 }
+
+// HMAC-SHA384 init function
+HMACInit : {key_size} (fin key_size) => [key_size][8] -> HMACState
+HMACInit key =
+  { i_ctx  = i_state
+  , o_ctx  = SHA512Update SHA384Init opad
+  , md_ctx = i_state
+  }
+  where key'    = key_init key
+        ipad    = [ k ^ 0x36 | k <- key' ]
+        opad    = [ k ^ 0x5c | k <- key' ]
+        i_state = SHA512Update SHA384Init ipad

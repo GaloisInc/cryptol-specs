@@ -12,7 +12,7 @@
  * http://csrc.nist.gov/groups/ST/toolkit/documents/Examples/SHA512.pdf and
  * http://csrc.nist.gov/groups/ST/toolkit/documents/Examples/SHA384.pdf
  */
-module SHA512 where
+module SHA512Imp where
 
 /*
  * SHA512 Functions : Section 4.1.3
