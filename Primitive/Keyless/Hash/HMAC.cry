@@ -8,7 +8,7 @@
  * This is a simple implementation of HMAC with SHA-384
  */
 
-module hmac where
+module HMAC where
 
 import SHA512Imp
 
@@ -24,14 +24,14 @@ key_init key =
               then key # (zero : [inf][8])
               else (hash_key_le key) # (zero : [inf][8]))
 
-type HmacState = { i_ctx  : SHA512State
+type HMACState = { i_ctx  : SHA512State
                  , o_ctx  : SHA512State
                  , md_ctx : SHA512State
                  }
 
 // HMAC-SHA384 init function
-HmacInit : {key_size} (fin key_size) => [key_size][8] -> HmacState
-HmacInit key =
+HMACInit : {key_size} (fin key_size) => [key_size][8] -> HMACState
+HMACInit key =
   { i_ctx  = i_state
   , o_ctx  = SHA512Update SHA384Init opad
   , md_ctx = i_state
