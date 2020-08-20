@@ -25,13 +25,15 @@ import Primitive::Keyless::Hash::SHA256
 
 //////// Functional version ////////
 
+sha256Wrap msg = sha (join msg)
+
 hmacSHA256 : {pwBytes, msgBytes}
              (fin pwBytes, fin msgBytes
              , 32 >= width msgBytes
              , 64 >= width (8*pwBytes)
              , 64 >= width (8 * (64 + msgBytes))
              ) => [pwBytes][8] -> [msgBytes][8] -> [256]
-hmacSHA256 = hmac `{blockLength=64} SHA256 SHA256 SHA256
+hmacSHA256 = hmac `{blockLength=64} sha256Wrap sha256Wrap sha256Wrap
 
 kinit : { pwBytes, blockLength, digest }
         ( fin pwBytes, fin blockLength, fin digest )
