@@ -40,3 +40,10 @@ HMACInit key =
         ipad    = [ k ^ 0x36 | k <- key' ]
         opad    = [ k ^ 0x5c | k <- key' ]
         i_state = SHA512Update SHA384Init ipad
+
+// HMAC-SHA384 update function
+HMACUpdate : {n} (fin n) => HMACState -> [n][8] -> HMACState
+HMACUpdate state data = { i_ctx = state.i_ctx
+                        , o_ctx = state.o_ctx
+                        , md_ctx = SHA512Update state.md_ctx data
+                        }
