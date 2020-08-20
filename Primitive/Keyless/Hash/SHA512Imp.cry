@@ -213,6 +213,16 @@ SHA512Final s = join (SHA512Block h b')
 SHA384Final : SHA512State -> [384]
 SHA384Final s = join (take`{6} (split`{8} (SHA512Final s)))
 
+// SHA512 final function with little endian output
+SHA512FinalLittleEndian : SHA512State -> [64][8]
+SHA512FinalLittleEndian s =
+  reverse (split`{64} (join (reverse (split`{each=64} (SHA512Final s)))))
+
+// SHA384 final function with little endian output
+SHA384FinalLittleEndian : SHA512State -> [48][8]
+SHA384FinalLittleEndian s =
+  reverse (split`{48} (join (reverse (split`{each=64} (SHA384Final s)))))
+
 // Imperative SHA512 implementation
 SHA512Imp : {n} (fin n) => [n][8] -> [512]
 SHA512Imp msg = SHA512Final (SHA512Update SHA512Init msg)

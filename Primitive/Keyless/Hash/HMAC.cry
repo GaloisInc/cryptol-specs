@@ -46,3 +46,10 @@ HMACUpdate state data = { i_ctx = state.i_ctx
                         , o_ctx = state.o_ctx
                         , md_ctx = SHA512Update state.md_ctx data
                         }
+
+// HMAC-SHA384 final function
+HMACFinal : HMACState -> [48][8]
+HMACFinal state = SHA384FinalLittleEndian o_ctx'
+  where o_ctx' = SHA512Update state.o_ctx buf
+        buf = SHA384FinalLittleEndian state.md_ctx
+
