@@ -231,3 +231,10 @@ SHA512Imp msg = SHA512Final (SHA512Update SHA512Init msg)
 SHA384Imp : {n} (fin n) => [n][8] -> [384]
 SHA384Imp msg = SHA384Final (SHA512Update SHA384Init msg)
 
+// Imperative SHA512 implementation with little endian output
+SHA512ImpLittleEndian : {n} (fin n) => [n][8] -> [64][8]
+SHA512ImpLittleEndian msg = SHA512FinalLittleEndian (SHA512Update SHA512Init msg)
+
+// Imperative SHA384 implementation
+SHA384ImpLittleEndian : {n} (fin n) => [n][8] -> [48][8]
+SHA384ImpLittleEndian msg = SHA384FinalLittleEndian (SHA512Update SHA384Init msg)
