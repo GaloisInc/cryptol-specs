@@ -12,17 +12,12 @@ module HMAC where
 
 import SHA512Imp
 
-// Hash `key` and convert the digest to little endian
-hash_key_le : {key_size} (fin key_size) => [key_size][8] -> [48][8]
-hash_key_le key =
-  reverse (split`{48} (join (reverse (split`{each=64} (SHA384Imp key)))))
-
 // Pad or hash `key`, depending on its length, until it is 128 bytes long
 key_init : {key_size} (fin key_size) => [key_size][8] -> [128][8]
 key_init key =
   take`{128} (if `key_size <= 128
               then key # (zero : [inf][8])
-              else (hash_key_le key) # (zero : [inf][8]))
+              else (SHA384ImpLittleEndian key) # (zero : [inf][8]))
 
 type HMACState = { i_ctx  : SHA512State
                  , o_ctx  : SHA512State
