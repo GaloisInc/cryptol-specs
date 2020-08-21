@@ -48,3 +48,6 @@ HMACFinal state = SHA384FinalLittleEndian o_ctx'
   where o_ctx' = SHA512Update state.o_ctx buf
         buf = SHA384FinalLittleEndian state.md_ctx
 
+// HMAC-SHA384 implementation
+HMAC : {n, m} (fin n, fin m) => [n][8] -> [m][8] -> [48][8]
+HMAC key data = HMACFinal (HMACUpdate (HMACInit key) data)
