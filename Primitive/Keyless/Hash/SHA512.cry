@@ -9,6 +9,7 @@ module Primitive::Keyless::Hash::SHA512 = Primitive::Keyless::Hash::SHA where
 type w = 64
 
 type digest_size = 512
+type digest_bytes = digest_size / 8
 
 type j = 80
 
