@@ -16,7 +16,7 @@ type AES128 = 4
 type AES192 = 6
 type AES256 = 8
 
-type Nk = AES128
+type Nk = AES256
 
 // For Cryptol 2.x | x > 0
 // NkValid: `Nk -> Bit
@@ -243,15 +243,15 @@ testmsgs = [0x6bc1bee22e409f96e93d7e117393172a
 
 // AES128 tests
 
-testkey128 = 0x2b7e151628aed2a6abf7158809cf4f3c
+// testkey128 = 0x2b7e151628aed2a6abf7158809cf4f3c
 
-testct128 = [0x3ad77bb40d7a3660a89ecaf32466ef97
-            ,0xf5d3d58503b9699de785895a96fdbaaf
-            ,0x43b1cd7f598ece23881b00e3ed030688
-            ,0x7b0c785e27e8ad3f8223207104725dd4]
+// testct128 = [0x3ad77bb40d7a3660a89ecaf32466ef97
+//             ,0xf5d3d58503b9699de785895a96fdbaaf
+//             ,0x43b1cd7f598ece23881b00e3ed030688
+//             ,0x7b0c785e27e8ad3f8223207104725dd4]
 
-property testsPass = and [ aesEncrypt (msg, testkey128) == ct
-                         | msg <- testmsgs | ct <- testct128 ]
+// property testsPass = and [ aesEncrypt (msg, testkey128) == ct
+//                          | msg <- testmsgs | ct <- testct128 ]
 
 
 // AES192 tests
