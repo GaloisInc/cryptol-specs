@@ -81,64 +81,64 @@ private
   parse : {m} [m * block_size] -> [m][block_size]
   parse = split
 
-  /**
-  SHA-256 and SHA-512 (and their respective derivatives) use a similar
-  message schedule that can be expressed in the same way relative to their
-  respective sigma functions.
+/**
+SHA-256 and SHA-512 (and their respective derivatives) use a similar
+message schedule that can be expressed in the same way relative to their
+respective sigma functions.
 
-    6.2.2 SHA-256 Hash Computation (w==32, j=64)
-    6.4.2 SHA-512 Hash Computation (w==64, j=80)
-  */
-  messageSchedule_Common : [16][w] -> [j][w]
-  messageSchedule_Common Mi = take W
-    where
-    W : [inf][_]
-    W = Mi # [ w1 + sigma_0 w2 + w3 + sigma_1 w4
-             | w1 <- W
-             | w2 <- drop`{1} W
-             | w3 <- drop`{9} W
-             | w4 <- drop`{14} W
-             ]
-
-
-  /**
-  Amazon S2N's SHA-256 specification includes a compression routine intended
-  to reflect typical implementations.  This same compression routine applies
-  to SHA-512, modulo respective constants, sigma functions,
-  and message schedules.
-  */
-
-  compress_Common : [8][w] -> [j][w] -> [8][w]
-  compress_Common H W =
-    // XXX: This whole definitions looks like it might be simplifiable.
-    [ (as ! 0) + (H @ 0),
-      (bs ! 0) + (H @ 1),
-      (cs ! 0) + (H @ 2),
-      (ds ! 0) + (H @ 3),
-      (es ! 0) + (H @ 4),
-      (fs ! 0) + (H @ 5),
-      (gs ! 0) + (H @ 6),
-      (hs ! 0) + (H @ 7)
-    ]
-    where
-      T1 = [h + SIGMA_1 e + Ch e f g + k_t + w_t
-                | h <- hs | e <- es | f <- fs | g <- gs | k_t <- K | w_t <- W]
-      T2 = [ SIGMA_0 a + Maj a b c | a <- as | b <- bs | c <- cs]
-      hs = take`{j + 1}([H @ 7] # gs)
-      gs = take`{j + 1}([H @ 6] # fs)
-      fs = take`{j + 1}([H @ 5] # es)
-      es = take`{j + 1}([H @ 4] # [d + t1 | d <- ds | t1 <- T1])
-      ds = take`{j + 1}([H @ 3] # cs)
-      cs = take`{j + 1}([H @ 2] # bs)
-      bs = take`{j + 1}([H @ 1] # as)
-      as = take`{j + 1}([H @ 0] # [t1 + t2 | t1 <- T1 | t2 <- T2])
+  6.2.2 SHA-256 Hash Computation (w==32, j=64)
+  6.4.2 SHA-512 Hash Computation (w==64, j=80)
+*/
+messageSchedule_Common : [16][w] -> [j][w]
+messageSchedule_Common Mi = take W
+  where
+  W : [inf][_]
+  W = Mi # [ w1 + sigma_0 w2 + w3 + sigma_1 w4
+           | w1 <- W
+           | w2 <- drop`{1} W
+           | w3 <- drop`{9} W
+           | w4 <- drop`{14} W
+           ]
 
 
-  processBlock_Common : [8][w] -> [16][w] -> [8][w]
-  processBlock_Common H Mi = compress_Common H (messageSchedule_Common Mi)
+/**
+Amazon S2N's SHA-256 specification includes a compression routine intended
+to reflect typical implementations.  This same compression routine applies
+to SHA-512, modulo respective constants, sigma functions,
+and message schedules.
+*/
+
+compress_Common : [8][w] -> [j][w] -> [8][w]
+compress_Common H W =
+  // XXX: This whole definitions looks like it might be simplifiable.
+  [ (as ! 0) + (H @ 0),
+    (bs ! 0) + (H @ 1),
+    (cs ! 0) + (H @ 2),
+    (ds ! 0) + (H @ 3),
+    (es ! 0) + (H @ 4),
+    (fs ! 0) + (H @ 5),
+    (gs ! 0) + (H @ 6),
+    (hs ! 0) + (H @ 7)
+  ]
+  where
+    T1 = [h + SIGMA_1 e + Ch e f g + k_t + w_t
+              | h <- hs | e <- es | f <- fs | g <- gs | k_t <- K | w_t <- W]
+    T2 = [ SIGMA_0 a + Maj a b c | a <- as | b <- bs | c <- cs]
+    hs = take`{j + 1}([H @ 7] # gs)
+    gs = take`{j + 1}([H @ 6] # fs)
+    fs = take`{j + 1}([H @ 5] # es)
+    es = take`{j + 1}([H @ 4] # [d + t1 | d <- ds | t1 <- T1])
+    ds = take`{j + 1}([H @ 3] # cs)
+    cs = take`{j + 1}([H @ 2] # bs)
+    bs = take`{j + 1}([H @ 1] # as)
+    as = take`{j + 1}([H @ 0] # [t1 + t2 | t1 <- T1 | t2 <- T2])
 
 
-  SHA_2_Common' : {L} (fin L) => [L][16][w] -> [8][w]
-  SHA_2_Common' blocks = hash ! 0
-    where
-    hash = [H0] # [ processBlock_Common h b | h <- hash | b <- blocks]
+processBlock_Common : [8][w] -> [16][w] -> [8][w]
+processBlock_Common H Mi = compress_Common H (messageSchedule_Common Mi)
+
+
+SHA_2_Common' : {L} (fin L) => [L][16][w] -> [8][w]
+SHA_2_Common' blocks = hash ! 0
+  where
+  hash = [H0] # [ processBlock_Common h b | h <- hash | b <- blocks]
