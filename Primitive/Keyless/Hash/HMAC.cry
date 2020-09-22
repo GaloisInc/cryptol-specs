@@ -17,7 +17,7 @@ key_init : {key_size} (fin key_size) => [key_size][8] -> [128][8]
 key_init key =
   take`{128} (if `key_size <= 128
               then key # (zero : [inf][8])
-              else (SHAImpLittleEndian key) # (zero : [inf][8]))
+              else (split`{48} (SHAImp key)) # (zero : [inf][8]))
 
 type HMACState = { i_ctx  : SHAState
                  , o_ctx  : SHAState
@@ -45,9 +45,9 @@ HMACUpdate state data = { i_ctx = state.i_ctx
 
 // HMAC-SHA384 final function
 HMACFinal : HMACState -> [48][8]
-HMACFinal state = SHAFinalLittleEndian o_ctx'
+HMACFinal state = split`{48} (SHAFinal o_ctx')
   where o_ctx' = SHAUpdate state.o_ctx buf
-        buf = SHAFinalLittleEndian state.md_ctx
+        buf = split`{48} (SHAFinal state.md_ctx)
 
 // HMAC-SHA384 implementation
 HMAC : {n, m} (fin n, fin m) => [n][8] -> [m][8] -> [48][8]

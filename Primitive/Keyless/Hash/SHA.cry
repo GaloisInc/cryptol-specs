@@ -21,7 +21,7 @@ parameter
   type constraint (fin w, w >= 2, 32 >= width w)
 
   type digest_size : #
-  type constraint (fin digest_size, 8*w >= digest_size, (digest_size % w) % 8 == 0, digest_size % 8 == 0)
+  type constraint (fin digest_size, 8*w >= digest_size)
 
   // `digest_bytes` exists to skirt around a Cryptol bug that causes loss of
   // information in parametrized modules (Cryptol GitHub issue #883).  Using
@@ -207,20 +207,6 @@ SHAFinal s = take (join (processBlock_Common h b'))
 // Imperative SHA implementation
 SHAImp : {n} (fin n) => [n][8] -> [digest_size]
 SHAImp msg = SHAFinal (SHAUpdate SHAInit msg)
-
-// SHA final function with little endian output
-SHAFinalLittleEndian : SHAState -> [digest_bytes][8]
-SHAFinalLittleEndian s = front # back
-  where digest_big_endian = SHAFinal s
-        type front_size = digest_size / w * w
-        front_big_endian = take`{front_size} digest_big_endian
-        back_big_endian = drop`{front_size} digest_big_endian
-        front = reverse (split`{each=8} (join (reverse (split`{each=w} front_big_endian))))
-        back = reverse (split`{(digest_size - front_size)/8} back_big_endian)
-
-// Imperative SHA implementation with little endian output
-SHAImpLittleEndian : {n} (fin n) => [n][8] -> [digest_bytes][8]
-SHAImpLittleEndian msg = SHAFinalLittleEndian (SHAUpdate SHAInit msg)
 
 
 private
