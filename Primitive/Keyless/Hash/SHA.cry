@@ -18,7 +18,7 @@ parameter
   */
 
   type w : #
-  type constraint (fin w, w >= 1)
+  type constraint (fin w, w >= 2, 32 >= width w)
 
   type digest_size : #
   type constraint (fin digest_size, 8*w >= digest_size)
@@ -42,6 +42,27 @@ parameter
   sigma_0 : [w] -> [w]
   sigma_1 : [w] -> [w]
 
+// Export some of the parameters
+SHAH0 = H0
+S0 = SIGMA_0
+S1 = SIGMA_1
+s0 = sigma_0
+s1 = sigma_1
+
+// Export Ch, Maj and the block function to be used in SAW proofs
+/** (4.1) (w==32), (4.2) (w==32), (4.8) (w==64) */
+Ch : [w] -> [w] -> [w] -> [w]
+Ch x y z = (x && y) ^ (~x && z)
+
+
+/** (4.1) (w==32), (4.3) (w==32), (4.9) (w==64) */
+Maj : [w] -> [w] -> [w] -> [w]
+Maj x y z = (x && y) ^ (x && z) ^ (y && z)
+
+processBlock_Common : [8][w] -> [16][w] -> [8][w]
+processBlock_Common H Mi = compress_Common H (messageSchedule_Common Mi)
+
+
 private
 
   /** block size corresponding to word size for all SHA algorithms in
@@ -50,16 +71,6 @@ private
 
   type num_blocks L     = (L+1+2*w) /^ block_size
   type padded_size L    = num_blocks L * block_size
-
-
-  /** (4.1) (w==32), (4.2) (w==32), (4.8) (w==64) */
-  Ch : [w] -> [w] -> [w] -> [w]
-  Ch x y z = (x && y) ^ (~x && z)
-
-
-  /** (4.1) (w==32), (4.3) (w==32), (4.9) (w==64) */
-  Maj : [w] -> [w] -> [w] -> [w]
-  Maj x y z = (x && y) ^ (x && z) ^ (y && z)
 
 
   /**
@@ -93,7 +104,7 @@ private
   messageSchedule_Common Mi = take W
     where
     W : [inf][_]
-    W = Mi # [ w1 + sigma_0 w2 + w3 + sigma_1 w4
+    W = Mi # [ w1 + s0 w2 + w3 + s1 w4
              | w1 <- W
              | w2 <- drop`{1} W
              | w3 <- drop`{9} W
@@ -121,9 +132,9 @@ private
       (hs ! 0) + (H @ 7)
     ]
     where
-      T1 = [h + SIGMA_1 e + Ch e f g + k_t + w_t
+      T1 = [h + S1 e + Ch e f g + k_t + w_t
                 | h <- hs | e <- es | f <- fs | g <- gs | k_t <- K | w_t <- W]
-      T2 = [ SIGMA_0 a + Maj a b c | a <- as | b <- bs | c <- cs]
+      T2 = [ S0 a + Maj a b c | a <- as | b <- bs | c <- cs]
       hs = take`{j + 1}([H @ 7] # gs)
       gs = take`{j + 1}([H @ 6] # fs)
       fs = take`{j + 1}([H @ 5] # es)
@@ -134,11 +145,79 @@ private
       as = take`{j + 1}([H @ 0] # [t1 + t2 | t1 <- T1 | t2 <- T2])
 
 
-  processBlock_Common : [8][w] -> [16][w] -> [8][w]
-  processBlock_Common H Mi = compress_Common H (messageSchedule_Common Mi)
-
-
   SHA_2_Common' : {L} (fin L) => [L][16][w] -> [8][w]
   SHA_2_Common' blocks = hash ! 0
     where
     hash = [H0] # [ processBlock_Common h b | h <- hash | b <- blocks]
+
+
+///////////////////////////////////////////////////////////////////////////////
+// SHA imperative specification
+///////////////////////////////////////////////////////////////////////////////
+
+/*
+ * This section contains an SHA specification that more closely matches the
+ * BoringSSL C implementation to simplify SAW correctness proofs of the
+ * implementation.
+ */
+
+//////// Imperative top level ////////
+
+type SHAState = { h : [8][w]
+                , block : [w * 2][8]
+                , n : [32]
+                , sz : [w * 2]
+                }
+
+// Initial state for SHA
+SHAInit : SHAState
+SHAInit = { h = H0
+          , block = zero
+          , n = 0
+          , sz = 0
+          }
+
+// Process message being hashed, iteratively updating the SHA state with the
+// input message.
+SHAUpdate : {n} (fin n) => SHAState -> [n][8] -> SHAState
+SHAUpdate sinit bs = ss!0
+  where ss = [sinit] # [ SHAUpdate1 s b | s <- ss | b <- bs ]
+
+// Add padding and size and process the final block.
+SHAFinal : SHAState -> [digest_size]
+SHAFinal s = take (join (processBlock_Common h b'))
+  // Because the message is always made up of bytes, and the size is a
+  // fixed number of bytes, the 1 pad will always be at least a byte.
+  where s' = SHAUpdate1 s 0x80
+        // Don't need to add zeros. They're already there. Just update
+        // the count of bytes in this block. After adding the 1 pad, there
+        // are two possible cases: the size will fit in the current block,
+        // or it won't.
+        (h, b) = if s'.n <= (`w*2 - (`w/4)) then (s'.h, s'.block)
+                 else (processBlock_Common s'.h (split (join s'.block)), zero)
+        b' = split (join b || (zero # s.sz))
+
+// Imperative SHA implementation
+SHAImp : {n} (fin n) => [n][8] -> [digest_size]
+SHAImp msg = SHAFinal (SHAUpdate SHAInit msg)
+
+
+private
+
+  // SHAUpdate1 updates a single byte at position s.n in s.block and return a
+  // new state to pass to subsequent updates.  If s.n is 128, updates position 0
+  // to b and zeros the remainder of the block, setting s.n to 1 for the next
+  // update.
+  SHAUpdate1 : SHAState -> [8] -> SHAState
+  SHAUpdate1 s b =
+    if s.n == (2 * `w - 1)
+      then { h = processBlock_Common s.h (split (join (update s.block s.n b)))
+           , block = zero
+           , n = 0
+           , sz = s.sz + 8
+           }
+      else { h = s.h
+           , block = update s.block s.n b
+           , n = s.n + 1
+           , sz = s.sz + 8
+           }
