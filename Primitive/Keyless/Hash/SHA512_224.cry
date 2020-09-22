@@ -4,23 +4,11 @@
    You can freely use this source code for educational purposes.
 */
 
-// TODO: This one is broken because the digest size is not a multiple of w.
-// That is a requirement I put in because it's needed for the endianness
-// reversal code.  One way to fix this is to have the little endian functions
-// pad with zeros before reversing, and change their signature to return
-// something of digest_size + (digest_size % w) bits.  Is that the best
-// solution here?  Should it zero pad before or after reversing?
-
-// Do endianness reversal as 64 bit for all but the last one, and do a 32 bit
-// endinness reversal for the 32 bit final value.  Make this change as a
-// separate commit so it can be reverted.
-
 module Primitive::Keyless::Hash::SHA512_224 = Primitive::Keyless::Hash::SHA where
 
 type w = 64
 
 type digest_size = 224
-type digest_bytes = digest_size / 8
 
 type j = 80
 

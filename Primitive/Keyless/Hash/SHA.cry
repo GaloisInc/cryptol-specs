@@ -23,14 +23,6 @@ parameter
   type digest_size : #
   type constraint (fin digest_size, 8*w >= digest_size)
 
-  // `digest_bytes` exists to skirt around a Cryptol bug that causes loss of
-  // information in parametrized modules (Cryptol GitHub issue #883).  Using
-  // `digest_size/8` in place of `digest_bytes` or defining
-  // `type digest_bytes = digest_size/8` will trigger the bug and cause an
-  // unsolved constraint error in `HMAC.cry`.
-  type digest_bytes : #
-  type constraint (digest_bytes == digest_size / 8)
-
   /** The number of iterations in the hash computation
   (i.e. the number of words in K) */
 
@@ -157,6 +149,7 @@ private
   SHA_2_Common' blocks = hash ! 0
     where
     hash = [H0] # [ processBlock_Common h b | h <- hash | b <- blocks]
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // SHA imperative specification

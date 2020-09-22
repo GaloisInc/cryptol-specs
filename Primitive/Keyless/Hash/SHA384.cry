@@ -9,7 +9,6 @@ module Primitive::Keyless::Hash::SHA384 = Primitive::Keyless::Hash::SHA where
 type w = 64
 
 type digest_size = 384
-type digest_bytes = digest_size / 8
 
 type j = 80
 
