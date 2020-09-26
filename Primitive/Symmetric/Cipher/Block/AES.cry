@@ -181,12 +181,13 @@ stateToMsg st = join (join (transpose st))
 
 // AES Encryption
 aesEncrypt : ([128], [AESKeySize]) -> [128]
-aesEncrypt (pt, key) = stateToMsg (AESFinalRound (kFinal, rounds ! 0))
-  where   (kInit, ks, kFinal) = ExpandKey key
-          state0 = AddRoundKey(kInit, msgToState pt)
-          rounds = [state0] # [ AESRound (rk, s) | rk <- ks
-                                                 | s <- rounds
-                              ]
+aesEncrypt (pt, key) = aesEncryptWithKeySchedule pt (ExpandKey key)
+
+aesEncryptWithKeySchedule : [128] -> KeySchedule -> [128]
+aesEncryptWithKeySchedule pt (kInit, ks, kFinal) = stateToMsg (AESFinalRound (kFinal, rounds ! 0))
+  where
+    state0 = AddRoundKey(kInit, msgToState pt)
+    rounds = [state0] # [ AESRound (rk, s) | rk <- ks | s <- rounds ]
 
 // AES Decryption
 aesDecrypt : ([128], [AESKeySize]) -> [128]
