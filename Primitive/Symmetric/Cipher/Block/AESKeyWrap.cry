@@ -37,11 +37,23 @@ aesWrapKey key iv plaintext = split (join C)
 // Unwrap `ciphertext` using `key` as the key encryption key.  `iv` is the
 // expected initial value.  This function implements the algorithm from Section
 // 2.2.2 using the index-based definition.  It also checks the key data
-// integrity using `iv` (Section 2.2.3) and raises an error if the integrity
-// check fails.
+// integrity using `iv` (Section 2.2.3).  This function returns a tuple where
+// the first element indicates  whether or not the integrity check failed
+// (`True` indicates a failure), and the second element is the decrypted plain
+// text.  If the integrity check fails, the second element will be all zeros.
 aesUnwrapKey : {n} (fin n, n >= 24, n % 8 == 0, width (n / 8) <= 64) =>
                [AESKeySize] -> [8][8] -> [n][8] -> (Bit, [n-8][8])
-aesUnwrapKey key iv ciphertext = (~((join iv) == A'), split (join R'))
+aesUnwrapKey key iv ciphertext = if (join iv) == A'
+                                 then (False, split (join R'))
+                                 else (True, zero)
+  where
+    (A', R') = aesUnwrapKeyUnchecked key ciphertext
+
+// This function performs steps 1 and 2 of the unwrap key algorithm from
+// Section 2.2.2 using the index-based definition.
+aesUnwrapKeyUnchecked : {n} (fin n, n >= 24, n % 8 == 0, width (n / 8) <= 64) =>
+                        [AESKeySize] -> [n][8] -> ([64], [n/8 - 1][64])
+aesUnwrapKeyUnchecked key ciphertext = intermediates ! 0
   where
     // Step 1: Initialize variables
     A = join (take`{8} ciphertext)
@@ -49,8 +61,6 @@ aesUnwrapKey key iv ciphertext = (~((join iv) == A'), split (join R'))
     // Step 2: Compute intermediate values
     intermediates = [(A, R)] # [unwrapRound key s j | s <- intermediates
                                                     | j <- [5, 4 .. 0]]
-    // Step 3: Prepare outputs
-    (A', R') = intermediates ! 0
 
 private
   /////////////////////////////////////////////////////////////////////////////
@@ -176,4 +186,4 @@ private
   //COUNT = 4 (validation failure)
   KCount4 = 0x08c936b25b567a0aa679c29f201bf8b190327df0c2563e39cee061f149f4d91b
   CCount4 = split`{each=8} 0xe227eb8ae9d239ccd8928adec39c28810ca9b3dc1f366444
-  property Count4Unwrap = (aesUnwrapKey KCount4 DefaultIV CCount4).0
+  property Count4Unwrap = (aesUnwrapKey KCount4 DefaultIV CCount4) == (True, zero)
