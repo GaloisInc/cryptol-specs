@@ -10,7 +10,7 @@ testUnwrap : {a, b} ( fin a
                     , a >= 16
                     , a % 8 == 0) =>
              [AESKeySize] -> [a][8] -> [b][8] -> Bit
-testUnwrap key ct pt = (invalid, join size, take`{b} pt') == (False, `b, pt)
+testUnwrap key ct pt = (invalid, join size, take`{b} pt') == (True, `b, pt)
   where (invalid, size, pt') = aesUnwrapKeyPadded key AlternativeIV ct
 
 /*
@@ -63,7 +63,7 @@ property TV_INV_00KUnwrap = testUnwrap TV_INV_00K TV_INV_00C TV_INV_00P
 
 TV_INV_00K' = 0x20e4ff6a88ffa9a2818b81702793d8a016722c2fa1ff445f24b9db293cb12069
 TV_INV_00C' = split`{each=8} 0xdeadbeef27b167f411b0b8e21b11d819
-property TV_INV_00KUnwrap' = (aesUnwrapKeyPadded TV_INV_00K' AlternativeIV TV_INV_00C') == (True, zero, zero)
+property TV_INV_00KUnwrap' = (aesUnwrapKeyPadded TV_INV_00K' AlternativeIV TV_INV_00C') == (False, zero, zero)
 
 TV_INV_01K = 0x96503e950d01ee1664de77ef6c0108aea2cffcffd0cf282e58a3fb982914ff9c
 TV_INV_01C = split`{each=8} 0xe5fa8bf0919d5a7163f2af43b3b549b8
@@ -73,7 +73,7 @@ property TV_INV_01KUnwrap = testUnwrap TV_INV_01K TV_INV_01C TV_INV_01P
 
 TV_INV_01K' = 0x96503e950d01ee1664de77ef6c0108aea2cffcffd0cf282e58a3fb982914ff9c
 TV_INV_01C' = split`{each=8} 0xdeadbeef919d5a7163f2af43b3b549b8
-property TV_INV_01KUnwrap' = (aesUnwrapKeyPadded TV_INV_01K' AlternativeIV TV_INV_01C') == (True, zero, zero)
+property TV_INV_01KUnwrap' = (aesUnwrapKeyPadded TV_INV_01K' AlternativeIV TV_INV_01C') == (False, zero, zero)
 
 TV_INV_02K = 0x0e6d542f960c7e61ca190d7fd719fda157030a0a013164613a8c522b52ae685d
 TV_INV_02C = split`{each=8} 0xb5cae8a82095abb3478ab167dbc0201d2f4dfc5f81bbe44e
@@ -83,7 +83,7 @@ property TV_INV_02KUnwrap = testUnwrap TV_INV_02K TV_INV_02C TV_INV_02P
 
 TV_INV_02K' = 0x0e6d542f960c7e61ca190d7fd719fda157030a0a013164613a8c522b52ae685d
 TV_INV_02C' = split`{each=8} 0xdeadbeef2095abb3478ab167dbc0201d2f4dfc5f81bbe44e
-property TV_INV_02KUnwrap' = (aesUnwrapKeyPadded TV_INV_02K' AlternativeIV TV_INV_02C') == (True, zero, zero)
+property TV_INV_02KUnwrap' = (aesUnwrapKeyPadded TV_INV_02K' AlternativeIV TV_INV_02C') == (False, zero, zero)
 
 TV_INV_03K = 0x09ab4286a845c18bb481da91c39a58fd52ed78d54973fc41f25163a0c33f4727
 TV_INV_03C = split`{each=8} 0x0a180a84b01fc1e44b9f9301cc89af95de758219015abc86c3e48e764e7379246ae7209aaa4f889d
@@ -93,7 +93,7 @@ property TV_INV_03KUnwrap = testUnwrap TV_INV_03K TV_INV_03C TV_INV_03P
 
 TV_INV_03K' = 0x09ab4286a845c18bb481da91c39a58fd52ed78d54973fc41f25163a0c33f4727
 TV_INV_03C' = split`{each=8} 0xdeadbeefb01fc1e44b9f9301cc89af95de758219015abc86c3e48e764e7379246ae7209aaa4f889d
-property TV_INV_03KUnwrap' = (aesUnwrapKeyPadded TV_INV_03K' AlternativeIV TV_INV_03C') == (True, zero, zero)
+property TV_INV_03KUnwrap' = (aesUnwrapKeyPadded TV_INV_03K' AlternativeIV TV_INV_03C') == (False, zero, zero)
 
 TV_INV_04K = 0x08f5c088acec18e6cf1f03a8f85d772e327e7fb07f8c2939eb554e84c42ab93d
 TV_INV_04C = split`{each=8} 0xdff30fd43647d4be54cf2dfd6187e2ddffb55267313f980fb09c833a9c2bfa558a95861711f0acb2a5c7e731ba22f24a9c4dfdd9e9b0216e9088f817a175b9835b0e17615687a20f68c067205626494cd04fbabc0b3eea7c0a4cd6236bc8b3e52e721dfc357fb8a3722bfcc4c690d8f63dbb864bb6e3a15805aea7270f8eb748deebaa2d066fcda11c2e67221f9a91d2c29a6c79ffae76aa80a2590b4f9e35f623fbf2f8ceb2a205493077556a186e25e5bd52dcff7bcc6909b37a66c1d1431be1b363bb40da25386eaaf5fcabc7be6422a04434a21d1d3105328e7c56770b9f59b03395e4138f5f06fc7e6b80dab87b08caa7bfffc45a095c15263efd3f06c651ded6f58074efc20620d704997fc84721a0a8e9e5b9f5cd330bbb156b31d9d1b1c260e4a24535f30404dc5b2dd6b35d916a1391b25a7d8790be09d85483ed1522074a2785812005bda10dd55acb245b3bd3d9bb777dd23f9b02538ba1a114ba53386d7ca4d9524b2f8a18e0ffb21580b560540bb2146f08f04974b90eb324547d56222df95f44bc6e5f183bef283e4816fb1b2933f9c7c6726a245a495e304d8318d0008c51b0be8090f8f668fbc3f31e073be4b9e97468f4dd8c798e9d682868df493db8a85738b58cfd005190f365849072577772672c6f82555c65046eb34e86fe61103327a063bacbbe33cea7eaa3d1de45471b7269e1b6b38608626e323447a3d5fe0599a6
@@ -103,4 +103,4 @@ property TV_INV_04KUnwrap = testUnwrap TV_INV_04K TV_INV_04C TV_INV_04P
 
 TV_INV_04K' = 0x08f5c088acec18e6cf1f03a8f85d772e327e7fb07f8c2939eb554e84c42ab93d
 TV_INV_04C' = split`{each=8} 0xdeadbeef3647d4be54cf2dfd6187e2ddffb55267313f980fb09c833a9c2bfa558a95861711f0acb2a5c7e731ba22f24a9c4dfdd9e9b0216e9088f817a175b9835b0e17615687a20f68c067205626494cd04fbabc0b3eea7c0a4cd6236bc8b3e52e721dfc357fb8a3722bfcc4c690d8f63dbb864bb6e3a15805aea7270f8eb748deebaa2d066fcda11c2e67221f9a91d2c29a6c79ffae76aa80a2590b4f9e35f623fbf2f8ceb2a205493077556a186e25e5bd52dcff7bcc6909b37a66c1d1431be1b363bb40da25386eaaf5fcabc7be6422a04434a21d1d3105328e7c56770b9f59b03395e4138f5f06fc7e6b80dab87b08caa7bfffc45a095c15263efd3f06c651ded6f58074efc20620d704997fc84721a0a8e9e5b9f5cd330bbb156b31d9d1b1c260e4a24535f30404dc5b2dd6b35d916a1391b25a7d8790be09d85483ed1522074a2785812005bda10dd55acb245b3bd3d9bb777dd23f9b02538ba1a114ba53386d7ca4d9524b2f8a18e0ffb21580b560540bb2146f08f04974b90eb324547d56222df95f44bc6e5f183bef283e4816fb1b2933f9c7c6726a245a495e304d8318d0008c51b0be8090f8f668fbc3f31e073be4b9e97468f4dd8c798e9d682868df493db8a85738b58cfd005190f365849072577772672c6f82555c65046eb34e86fe61103327a063bacbbe33cea7eaa3d1de45471b7269e1b6b38608626e323447a3d5fe0599a6
-property TV_INV_04KUnwrap' = (aesUnwrapKeyPadded TV_INV_04K' AlternativeIV TV_INV_04C') == (True, zero, zero)
+property TV_INV_04KUnwrap' = (aesUnwrapKeyPadded TV_INV_04K' AlternativeIV TV_INV_04C') == (False, zero, zero)

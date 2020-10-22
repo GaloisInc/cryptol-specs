@@ -44,16 +44,16 @@ aesWrapKeyPadded key iv plaintext =
 // significant 4 bytes of the expected initial value.  This function implements
 // the algorithm from Section 4.2.  It also performs the integrity check from
 // Section 3.  This function returns a tuple where the first element indicates
-// whether or not the integrity check failed (`True` indicates a failure), the
-// second element is the size of the plaintext, and the final element is the
-// decrypted plaintext with the added padding.  The caller of the function
-// must remove this padding themselves.  If the integrity check fails, the
-// second and third elements will be zeros.
+// whether or not the integrity check passed (`True` indicates the check
+// passed), the second element is the size of the plaintext, and the final
+// element is the decrypted plaintext with the added padding.  The caller of
+// the function must remove this padding themselves.  If the integrity check
+// fails, the second and third elements will be zeros.
 aesUnwrapKeyPadded : {n} (fin n, n >= 16, n % 8 == 0, width n <= 32) =>
                      [AESKeySize] -> [4][8] -> [n][8] -> (Bit, [4][8], [n-8][8])
 aesUnwrapKeyPadded key iv ciphertext = if valid
-                                       then (False, size, P)
-                                       else (True, zero, zero)
+                                       then (True, size, P)
+                                       else (False, zero, zero)
   where
     S : [n][8]
     S = if `n == 16
