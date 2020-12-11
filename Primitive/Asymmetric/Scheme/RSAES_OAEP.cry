@@ -24,10 +24,6 @@ parameter
 
   hash : {a} (2 * hLen >= width (8 * a) ) => [a][8] -> [8 * hLen]
 
-  n : [KeySize]
-  e : [KeySize]
-  d : [KeySize]
-
 type KeySize = k * 8
 
 
@@ -42,8 +38,10 @@ RSAES_OAEP_ENCRYPT : {l,mLen}
                    => [256] // Seed for random number
                    -> [mLen][8]
                    -> [l][8]
+                   -> [KeySize]
+                   -> [KeySize]
                    -> [k][8]
-RSAES_OAEP_ENCRYPT rand M L = I2OSP`{k} c // Return k-octet cipher text
+RSAES_OAEP_ENCRYPT rand M L n e = I2OSP`{k} c // Return k-octet cipher text
                    where
                     EM = EME_OAEP_encode rand (M, L)   // Pad message M with optional label L to k octets
                     m  = (zero # OS2IP EM) : [KeySize]  // Take k-octet padded message EM to int of width KeySize
@@ -59,9 +57,14 @@ RSAES_OAEP_DECRYPT : {l}
                    , 2 * hLen >= width (8 * (k - hLen + 3)) // Required for use of hash in MGF
                    , k >= 2 * hLen + 2
                    , 2^^32*hLen >= k - hLen - 1 // Required for use of MGF1
-                   ) => [k][8] -> [l][8] -> ([k - hLen - 1][8], [width (k - hLen - 1)])
-RSAES_OAEP_DECRYPT C L = if c < 0 \/ c >= n then error "decryption error"
-                         else M
+                   )
+                   => [k][8]
+                   -> [l][8]
+                   -> [KeySize]
+                   -> [KeySize]
+                   -> ([k - hLen - 1][8], [width (k - hLen - 1)])
+RSAES_OAEP_DECRYPT C L n d = if c < 0 \/ c >= n then error "decryption error"
+                             else M
                    where
                     c  = OS2IP C
                     m  = RSADP ((n,d),c)
@@ -79,8 +82,11 @@ RSAES_OAEP_Correct : {l,mLen}
                    => [256] // Seed for random number
                    -> [l][8]
                    -> [mLen][8]
+                   -> [KeySize]
+                   -> [KeySize]
+                   -> [KeySize]
                    -> Bit
-property RSAES_OAEP_Correct r l m = (RSAES_OAEP_DECRYPT (RSAES_OAEP_ENCRYPT r m l) l).0 == m#(zero:[_][8])
+property RSAES_OAEP_Correct r l m n e d = (RSAES_OAEP_DECRYPT (RSAES_OAEP_ENCRYPT r m l n e) l n d).0 == m#(zero:[_][8])
 
 
 
