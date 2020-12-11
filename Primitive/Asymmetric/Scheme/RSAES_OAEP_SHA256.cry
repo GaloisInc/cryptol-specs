@@ -1,0 +1,10 @@
+module Primitive::Asymmetric::Scheme::RSAES_OAEP_SHA256 = Primitive::Asymmetric::Scheme::RSAES_OAEP where
+
+import Primitive::Keyless::Hash::SHA256
+
+type k = 9
+type hLen = 32
+
+// FIXME: SHAImp isn't in scope here.  Maybe it needs to be qualified?  Then
+// try :check-ing RSAES_OAEP_Correct again
+hash = SHAImp
