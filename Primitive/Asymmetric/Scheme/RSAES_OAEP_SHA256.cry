@@ -2,7 +2,7 @@ module Primitive::Asymmetric::Scheme::RSAES_OAEP_SHA256 = Primitive::Asymmetric:
 
 import Primitive::Keyless::Hash::SHA256
 
-type k = 9
+type k = 72
 type hLen = 32
 
 hash = SHAImp

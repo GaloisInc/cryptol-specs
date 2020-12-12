@@ -48,6 +48,43 @@ RSAES_OAEP_ENCRYPT rand M L n e = I2OSP`{k} c // Return k-octet cipher text
                     c  = RSAEP ((n, e), m)   // Encrypt integer m
 
 
+RSAES_OAEP_ENCRYPT_INTEGER : {l,mLen}
+                           (fin l, fin mLen
+                           , l>=0
+                           , 2 * hLen >= width (8 * l) // Required for use of hash
+                           , 2 * hLen >= width (8 * ( k - hLen + 3)) // Required for use of hash in MGF
+                           , k >= mLen+2*hLen+2
+                           , 2^^32*hLen >= k - hLen - 1 // Required for MGF1
+                           )
+                           => [256] // Seed for random number
+                           -> [mLen][8]
+                           -> [l][8]
+                           -> Integer
+                           -> Integer
+                           -> Integer
+RSAES_OAEP_ENCRYPT_INTEGER rand M L n e = c // Return Integer cipher text
+                           where
+                            EM = EME_OAEP_encode rand (M, L)   // Pad message M with optional label L to k octets
+                            m  = toInteger (OS2IP EM) // Take k-octet padded message EM to Integer
+                            c  = rsaEncrypt (m, e, n)   // Encrypt integer m
+
+encrypt_eq : {l,mLen}
+           (fin l, fin mLen
+           , l>=0
+           , 2 * hLen >= width (8 * l) // Required for use of hash
+           , 2 * hLen >= width (8 * ( k - hLen + 3)) // Required for use of hash in MGF
+           , k >= mLen+2*hLen+2
+           , 2^^32*hLen >= k - hLen - 1 // Required for MGF1
+           )
+           => [256] // Seed for random number
+           -> [mLen][8]
+           -> [l][8]
+           -> [KeySize]
+           -> [KeySize]
+           -> Bit
+property encrypt_eq rand M L n e =
+  (toInteger (join (RSAES_OAEP_ENCRYPT rand M L n e))) ==
+  (RSAES_OAEP_ENCRYPT_INTEGER rand M L (toInteger n) (toInteger e))
 
 
 RSAES_OAEP_DECRYPT : {l}
