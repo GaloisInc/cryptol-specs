@@ -56,16 +56,15 @@ RSAES_OAEP_ENCRYPT_INTEGER : {l,mLen}
                            , k >= mLen+2*hLen+2
                            , 2^^32*hLen >= k - hLen - 1 // Required for MGF1
                            )
-                           => [256] // Seed for random number
-                           -> [mLen][8]
-                           -> [l][8]
+                           => Integer // Seed for random number
+                           -> Integer
+                           -> Integer
                            -> Integer
                            -> Integer
                            -> Integer
 RSAES_OAEP_ENCRYPT_INTEGER rand M L n e = c // Return Integer cipher text
                            where
-                            EM = EME_OAEP_encode rand (M, L)   // Pad message M with optional label L to k octets
-                            m  = toInteger (OS2IP EM) // Take k-octet padded message EM to Integer
+                            m = EME_OAEP_encode_integer`{l, mLen} rand (M, L)  // Pad and convert to Integer
                             c  = rsaEncrypt (m, e, n)   // Encrypt integer m
 
 encrypt_eq : {l,mLen}
@@ -84,7 +83,11 @@ encrypt_eq : {l,mLen}
            -> Bit
 property encrypt_eq rand M L n e =
   (toInteger (join (RSAES_OAEP_ENCRYPT rand M L n e))) ==
-  (RSAES_OAEP_ENCRYPT_INTEGER rand M L (toInteger n) (toInteger e))
+  (RSAES_OAEP_ENCRYPT_INTEGER`{l, mLen} (toInteger rand)
+                                        (toInteger (join M))
+                                        (toInteger (join L))
+                                        (toInteger n)
+                                        (toInteger e))
 
 
 RSAES_OAEP_DECRYPT : {l}
@@ -149,7 +152,24 @@ EME_OAEP_encode rseed (M,L) = (zero : [1][8]) # maskedSeed # maskedDB // value o
           seedMask   = MGF1`{maskLen=hLen} maskedDB
           maskedSeed = seed ^ seedMask
 
-
+EME_OAEP_encode_integer : {l, mLen}
+         (fin l,fin mLen
+         , l >= 0
+         , 2 * hLen >= width (8 * l) // Required for using hash
+         , 2 * hLen >= width (8 * ( k - hLen + 3)) // Required for using hash in MGF
+         , k >= mLen + 2 * hLen + 2
+         , 2^^32*hLen >= k - hLen - 1 // Required use of MGF1
+         )
+         => Integer // Seed for random number
+         -> (Integer, Integer) // TODO: Can I get these params to be Integers?  I would need to cast them to [mLen][8] somehow in the body of the function.  There are two problems: 1) How do I go from Integer to Integral? (might be able to just do (Integer val : [integral type])).  2) How do I properly constrain the input to satisfy the encode requirements (probably a runtime check)
+         -> Integer
+EME_OAEP_encode_integer rseed (M, L) = toInteger (OS2IP EM)
+                        where
+                          // TODO: Checks that these fit?  Either in constraints
+                          // or at runtime?
+                          M_bv = (fromInteger M) : [mLen][8]
+                          L_bv = (fromInteger L) : [l][8]
+                          EM = EME_OAEP_encode`{l, mLen} (fromInteger rseed) (M_bv, L_bv)
 
 
 EME_OAEP_decode : {l}
