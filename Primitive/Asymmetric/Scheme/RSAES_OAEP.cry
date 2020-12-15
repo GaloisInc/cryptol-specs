@@ -207,8 +207,8 @@ EME_OAEP_encode_integer rseed (M, L) = toInteger (OS2IP EM)
                         where
                           // TODO: Checks that these fit?  Either in constraints
                           // or at runtime?
-                          M_bv = (fromInteger M) : [mLen][8]
-                          L_bv = (fromInteger L) : [l][8]
+                          M_bv = split`{mLen} ((fromInteger M) : [mLen * 8])
+                          L_bv = split`{l} ((fromInteger L) : [l * 8])
                           EM = EME_OAEP_encode`{l, mLen} (fromInteger rseed) (M_bv, L_bv)
 
 
@@ -248,8 +248,8 @@ EME_OAEP_decode_integer : {l}
 EME_OAEP_decode_integer (EM,L) = (toInteger (join Mpadded_bv),
                                   toInteger mLen_bv)
                 where
-                  EM_bv = (fromInteger EM) : [k][8]
-                  L_bv = (fromInteger L) : [l][8]
+                  EM_bv = split`{k} ((fromInteger EM) : [k * 8])
+                  L_bv = split`{l} ((fromInteger L) : [l * 8])
                   (Mpadded_bv, mLen_bv) = EME_OAEP_decode (EM_bv, L_bv)
 
 private
