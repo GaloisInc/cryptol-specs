@@ -1,0 +1,120 @@
+/*
+   Copyright (c) 2020, Galois Inc.
+   www.cryptol.net
+   You can freely use this source code for educational purposes.
+*/
+
+module Common::EC::EC_P384 where
+
+import Common::ModDivZ
+
+
+type w = 384
+
+// Prime modulus
+type p = 39402006196394479212279040100143613805079739270465446667948293404245721771496870329047266088258938001861606973112319
+
+type FieldElement = Integer
+
+// Curve coefficients
+a : FieldElement
+a = -3
+b : FieldElement
+b = `0xb3312fa7e23ee7e4988e056be3f82d19181d9c6efe8141120314088f5013875ac656398d8a2ed19d2a85c8edd3ec2aef
+
+// Curve generator point
+G : AffinePoint
+G =
+  { x = `0xaa87ca22be8b05378eb1c71ef320ad746e1d3b628ba79b9859f741e082542a385502f25dbf55296c3a545e3872760ab7
+  , y = `0x3617de4a96262c6f5d9e98bf9292dc29f8f41dbd289a147ce9da3113b5f0b8c00a60b1ce1d7e819d7a431d7c90ea0e5f
+  }
+
+// Prime order of generator G
+type n = 39402006196394479212279040100143613805079739270465446667946905279627659399113263569398956308152294913554433653942643
+
+type Scalar = Integer
+
+
+R_p : FieldElement
+R_p = 340282367000166625977638945021017194497
+R_p_inv : FieldElement
+R_p_inv = 183479889321925461653251752109332205360611897149516305954304919627392402791260477631193651879713439593005062
+
+R_n : Scalar
+R_n = 1388124618062372383947042015309946732620727252194336364173
+R_n_inv : Scalar
+R_n_inv = 8213155180316830564023772752902517460134849974600554980379995049303147060140144611822562736815346652390458105321745
+
+
+fieldElementToBV : FieldElement -> [w]
+fieldElementToBV x = fromInteger x
+
+fieldElementFromBV : [w] -> FieldElement
+fieldElementFromBV x = toInteger x
+
+scalarToBV : Scalar -> [w]
+scalarToBV x = fromInteger x
+
+scalarFromBV : [w] -> Scalar
+scalarFromBV x = toInteger x
+
+inv0 : Scalar -> Scalar
+inv0 = undefined
+
+type AffinePoint = { x : FieldElement, y : FieldElement }
+
+ec_point_affine_add : AffinePoint -> AffinePoint -> AffinePoint
+ec_point_affine_add = undefined
+
+ec_point_affine_scalar_mul : Scalar -> AffinePoint -> AffinePoint
+ec_point_affine_scalar_mul = undefined
+
+
+type ECDSA_Signature = { r : Scalar, s : Scalar }
+
+ECDSA_sign : Scalar -> Integer -> Scalar -> ECDSA_Signature
+ECDSA_sign d z k = { r = r, s = s }
+  where
+    { x = x1, y = _ } = ec_point_affine_scalar_mul k G
+    r =  x1 % `n
+    s = ((inv0 k) * (z + r * d)) % `n
+
+ECDSA_verify : AffinePoint -> Integer -> ECDSA_Signature -> Bit
+ECDSA_verify Q z { r = r, s = s } = r != 0 /\ r < `n /\ s != 0 /\ s < `n /\ r == x1 % `n
+  where
+    u1 = z * (inv0 s) % `n
+    u2 = r * (inv0 s) % `n
+    { x = x1, y = _ } = ec_point_affine_add (ec_point_affine_scalar_mul u1 G) (ec_point_affine_scalar_mul u2 Q)
+
+ECDSA_keyPrivateToPublic : Integer -> AffinePoint
+ECDSA_keyPrivateToPublic d = ec_point_affine_scalar_mul (d % `n) G
+
+
+type JacobianPoint = { x : FieldElement, y : FieldElement, z : FieldElement }
+
+toJacobian : AffinePoint -> JacobianPoint
+toJacobian p = { x = p.x, y = p.y, z = 1 }
+fromJacobian : JacobianPoint -> AffinePoint
+fromJacobian p = undefined
+
+
+ec_point_jacobian_add : JacobianPoint -> JacobianPoint -> JacobianPoint
+ec_point_jacobian_add = undefined
+
+ec_point_jacobian_scalar_mul : Scalar -> JacobianPoint -> JacobianPoint
+ec_point_jacobian_scalar_mul = undefined
+
+
+type P384_w = w
+type P384_p = p
+P384_a = a
+P384_b = b
+P384_G = G
+P384_G_Jacobian = toJacobian G
+type P384_n = n
+
+P384_R_p = R_p
+P384_R_p_inv = R_p_inv
+P384_R_n = R_n
+P384_R_n_inv = R_n_inv
+
