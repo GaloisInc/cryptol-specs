@@ -111,6 +111,46 @@ RSAES_OAEP_DECRYPT C L n d = if c < 0 \/ c >= n then error "decryption error"
                     EM = I2OSP`{k} m
                     M  = EME_OAEP_decode (EM, L)
 
+RSAES_OAEP_DECRYPT_INTEGER : {l}
+                           (fin l
+                           , l>=0
+                           , 2 * hLen >= width (8 * l) // Required for use of hash
+                           , 2 * hLen >= width (8 * (k - hLen + 3)) // Required for use of hash in MGF
+                           , k >= 2 * hLen + 2
+                           , 2^^32*hLen >= k - hLen - 1 // Required for use of MGF1
+                           )
+                           => Integer
+                           -> Integer
+                           -> Integer
+                           -> Integer
+                           -> (Integer, Integer)
+RSAES_OAEP_DECRYPT_INTEGER C L n d = if C < 0 \/ C >= n then error "decryption error"
+                                     else M
+                           where
+                            m = rsaDecrypt (C, d, n)
+                            M  = EME_OAEP_decode_integer`{l} (m, L)
+
+// TODO: Test
+decrypt_eq : {l}
+           (fin l
+           , l>=0
+           , 2 * hLen >= width (8 * l) // Required for use of hash
+           , 2 * hLen >= width (8 * (k - hLen + 3)) // Required for use of hash in MGF
+           , k >= 2 * hLen + 2
+           , 2^^32*hLen >= k - hLen - 1 // Required for use of MGF1
+           )
+           => [k][8]
+           -> [l][8]
+           -> [KeySize]
+           -> [KeySize]
+           -> Bit
+decrypt_eq C L n d = (toInteger (join m_bv), toInteger p_bv) == (m, p)
+  where
+    (m_bv, p_bv) = RSAES_OAEP_DECRYPT C L n d
+    (m, p) = RSAES_OAEP_DECRYPT_INTEGER`{l} (toInteger (join C))
+                                            (toInteger (join L))
+                                            (toInteger n)
+                                            (toInteger d)
 
 RSAES_OAEP_Correct : {l,mLen}
                    (fin l, fin mLen
@@ -161,7 +201,7 @@ EME_OAEP_encode_integer : {l, mLen}
          , 2^^32*hLen >= k - hLen - 1 // Required use of MGF1
          )
          => Integer // Seed for random number
-         -> (Integer, Integer) // TODO: Can I get these params to be Integers?  I would need to cast them to [mLen][8] somehow in the body of the function.  There are two problems: 1) How do I go from Integer to Integral? (might be able to just do (Integer val : [integral type])).  2) How do I properly constrain the input to satisfy the encode requirements (probably a runtime check)
+         -> (Integer, Integer)
          -> Integer
 EME_OAEP_encode_integer rseed (M, L) = toInteger (OS2IP EM)
                         where
@@ -194,6 +234,23 @@ EME_OAEP_decode (EM,L) = if Y != zero then error "decryption error"
                   lHash'     = take`{hLen} DB // This should equal hash L
                   lHash      = split (hash L) : [_][8]
                   (Mpadded,mLen) = extractMsg DB // Original msg is take`{mLen} Mpadded
+
+// TODO: Is there something better to return an int that doesn't include the
+// padding?
+EME_OAEP_decode_integer : {l}
+         (fin l
+         , l>=0
+         , 2*hLen >= width (8 * l) // Required for using hash
+         , 2*hLen >= width (8 * ( k - hLen + 3)) // Required for using hash in MGF
+         , k >= 2 * hLen + 2
+         , 2^^32*hLen >= k - hLen - 1 // Required for using MGF1
+         ) => (Integer, Integer) -> (Integer, Integer)
+EME_OAEP_decode_integer (EM,L) = (toInteger (join Mpadded_bv),
+                                  toInteger mLen_bv)
+                where
+                  EM_bv = (fromInteger EM) : [k][8]
+                  L_bv = (fromInteger L) : [l][8]
+                  (Mpadded_bv, mLen_bv) = EME_OAEP_decode (EM_bv, L_bv)
 
 private
     extractMsg : {a} (fin a, a >= 1) =>  [a][8] -> ([a][8],[width a])
