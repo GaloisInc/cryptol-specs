@@ -1,0 +1,8 @@
+module Primitive::Asymmetric::Scheme::RSAES_OAEP_SHA1 = Primitive::Asymmetric::Scheme::RSAES_OAEP where
+
+import Primitive::Keyless::Hash::SHA1
+
+type k = 128
+type hLen = 20
+
+hash = sha1
