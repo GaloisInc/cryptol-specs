@@ -83,9 +83,9 @@ RSAES_OAEP_ENCRYPT_INTEGER : {l,mLen}
                            -> Integer
                            -> Integer
                            -> Integer
-RSAES_OAEP_ENCRYPT_INTEGER rand M L n e = c // Return Integer cipher text
+RSAES_OAEP_ENCRYPT_INTEGER seed M L n e = c // Return Integer cipher text
                            where
-                            m = EME_OAEP_encode_integer`{l, mLen} rand (M, L)  // Pad and convert to Integer
+                            m = EME_OAEP_encode_integer`{l, mLen} seed (M, L)  // Pad and convert to Integer
                             c  = rsaEncrypt (m, e, n)   // Encrypt integer m
 
 encrypt_eq : {l,mLen}
@@ -214,16 +214,17 @@ EME_OAEP_encode_integer : {l, mLen}
          , k >= mLen + 2 * hLen + 2
          , 2^^32*hLen >= k - hLen - 1 // Required use of MGF1
          )
-         => Integer // Seed for random number
+         => Integer
          -> (Integer, Integer)
          -> Integer
-EME_OAEP_encode_integer rseed (M, L) = toInteger (OS2IP EM)
+EME_OAEP_encode_integer seed (M, L) = toInteger (OS2IP EM)
                         where
                           // TODO: Checks that these fit?  Either in constraints
                           // or at runtime?
                           M_bv = split`{mLen} ((fromInteger M) : [mLen * 8])
                           L_bv = split`{l} ((fromInteger L) : [l * 8])
-                          EM = EME_OAEP_encode`{l, mLen} (fromInteger rseed) (M_bv, L_bv)
+                          seed_bv = split`{hLen} ((fromInteger seed) : [hLen * 8])
+                          EM = EME_OAEP_encode'`{l, mLen} seed_bv (M_bv, L_bv)
 
 
 EME_OAEP_decode : {l}
