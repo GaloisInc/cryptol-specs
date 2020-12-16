@@ -21,6 +21,9 @@ q = toInteger 0xc97fb1f027f453f6341233eaaad1d9353f6c42d08866b1d05a0f2035028b9d86
 e : Integer
 e = toInteger 0x11
 
+e_bv : [1024]
+e_bv = fromInteger e
+
 (n, _, d) = genRSAKeys' (p, q, e)
 
 n_bv : [1024]
@@ -52,6 +55,9 @@ P_bv = []
 P : Integer
 P = toInteger (join P_bv)
 
+seed_bv : [20][8]
+seed_bv = split`{each=8} 0xaafd12f659cae63489b479e5076ddec2f06cb58f
+
 (M_bv_back, mLen_bv_back) = RSAES_OAEP_DECRYPT C_bv P_bv n_bv d_bv
 
 property decrypt_bv_M_correct = (take`{16} M_bv_back) == M_bv
@@ -61,3 +67,6 @@ property decrypt_bv_mLen_correct = mLen_bv_back == 16
 
 property decrypt_M_correct = M_back == M
 property decrypt_mLen_correct = mLen_back == 16
+
+property encrypt_bv_correct =
+  RSAES_OAEP_ENCRYPT' seed_bv M_bv P_bv n_bv e_bv == C_bv
