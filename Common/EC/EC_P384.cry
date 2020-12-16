@@ -105,6 +105,60 @@ ec_point_jacobian_scalar_mul : Scalar -> JacobianPoint -> JacobianPoint
 ec_point_jacobian_scalar_mul = undefined
 
 
+type JacobianBVPoint = { X : [w], Y : [w], Z : [w] }
+
+jacobianToBV : JacobianPoint -> JacobianBVPoint
+jacobianToBV p =
+  { X = fieldElementToBV p.x
+  , Y = fieldElementToBV p.y
+  , Z = fieldElementToBV p.z
+  }
+
+jacobianFromBV : JacobianBVPoint -> JacobianPoint
+jacobianFromBV p =
+  { x = fieldElementFromBV p.X
+  , y = fieldElementFromBV p.Y
+  , z = fieldElementFromBV p.Z
+  }
+
+jacobianToMont : JacobianPoint -> JacobianPoint
+jacobianToMont p =
+  { x = (p.x * P384_R_p) % `p
+  , y = (p.y * P384_R_p) % `p
+  , z = (p.z * P384_R_p) % `p
+  }
+
+jacobianFromMont : JacobianPoint -> JacobianPoint
+jacobianFromMont p =
+  { x = (p.x * P384_R_p_inv) % `p
+  , y = (p.y * P384_R_p_inv) % `p
+  , z = (p.z * P384_R_p_inv) % `p
+  }
+
+jacobianToMontBV : JacobianPoint -> JacobianBVPoint
+jacobianToMontBV p = jacobianToBV (jacobianToMont p)
+
+jacobianFromMontBV : JacobianBVPoint -> JacobianPoint
+jacobianFromMontBV p = jacobianFromMont (jacobianFromBV p)
+
+
+mont_R : {m} (fin m, m >= 3) => Integer
+mont_R = 2 ^^ `(width m) % `m
+
+mont_R_inv : {m} (fin m, m >= 3) => Integer
+mont_R_inv = fromZ (moddiv`{m} 1 (fromInteger (mont_R`{m})))
+
+bn_mont_n0 : {m} (fin m, m >= 3) => [64]
+bn_mont_n0 = fromInteger (((2 ^^ `(width m)) * mont_R_inv`{m} - 1) / `m)
+
+
+integerToBV : {m} (fin m) => Integer -> [m]
+integerToBV x = fromInteger x
+
+integerFromBV : {m} (fin m) => [m] -> Integer
+integerFromBV x = toInteger x
+
+
 type P384_w = w
 type P384_p = p
 P384_a = a
