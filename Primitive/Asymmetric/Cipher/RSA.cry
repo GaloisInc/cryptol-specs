@@ -54,12 +54,14 @@ rsaTest = {n = 0xbad47a84c1782e4dbdd913f2a261fc8b65838412c6e45a2068ed6d7f16e9cdf
 property testsPass = rsaTest.M == RSADP ((rsaTest.n, rsaTest.d), rsaTest.C)
 
 //Integer-based implementation
+// TODO: Remove redundant e in return
+genRSAKeys' : (Integer,Integer,Integer) -> (Integer,Integer,Integer) // (n,e,d)
+genRSAKeys' (p,q,e) = (p*q,e,d)
+           where nTotient = lcm (p-1) (q-1)
+                 d        = inv e nTotient
 
 genRSAKeys : (Integer,Integer) -> (Integer,Integer,Integer) // (n,e,d)
-genRSAKeys (p,q) = (p*q,e,d)
-           where nTotient = lcm (p-1) (q-1)
-                 e        = 65537 // 2^16+1, commonly used public key exponent
-                 d        = inv e nTotient
+genRSAKeys (p,q) = genRSAKeys' (p,q,65537) // 2^16+1, commonly used public key exponent
 
 private
     gcd : Integer -> Integer -> Integer
