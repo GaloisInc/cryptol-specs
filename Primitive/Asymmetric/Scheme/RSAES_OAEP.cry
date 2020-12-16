@@ -15,6 +15,10 @@ module Primitive::Asymmetric::Scheme::RSAES_OAEP where
 
 import Primitive::Asymmetric::Cipher::RSA
 
+// TODO: COmment all of the prime (') versions of the functions that take an
+// explicit seed (as "seed" is defined in the OAEP spec), rather than a seed to
+// random.
+
 parameter
   type k : #
   type constraint (fin k, k >= 1)
@@ -26,6 +30,25 @@ parameter
 
 type KeySize = k * 8
 
+RSAES_OAEP_ENCRYPT' : {l,mLen}
+                    (fin l, fin mLen
+                    , l>=0
+                    , 2 * hLen >= width (8 * l) // Required for use of hash
+                    , 2 * hLen >= width (8 * ( k - hLen + 3)) // Required for use of hash in MGF
+                    , k >= mLen+2*hLen+2
+                    , 2^^32*hLen >= k - hLen - 1 // Required for MGF1
+                    )
+                    => [hLen][8] // Seed for random number
+                    -> [mLen][8]
+                    -> [l][8]
+                    -> [KeySize]
+                    -> [KeySize]
+                    -> [k][8]
+RSAES_OAEP_ENCRYPT' seed M L n e = I2OSP`{k} c // Return k-octet cipher text
+                    where
+                     EM = EME_OAEP_encode' seed (M, L)   // Pad message M with optional label L to k octets
+                     m  = (zero # OS2IP EM) : [KeySize]  // Take k-octet padded message EM to int of width KeySize
+                     c  = RSAEP ((n, e), m)   // Encrypt integer m
 
 RSAES_OAEP_ENCRYPT : {l,mLen}
                    (fin l, fin mLen
@@ -41,11 +64,9 @@ RSAES_OAEP_ENCRYPT : {l,mLen}
                    -> [KeySize]
                    -> [KeySize]
                    -> [k][8]
-RSAES_OAEP_ENCRYPT rand M L n e = I2OSP`{k} c // Return k-octet cipher text
+RSAES_OAEP_ENCRYPT rand M L n e = RSAES_OAEP_ENCRYPT' seed M L n e
                    where
-                    EM = EME_OAEP_encode rand (M, L)   // Pad message M with optional label L to k octets
-                    m  = (zero # OS2IP EM) : [KeySize]  // Take k-octet padded message EM to int of width KeySize
-                    c  = RSAEP ((n, e), m)   // Encrypt integer m
+                    seed = random rand : [hLen][8]
 
 
 RSAES_OAEP_ENCRYPT_INTEGER : {l,mLen}
@@ -181,16 +202,9 @@ EME_OAEP_encode : {l,mLen}
          => [256] // Seed for random number
          -> ([mLen][8], [l][8])
          -> [k][8]
-EME_OAEP_encode rseed (M,L) = (zero : [1][8]) # maskedSeed # maskedDB // value of EM
+EME_OAEP_encode rseed (M,L) = EME_OAEP_encode' seed (M,L)
          where
-          lHash      = split (hash L) : [hLen][8]
-          PS         = (zero:[(k-mLen-2*hLen-2)][8]) // This may be (zero:[0][8])
-          DB         = lHash # PS # [(1:[8])] # M
-          seed       = random rseed : [hLen][8]
-          dbMask     = MGF1`{maskLen=(k-hLen-1)} seed
-          maskedDB   = DB ^ dbMask
-          seedMask   = MGF1`{maskLen=hLen} maskedDB
-          maskedSeed = seed ^ seedMask
+          seed = random rseed : [hLen][8]
 
 EME_OAEP_encode_integer : {l, mLen}
          (fin l,fin mLen
@@ -273,6 +287,26 @@ private
                  Mpadded = (ys!0).padMsg
                  mLen    = (ys!0).idx
 
+    EME_OAEP_encode' : {l,mLen}
+             (fin l,fin mLen
+             , l >= 0
+             , 2 * hLen >= width (8 * l) // Required for using hash
+             , 2 * hLen >= width (8 * ( k - hLen + 3)) // Required for using hash in MGF
+             , k >= mLen + 2 * hLen + 2
+             , 2^^32*hLen >= k - hLen - 1 // Required use of MGF1
+             )
+             => [hLen][8]
+             -> ([mLen][8], [l][8])
+             -> [k][8]
+    EME_OAEP_encode' seed (M,L) = (zero : [1][8]) # maskedSeed # maskedDB // value of EM
+             where
+              lHash      = split (hash L) : [hLen][8]
+              PS         = (zero:[(k-mLen-2*hLen-2)][8]) // This may be (zero:[0][8])
+              DB         = lHash # PS # [(1:[8])] # M
+              dbMask     = MGF1`{maskLen=(k-hLen-1)} seed
+              maskedDB   = DB ^ dbMask
+              seedMask   = MGF1`{maskLen=hLen} maskedDB
+              maskedSeed = seed ^ seedMask
 
 
 
