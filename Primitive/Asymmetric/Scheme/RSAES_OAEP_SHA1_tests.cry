@@ -1,0 +1,63 @@
+module Primitive::Asymmetric::Scheme::RSAES_OAEP_SHA1_tests where
+
+import Primitive::Asymmetric::Cipher::RSA
+import Primitive::Asymmetric::Scheme::RSAES_OAEP_SHA1
+
+/*
+Test vectors from "RSAES-OAEP Encryption Scheme: Algorithm specification and
+supporting documentation" from RSA Laboratories
+
+PDF Link:
+https://www.inf.pucrs.br/~calazans/graduate/TPVLSI_I/RSA-oaep_spec.pdf
+*/
+
+
+p : Integer
+p = toInteger 0xeecfae81b1b9b3c908810b10a1b5600199eb9f44aef4fda493b81a9e3d84f632124ef0236e5d1e3b7e28fae7aa040a2d5b252176459d1f397541ba2a58fb6599
+
+q : Integer
+q = toInteger 0xc97fb1f027f453f6341233eaaad1d9353f6c42d08866b1d05a0f2035028b9d869840b41666b42e92ea0da3b43204b5cfce3352524d0416a5a441e700af461503
+
+e : Integer
+e = toInteger 0x11
+
+(n, _, d) = genRSAKeys' (p, q, e)
+
+n_bv : [1024]
+n_bv = fromInteger n
+
+d_bv : [1024]
+d_bv = fromInteger d
+
+expected_n : Integer
+expected_n = toInteger 0xbbf82f090682ce9c2338ac2b9da871f7368d07eed41043a440d6b6f07454f51fb8dfbaaf035c02ab61ea48ceeb6fcd4876ed520d60e1ec4619719d8a5b8b807fafb8e0a3dfc737723ee6b4b7d93a2584ee6a649d060953748834b2454598394ee0aab12d7b61a51f527a9a41f6c1687fe2537298ca2a8f5946f8e5fd091dbdcb
+
+property genRSAKeys_test = n == expected_n
+
+M_bv : [16][8]
+M_bv = split`{each=8} 0xd436e99569fd32a7c8a05bbc90d32c49
+
+M : Integer
+M = toInteger (join M_bv)
+
+C_bv : [128][8]
+C_bv = split`{each=8} 0x1253e04dc0a5397bb44a7ab87e9bf2a039a33d1e996fc82a94ccd30074c95df763722017069e5268da5d1c0b4f872cf653c11df82314a67968dfeae28def04bb6d84b1c31d654a1970e5783bd6eb96a024c2ca2f4a90fe9f2ef5c9c140e5bb48da9536ad8700c84fc9130adea74e558d51a74ddf85d8b50de96838d6063e0955
+
+C : Integer
+C = toInteger (join C_bv)
+
+P_bv : [0][8]
+P_bv = []
+
+P : Integer
+P = toInteger (join P_bv)
+
+(M_bv_back, mLen_bv_back) = RSAES_OAEP_DECRYPT C_bv P_bv n_bv d_bv
+
+property decrypt_bv_M_correct = (take`{16} M_bv_back) == M_bv
+property decrypt_bv_mLen_correct = mLen_bv_back == 16
+
+(M_back, mLen_back) = RSAES_OAEP_DECRYPT_INTEGER`{0} C P n d
+
+property decrypt_M_correct = M_back == M
+property decrypt_mLen_correct = mLen_back == 16
