@@ -326,3 +326,7 @@ MGF1 mgfSeed = take`{maskLen} Ts
 
       Cs = map (\counter -> I2OSP`{xLen=4} counter) ([0..counterMax]:[_][32])
       Ts = join [ split (hash (mgfSeed # c)) : [_][8] | c <- Cs]
+
+
+bn_mont_n0 : {a} (fin a) => [a][64] -> [64]
+bn_mont_n0 n = undefined
