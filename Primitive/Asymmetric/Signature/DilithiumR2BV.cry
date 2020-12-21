@@ -552,6 +552,7 @@ Power2RoundV v = unzip (map polyPower2Round v)
 
 ALPHA = 2*gamma2
 
+// returns high and low bits 
 Decompose : [qbits] -> ([qbits],[qbits])
 Decompose r = if (r' - r0) == (`q - 1) then (0, r0 - 1)
                     else ((r' - r0) / ALPHA, r0)
@@ -836,3 +837,4 @@ fromZPolyVec pvec = map (\x -> fromZPoly x) pvec
 
 fromZNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => [dim1][dim2][n](Z q) -> [dim1][dim2][n]Integer
 fromZNttMat nttmat = map (\x -> fromZPolyVec x) nttmat
+
