@@ -330,3 +330,9 @@ MGF1 mgfSeed = take`{maskLen} Ts
 
 bn_mont_n0 : {a} (fin a) => [a][64] -> [64]
 bn_mont_n0 n = undefined
+
+integerToBV : {m} (fin m) => Integer -> [m]
+integerToBV x = fromInteger x
+
+integerFromBV : {m} (fin m) => [m] -> Integer
+integerFromBV x = toInteger x
