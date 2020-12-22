@@ -58,9 +58,6 @@ P = toInteger (join P_bv)
 seed_bv : [20][8]
 seed_bv = split`{each=8} 0xaafd12f659cae63489b479e5076ddec2f06cb58f
 
-seed : Integer
-seed = toInteger (join seed_bv)
-
 (M_bv_back, mLen_bv_back) = RSAES_OAEP_DECRYPT C_bv P_bv n_bv d_bv
 
 property decrypt_bv_M_correct = (take`{16} M_bv_back) == M_bv
@@ -75,4 +72,4 @@ property encrypt_bv_correct =
   RSAES_OAEP_ENCRYPT' seed_bv M_bv P_bv n_bv e_bv == C_bv
 
 property encrypt_correct =
-  RSAES_OAEP_ENCRYPT_INTEGER`{0, 16} seed M P n e == C
+  RSAES_OAEP_ENCRYPT_INTEGER`{0, 16} seed_bv M P n e == C
