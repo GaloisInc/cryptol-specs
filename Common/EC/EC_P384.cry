@@ -69,6 +69,10 @@ ec_point_affine_scalar_mul : Scalar -> AffinePoint -> AffinePoint
 ec_point_affine_scalar_mul = undefined
 
 
+EC_keyPrivateToPublic : Integer -> AffinePoint
+EC_keyPrivateToPublic d = ec_point_affine_scalar_mul (d % `n) G
+
+
 type ECDSA_Signature = { r : Scalar, s : Scalar }
 
 ECDSA_sign : Scalar -> Integer -> Scalar -> ECDSA_Signature
@@ -85,8 +89,11 @@ ECDSA_verify Q z { r = r, s = s } = r != 0 /\ r < `n /\ s != 0 /\ s < `n /\ r ==
     u2 = r * (inv0 s) % `n
     { x = x1, y = _ } = ec_point_affine_add (ec_point_affine_scalar_mul u1 G) (ec_point_affine_scalar_mul u2 Q)
 
-ECDSA_keyPrivateToPublic : Integer -> AffinePoint
-ECDSA_keyPrivateToPublic d = ec_point_affine_scalar_mul (d % `n) G
+
+ECDH_derive : Scalar -> AffinePoint -> FieldElement
+ECDH_derive d Q = x % `p
+  where
+    { x = x, y = _ } = ec_point_affine_scalar_mul d Q
 
 
 type JacobianPoint = { x : FieldElement, y : FieldElement, z : FieldElement }
