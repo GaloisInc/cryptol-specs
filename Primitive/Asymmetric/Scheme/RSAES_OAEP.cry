@@ -125,8 +125,8 @@ RSAES_OAEP_DECRYPT : {l}
                    -> [l][8]
                    -> [KeySize]
                    -> [KeySize]
-                   -> ([k - hLen - 1][8], [width (k - hLen - 1)])
-RSAES_OAEP_DECRYPT C L n d = if c < 0 \/ c >= n then error "decryption error"
+                   -> (Bit, [k - hLen - 1][8], [width (k - hLen - 1)])
+RSAES_OAEP_DECRYPT C L n d = if c < 0 \/ c >= n then zero
                              else M
                    where
                     c  = OS2IP C
@@ -146,14 +146,14 @@ RSAES_OAEP_DECRYPT_INTEGER : {l}
                            -> Integer
                            -> Integer
                            -> Integer
-                           -> (Integer, Integer)
-RSAES_OAEP_DECRYPT_INTEGER C L n d = if C < 0 \/ C >= n then error "decryption error"
-                                     else M
+                           -> (Bit, Integer, Integer)
+RSAES_OAEP_DECRYPT_INTEGER C L n d = if C < 0 \/ C >= n then zero else M
                            where
                             m = rsaDecrypt (C, d, n)
                             M  = EME_OAEP_decode_integer`{l} (m, L)
 
 // TODO: Test
+/*
 decrypt_eq : {l}
            (fin l
            , l>=0
@@ -174,6 +174,7 @@ decrypt_eq C L n d = (toInteger (join m_bv), toInteger p_bv) == (m, p)
                                             (toInteger (join L))
                                             (toInteger n)
                                             (toInteger d)
+                                            */
 
 RSAES_OAEP_Correct : {l,mLen}
                    (fin l, fin mLen
@@ -189,7 +190,7 @@ RSAES_OAEP_Correct : {l,mLen}
                    -> [KeySize]
                    -> [KeySize]
                    -> Bit
-property RSAES_OAEP_Correct r l m n e d = (RSAES_OAEP_DECRYPT (RSAES_OAEP_ENCRYPT r m l n e) l n d).0 == m#(zero:[_][8])
+property RSAES_OAEP_Correct r l m n e d = (RSAES_OAEP_DECRYPT (RSAES_OAEP_ENCRYPT r m l n e) l n d).1 == m#(zero:[_][8])
 
 
 
@@ -235,10 +236,10 @@ EME_OAEP_decode : {l}
          , 2*hLen >= width (8 * ( k - hLen + 3)) // Required for using hash in MGF
          , k >= 2 * hLen + 2
          , 2^^32*hLen >= k - hLen - 1 // Required for using MGF1
-         ) => ([k][8], [l][8]) -> ([k - hLen - 1][8], [width (k - hLen - 1)])
-EME_OAEP_decode (EM,L) = if Y != zero then error "decryption error"
-                         | lHash' != lHash then error "decryption error"
-                         else (Mpadded,mLen)
+         ) => ([k][8], [l][8]) -> (Bit, [k - hLen - 1][8], [width (k - hLen - 1)])
+EME_OAEP_decode (EM,L) = if Y != zero then zero
+                         | lHash' != lHash then zero
+                         else (True,Mpadded,mLen)
                 where
                   Y          = head EM
                   maskedSeed = take`{hLen} (drop`{1} EM)
@@ -260,13 +261,14 @@ EME_OAEP_decode_integer : {l}
          , 2*hLen >= width (8 * ( k - hLen + 3)) // Required for using hash in MGF
          , k >= 2 * hLen + 2
          , 2^^32*hLen >= k - hLen - 1 // Required for using MGF1
-         ) => (Integer, Integer) -> (Integer, Integer)
-EME_OAEP_decode_integer (EM,L) = (toInteger (join Mpadded_bv),
+         ) => (Integer, Integer) -> (Bit, Integer, Integer)
+EME_OAEP_decode_integer (EM,L) = (success,
+                                  toInteger (join Mpadded_bv),
                                   toInteger mLen_bv)
                 where
                   EM_bv = split`{k} ((fromInteger EM) : [k * 8])
                   L_bv = split`{l} ((fromInteger L) : [l * 8])
-                  (Mpadded_bv, mLen_bv) = EME_OAEP_decode (EM_bv, L_bv)
+                  (success, Mpadded_bv, mLen_bv) = EME_OAEP_decode (EM_bv, L_bv)
 
 private
     extractMsg : {a} (fin a, a >= 1) =>  [a][8] -> ([a][8],[width a])
