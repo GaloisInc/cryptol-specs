@@ -337,3 +337,8 @@ integerToBV x = fromInteger x
 
 integerFromBV : {m} (fin m) => [m] -> Integer
 integerFromBV x = toInteger x
+
+is_num_bits_bn : {m,w} (fin m, fin w, m <= w) => [w] -> Bit
+is_num_bits_bn x = if `m == `w
+  then x @ 0
+  else take`{w - m} x == 0 /\ x @ (`w - `m)
