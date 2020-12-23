@@ -71,7 +71,7 @@ property decrypt_M_correct = M_back == M
 property decrypt_mLen_correct = mLen_back == 16
 
 property encrypt_bv_correct =
-  RSAES_OAEP_ENCRYPT' seed_bv M_bv P_bv n_bv e_bv == C_bv
+  RSAES_OAEP_ENCRYPT' seed_bv M_bv P_bv n_bv e_bv == (True, C_bv)
 
 property encrypt_correct =
   RSAES_OAEP_ENCRYPT_INTEGER`{0, 16} seed_bv M P n e == C

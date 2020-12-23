@@ -43,12 +43,13 @@ RSAES_OAEP_ENCRYPT' : {l,mLen}
                     -> [l][8]
                     -> [KeySize]
                     -> [KeySize]
-                    -> [k][8]
-RSAES_OAEP_ENCRYPT' seed M L n e = I2OSP`{k} c // Return k-octet cipher text
+                    -> (Bit, [k][8])
+RSAES_OAEP_ENCRYPT' seed M L n e = if success then (True, I2OSP`{k} c) // Return k-octet cipher text
+                                              else zero
                     where
                      EM = EME_OAEP_encode' seed (M, L)   // Pad message M with optional label L to k octets
                      m  = (zero # OS2IP EM) : [KeySize]  // Take k-octet padded message EM to int of width KeySize
-                     c  = RSAEP ((n, e), m)   // Encrypt integer m
+                     (success, c)  = RSAEP ((n, e), m)   // Encrypt integer m
 
 RSAES_OAEP_ENCRYPT : {l,mLen}
                    (fin l, fin mLen
@@ -63,7 +64,7 @@ RSAES_OAEP_ENCRYPT : {l,mLen}
                    -> [l][8]
                    -> [KeySize]
                    -> [KeySize]
-                   -> [k][8]
+                   -> (Bit, [k][8])
 RSAES_OAEP_ENCRYPT rand M L n e = RSAES_OAEP_ENCRYPT' seed M L n e
                    where
                     seed = random rand : [hLen][8]
@@ -126,13 +127,13 @@ RSAES_OAEP_DECRYPT : {l}
                    -> [KeySize]
                    -> [KeySize]
                    -> (Bit, [k - hLen - 1][8], [width (k - hLen - 1)])
-RSAES_OAEP_DECRYPT C L n d = if c < 0 \/ c >= n then zero
+RSAES_OAEP_DECRYPT C L n d = if c < 0 \/ c >= n \/ (~success) then zero
                              else M
                    where
-                    c  = OS2IP C
-                    m  = RSADP ((n,d),c)
-                    EM = I2OSP`{k} m
-                    M  = EME_OAEP_decode (EM, L)
+                    c             = OS2IP C
+                    (success, m)  = RSADP ((n,d),c)
+                    EM            = I2OSP`{k} m
+                    M             = EME_OAEP_decode (EM, L)
 
 RSAES_OAEP_DECRYPT_INTEGER : {l}
                            (fin l
@@ -190,7 +191,7 @@ RSAES_OAEP_Correct : {l,mLen}
                    -> [KeySize]
                    -> [KeySize]
                    -> Bit
-property RSAES_OAEP_Correct r l m n e d = (RSAES_OAEP_DECRYPT (RSAES_OAEP_ENCRYPT r m l n e) l n d).1 == m#(zero:[_][8])
+property RSAES_OAEP_Correct r l m n e d = (RSAES_OAEP_DECRYPT (RSAES_OAEP_ENCRYPT r m l n e).1 l n d).1 == m#(zero:[_][8])
 
 
 
