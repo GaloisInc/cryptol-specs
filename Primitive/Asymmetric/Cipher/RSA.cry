@@ -82,9 +82,11 @@ private
             (q,  r)  = (n/x, n%x)
             (q', r') = inv' x r
 
+modexp : Integer -> Integer -> Integer -> Integer
+modexp b e n = (b ^^ e) % n
 
 rsaEncrypt : (Integer,Integer,Integer) -> Integer
-rsaEncrypt (msg,e,n) = (msg^^e)%n
+rsaEncrypt (msg,e,n) = modexp msg e n
 
 rsaDecrypt : (Integer,Integer,Integer) -> Integer
 rsaDecrypt (ct,d,n) = (ct^^d)%n
