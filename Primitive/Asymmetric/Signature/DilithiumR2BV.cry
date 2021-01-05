@@ -242,11 +242,11 @@ unpack_polyeta' t =  [ elt a | a <- split t:[m][128][8]]
 
 
 
-
-pack_t0 : intPolyVec k -> [k*3584]
+type POLT0_SIZE_PACKED = 448
+pack_t0 : intPolyVec k -> [k*POLT0_SIZE_PACKED*8]
 pack_t0 t0 = join [ polyt0_pack p | p <- t0 ]
 
-polyt0_pack : intPoly -> [3584]
+polyt0_pack : intPoly -> [POLT0_SIZE_PACKED*8]
 polyt0_pack p = join [ join [drop`{15} (tmp p i 0),
                        drop`{15} (((tmp p i 0) >> 8) || ((tmp p i 1) << 6)),
                        drop`{15} ((tmp p i 1) >> 2),
@@ -257,8 +257,9 @@ polyt0_pack p = join [ join [drop`{15} (tmp p i 0),
                      ] | i <- [0..(n/4-1)] ]
         where
           tmp : intPoly -> [8] -> [8] -> [23]
-          tmp p i j =  (2^^13 - p@(4*i+j))
-type POLT0_SIZE_PACKED = 448
+          tmp p i j =  (`q+2^^13 - p@(4*i+j))
+          
+
 polyt0_unpack : [POLT0_SIZE_PACKED][8] -> intPoly
 polyt0_unpack p = join[ [ (tmp p i 0) || (zext ((tmp p i 1) && zext 0x3F)) << 8,
                           (zext ((tmp p i 1) >> 6)) || (zext (tmp p i 2)) << 2 || (zext ((tmp p i 3) && zext 0x0F)) << 10,
@@ -730,9 +731,6 @@ nttinv p' = p
             ]))))
             | i <- [0..255]:[n][qbits]
             ]
-
-
-
 
 // Dilithium uses a non-standard ordering of elements in the NTT domain; this function reorders the elements.
 reorder : nttPoly -> nttPoly
