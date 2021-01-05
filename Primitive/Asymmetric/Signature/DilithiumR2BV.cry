@@ -300,16 +300,16 @@ pack_t1 pvk = (join [ poly_pack p | p <- pvk])
 // polyt1_unpack
 
 polyt1_unpack : [POLT1_SIZE_PACKED][8] -> poly
-polyt1_unpack p = map (\x -> zero#x) (join [unpack8 xs | xs <- (split p): [32][9][_] ])
+polyt1_unpack p = map (\x -> zext x) (join [unpack8 xs | xs <- (split p): [32][9][_] ])
     where unpack8: [9][8] -> [8][12]
-          unpack8 xs = [ (zero#xs@0 || (zero#xs@1 << 8)) && 0x1FF
-                        , (zero#xs@1 >> 1 || (zero#xs@2 << 7)) && 0x1FF
-                        , (zero#xs@2 >> 2 || (zero#xs@3 << 6)) && 0x1FF
-                        , (zero#xs@3 >> 3 || (zero#xs@4 << 5)) && 0x1FF
-                        , (zero#xs@4 >> 4 || (zero#xs@5 << 4)) && 0x1FF
-                        , (zero#xs@5 >> 5 || (zero#xs@6 << 3)) && 0x1FF
-                        , (zero#xs@6 >> 6 || (zero#xs@7 << 2)) && 0x1FF
-                        , (zero#xs@7 >> 7 || (zero#xs@8 << 1)) && 0x1FF
+          unpack8 xs = [  zext (xs@0) || ((zext (xs@1 && 0x01):[12]) << 8)
+                        , zext (xs@1 >> 1) || ((zext (xs@2 && 0x03):[12]) << 7)
+                        , zext (xs@2 >> 2) || ((zext (xs@3 && 0x07):[12]) << 6)
+                        , zext (xs@3 >> 3) || ((zext (xs@4 && 0x0F):[12]) << 5)
+                        , zext (xs@4 >> 4) || ((zext (xs@5 && 0x1F):[12]) << 4)
+                        , zext (xs@5 >> 5) || ((zext (xs@6 && 0x3F):[12]) << 3)
+                        , zext (xs@6 >> 6) || ((zext (xs@7 && 0x7F):[12]) << 2)
+                        , zext (xs@7 >> 7) || ((zext (xs@8 && 0xFF):[12]) << 1)
                         ]
 
 
