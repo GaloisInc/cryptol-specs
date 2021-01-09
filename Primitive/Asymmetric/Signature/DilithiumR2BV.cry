@@ -226,20 +226,19 @@ pack_polyeta s = join [ join [elt p i | i <- [0..(n/2)-1]:[_][8] ] | p <- s ]
 
 type SETABITS = 4
 //unpack_polyeta
-type POLETA_SIZE_PACKED = n*4/8
+type POLETA_SIZE_PACKED = 128
 
-unpack_polyeta :  {m} (fin m, m >= 1) =>[m*POLETA_SIZE_PACKED][8] -> polyVec m
-unpack_polyeta t =  [ elt a | a <- split t:[m][128][8]]
+/*unpack_polyeta :  {m} (fin m, m >= 1) =>[m*POLETA_SIZE_PACKED][8] -> polyVec m
+unpack_polyeta pvb =  [ elt a | a <- split pvb:[m][128][8] ]
       where
         elt :[128][8] -> poly
-        elt a = join [ [ zext (x && 0x0F), zext (x >> 4)] | x <- a]
+        elt a = join [ [ zext (x && 0x0F), zext (x >> 4)] | x <- a ]*/
 
-unpack_polyeta' :  {m} (fin m, m >= 1) =>[m*POLETA_SIZE_PACKED][8] -> [m][256][32]
-unpack_polyeta' t =  [ elt a | a <- split t:[m][128][8]]
-      where
-        elt :[128][8] -> [256][32]
-        elt a = join [ [ `q+eta- (zext (x && 0x0F)), `q+eta-(zext (x >> 4))] | x <- a]
+unpack_polyeta : [POLETA_SIZE_PACKED][8] -> [n][32]
+unpack_polyeta p = join [ [ `q + eta - (zext (x && 0x0F)), `q + eta - (zext (x >> 4))] | x <- p ]
 
+unpack_polyetavec :  {m} (fin m, m >= 1) =>[m][POLETA_SIZE_PACKED][8] -> [m][256][32]
+unpack_polyetavec pvb =  [ unpack_polyeta pb | pb <- pvb ]
 
 
 type POLT0_SIZE_PACKED = 448
@@ -343,14 +342,14 @@ pack_sk rho key tr s1 s2 t0 = (join rho) # (join key) # (join tr)# (pack_polyeta
 //unpack_sk
 //TODO: To fix t0 later as now it takes 23 but should be converted to [32] later
 
-unpack_sk : [CRYPTO_SECRETKEYBYTES][8] -> ([SEEDBYTES][8], [SEEDBYTES][8], [CRHBYTES][8], polyVec l, polyVec k, intPolyVec k)
-unpack_sk sk = (rho, key, tr, s1, s2, t0)
-        where rho = (take`{32} sk)
-              key = (take`{32}(drop`{32} sk))
-              tr = (take`{48}(drop`{32} sk))
-              s1 = unpack_polyeta`{m=l} (take`{128*l}(drop`{48} sk))
-              s2 = unpack_polyeta`{m=k} (take`{128*k}(drop`{48+(128*l)} sk))
-              t0 = unpack_t0 (split (drop`{48+(128*l)+(128*k)+64} sk):[k][POLT0_SIZE_PACKED][8])
+unpack_sk : [CRYPTO_SECRETKEYBYTES][8] -> ([SEEDBYTES][8], [SEEDBYTES][8], [CRHBYTES][8], [l][n][32], [k][n][32], intPolyVec k)
+unpack_sk sk = (sk@@[0..31], sk@@[32..63], sk@@[64..111], s1, s2, t0)// key, tr, s1, s2, t0)
+        where  s1 = [ unpack_polyeta p | p <- (split (take`{384} (drop`{112} sk)):[l][128][8])] //@@[112..l*POLETA_SIZE_PACKED-1])
+               s2 = [ unpack_polyeta p | p <- (split (take`{512} (drop`{384} sk)):[k][128][8])] //sk@@[l*POLETA_SIZE_PACKED..(l+k)*POLETA_SIZE_PACKED-1]
+               split_sk = [[ sk@(i*448 + j) | j<- [0..447]] | i <- [0..3]]
+               t0 = unpack_t0 split_sk //: [k][POLT0_SIZE_PACKED][8] //sk@@[(l+k)*POLETA_SIZE_PACKED..CRYPTO_SECRETKEYBYTES]
+
+//property pack_sk_corr x = unpack_sk (split (pack_sk x.0 x.1 x.2 x.3 x.4 x.5)) == x
 
 type POLZ_SIZE_PACKED = 640
 
@@ -363,20 +362,22 @@ polyz_pack p =  join [ (tmp p i) | i<- [0..(n/2)-1]]
                     t0 = (t 0) + (((sext (t 0))>>31) && `q)
                     t1 = (t 1) + (((sext (t 1))>>31) && `q)
                     r0 = drop t0
-                    r1 = drop (t0>>8)
-                    r2 = drop (t0>>16) || drop (t1 << 4)
+                    r1 = drop (t0 >> 8)
+                    r2 = drop (t0 >> 16) || drop (t1 << 4)
                     r3 = drop (t1 >> 4)
                     r4 = drop (t1 >> 12)
 
-polyz_unpack : [POLZ_SIZE_PACKED][8] -> poly
-polyz_unpack pp =  (join [ (tmp pp i) | i<-[0..(n/2)-1]])
-    where tmp : [POLZ_SIZE_PACKED][8] -> [8]-> [2][23]
-          tmp pp i = [rcoeff0, rcoeff1]
+polyz_unpack : [POLZ_SIZE_PACKED][8] -> [256][23]
+polyz_unpack p =  join [ compute_coeffs i | i <- [0..(n/2)-1]]
+    where compute_coeffs : [10]-> [2][23]
+          compute_coeffs i = [rc0, rc1]
                 where
-                  coeff0 = (zero#pp@(5*i+0):[32]) || (((zero#pp@(5*i+1)):[32]) << 8) || (zero#(((zero#pp@(5*i+2)):[8]) && 0x0F):[32]) << 16
-                  coeff1 = ((zero#(pp@(5*i+2) >> 4)):[32]) || ((zero#pp@(5*i+3):[32]) << 4) || ((zero#pp@(5*i+4):[32]) << 12)
-                  rcoeff0 = drop`{9}((gamma1 - 1 - coeff0) + ((zext coeff0:[32]) >> 31) && `q):[23]
-                  rcoeff1 = drop`{9}((gamma1 - 1 - coeff1) + ((zext coeff1:[32]) >> 31) && `q):[23]
+                  c0 = zero # p@(5*i+0) || (zero # p@(5*i+1):[32]) << 8 || (zero # (p@(5*i+2) && 0x0F):[32]) << 16
+                  c1 = zero # p@(5*i+2) >> 4 || (zero # p@(5*i+3):[32]) << 4 || (zero # p@(5*i+4):[32]) << 12
+                  mc0 = gamma1 - 1 - c0 : [32]
+                  mc1 = gamma1 - 1 - c1 : [32]
+                  rc0 =  drop`{9} (mc0 + ((mc0 >>$ 31) && `q))
+                  rc1 =  drop`{9} (mc1 + ((mc1 >>$ 31) && `q))
 
 type SIG_SIZE_PACKED = l*POLZ_SIZE_PACKED+omega+k+n/8+8
 
@@ -788,9 +789,32 @@ infNormPoly p = foldl max 0 p_centered
 infNormPolyVec : {dim} (fin dim, dim>=1) => intPolyVec dim -> [qbits]
 infNormPolyVec v = foldl max 0 (map infNormPoly v)
 
+
 /************************************/
 /* Conversion functions helpful in Testing */
 /************************************/
+
+// (Z q) to bit-vector type
+
+fromZPoly : [n](Z q) -> [n][width q]
+fromZPoly p = map (\x -> ZtoBV x) p
+
+fromZPolyVec : {dim} (fin dim, dim >= 1) => [dim][n](Z q) -> [dim][n][width q]
+fromZPolyVec pvec = map (\x -> fromZPoly x) pvec
+
+fromZNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => [dim1][dim2][n](Z q) -> [dim1][dim2][n][width q]
+fromZNttMat nttmat = map (\x -> fromZPolyVec x) nttmat
+
+// Integer to Bit-Vector type
+
+InttoZPoly : [n]Integer -> [n][width q]
+InttoZPoly p = map (\x -> fromInteger x) p
+
+InttoZPolyVec : {dim} (fin dim, dim >= 1) => [dim][n]Integer -> [dim][n][width q]
+InttoZPolyVec pvec = map (\x -> InttoZPoly x) pvec
+
+InttoZNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => [dim1][dim2][n]Integer -> [dim1][dim2][n][width q]
+InttoZNttMat nttmat = map (\x -> InttoZPolyVec x) nttmat
 
 //Bit-Vector to Integer type
 
@@ -816,23 +840,23 @@ BVtoZNttMat nttmat = map (\x -> BVtoZPolyVec x) nttmat
 
 // Integer to Bit-Vector type
 
-InttoZPoly : [n]Integer -> [n](Z q)
+/*InttoZPoly : [n]Integer -> [n](Z q)
 InttoZPoly p = map (\x -> fromInteger x:(Z q)) p
 
 InttoZPolyVec : {dim} (fin dim, dim >= 1) => [dim][n]Integer -> [dim][n](Z q)
 InttoZPolyVec pvec = map (\x -> InttoZPoly x) pvec
 
 InttoZNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => [dim1][dim2][n]Integer -> [dim1][dim2][n](Z q)
-InttoZNttMat nttmat = map (\x -> InttoZPolyVec x) nttmat
+InttoZNttMat nttmat = map (\x -> InttoZPolyVec x) nttmat*/
 
 // (Z q) to Integer type
 
-fromZPoly : [n](Z q) -> [n]Integer
+/*fromZPoly : [n](Z q) -> [n]Integer
 fromZPoly p = map (\x -> fromZ x) p
 
 fromZPolyVec : {dim} (fin dim, dim >= 1) => [dim][n](Z q) -> [dim][n]Integer
 fromZPolyVec pvec = map (\x -> fromZPoly x) pvec
 
-fromZNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => [dim1][dim2][n](Z q) -> [dim1][dim2][n]Integer
-fromZNttMat nttmat = map (\x -> fromZPolyVec x) nttmat
+fromZNttMat : {dim1, dim2} (fin dim1, dim1 >= 1, fin dim2, dim2 >= 1) => [dim1][dim2][n](Z q) -> [dim1][dim2][n]Integer
+fromZNttMat nttmat = map (\x -> fromZPolyVec x) nttmat*/
 
