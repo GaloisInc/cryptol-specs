@@ -577,23 +577,21 @@ decompose r = if (r' - r0) == (`Q - 1) then (0, r0 - 1)
           where r' =  mod_pow (`Q, r, 1)
                 r0 = centeredMod r' ALPHA
 
-decomposeNew : [23] -> ([32],[23])
-decomposeNew r = ( zext af,  drop`{1} (`Q+(zext b0)))
-        where t0 = drop r :[19]
-              t1 =  (zext t0) +  ((r>>19) << 9)
-              t2 = t1 - ALPHA/2-1
-              t3 = drop t2 +  drop (((sext t2:[32]) >>$31) && ALPHA):[20]
-              t4 =  (zext t3) - (ALPHA/2)+ 1
-              a0 = r - t4
-              u0 = zext (a0 -1):[24]
+// This is verifiably equivalent to the C code.
+decomposeNew : [32] -> ([32],[32])
+decomposeNew a = (af, b0)
+        where t0 = a && `0x0007FFFF
+              t1 = t0 + ((a >>$ 19) << 9)
+              t2 = t1 - ((ALPHA/2) + 1)
+             t3 = t2 + ((t2 >>$ 31) && ALPHA)
+              t4 = t3 - ((ALPHA/2) - 1)
+              a0 = a - t4
+              u0 = a0 - 1
               u1 = u0 >>$ 31
-              a1 = (a0 >> 19) + 1
-              a2 = (zext a1) - (u1 && 1)
-              b0 = (zext t4)- (a2 >> 4) // adds q here in C
-              af = drop a2 && 0xf
-
-
-
+              a1 = (a0 >>$ 19) + 1
+              a2 = a1 - (u1 && 1)
+              b0 = `Q + t4 - (a2 >>$ 4)
+              af = a2 && `0x0000000f
 
 decomposePoly : {m} [m][QBits] -> ([m][QBits], [m][QBits])
 decomposePoly p = unzip [decompose x | x <- p]
