@@ -107,7 +107,7 @@ gen s = (pk, sk)
 // To check this property, it is necessary to import testDilithium
 
 testKeyGen = (pk.rho # (packT1 pk.t1) == testCase1.pk) /\
-    ((sk.rho # sk.key # sk.tr # (packPolyEta sk.s1) # (packPolyEta sk.s2) # (packT0 sk.t0)) == testCase1.sk)
+    ((sk.rho # sk.key # sk.tr # (packPolyEtaVec sk.s1) # (packPolyEtaVec sk.s2) # (packT0 sk.t0)) == testCase1.sk)
     where
     (pk, sk) = gen (join testCase1.seed)
 
@@ -219,15 +219,17 @@ packW w = join [pack_poly p | p <- wBV ]
     pack2 : [2][8] -> [8]
     pack2 xs = xs@0 || (xs@1 << 4)
     pack_poly p = join [ pack2 xs | xs <- split p : [128][2][_] ]
+    
 
-packPolyEta : {m} (fin m, m >= 1) =>  PolyVec m -> [4*N*m]
-packPolyEta s = join [ join [elt p i | i <- [0..(N/2)-1]:[_][8] ] | p <- s ]
+packPolyEta : Poly -> [4 * N]
+packPolyEta p = join [ packCoeff (p@(2*i+0) % `Q) || ((packCoeff (p@(2*i+1) % `Q)) << 4) | i <- [0..(N/2)-1]:[_][8] ]
     where
-    elt : Poly -> [8] -> [8]
-    elt p i = (c (((p@(2*i+0))) % `Q)) || ((c (((p@(2*i+1))) % `Q)) << 4)
-    c : [QBits] -> [8]
-    c num = drop (if num > ETA then `Q + ETA - num else ETA - num)
+    packCoeff : [QBits] -> [8]
+    packCoeff num = drop (if num > ETA then `Q + ETA - num else ETA - num)
 
+packPolyEtaVec : {m} (fin m, m >= 1) =>  PolyVec m -> [4*N*m]
+packPolyEtaVec pv = join [ packPolyEta p | p <- pv ]
+ 
 type SetaBits = 4
 //unpackPolyEta
 type PolEtaSizePacked = 128
@@ -341,7 +343,7 @@ type CryptoSecretKeyBytes = 2800
 //packSk
 
 packSk : [SeedBytes][8] -> [SeedBytes][8] -> [CrhBytes][8] -> PolyVec L -> PolyVec K -> PolyVec K -> [CryptoSecretKeyBytes*8]
-packSk rho key tr s1 s2 t0 = (join rho) # (join key) # (join tr)# (packPolyEta s1)#(packPolyEta s2) # (packT0 t0)
+packSk rho key tr s1 s2 t0 = (join rho) # (join key) # (join tr)# (packPolyEtaVec s1)#(packPolyEtaVec s2) # (packT0 t0)
 
 //unpackSk
 
@@ -396,7 +398,7 @@ encodec p = (join [ [ p@(8*i+j)!=0 | j <- [0..7] ] | i<- [0..(N/8)-1]])# (join s
         sigSigns = [ (signs!0) >>(8*i) | i<-[0..7]]:[8][8]
 
 packSig : (PolyVec L, PolyVec K, Poly) -> [SigSizePacked*8]
-packSig (z, h, c) = s0#s1#s2
+packSig (z, h, c) = s0 # s1 # s2
         where s0 = join [join (polyZPack z') | z' <- z ]
               s2 = encodec c
               s1 = encodeh h
