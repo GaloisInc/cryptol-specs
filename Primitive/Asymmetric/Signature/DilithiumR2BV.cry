@@ -69,7 +69,7 @@ BETA = 325
 type OMEGA = 80
 
 // Integer polynomials; a superset of ring R referenced in specification
-type IntPoly        = [N][QBits]
+type IntPoly        = Poly
 type IntPolyVec dim = [dim]IntPoly
 
 // Polynomials; a superset of ring R_q referenced in specification
@@ -77,13 +77,12 @@ type Poly        = [N][QBits] // This is R_q, actually defines a super set of R_
 type PolyVec dim = [dim]Poly
 
 // Polynomials in NTT representation
-type NttPoly          = [N][QBits]
+type NttPoly          = Poly
 type NttVec dim       = [dim]NttPoly
 type NttMat dim1 dim2 = [dim1](NttVec dim2)
 
-
 type PublicKey = { rho : [256], t1 : IntPolyVec K }
-type SecretKey = { rho : [256], key  : [256], tr : [384], s1 : PolyVec L, s2 : PolyVec K, t0 : IntPolyVec K }
+type SecretKey = { rho : [256], key : [256], tr : [384], s1 : PolyVec L, s2 : PolyVec K, t0 : IntPolyVec K }
 type SeedBytes = 32
 type CryptoPublicKeyBytes = SeedBytes + (PolT1SizePacked * K)
 
@@ -91,15 +90,15 @@ type CryptoPublicKeyBytes = SeedBytes + (PolT1SizePacked * K)
 gen : [3 * SeedBytes * 8] -> (PublicKey, SecretKey)
 gen s = (pk, sk)
     where
-      [rho, rho', key] = split`{3} s //rho <- {0, 1}^256, K <- {0,1}^256
+      [rho, rhop, key] = split`{3} s //rho <- {0, 1}^256, K <- {0,1}^256
       a       = expandA (split rho) //A ∈ R^(k×l)_q := expandA(rho)
-      s1      = polyUniformEtaV`{dim=L} rho' zero // s1<-s^l_η
-      s2      = polyUniformEtaV`{dim=K} rho' `L // s2<-s^k_η
+      s1      = polyUniformEtaVec`{dim=L} rhop zero // s1<-s^l_η
+      s2      = polyUniformEtaVec`{dim=K} rhop `L // s2<-s^k_η
       s1ntt   = map ntt s1
       as1     = map nttInv (nttMatMul a s1ntt)
-      t       = paddV as1 s2     //t:= as1 + s2
+      t       = polyVecAdd as1 s2     //t:= as1 + s2
       (t1,t0) = power2RoundPolyVec t  //(t1, t0):= Power2Round_q(t, d=4)
-      tr      = crh (rho#(packT1 t1)) //tr ∈ {0,1}^384 := crh(rho||t1)
+      tr      = crh (rho # (packT1 t1)) //tr ∈ {0,1}^384 := crh(rho||t1)
       pk      = { rho = rho, t1 = t1 }
       sk      = { rho = rho, key = key, tr = tr, s1 = s1, s2 = s2, t0 = t0 }
 
@@ -112,9 +111,9 @@ testKeyGen = (pk.rho # (packT1 pk.t1) == testCase1.pk) /\
     (pk, sk) = gen (join testCase1.seed)
 
 /* Generate signature for message M */
-// corresponds to cryptoSign_signature
+// corresponds to crypto_sign_signature
 sign : { mbytes } (fin mbytes, mbytes >= 1) => SecretKey -> [mbytes * 8] -> (PolyVec L, PolyVec K, Poly)
-sign sk msg = (final_state.z, h, nttInv final_state.c')
+sign sk msg = (finalState.z, h, nttInv finalState.c')
      where
       mat   = expandA (split sk.rho) // A ∈ R^(k×l)_q := expandA(ρ)
       mu    = crh`{b=48+mbytes} (sk.tr # msg) // μ ∈{0,1}^384 := crh(tr||M)
@@ -125,16 +124,28 @@ sign sk msg = (final_state.z, h, nttInv final_state.c')
       //TODO: check t0' back later
 
       init : SignVarTypes
-      init = { z=zero,r0=zero,r1=zero,t0'=t0',c'=zero,w=zero,w1=zero
-             ,s1'=s1',s2'=s2',cs2=zero,K=sk.key,mu=mu,A=mat,kappa=kappa }
+      init = { z = zero
+            , r0 = zero
+            , r1 = zero
+            , t0' = t0'
+            , c' = zero
+            , w = zero
+            , w1 = zero 
+            , s1' = s1'
+            , s2' = s2'
+            , cs2 = zero
+            , K = sk.key
+            , mu = mu
+            , A = mat
+            , kappa = kappa 
+            }
 
-      final_state = dowhile signCondition signBody init
-      ct0         = map nttInv (nttVecConstMul final_state.c' final_state.t0')
-      h           = makeHintPolyVec (psubV zero ct0
-                              ,paddV (psubV final_state.w final_state.cs2) (ct0))
+      finalState = dowhile signCondition signBody init
+      ct0        = map nttInv (nttVecConstMul finalState.c' finalState.t0')
+      h          = makeHintPolyVec (polyVecSub zero ct0, polyVecAdd (polyVecSub finalState.w finalState.cs2) ct0)
 
 // cryptoSign appends message at the end of the signature
-cryptoSign : {mbytes} (fin mbytes, mbytes >= 1) => SecretKey -> [mbytes*8] -> [(SigSizePacked + mbytes)*8]
+cryptoSign : { mbytes } (fin mbytes, mbytes >= 1) => SecretKey -> [mbytes * 8] -> [(SigSizePacked + mbytes) * 8]
 cryptoSign sk m = packSig (sign sk m) # m
 
 type SignVarTypes = { z : PolyVec L
@@ -164,8 +175,8 @@ signCondition sv = fail1 \/ fail2
                             \/ ( (foldl (+) 0 cones) > `OMEGA ) // number of ones in h > ω
                     cones = sum (map (\x -> (map onesBv x)) h)
                     ct0   = map nttInv (nttVecConstMul sv.c' sv.t0')
-                    h     = makeHintPolyVec (psubV zero ct0
-                                      ,paddV (psubV sv.w sv.cs2) (ct0))
+                    h     = makeHintPolyVec (polyVecSub zero ct0
+                                      ,polyVecAdd (polyVecSub sv.w sv.cs2) (ct0))
                                       // h := makeHintPolyVec(-ct0, w-cs2+ct0, 2γ2)
 
 
@@ -181,8 +192,8 @@ signBody sv = {z=z,r0=r0,r1=r1,t0'=sv.t0',c'=c',w=w,w1=w1,s1'=sv.s1',s2'=sv.s2',
                 c'  = ntt ( hash (sv.mu,w1) ) // c ∈ B_(60) := hash(μ||w1)
                 cs1 = map nttInv (nttVecConstMul c' sv.s1') // cs1 := c'.s1'
                 cs2 = map nttInv (nttVecConstMul c' sv.s2') // cs2 := c'.s2'
-                z   = paddV y cs1 // z:= y+cs1
-                (r1, r0) = decomposePolyVec (psubV w cs2) // Decompose_q(w-cs2, 2γ2)
+                z   = polyVecAdd y cs1 // z:= y+cs1
+                (r1, r0) = decomposePolyVec (polyVecSub w cs2) // Decompose_q(w-cs2, 2γ2)
 
 
 
@@ -195,9 +206,9 @@ verify pk msg (z, h, c) = crit1 && crit2 && crit3
         zntt     = map ntt z // NTT(z)
         t1dot2d  = map ntt (map (\p -> map (\x ->  mod_mul(`Q, x, (2^^14))) p) pk.t1) // t1.2^^d where d=14
         nttt1dot2d = map ntt t1dot2d
-        ct1ntt   = nttVecConstMul (psub zero c) nttt1dot2d   // -ct1
+        ct1ntt   = nttVecConstMul (polySub zero c) nttt1dot2d   // -ct1
         az       = nttMatMul a zntt
-        w1'      = useHintPolyVec (h, paddV az ct1ntt)
+        w1'      = useHintPolyVec (h, polyVecAdd az ct1ntt)
         zint     = z
         zinf     = infNormPolyVec zint // ||z||_∞
         crit1    = zinf < GAMMA1 - BETA
@@ -445,9 +456,9 @@ updateCoeffs pv i j a =  upv
 // Only works when n=256
 
 // This function has been modified in round2
-//polyUniformEtaV : {dim} (fin dim, dim>=1,width (dim-1) <= 8) => [256] -> [8] -> PolyVec dim // round1
-polyUniformEtaV : {dim} (fin dim, dim>=1,width (dim-1) <= 8) => [256] -> [16] -> PolyVec dim
-polyUniformEtaV r nonce = [polyUniformEta (split r) (nonce + j) | j <- [0..(dim-1)]:[dim][16]]
+//polyUniformEtaVec : {dim} (fin dim, dim>=1,width (dim-1) <= 8) => [256] -> [8] -> PolyVec dim // round1
+polyUniformEtaVec : {dim} (fin dim, dim>=1,width (dim-1) <= 8) => [256] -> [16] -> PolyVec dim
+polyUniformEtaVec r nonce = [polyUniformEta (split r) (nonce + j) | j <- [0..(dim-1)]:[dim][16]]
 
 genS : [8] -> [2][4]
 genS byte = [t0, t1]
@@ -606,19 +617,19 @@ makeHint (z,r) = r1 != v1
           where r1 = highBits r
                 v1 = highBits r+z
 
-CLEAN_Make_hint: ([QBits],[QBits]) -> Bit
-CLEAN_Make_hint (z, r) = if ((z <= GAMMA2) || (z > `Q - GAMMA2) || (z == (`Q - GAMMA2)) && (r == 0)) then False else True
+makeHintNew : ([QBits],[QBits]) -> Bit
+makeHintNew (z, r) = if ((z <= GAMMA2) || (z > `Q - GAMMA2) || (z == (`Q - GAMMA2)) && (r == 0)) then False else True
 
-makeHintPolyNew: (Poly, Poly) -> [QBits]
-makeHintPolyNew (zp, rp) = foldl (+) 0 [ zext [CLEAN_Make_hint (z, r)] | z <- zp | r <- rp]
+makeHintPolyNew : (Poly, Poly) -> [QBits]
+makeHintPolyNew (zp, rp) = foldl (+) 0 [ zext [makeHintNew (z, r)] | z <- zp | r <- rp]
 
-makeHintPolyVecNew: {k} (fin k, k>=1) => (PolyVec k, PolyVec K) -> [QBits]
+makeHintPolyVecNew : {k} (fin k, k>=1) => (PolyVec k, PolyVec K) -> [QBits]
 makeHintPolyVecNew (zv, rv) = foldl (+) 0 [makeHintPolyNew (zp, rp) | zp <- zv | rp <- rv ]
 
-makeHintPoly: (Poly, Poly) -> Poly
+makeHintPoly : (Poly, Poly) -> Poly
 makeHintPoly (zp, rp) =  drop res
     where res = [0]#[coeff+r | r<- res | coeff<- p]
-          p = [zext [CLEAN_Make_hint (z, r)] | z <- zp | r <- rp]
+          p = [zext [makeHintNew (z, r)] | z <- zp | r <- rp]
 
 makeHintPolyVec : {k} (fin k, k>=1) => (PolyVec k, PolyVec k) -> PolyVec k
 makeHintPolyVec (zv, rv) =  [makeHintPoly (zp, rp) | zp <- zv | rp <- rv ]
@@ -731,9 +742,9 @@ nttInv p' = p
         r' i = mod_pow (`Q, ROOTOFUNITYINV, (i*2))
         p = [ mod_mul(`Q, NINV, mod_mul(`Q, mod_pow(`Q, ROOTOFUNITYINV, i), (modSum (`Q, [mod_mul(`Q, (pu@jdx), (r' ((i*j))))
             | jdx<-[0..(N-1)]:[N][width N]
-            | j<-[0..(N-1)]:[N][QBits]
+            | j<-[0..(N-1)]:Poly
             ]))))
-            | i <- [0..255]:[N][QBits]
+            | i <- [0..255]:Poly
             ]
 
 // Dilithium uses a non-standard ordering of elements in the NTT domain; this function reorders the elements.
@@ -751,7 +762,7 @@ nttMatMul : {dim1,dim2} (fin dim1,fin dim2) => NttMat dim1 dim2 -> NttVec dim2 -
 nttMatMul mat vec = [ nttDotProduct v vec | v <- mat ]
 
 nttDotProduct : {dim} (fin dim) => NttVec dim -> NttVec dim -> NttPoly
-nttDotProduct v1 v2 = foldl padd (zero:NttPoly) [ nttPolyMult p1 p2 | p1 <- v1 | p2 <- v2 ]
+nttDotProduct v1 v2 = foldl polyAdd (zero:NttPoly) [ nttPolyMult p1 p2 | p1 <- v1 | p2 <- v2 ]
 
 nttPolyMult : NttPoly -> NttPoly -> NttPoly
 nttPolyMult p1 p2 = [ mod_mul(`Q, x, y) | x <- p1 | y <- p2]
@@ -760,24 +771,23 @@ nttVecConstMul : {dim} (fin dim) => NttPoly -> NttVec dim -> NttVec dim
 nttVecConstMul c v = map (nttPolyMult c) v
 
 polyVecSum :  {dim} (fin dim) => PolyVec dim -> PolyVec dim -> PolyVec dim
-polyVecSum v1 v2 = map nttInv (paddV v1' v2')
+polyVecSum v1 v2 = map nttInv (polyVecAdd v1' v2')
         where
         v1' = map ntt v1
         v2' = map ntt v2
 
 // Polynomial addition and subtraction
-padd : [N][QBits] -> [N][QBits] -> [N][QBits]
-padd p1 p2 = [ mod_add(`Q, x, y) | x <- p1 | y <- p2 ]
+polyAdd : Poly -> Poly -> Poly
+polyAdd p1 p2 = [ mod_add(`Q, x, y) | x <- p1 | y <- p2 ]
 
-psub : [N][QBits] -> [N][QBits] -> [N][QBits]
-psub p1 p2 = [ mod_sub(`Q, x, y) | x <- p1 | y <- p2 ]
+polyVecAdd : { dim } (fin dim) => PolyVec dim -> PolyVec dim -> PolyVec dim
+polyVecAdd v1 v2 = zipWith polyAdd v1 v2
 
-psubV : {dim} (fin dim) => [dim][N][QBits] -> [dim][N][QBits] -> [dim][N][QBits]
-psubV v1 v2 = zipWith psub v1 v2
+polySub : Poly -> Poly -> Poly
+polySub p1 p2 = [ mod_sub(`Q, x, y) | x <- p1 | y <- p2 ]
 
-
-paddV : {dim} (fin dim) => [dim][N][QBits] -> [dim][N][QBits] -> [dim][N][QBits]
-paddV v1 v2 = zipWith padd v1 v2
+polyVecSub : { dim } (fin dim) => PolyVec dim -> PolyVec dim -> PolyVec dim
+polyVecSub v1 v2 = zipWith polySub v1 v2
 
 // Aux functions
 
@@ -785,11 +795,9 @@ infNorm : [QBits] -> [QBits]
 infNorm x =  (centeredMod x `Q)
 
 infNormPoly : IntPoly -> [QBits]
-infNormPoly p = foldl max 0 p_centered
-            where
-              p_centered = map infNorm p
+infNormPoly p = foldl max 0 (map infNorm p)
 
-infNormPolyVec : {dim} (fin dim, dim>=1) => IntPolyVec dim -> [QBits]
+infNormPolyVec : { dim } (fin dim, dim >= 1) => IntPolyVec dim -> [QBits]
 infNormPolyVec v = foldl max 0 (map infNormPoly v)
 
 
