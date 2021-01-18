@@ -593,7 +593,7 @@ decomposeNew a = (af, b0)
               b0 = `Q + t4 - (a2 >>$ 4)
               af = a2 && `0x0000000f
 
-decomposePoly : {m} [m][QBits] -> ([m][QBits], [m][QBits])
+decomposePoly : Poly -> (Poly, Poly)
 decomposePoly p = unzip [decompose x | x <- p]
 
 decomposePolyVec : {n} (fin n, n>=1) => PolyVec n  -> (PolyVec n, PolyVec n)
@@ -626,27 +626,25 @@ makeHintPolyVecNew (zv, rv) = foldl (+) 0 [makeHintPolyNew (zp, rp) | zp <- zv |
 
 makeHintPoly : (Poly, Poly) -> Poly
 makeHintPoly (zp, rp) =  drop res
-    where res = [0]#[coeff+r | r<- res | coeff<- p]
-          p = [zext [makeHintNew (z, r)] | z <- zp | r <- rp]
+    where res = [0] # [ coeff+r | r<- res | coeff <- p ]
+          p = [ zext [ makeHintNew (z, r) ] | z <- zp | r <- rp ]
 
-makeHintPolyVec : {k} (fin k, k>=1) => (PolyVec k, PolyVec k) -> PolyVec k
-makeHintPolyVec (zv, rv) =  [makeHintPoly (zp, rp) | zp <- zv | rp <- rv ]
-
-
+makeHintPolyVec : {k} (fin k, k >= 1) => (PolyVec k, PolyVec k) -> PolyVec k
+makeHintPolyVec (zv, rv) =  [ makeHintPoly (zp, rp) | zp <- zv | rp <- rv ]
 
 useHint : ([QBits],[QBits]) -> [QBits]
 useHint  (r,h) = zext (if  ~((h ==0) || (r0+`Q>`Q)) then drop`{19}(r1 - 1) else (if (r0+`Q>`Q) then drop`{19}(r1+1) else drop`{19}(r1 - 1)))
         where
           (r1, r0) = decompose r
           //r1'      = if (r0+`q> `q) then (drop`{19}(r1+1) else drop`{19}(r1 - 1)
-useHintPoly: Poly -> Poly -> Poly
+useHintPoly : Poly -> Poly -> Poly
 useHintPoly rp hp = [ useHint (r, h) | r <- rp | h <- hp ]
 
-useHintPolyVec : {k}(fin k, k>=1) => (PolyVec k, PolyVec k) -> PolyVec k
-useHintPolyVec (rv, hv) = [useHintPoly hpoly rpoly
-                              | hpoly <- hv
-                              | rpoly <- rv
-                              ]
+useHintPolyVec : { k }(fin k, k >= 1) => (PolyVec k, PolyVec k) -> PolyVec k
+useHintPolyVec (rv, hv) = [ useHintPoly hpoly rpoly
+                          | hpoly <- hv
+                          | rpoly <- rv
+                          ]
 
 /*
 
@@ -655,7 +653,7 @@ useHintPolyVec (rv, hv) = [useHintPoly hpoly rpoly
 */
 
 
-ones : {a} (fin a, a >= 1) => [a] -> Integer
+ones : { a } (fin a, a >= 1) => [a] -> Integer
 ones bv = foldl (+) 0 bva
       where
       bva = map toInteger (split bv:[_][1])
@@ -677,12 +675,12 @@ PVtoIPV pvec = map PtoIP pvec*/
 
 
 centeredMod : [QBits] -> [QBits] -> [QBits]
-centeredMod x n = if r > (n/2) then r - n
+centeredMod x n = if r > (n / 2) then r - n
                     else r
               where r = x % n
 
 
-randomsInRange : {a} (fin a) => ([a]-> [a]) -> ([a] -> Bit) -> [inf] -> [inf][a]
+randomsInRange : { a } (fin a) => ([a]-> [a]) -> ([a] -> Bit) -> [inf] -> [inf][a]
 randomsInRange createElt upperCrit randoms = if (upperCrit elt )
                                 then  [ elt ]#(randomsInRange createElt upperCrit randomTail)
                                 else randomsInRange createElt upperCrit randomTail
@@ -690,7 +688,7 @@ randomsInRange createElt upperCrit randoms = if (upperCrit elt )
                                 elt        = createElt (take`{a} randoms)
                                 randomTail = drop`{a} randoms
 
-randomsInRanges : {a,m} (fin a,fin m, m>=1) => ([a]-> [a]) -> [m][a] -> [inf] -> [inf][a]
+randomsInRanges : { a,m } (fin a,fin m, m >= 1) => ([a]-> [a]) -> [m][a] -> [inf] -> [inf][a]
 randomsInRanges createElt uppers randoms =
                 if elt <= head uppers
                 then  [ elt ]#(randomsInRanges createElt uppersRotate randomTail)
@@ -704,13 +702,13 @@ randomsInRanges createElt uppers randoms =
 randomsInRangeDouble : {a} (fin a) => ([2*a]-> [2][a]) -> [a] -> [inf] -> [inf][a]
 randomsInRangeDouble createElt upper randoms =
                 if (elts@0 <= upper) /\ (elts@1 <= upper)
-                then  elts#(randomsInRangeDouble createElt upper randomTail)
+                then  elts # (randomsInRangeDouble createElt upper randomTail)
                 else
                   if (elts@0 <= upper)
-                  then [ elts@0 ]#(randomsInRangeDouble createElt upper randomTail)
+                  then [ elts@0 ] # (randomsInRangeDouble createElt upper randomTail)
                   else
                     if (elts@1 <= upper)
-                    then [ elts@1 ]#(randomsInRangeDouble createElt upper randomTail)
+                    then [ elts@1 ] # (randomsInRangeDouble createElt upper randomTail)
                     else randomsInRangeDouble createElt upper randomTail
                 where
                   elts       = createElt (take`{2*a} randoms)
