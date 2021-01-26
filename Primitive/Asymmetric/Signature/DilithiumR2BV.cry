@@ -192,7 +192,7 @@ signBody sv = {z=z,r0=r0,r1=r1,t0'=sv.t0',c'=c',w=w,w1=w1,s1'=sv.s1',s2'=sv.s2',
                 z   = polyVecAdd y cs1 // z:= y+cs1
                 (r1, r0) = decomposePolyVec (polyVecSub w cs2) // Decompose_q(w-cs2, 2γ2)
 
-verify : {mbytes} (fin mbytes, mbytes >= 1) => PublicKey -> [mbytes * 8] -> (PolyVec L, PolyVec K, Poly) -> Bit
+verify : { mbytes } (fin mbytes, mbytes >= 1) => PublicKey -> [mbytes * 8] -> (PolyVec L, PolyVec K, Poly) -> Bit
 verify pk msg (z, h, c) = crit1 && crit2 && crit3
        where
         a        = expandA (split pk.rho) // A ∈ R^(k×l)_q := expandA(ρ)
@@ -361,10 +361,10 @@ polyZPack p =  join [ (tmp p i) | i <- [0..(N/2)-1]]
                     r3 = drop (t1 >> 4)
                     r4 = drop (t1 >> 12)
 
-polyZUnpack : [PolZSizePacked][8] -> [N][32]
-polyZUnpack p =  join [ compCoeffs i | i <- [0..(N/2)-1]]
-    where compCoeffs : [10] -> [2][32]
-          compCoeffs i = [rc0, rc1]
+polyZUnpack : [PolZSizePacked][8] -> Poly
+polyZUnpack p =  join [ compCoeffs i | i <- [0..(N/2)-1] ]
+    where compCoeffs : [10] -> [2][QBits]
+          compCoeffs i = [ drop rc0, drop rc1 ]
                 where
                   c0 = zero # p@(5*i+0) || (zero # p@(5*i+1):[32]) << 8 || (zero # (p@(5*i+2) && 0x0F):[32]) << 16
                   c1 = zero # p@(5*i+2) >> 4 || (zero # p@(5*i+3):[32]) << 4 || (zero # p@(5*i+4):[32]) << 12
@@ -416,7 +416,7 @@ decodeh xs = pv // it is supposed to be pv'!0
         ks = [0]#[ xs@(`OMEGA+i) | i <- [0..3] ]
         //pv' = [pv] # join [ [ (if j < (xs@(`OMEGA+i)) then (updateCoeffs p i j' 1)  else p) | j' <- [xs@j] ]| j<-ks | i<- [0..3] | p <- pv' ] // TODO: fix this
 
-unpackSig : [SigSizePacked][8] -> ([L][N][32], PolyVec K, Poly)
+unpackSig : [SigSizePacked][8] -> (PolyVec L, PolyVec K, Poly)
 unpackSig sig = (z, h, c)
         where type zlen = L * PolZSizePacked
               z = [ (polyZUnpack p) | p <- split (sig@@[0..zlen - 1]):[L][PolZSizePacked][8] ]
