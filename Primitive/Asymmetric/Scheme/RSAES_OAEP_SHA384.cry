@@ -1,0 +1,8 @@
+module Primitive::Asymmetric::Scheme::RSAES_OAEP_SHA384 = Primitive::Asymmetric::Scheme::RSAES_OAEP where
+
+import Primitive::Keyless::Hash::SHA384
+
+type k = 128
+type hLen = 48
+
+hash = SHAImp

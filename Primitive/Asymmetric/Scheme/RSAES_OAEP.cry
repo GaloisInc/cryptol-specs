@@ -332,6 +332,41 @@ MGF1 mgfSeed = take`{maskLen} Ts
       Ts = join [ split (hash (mgfSeed # c)) : [_][8] | c <- Cs]
 
 
+MGF1' : {seedLen, maskLen} (fin seedLen, fin maskLen, hLen == 48, seedLen == 48) => [seedLen][8] -> [maskLen][8]
+MGF1' seed = take (join [ split (hash (seed # (split c))) | c <- [(0 : [32]) ...] ])
+
+PSS_mgf1_encode : {emLen} (fin emLen, emLen == 128, hLen == 48, emLen >= 2 * hLen + 2) => [hLen][8] -> [hLen][8] -> [emLen][8]
+PSS_mgf1_encode mHash salt = EM'
+  where
+    M' = (zero : [8][8]) # mHash # salt 
+    H = split (hash M')
+    DB = (zero : [emLen - 2 * hLen - 2][8]) # [0x01] # salt
+    dbMask = MGF1' H
+    maskedDB = DB ^ dbMask
+    EM = maskedDB # H # [0xbc]
+    EM' = update EM 0 ((EM @ 0) && 0x7f)
+
+PSS_mgf1_verify : {emLen} (fin emLen, emLen == 128, hLen == 48, emLen >= 2 * hLen + 2) => [hLen][8] -> [emLen][8] -> Bit
+PSS_mgf1_verify mHash EM = 0xbc == byte_0xbc /\ 0 == (maskedDB @ 0) && 0x80 /\ (zero : [emLen - 2 * hLen - 2][8]) == padding /\ 0x01 == byte_0x01 /\ H == H'
+  where
+    (maskedDB # H # [byte_0xbc]) = EM
+    dbMask = MGF1' H
+    DB = maskedDB ^ dbMask
+    DB' = update DB 0 ((DB @ 0) && 0x7f)
+    padding # [byte_0x01] # salt = DB'
+    M' = (zero : [8][8]) # mHash # salt 
+    H' = split (hash M')
+
+RSA_sign : {emLen} (fin emLen, emLen == 128, hLen == 48, emLen >= 2 * hLen + 2) => [hLen][8] -> [hLen][8] -> Integer -> Integer -> Integer
+RSA_sign mHash salt d n = (exp (integerFromBV (join (PSS_mgf1_encode mHash salt))) d) % n
+
+RSA_verify : {emLen} (fin emLen, emLen == 128, hLen == 48, emLen >= 2 * hLen + 2) => [hLen][8] -> Integer -> Integer -> Integer -> Bit
+RSA_verify mHash sig e n = sig < n /\ PSS_mgf1_verify mHash (split (integerToBV ((exp sig e) % n)))
+
+
+exp : Integer -> Integer -> Integer
+exp = (^^)
+
 bn_mont_n0 : {a} (fin a) => [a][64] -> [64]
 bn_mont_n0 n = undefined
 
@@ -340,6 +375,12 @@ integerToBV x = fromInteger x
 
 integerFromBV : {m} (fin m) => [m] -> Integer
 integerFromBV x = toInteger x
+
+integerModulusFromBV : {m} (fin m) => [m] -> Integer
+//integerModulusFromBV x = if x == 0 then 1 else (toInteger x)
+integerModulusFromBV x = if (integerFromBV x) == 0 then 1 else (integerFromBV x)
+
+
 
 is_num_bits_bn : {m,w} (fin m, fin w, m <= w) => [w] -> Bit
 is_num_bits_bn x = if `m == `w
