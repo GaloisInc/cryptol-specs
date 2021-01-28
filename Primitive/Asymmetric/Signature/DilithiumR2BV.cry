@@ -92,12 +92,12 @@ gen s = (pk, sk)
     where
       [rho, rhop, key] = split`{3} s //rho <- {0, 1}^256, K <- {0,1}^256
       a       = expandA (split rho) //A ∈ R^(k×l)_q := expandA(rho)
-      s1      = polyUniformEtaVec`{dim=L} rhop zero // s1<-s^l_η
-      s2      = polyUniformEtaVec`{dim=K} rhop `L // s2<-s^k_η
+      s1      = polyUniformEtaVec`{dim = L} rhop zero // s1<-s^l_η
+      s2      = polyUniformEtaVec`{dim = K} rhop `L // s2<-s^k_η
       s1Hat   = map ntt s1
       as1     = map nttInv (nttMatMul a s1Hat)
-      t       = polyVecAdd as1 s2     //t:= as1 + s2
-      (t1,t0) = power2RoundPolyVec t  //(t1, t0):= Power2Round_q(t, d=4)
+      t       = polyVecAdd as1 s2     //t := as1 + s2
+      (t1,t0) = power2RoundPolyVec t  //(t1, t0) := Power2Round_q(t, d=4)
       tr      = crh (rho # (packT1 t1)) //tr ∈ {0,1}^384 := crh(rho||t1)
       pk      = { rho = rho, t1 = t1 }
       sk      = { rho = rho, key = key, tr = tr, s1 = s1, s2 = s2, t0 = t0 }
@@ -112,91 +112,106 @@ testKeyGen = (pk.rho # (packT1 pk.t1) == testCase1.pk) /\
 
 /* Generate signature for message M */
 // corresponds to crypto_sign_signature
-sign : { mbytes } (fin mbytes, mbytes >= 1) => SecretKey -> [mbytes * 8] -> (PolyVec L, PolyVec K, Poly)
-sign sk msg = (finalState.z, h, nttInv finalState.c')
+sign : { mbytes } (fin mbytes, mbytes >= 0) => SecretKey -> [mbytes * 8] -> (PolyVec L, PolyVec K, Poly)
+sign sk m = (finalState.z, h, nttInv finalState.cHat)
      where
       mat   = expandA (split sk.rho) // A ∈ R^(k×l)_q := expandA(ρ)
-      mu    = crh`{ b = 48 + mbytes } (sk.tr # msg) // μ ∈{0,1}^384 := crh(tr||M)
+      mu    = crh`{b = 48 + mbytes} (sk.tr # m) // μ ∈{0,1}^384 := crh(tr||M)
       kappa = zero // κ := 0
-      s1'   = map ntt sk.s1
-      s2'   = map ntt sk.s2
-      t0'   = map ntt (sk.t0)
+      s1Hat   = map ntt sk.s1
+      s2Hat   = map ntt sk.s2
+      t0Hat   = map ntt (sk.t0)
 
       init : SignVarTypes
       init = { z = zero
             , r0 = zero
             , r1 = zero
-            , t0' = t0'
-            , c' = zero
+            , t0Hat = t0Hat
+            , cHat = zero
             , w = zero
             , w1 = zero 
-            , s1' = s1'
-            , s2' = s2'
+            , s1Hat = s1Hat
+            , s2Hat = s2Hat
             , cs2 = zero
-            , K = sk.key
+            , key = sk.key
             , mu = mu
-            , A = mat
+            , a = mat
             , kappa = kappa 
             }
 
       finalState = dowhile signCondition signBody init
-      ct0        = map nttInv (nttVecConstMul finalState.c' finalState.t0')
+      ct0        = map nttInv (nttVecConstMul finalState.cHat finalState.t0Hat)
       h          = makeHintPolyVec (polyVecSub zero ct0, polyVecAdd (polyVecSub finalState.w finalState.cs2) ct0)
 
 // cryptoSign appends message at the end of the signature
-cryptoSign : { mbytes } (fin mbytes, mbytes >= 1) => SecretKey -> [mbytes * 8] -> [(SigSizePacked + mbytes) * 8]
+cryptoSign : { mbytes } (fin mbytes, mbytes >= 0) => SecretKey -> [mbytes * 8] -> [(SigSizePacked + mbytes) * 8]
 cryptoSign sk m = packSig (sign sk m) # m
 
+open : { mbytes } (fin mbytes, mbytes >= 0) => PublicKey -> [(SigSizePacked + mbytes)][8] -> Bit
+open pk sm =  verify pk (join (drop`{ SigSizePacked } sm)) (unpackSig (take`{ SigSizePacked } sm))
+  
 type SignVarTypes = { z : PolyVec L
                     , r0  : IntPolyVec K
                     , r1  : IntPolyVec K
-                    , t0' : NttVec K
-                    , c'  : NttPoly
+                    , t0Hat : NttVec K
+                    , cHat  : NttPoly
                     , w   : PolyVec K
                     , w1  : IntPolyVec K
-                    , s1' : NttVec L
-                    , s2' : NttVec K
+                    , s1Hat : NttVec L
+                    , s2Hat : NttVec K
                     , cs2 : PolyVec K
-                    , K   : [256]
+                    , key   : [256]
                     , mu  : [384]
-                    , A   : NttMat K L
+                    , a   : NttMat K L
                     , kappa: [16]
                     }
 
 signCondition : SignVarTypes -> Bit
 signCondition sv = fail1 \/ fail2
                    where
-                    fail1 = ((infNormPolyVec (sv.z)) >= (GAMMA1-BETA)) // ||z||_∞ ≥ γ1 - β
-                            \/ ((infNormPolyVec sv.r0) >= (GAMMA2-BETA)) // ||r0||_∞ ≥ γ2 - β
+                    fail1 = ((infNormPolyVec (sv.z)) >= (GAMMA1 - BETA)) // ||z||_∞ ≥ γ1 - β
+                            \/ ((infNormPolyVec sv.r0) >= (GAMMA2 - BETA)) // ||r0||_∞ ≥ γ2 - β
                             \/ (sv.r1 != sv.w1) // r1 ≂̸ w1
                     fail2 = ((infNormPolyVec (ct0)) >= GAMMA2) // ||ct0||_∞ ≥ γ2
                             \/ ( (foldl (+) 0 cones) > `OMEGA ) // number of ones in h > ω
                     cones = sum (map (\x -> (map onesBv x)) h)
-                    ct0   = map nttInv (nttVecConstMul sv.c' sv.t0')
-                    h     = makeHintPolyVec (polyVecSub zero ct0
-                                      ,polyVecAdd (polyVecSub sv.w sv.cs2) (ct0))
+                    ct0   = map nttInv (nttVecConstMul sv.cHat sv.t0Hat)
+                    h     = makeHintPolyVec (polyVecSub zero ct0, polyVecAdd (polyVecSub sv.w sv.cs2) (ct0))
                                       // h := makeHintPolyVec(-ct0, w-cs2+ct0, 2γ2)
 
 signBody : SignVarTypes -> SignVarTypes
-signBody sv = {z=z,r0=r0,r1=r1,t0'=sv.t0',c'=c',w=w,w1=w1,s1'=sv.s1',s2'=sv.s2',
-                   cs2=cs2,K=sv.K,mu=sv.mu,A=sv.A,kappa=(sv.kappa+1)}
+signBody sv = { z = z
+              , r0 = r0
+              , r1 = r1
+              , t0Hat =sv.t0Hat
+              , cHat = cHat
+              , w = w
+              , w1 = w1
+              , s1Hat = sv.s1Hat
+              , s2Hat = sv.s2Hat
+              , cs2 = cs2 
+              , key = sv.key
+              , mu = sv.mu
+              , a = sv.a
+              , kappa = (sv.kappa + 1)
+              }
               where
-                ρ'  = crh`{b=48+32} (sv.K#sv.mu) // ρ' ∈ {0,1}^384 := crh(K||μ) (or ρ' <- {0,1}^384 for randomized signing)
-                y   = expandMask((split ρ'), sv.kappa)// y ∈ S^l_(γ1-1) := expandMask(ρ',κ)
-                y'  = map ntt y // checked
-                w   = map nttInv (nttMatMul sv.A y') // w := Ay
+                ρPrime  = crh`{b = 48 + 32} (sv.key # sv.mu) // ρPrime ∈ {0,1}^384 := crh(K||μ) (or ρPrime <- {0,1}^384 for randomized signing)
+                y   = expandMask((split ρPrime), sv.kappa)// y ∈ S^l_(γ1-1) := expandMask(ρPrime,κ)
+                yHat  = map ntt y // checked
+                w   = map nttInv (nttMatMul sv.a yHat) // w := Ay
                 w1  = highBitsPolyVec w // w1 := highBitsPolyVec(w, 2γ2)
-                c'  = ntt ( hash (sv.mu,w1) ) // c ∈ B_(60) := hash(μ||w1)
-                cs1 = map nttInv (nttVecConstMul c' sv.s1') // cs1 := c'.s1'
-                cs2 = map nttInv (nttVecConstMul c' sv.s2') // cs2 := c'.s2'
+                cHat  = ntt (hash (sv.mu, w1)) // c ∈ B_(60) := hash(μ||w1)
+                cs1 = map nttInv (nttVecConstMul cHat sv.s1Hat) // cs1 := cHat.s1Hat
+                cs2 = map nttInv (nttVecConstMul cHat sv.s2Hat) // cs2 := cHat.s2Hat
                 z   = polyVecAdd y cs1 // z:= y+cs1
                 (r1, r0) = decomposePolyVec (polyVecSub w cs2) // Decompose_q(w-cs2, 2γ2)
 
-verify : { mbytes } (fin mbytes, mbytes >= 1) => PublicKey -> [mbytes * 8] -> (PolyVec L, PolyVec K, Poly) -> Bit
-verify pk msg (z, h, c) = crit1 && crit2 && crit3
+verify : { mbytes } (fin mbytes, mbytes >= 0) => PublicKey -> [mbytes * 8] -> (PolyVec L, PolyVec K, Poly) -> Bit
+verify pk m (z, h, c) = crit1 && crit2 && crit3
        where
         a        = expandA (split pk.rho) // A ∈ R^(k×l)_q := expandA(ρ)
-        mu       = crh`{b=48+mbytes} ((crh (pk.rho#(packT1 pk.t1))) # msg) // μ ∈{0,1}^384 := crh(crh(ρ||t1)||M)
+        mu       = crh`{b = 48 + mbytes} ((crh (pk.rho#(packT1 pk.t1))) # m) // μ ∈{0,1}^384 := crh(crh(ρ||t1)||M)
         zntt     = map ntt z // NTT(z)
         t1dot2d  = map ntt (map (\p -> map (\x ->  mod_mul(`Q, x, (2^^14))) p) pk.t1) // t1.2^^d where d=14
         nttt1dot2d = map ntt t1dot2d
@@ -212,11 +227,11 @@ verify pk msg (z, h, c) = crit1 && crit2 && crit3
 
 onesBv : { n } (fin n, n >= 1) => [n] -> [n]
 onesBv xs =  l!0
-    where l = [0]#[ (if (xs@i) then j+1 else j):[n] | i <- [0..N-1] | j<- l]
+    where l = [ 0 ] # [ (if (xs@i) then j+1 else j):[n] | i <- [0..N-1] | j <- l ]
 
 //:prove (\x -> (onesBv x) == fromInteger (ones x)):[23]-> Bit
 
-packW : IntPolyVec K -> [4*N*K]
+packW : IntPolyVec K -> [4 * N * K]
 packW w = join [pack_poly p | p <- wBV ]
     where
     wBV = map (\p -> map (\x -> drop`{15} x:[8]) p) w
@@ -230,7 +245,7 @@ packPolyEta p = join [ packCoeff (p@(2*i+0) % `Q) || ((packCoeff (p@(2*i+1) % `Q
     packCoeff : [QBits] -> [8]
     packCoeff num = drop (if num > ETA then `Q + ETA - num else ETA - num)
 
-packPolyEtaVec : {m} (fin m, m >= 1) =>  PolyVec m -> [4*N*m]
+packPolyEtaVec : {m} (fin m, m >= 1) =>  PolyVec m -> [4 * N * m]
 packPolyEtaVec pv = join [ packPolyEta p | p <- pv ]
  
 type SetaBits = 4
@@ -251,10 +266,10 @@ unpackPolyEtavec pvb =  [ unpackPolyEta pb | pb <- pvb ]
 
 
 type PolT0SizePacked = 448
-packT0 : IntPolyVec K -> [K*PolT0SizePacked*8]
+packT0 : IntPolyVec K -> [K * PolT0SizePacked * 8]
 packT0 t0 = join [ polyT0Pack p | p <- t0 ]
 
-polyT0Pack : IntPoly -> [PolT0SizePacked*8]
+polyT0Pack : IntPoly -> [PolT0SizePacked * 8]
 polyT0Pack p = join [ join [drop`{15} (tmp p i 0),
                        drop`{15} (((tmp p i 0) >> 8) || ((tmp p i 1) << 6)),
                        drop`{15} ((tmp p i 1) >> 2),
@@ -284,7 +299,7 @@ unpackT0 pv = [ (polyT0Unpack pv') | pv' <- pv]
 
 // d must be 14 for this to work, and n must be 256
 // polyt1_pack
-polyPack : Poly -> [PolT1SizePacked*8]
+polyPack : Poly -> [PolT1SizePacked * 8]
 polyPack p = join [ join (pack8 xs) | xs <- split (map (drop`{14}) p) : [32][8][_]]
 
 pack8 : [8][9] -> [9][8]
@@ -299,7 +314,7 @@ pack8 xs = map drop`{1} [ xs@0
                         , xs@7 >> 1
                         ]
 
-packT1 : PolyVec K -> [K*PolT1SizePacked*8]
+packT1 : PolyVec K -> [K*PolT1SizePacked * 8]
 packT1 pvk = (join [ polyPack p | p <- pvk])
 
 // polyT1Unpack
@@ -476,15 +491,15 @@ sampleInBall signs jsamples = ys ! 0
                    ]
 
 expandMask : ([CrhBytes][8], [16]) -> PolyVec L
-expandMask  ( ρ', kappa) = [samplePoly ρ' kappa i `L | i <- [0..(L-1)] ]
+expandMask  ( ρPrime, kappa) = [samplePoly ρPrime kappa i `L | i <- [0..(L-1)] ]
 
 samplePoly : [CrhBytes][8] -> [16] -> [2] -> [2] -> Poly
 //samplePoly K mu kappa i dim = (map (\x -> (`q+GAMMA1-1-(zero#x))) coeffs)
-samplePoly ρ' kappa i dim = (map (\x -> mod_sub(`Q, mod_sub(`Q, GAMMA1, 1), zero#x)) coeffs)
+samplePoly ρPrime kappa i dim = (map (\x -> mod_sub(`Q, mod_sub(`Q, GAMMA1, 1), zero#x)) coeffs)
     where
         (upper:[20])      =  drop`{4}(2*GAMMA1-2):[20]
         kappaBytes = join (reverse (split ((zext dim)*kappa+(zext i)):[2][8])) // LEB order
-        s          = join (SHA3::toBytes (take`{5*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes ((join ρ')#kappaBytes)))))) // checked
+        s          = join (SHA3::toBytes (take`{5*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes ((join ρPrime)#kappaBytes)))))) // checked
         (coeffs:[N][20])   = take`{N} (randomsInRangeDouble extractPolyElt upper (s#zero))
 
 extractPolyElt : [40] -> [2][20]
