@@ -159,13 +159,6 @@ bn_mont_n0 : {m} (fin m, m >= 3) => [64]
 bn_mont_n0 = fromInteger (((2 ^^ `(width m)) * mont_R_inv`{m} - 1) / `m)
 
 
-integerToBV : {m} (fin m) => Integer -> [m]
-integerToBV x = fromInteger x
-
-integerFromBV : {m} (fin m) => [m] -> Integer
-integerFromBV x = toInteger x
-
-
 type P384_w = w
 type P384_p = p
 P384_a = a

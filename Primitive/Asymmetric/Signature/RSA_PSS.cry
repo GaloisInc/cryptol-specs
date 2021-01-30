@@ -1,0 +1,68 @@
+/*
+   Copyright (c) 2021, Galois Inc.
+   www.cryptol.net
+   You can freely use this source code for educational purposes.
+*/
+
+/* This module implements an RSA signature scheme
+   with the EMSA-PSS encoding method described in 9.1 of
+
+   PKCS #1: RSA Cryptography Specifications Version 2.2
+
+   See also:
+   https://tools.ietf.org/html/rfc8017
+*/
+module Primitive::Asymmetric::Signature::RSA_PSS where
+
+import Common::utils
+
+parameter
+  type hLen : # // Number of octets returned by chosen hash function
+  type constraint (fin hLen, hLen >= 1)
+
+  hash : {n} (fin n) => [n][8] -> [8 * hLen]
+
+
+MGF1 : {seedLen, maskLen} (fin seedLen, fin maskLen) => [seedLen][8] -> [maskLen][8]
+MGF1 seed = take (join [ split (hash (seed # (split c))) | c <- [(0 : [32]) ...] ])
+
+
+PSS_mgf1_encode : {emLen} (fin emLen, emLen >= 2 * hLen + 2) => [hLen][8] -> [hLen][8] -> [emLen][8]
+PSS_mgf1_encode mHash salt = EM'
+  where
+    M' = (zero : [8][8]) # mHash # salt
+    H = split (hash M')
+    DB = (zero : [emLen - 2 * hLen - 2][8]) # [0x01] # salt
+    dbMask = MGF1 H
+    maskedDB = DB ^ dbMask
+    EM = maskedDB # H # [0xbc]
+    EM' = update EM 0 ((EM @ 0) && 0x7f)
+
+PSS_mgf1_verify : {emLen} (fin emLen, emLen >= 2 * hLen + 2) => [hLen][8] -> [emLen][8] -> Bit
+PSS_mgf1_verify mHash EM = 0xbc == byte_0xbc /\ 0 == (maskedDB @ 0) && 0x80 /\ (zero : [emLen - 2 * hLen - 2][8]) == padding /\ 0x01 == byte_0x01 /\ H == H'
+  where
+    (maskedDB # H # [byte_0xbc]) = EM
+    dbMask = MGF1 H
+    DB = maskedDB ^ dbMask
+    DB' = update DB 0 ((DB @ 0) && 0x7f)
+    padding # [byte_0x01] # salt = DB'
+    M' = (zero : [8][8]) # mHash # salt
+    H' = split (hash M')
+
+
+RSA_sign : {emLen} (fin emLen, emLen >= 2 * hLen + 2) => [hLen][8] -> [hLen][8] -> Integer -> Integer -> Integer
+RSA_sign mHash salt d n = (exp (integerFromBV (join (PSS_mgf1_encode`{emLen} mHash salt))) d) % n
+
+RSA_verify : {emLen} (fin emLen, emLen >= 2 * hLen + 2) => [hLen][8] -> Integer -> Integer -> Integer -> Bit
+RSA_verify mHash sig e n = sig < n /\ PSS_mgf1_verify`{emLen} mHash (split (integerToBV ((exp sig e) % n)))
+
+
+exp : Integer -> Integer -> Integer
+exp = (^^)
+
+phi : Integer -> Integer
+phi = undefined
+
+rad : Integer -> Integer
+rad = undefined
+
