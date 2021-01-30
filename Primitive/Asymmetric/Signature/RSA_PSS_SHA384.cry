@@ -1,0 +1,12 @@
+/*
+   Copyright (c) 2021, Galois Inc.
+   www.cryptol.net
+*/
+
+module Primitive::Asymmetric::Signature::RSA_PSS_SHA384 = Primitive::Asymmetric::Signature::RSA_PSS where
+
+import Primitive::Keyless::Hash::SHA2::SHA384
+
+type hLen = 48
+hash = SHAImp
+
