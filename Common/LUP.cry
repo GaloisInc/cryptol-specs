@@ -1,0 +1,278 @@
+// # LU Decomposition Over a Field
+
+// John D. Ramsdell -- The MITRE Corporation -- December 2020
+
+module Common::LUP where
+
+parameter
+
+  // The type of a field element
+
+  type Fld : *
+
+  // The field must implement equality
+
+  type constraint (Eq Fld)
+
+  // The additive identity of the field
+
+  fzero : Fld
+
+  // Addition in the field
+
+  fadd : Fld -> Fld -> Fld
+
+  // The additive inverse of the field
+
+  fminus : Fld -> Fld
+
+  // The multiplicative identity of the field
+
+  fone : Fld
+
+  // Multiplication in the field
+
+  fmul : Fld -> Fld -> Fld
+
+  // The multiplicative inverse of the field
+
+  finv : Fld -> Fld
+
+fdiv : Fld -> Fld -> Fld
+fdiv x y =
+  fmul x (finv y)
+
+nats : {n} (fin n) => [n][width n]
+nats = take`{n} [0 .. n]
+
+// map a function over a finite sequence
+map_at : {n, a} (fin n) => ([width n] -> a -> a) -> [n]a  -> [n]a
+map_at f m = [ f i (m @ i) | i <- nats ]
+
+// ## Vectors
+
+type FldVec n = [n]Fld
+
+// The dot product.
+
+dot : {n} (fin n) => FldVec n -> FldVec n -> Fld
+dot x y =
+  str ! 0
+  where
+    str = [ fzero ] # [ fadd acc (fmul xi yi)
+                      | xi <- x
+                      | yi <- y
+                      | acc <- str ]
+
+// Vector addition
+
+vecAdd : {n} (fin n) => FldVec n -> FldVec n -> FldVec n
+vecAdd x y = [ fadd xi yi | xi <- x | yi <- y ]
+
+// Scalar multiplication of a vector
+
+scalMul : {n} (fin n) => Fld -> FldVec n -> FldVec n
+scalMul c x = [ fmul c xi | xi <- x ]
+
+// ## Square matrices
+
+type FldMat n = [n](FldVec n)
+
+// Identity matrix
+
+idMat : {n} (fin n) => FldMat n
+idMat = [ unitVec i | i <- nats ]
+
+unitVec : {n} (fin n) => [width n] -> FldVec n
+unitVec i =
+  [ if i == j then fone else fzero | j <- nats ]
+
+// Matrix mulitplication
+
+matMul : {n} (fin n) => FldMat n -> FldMat n -> FldMat n
+matMul x y =
+  [ [ dot (x @ i) (transpose y @ j) | j <- nats ] | i <- nats]
+
+// Matrix vector multiplication
+
+matVec : {n} (fin n) => FldMat n -> FldVec n -> FldVec n
+matVec x y =
+  [ dot (x @ i) y  | i <- nats]
+
+// Swap two rows in a matrix.
+
+swap : {n, a} (fin n) => [width n] -> [width n] -> [n]a -> [n]a
+swap i j x =
+  [ x @ perm k | k <- nats ]
+  where
+    perm k =
+      if (i >= `n) || (j >= `n) then
+        k
+      else if k == i then
+        j
+      else if k == j then
+        i
+      else
+        k
+
+// ## LU Decomposition with Partial Pivoting
+
+// Decompose square matrix A as P*A = L*U where
+// P is a permutation matrix
+// L is unit lower triangular, and
+// U is upper triangular.
+// This is a Doolittle decomposition.
+
+// L and U are stored in one matrix.
+
+// The algorithm is from the Wikipedia page on LU Decomposition.
+// The algorithm follows.
+
+// for (i = 0; i < N; i++)
+//     P[i] = i;
+
+// for (i = 0; i < N; i++) {
+
+//     // Pivot here
+
+//     for (j = i + 1; j < N; j++) {
+//         A[j][i] /= A[i][i];
+
+//         for (k = i + 1; k < N; k++)
+//             A[j][k] -= A[j][i] * A[i][k];
+//     }
+// }
+
+// Perform LUP decomposition of square matrix a.
+
+LUPDecompose : {n} (fin n) => FldMat n -> (Bit, FldMat n, [n][width n])
+LUPDecompose a = str ! 0
+  where
+  perm = [ i | i <- nats ]
+  str = [(True, a, perm)] #
+        [ row i non_sing lu p | (non_sing, lu, p) <- str | i <- nats`{n=n} ]
+
+private
+// Perform partial pivoting and then elimination of matrix a and pivot
+// p at i.  When ns = False, matrix a is known to be singular
+  row : {n} (fin n) => [width n] -> Bit -> FldMat n -> [n][width n] ->
+                       (Bit, FldMat n, [n][width n])
+  row i ns a p =
+    if ns then
+      if ns' then
+        (ns', elim i a', p')    // Perform elimination at row i
+      else
+        (ns', a', p')           // a is singular, pivoting failed
+      where
+        (ns', a', p') = pivot i a p
+    else
+      (ns, a, p)                // a is known to be singular
+
+// Pivot rows when a[i][i] == 0.  The first element of the output is
+// True when the matrix is non-singular.
+  pivot : {n} (fin n) => [width n] -> FldMat n -> [n][width n] ->
+                         (Bit, FldMat n, [n][width n])
+  pivot i a perm = str ! 0
+    where
+    str = [(False, a, perm)] #
+          [ f done lu p j | (done, lu, p) <- str | j <- nats`{n=n} ]
+    f done lu p j =
+      if j < i then (done, lu, p)
+       | j == i then (lu @ i @ i != fzero, lu, p)
+       | done then (done, lu, p)
+       | lu @ j @ i == fzero then (done, lu, p)
+      else (True, swap i j lu, swap i j p) // Pivot
+
+// for (j = i + 1; j < N; j++) {
+//     A[j][i] /= A[i][i];
+//
+//     for (k = i + 1; k < N; k++)
+//         A[j][k] -= A[j][i] * A[i][k];
+// }
+
+// Perform elimination in row i.
+  elim : {n} (fin n) => [width n] -> FldMat n -> FldMat n
+  elim i a = map_at f a
+    where
+      invA_i_i = finv (a @ i @ i)
+      f j v =
+        if i < j then
+          map_at g v
+          where
+            a_j_i = fmul (v @ i) invA_i_i
+            g k x =
+              if k < i then x
+               | k == i then a_j_i
+              else
+                fadd x (fminus (fmul a_j_i (a @ i @ k)))
+        else
+          v
+
+// I wonder if the efficiency of the implementation of decomposition
+// could be improved by using update more often instead of buiding all
+// matrices from scratch.
+
+// ## Solving linear equations
+
+/*
+void LUPSolve(double **A, int *P, double *b, int N, double *x) {
+
+    for (int i = 0; i < N; i++) {
+        x[i] = b[P[i]];
+
+        for (int k = 0; k < i; k++)
+            x[i] -= A[i][k] * x[k];
+    }
+
+    for (int i = N - 1; i >= 0; i--) {
+        for (int k = i + 1; k < N; k++)
+            x[i] -= A[i][k] * x[k];
+
+        x[i] /= A[i][i];
+    }
+}
+*/
+
+// Solve a set of linear equations given an LUP decomposition of a
+// matrix.  That is, find x such that a * x = b, where lu and p are
+// the decomposition of matrix a.  This function assumes a is
+// non-singular.
+LUPSolve : {n} (fin n) => FldMat n -> [n][width n] ->
+                          FldVec n -> FldVec n
+LUPSolve lu p b =
+  bb
+  where
+    // Apply the pivot to b
+    pb = map_at pf b
+    pf i x = b @ (p @ i)
+    // Perform a forward subsitution on pb
+    fb = [ ff i x | x <- pb | i <- nats`{n=n} ]
+    ff i x = str ! 0
+      where
+        str = [ x ] # [ h j y | y <- str | j <- nats`{n=n} ]
+        h j y =
+          if j < i then
+            fadd y (fminus (fmul (lu @ i @ j) (fb @ j)))
+          else
+            y
+    // Perform a backward subsitution on fb
+    bb = [ bf i x | x <- fb | i <- nats`{n=n} ]
+    bf i x = fdiv (str ! 0) (lu @ i @ i)
+      where
+        str = [ x ] # [ h j y | y <- str | j <- nats`{n=n} ]
+        h j y =
+          if i < j then
+            fadd y (fminus (fmul (lu @ i @ j) (bb @ j)))
+          else
+            y
+
+// ## Invert a matrix
+// Returns false if the matrix is singular
+LUPInvert : {n} (fin n) => FldMat n -> (Bit, FldMat n)
+LUPInvert a =
+  if ns then
+    (True, transpose [ LUPSolve lu p (unitVec i) | i <- nats ])
+  else
+    (False, a)
+  where
+    (ns, lu, p) = LUPDecompose a
