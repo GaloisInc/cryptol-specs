@@ -204,8 +204,8 @@ signBody sv = { z = z
                 (r1, r0) = decomposePolyVec (polyVecSub w cs2) // Decompose_q(w-cs2, 2γ2)
 
 // cryptoSign appends message at the end of the signature
-//cryptoSign : { mbytes } (fin mbytes, mbytes >= 0) => SecretKey -> [mbytes * 8] -> [(SigSizePacked + mbytes) * 8]
-//cryptoSign sk m = packSig (sign sk m) # m
+cryptoSign : { mbytes } (fin mbytes, mbytes >= 0) => SecretKey -> [mbytes * 8] -> [(SigSizePacked + mbytes) * 8]
+cryptoSign sk m = packSig (sign sk m) # m
 
 // Opening signature
 open : { mbytes } (fin mbytes, mbytes >= 0) => PublicKey -> [(SigSizePacked + mbytes)][8] -> Bit
@@ -390,10 +390,11 @@ polyZUnpack p =  join [ compCoeffs i | i <- [0..(N/2)-1] ]
                   rc1 = mc1 + ((mc1 >>$ 31) && `Q)
 
 // Bit-packing signature
-/*packSig : (PolyVec L, PolyVec K, Poly) -> [SigSizePacked * 8]
-packSig (z, h, c) = s0 # s1 # s2
-        where s0 = join [join (polyZPack z') | z' <- z ]
-              s2 = encodec c
+// TODO: to optimize this later
+packSig : (PolyVec L, PolyVec K, Poly) -> [SigSizePacked * 8]
+packSig (z, h, c) =  zero // s1 # s2
+        where s0 = join [ join (polyZPack zp) | zp <- z ]
+             /* s2 = encodec c
               s1 = encodeh h
                 where
                 encodeh : PolyVec K -> [(Omega + K)*8]
@@ -439,11 +440,11 @@ private
 
 // Unpacking signature
 unpackSig : [SigSizePacked][8] -> (PolyVec L, PolyVec K, Poly)
-unpackSig sig = (z, h, c)
+unpackSig sig = (z, zero, zero)
         where type zlen = L * PolZSizePacked
               z = [ (polyZUnpack p) | p <- split (sig@@[0..zlen - 1]):[L][PolZSizePacked][8] ]
-              h = decodeh (sig@@[zlen..zlen + (Omega + K) - 1])
-              c = decodec (sig@@[zlen + (Omega + K).. SigSizePacked-1])
+             // h = decodeh (sig@@[zlen..zlen + (Omega + K) - 1])
+              //c = decodec (sig@@[zlen + (Omega + K).. SigSizePacked-1])
 
 // This function has been modified in round2
 // (uint8_t) D means taking 8 LSBs from D
