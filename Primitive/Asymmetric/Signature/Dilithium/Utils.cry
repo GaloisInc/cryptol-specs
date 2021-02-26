@@ -1,0 +1,65 @@
+module Primitive::Asymmetric::Signature::Dilithium::Utils where
+import Common::utils
+import Primitive::Asymmetric::Signature::Dilithium::DilithiumRound2BitVec 
+
+// Conversion functions helpful in Testing 
+
+// (Z Q) to bit-vector type
+fromZPoly : [N](Z Q) -> [N][width Q]
+fromZPoly p = map (\x -> ZtoBV x) p
+
+fromZPolyVec : {dim} (fin dim, dim >= 1) => [dim][N](Z Q) -> [dim][N][width Q]
+fromZPolyVec pvec = map (\x -> fromZPoly x) pvec
+
+fromZNttMat : {dim1, dim2} (fin dim1, dim1 >= 1, fin dim2, dim2 >= 1) => [dim1][dim2][N](Z Q) -> [dim1][dim2][N][width Q]
+fromZNttMat nttMat = map (\x -> fromZPolyVec x) nttMat
+
+// Integer to Bit-Vector type
+intToZPoly : [N]Integer -> [N][width Q]
+intToZPoly p = map (\x -> fromInteger x) p
+
+intToZPolyVec : {dim} (fin dim, dim >= 1) => [dim][N]Integer -> [dim][N][width Q]
+intToZPolyVec pvec = map (\x -> intToZPoly x) pvec
+
+intToZNttMat : {dim1, dim2} (fin dim1, dim1 >= 1, fin dim2, dim2 >= 1) => [dim1][dim2][N]Integer -> [dim1][dim2][N][width Q]
+intToZNttMat nttMat = map (\x -> intToZPolyVec x) nttMat
+
+//Bit-Vector to Integer type
+bvToIntPoly : Poly -> [N]Integer
+bvToIntPoly p = map (\x -> toInteger x) p
+
+bvToIntPolyVec : {dim} (fin dim, dim >= 1) => PolyVec dim -> [dim][N]Integer
+bvToIntPolyVec pvec = map (\x -> bvToIntPoly x) pvec
+
+bvToIntNttMat : {dim1, dim2} (fin dim1, dim1 >= 1, fin dim2, dim2 >= 1) => NttMat dim1 dim2 -> [dim1][dim2][N]Integer
+bvToIntNttMat nttMat = map (\x -> bvToIntPolyVec x) nttMat
+
+//Bit-Vector to (Z Q) type
+bvToZPoly : Poly -> [N](Z Q)
+bvToZPoly p = map (\x -> BVtoZ`{Q} x) p
+
+bvToZPolyVec : {dim} (fin dim, dim >= 1) => PolyVec dim -> [dim][N](Z Q)
+bvToZPolyVec pvec = map (\x -> bvToZPoly x) pvec
+
+bvToZNttMat : {dim1, dim2} (fin dim1, dim1 >= 1, fin dim2, dim2 >= 1) => NttMat dim1 dim2 -> [dim1][dim2][N](Z Q)
+bvToZNttMat nttMat = map (\x -> bvToZPolyVec x) nttMat
+
+// Integer to Bit-Vector type
+/*intToZPoly : [N]Integer -> [N](Z Q)
+intToZPoly p = map (\x -> fromInteger x:(Z Q)) p
+
+intToZPolyVec : {dim} (fin dim, dim >= 1) => [dim][N]Integer -> [dim][N](Z Q)
+intToZPolyVec pvec = map (\x -> intToZPoly x) pvec
+
+intToZNttMat : {dim1, dim2} (fin dim1, dim1>=1, fin dim2, dim2>=1) => [dim1][dim2][N]Integer -> [dim1][dim2][N](Z Q)
+intToZNttMat NttMat = map (\x -> intToZPolyVec x) NttMat*/
+
+// (Z Q) to Integer type
+/*fromZPoly : [N](Z Q) -> [N]Integer
+fromZPoly p = map (\x -> fromZ x) p
+
+fromZPolyVec : {dim} (fin dim, dim >= 1) => [dim][N](Z Q) -> [dim][N]Integer
+fromZPolyVec pvec = map (\x -> fromZPoly x) pvec
+
+fromZNttMat : {dim1, dim2} (fin dim1, dim1 >= 1, fin dim2, dim2 >= 1) => [dim1][dim2][N](Z Q) -> [dim1][dim2][N]Integer
+fromZNttMat NttMat = map (\x -> fromZPolyVec x) NttMat*/

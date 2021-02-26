@@ -10,14 +10,13 @@
 
 */
 
-
-module Primitive::Asymmetric::Signature::DilithiumR1BV where
+module Primitive::Asymmetric::Signature::Dilithium::Round1::DilithiumBitVec where
 
 import Primitive::Keyless::Hash::keccak as SHA3
 import Common::utils
 import Common::mod_arith
 import Primitive::Asymmetric::Cipher::RSA
-import Primitive::Asymmetric::Signature::testDilithium
+import Primitive::Asymmetric::Signature::Dilithium::test::testDilithium
 
 
 // These parameters are fixed for all four recommended implementations
@@ -490,14 +489,19 @@ randomsInRangeDouble createElt upper randoms =
 
 */
 
+modSum : { s, m } (fin s, fin m) => ([s], [m][s]) -> [s]
+modSum (p, l) = sums!0
+    where
+    sums = [ zero ] # [ mod_add`{s}(p, x, y) | x <- l | y <- sums ]
+
 ntt : poly -> nttPoly
 ntt p = nttp
-     where
-      r k = rootOfUnity^^k
-      exponents = join [ [BVtoZ`{q} i, (256+(BVtoZ`{q} i))] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
-      nttp = [ fromInteger (fromZ (sum [ (BVtoZ`{q} (p@idx)) | idx<-[0..(n-1)]:[n][width n] | i<-[0..(n-1)]:[n](Z q)]))
-             | k <- exponents
-             ]
+    where
+    r k = mod_pow(`q, rootOfUnity, k)
+    exponents = join [ [zext i, (256 + (zext i))] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
+    nttp = [ modSum (`q, [ (mod_mul(`q, (p@idx), (mod_pow (`q, (r k), i)))) | idx<-[0..(n-1)]:[n][width n] | i<-[0..(n-1)]:[n][qbits]])
+           | k <- exponents
+           ]
 
 nttinv : nttPoly -> poly
 nttinv p' = p'

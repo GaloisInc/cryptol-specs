@@ -10,14 +10,13 @@
 
 */
 
-module Primitive::Asymmetric::Signature::DilithiumR1Int where
+module Primitive::Asymmetric::Signature::Dilithium::Round1::DilithiumInteger where
 
 import Primitive::Keyless::Hash::keccak as SHA3
-import Common::utils
-import Primitive::Asymmetric::Signature::testDilithium
-import Primitive::Asymmetric::Signature::signFinal
-
-import Primitive::Asymmetric::Signature::testCase2
+import Common::utils hiding (abs)
+import Primitive::Asymmetric::Signature::Dilithium::test::testDilithium
+import Primitive::Asymmetric::Signature::Dilithium::test::signFinal
+import Primitive::Asymmetric::Signature::Dilithium::test::test_latest
 
 
 // Recommended Parameters
