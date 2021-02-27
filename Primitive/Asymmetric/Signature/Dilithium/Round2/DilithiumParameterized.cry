@@ -30,21 +30,21 @@ import Primitive::Asymmetric::Signature::Dilithium::test::test_latest (testCase1
 
 // Parameterize the types based on the implemenations, weak, medium, recommended, and very-high
 parameter
-    type K : #
-    type constraint (fin K, K >= 3, K <= 6)
-    type L : #
-    type constraint (fin L, L >= 2, L <= 5)
-    ETA : [QBits]
-    BETA : [QBits]
-    type Omega : #
+    type k : #
+    type constraint (fin k, k >= 3, k <= 6)
+    type l : #
+    type constraint (fin l, l >= 2, l <= 5)
+    eta : [QBits]
+    beta : [QBits]
+    type omega : #
     type constraint (fin Omega, Omega >= 64, Omega <= 120)
 
-// Dilithium II (Medium) parameters
-//type K = 4
-//type L = 3
-//ETA = 6
-//BETA = 325
-//type Omega = 80
+// To expose the parameters 
+type K = k 
+type L = l 
+ETA = eta
+BETA = beta 
+type Omega = omega
 
 // Fixed parameters
 type QBits = 23
@@ -589,7 +589,7 @@ makeHintPoly (zp, rp) =  drop res
     where res = [ 0 ] # [ coeff + r | r <- res | coeff <- p ]
           p = [ zext [ makeHintNew (z, r) ] | z <- zp | r <- rp ]
 
-makeHintPolyVec : { k } (fin k, k >= 1) => (PolyVec k, PolyVec k) -> PolyVec k
+makeHintPolyVec : { n } (fin n, n >= 1) => (PolyVec n, PolyVec n) -> PolyVec n
 makeHintPolyVec (zv, rv) =  [ makeHintPoly (zp, rp) | zp <- zv | rp <- rv ]
 
 makeHintNew : ([QBits], [QBits]) -> Bit
@@ -598,7 +598,7 @@ makeHintNew (z, r) = if ((z <= GAMMA2) || (z > `Q - GAMMA2) || (z == (`Q - GAMMA
 makeHintPolyNew : (Poly, Poly) -> [QBits]
 makeHintPolyNew (zp, rp) = foldl (+) 0 [ zext [makeHintNew (z, r)] | z <- zp | r <- rp ]
 
-makeHintPolyVecNew : { k } (fin k, k >= 1) => (PolyVec k, PolyVec K) -> [QBits]
+makeHintPolyVecNew : { n } (fin n, n >= 1) => (PolyVec n, PolyVec n) -> [QBits]
 makeHintPolyVecNew (zv, rv) = foldl (+) 0 [ makeHintPolyNew (zp, rp) | zp <- zv | rp <- rv ]
 
 // Correct high bits according to hint bit.
@@ -612,7 +612,7 @@ useHint  (r, h) = zext (if b  then drop`{19} (r1 - 1) else t)
 useHintPoly : Poly -> Poly -> Poly
 useHintPoly rp hp = [ useHint (r, h) | r <- rp | h <- hp ]
 
-useHintPolyVec : { k }(fin k, k >= 1) => (PolyVec k, PolyVec k) -> PolyVec k
+useHintPolyVec : { n }(fin n, n >= 1) => (PolyVec n, PolyVec n) -> PolyVec n
 useHintPolyVec (rv, hv) = [ useHintPoly hpoly rpoly
                           | hpoly <- hv
                           | rpoly <- rv

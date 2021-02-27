@@ -13,8 +13,8 @@ module Primitive::Asymmetric::Signature::Dilithium::Round2::DilithiumMedium =
 Primitive::Asymmetric::Signature::Dilithium::Round2::DilithiumParameterized where
 
 // Dilithium II (Medium) parameters
-type K = 4
-type L = 3
-ETA = 6
-BETA = 325
-type Omega = 80
+type k = 4 
+type l = 3
+eta = 6
+beta = 325
+type omega = 80
