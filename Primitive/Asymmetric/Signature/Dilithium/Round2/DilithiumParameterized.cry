@@ -672,7 +672,10 @@ ntt p = nttp
     where
     r k = mod_pow(`Q, ROOTOFUNITY, k)
     exponents = join [ [zext i, (256 + (zext i))] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
-    nttp = [ modSum (`Q, [ (mod_mul(`Q, (p@idx), (mod_pow (`Q, (r k), i)))) | idx<-[0..(N-1)]:[N][width N] | i<-[0..(N-1)]:[N][QBits]])
+    nttp = [ modSum (`Q, [ (mod_mul(`Q, (p@idx), (mod_pow (`Q, (r k), i))))
+                         | idx<-[0..(N-1)]:[N][width N]
+                         | i<-[0..(N-1)]:[N][QBits]
+                         ])
            | k <- exponents
            ]
 
