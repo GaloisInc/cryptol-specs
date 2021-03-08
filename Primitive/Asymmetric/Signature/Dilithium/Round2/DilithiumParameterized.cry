@@ -24,7 +24,6 @@
 module Primitive::Asymmetric::Signature::Dilithium::Round2::DilithiumParameterized where
 import Primitive::Keyless::Hash::keccak as SHA3 (toBytes, SHAKE128, SHAKE256)
 import Common::utils (dowhile, unzip)
-import Common::mod_arith (mod_add, mod_sub, mod_mul, mod_pow)
 import Primitive::Asymmetric::Signature::Dilithium::test::test_latest (testCase1)
 
 
@@ -738,4 +737,14 @@ infNormPoly p = foldl max 0 (map infNorm p)
 infNormPolyVec : { dim } (fin dim, dim >= 1) => IntPolyVec dim -> [QBits]
 infNormPolyVec v = foldl max 0 (map infNormPoly v)
 
+mod_add : {a} (fin a) => ([a], [a], [a]) -> [a]
+mod_add (q, x, y) = (x + y) % q
 
+mod_sub : {a} (fin a) => ([a], [a], [a]) -> [a]
+mod_sub (q, x, y) = (x - y) % q
+
+mod_mul : {a} (fin a) => ([a], [a], [a]) -> [a]
+mod_mul (q, x, y) = (x * y) % q
+
+mod_pow : {a} (fin a) => ([a], [a], [a]) -> [a]
+mod_pow (q, x, y) = (x ^^ y) % q
