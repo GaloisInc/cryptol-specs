@@ -727,6 +727,17 @@ polySub p1 p2 = [ mod_sub(`Q, x, y) | x <- p1 | y <- p2 ]
 polyVecSub : { dim } (fin dim) => PolyVec dim -> PolyVec dim -> PolyVec dim
 polyVecSub v1 v2 = zipWith polySub v1 v2
 
+// polyChkNorm (from source code)
+polyChkNorm : Poly -> [32] -> Bit
+polyChkNorm a b = if ([ zero # (res i) >= b | i <- [0..255] ] != zero) then True else False
+            where t i = ((`Q - 1) >> 1) - a@i
+                  y x = x ^ (x >>$ 31)
+                  res i = ((`Q - 1) >> 1) - (y (t i))
+
+// polyVecKChkNorm (from source code)
+polyVecChkNorm : { n } (fin n, n >= 1) => PolyVec n -> [32] -> Bit
+polyVecChkNorm pv b = or [ polyChkNorm p b | p <- pv ]
+
 // Aux functions
 infNorm : [QBits] -> [QBits]
 infNorm x =  (centeredMod x `Q)
