@@ -1,60 +1,78 @@
-// # LU Decomposition Over a Field
-
-// John D. Ramsdell -- The MITRE Corporation -- December 2020
+/* Solve linear equations over a field using LU decomposition
+ *
+ * John D. Ramsdell -- The MITRE Corporation -- December 2020
+ */
 
 module Common::LUP where
 
 parameter
 
-  // The type of a field element
-
+  /**
+   * Fld is the type of a field element.
+   * It must implement equality.
+   */
   type Fld : *
-
-  // The field must implement equality
 
   type constraint (Eq Fld)
 
-  // The additive identity of the field
-
+  /**
+   * The additive identity of the field
+   */
   fzero : Fld
 
-  // Addition in the field
-
+  /**
+   * Addition in the field
+   */
   fadd : Fld -> Fld -> Fld
 
-  // The additive inverse of the field
-
+  /**
+   * The additive inverse of the field
+   */
   fminus : Fld -> Fld
 
-  // The multiplicative identity of the field
-
+  /**
+   * The multiplicative identity of the field
+   */
   fone : Fld
 
-  // Multiplication in the field
-
+  /**
+   * Multiplication in the field
+   */
   fmul : Fld -> Fld -> Fld
 
-  // The multiplicative inverse of the field
-
+  /**
+   * The multiplicative inverse of the field
+   */
   finv : Fld -> Fld
 
+/**
+ * Return x divided by y.
+ */
 fdiv : Fld -> Fld -> Fld
 fdiv x y =
   fmul x (finv y)
 
+/**
+ * Return the sequence of the natural numbers less that n.
+ */
 nats : {n} (fin n) => [n][width n]
 nats = take`{n} [0 .. n]
 
-// map a function over a finite sequence
+/**
+ * Map a function over a finite sequence and provide the function
+ * with the position at which each element occurs.
+ */
 map_at : {n, a} (fin n) => ([width n] -> a -> a) -> [n]a  -> [n]a
 map_at f m = [ f i (m @ i) | i <- nats ]
 
-// ## Vectors
-
+/**
+ * Vectors of field elements
+ */
 type FldVec n = [n]Fld
 
-// The dot product.
-
+/**
+ * The dot product
+ */
 dot : {n} (fin n) => FldVec n -> FldVec n -> Fld
 dot x y =
   str ! 0
@@ -64,66 +82,77 @@ dot x y =
                       | yi <- y
                       | acc <- str ]
 
-// Vector addition
-
+/**
+ * Vector addition
+ */
 vecAdd : {n} (fin n) => FldVec n -> FldVec n -> FldVec n
 vecAdd x y = [ fadd xi yi | xi <- x | yi <- y ]
 
-// Scalar multiplication of a vector
-
+/**
+ * Scalar multiplication of a vector
+ */
 scalMul : {n} (fin n) => Fld -> FldVec n -> FldVec n
 scalMul c x = [ fmul c xi | xi <- x ]
 
-// ## Square matrices
-
+/**
+ * Square matrices
+ */
 type FldMat n = [n](FldVec n)
 
-// Identity matrix
-
+/**
+ * The identity matrix
+ */
 idMat : {n} (fin n) => FldMat n
 idMat = [ unitVec i | i <- nats ]
 
+/**
+ * The unit vector
+ */
 unitVec : {n} (fin n) => [width n] -> FldVec n
 unitVec i =
   [ if i == j then fone else fzero | j <- nats ]
 
-// Matrix mulitplication
-
+/**
+ * Matrix mulitplication
+ */
 matMul : {n} (fin n) => FldMat n -> FldMat n -> FldMat n
 matMul x y =
   [ [ dot (x @ i) (transpose y @ j) | j <- nats ] | i <- nats]
 
-// Matrix vector multiplication
-
+/**
+ * Matrix vector multiplication
+ */
 matVec : {n} (fin n) => FldMat n -> FldVec n -> FldVec n
 matVec x y =
   [ dot (x @ i) y  | i <- nats]
 
-// Swap two rows in a matrix.
-
+/**
+ * Swap two rows in a matrix.
+ */
 swap : {n, a} (fin n) => [width n] -> [width n] -> [n]a -> [n]a
 swap i j x =
   [ x @ perm k | k <- nats ]
   where
     perm k =
-      if (i >= `n) || (j >= `n) then
-        k
-      else if k == i then
-        j
-      else if k == j then
-        i
-      else
-        k
+      if (i >= `n) || (j >= `n)
+      then k
+      else if k == i
+           then j
+           else if k == j
+                then i
+                else k
 
-// ## LU Decomposition with Partial Pivoting
-
-// Decompose square matrix A as P*A = L*U where
-// P is a permutation matrix
-// L is unit lower triangular, and
-// U is upper triangular.
-// This is a Doolittle decomposition.
-
-// L and U are stored in one matrix.
+/**
+ * LU Decomposition with Partial Pivoting
+ *
+ * Decompose square matrix A as P*A = L*U where
+ * P is a permutation matrix
+ * L is unit lower triangular, and
+ * U is upper triangular.
+ * This is a Doolittle decomposition.
+ *
+ * L and U are stored in one matrix.
+ */
 
 // The algorithm is from the Wikipedia page on LU Decomposition.
 // The algorithm follows.
@@ -143,33 +172,36 @@ swap i j x =
 //     }
 // }
 
-// Perform LUP decomposition of square matrix a.
-
 LUPDecompose : {n} (fin n) => FldMat n -> (Bit, FldMat n, [n][width n])
 LUPDecompose a = str ! 0
   where
   perm = [ i | i <- nats ]
   str = [(True, a, perm)] #
-        [ row i non_sing lu p | (non_sing, lu, p) <- str | i <- nats`{n=n} ]
+        [ row i non_sing lu p
+        | (non_sing, lu, p) <- str
+        | i <- nats`{n=n}
+        ]
 
 private
-// Perform partial pivoting and then elimination of matrix a and pivot
-// p at i.  When ns = False, matrix a is known to be singular
+  /**
+   * Perform partial pivoting and then elimination of matrix a and
+   * pivot p at i.  When ns = False, matrix a is known to be singular.
+   */
   row : {n} (fin n) => [width n] -> Bit -> FldMat n -> [n][width n] ->
                        (Bit, FldMat n, [n][width n])
   row i ns a p =
-    if ns then
-      if ns' then
-        (ns', elim i a', p')    // Perform elimination at row i
-      else
-        (ns', a', p')           // a is singular, pivoting failed
-      where
-        (ns', a', p') = pivot i a p
-    else
-      (ns, a, p)                // a is known to be singular
+    if ns
+    then if ns'
+         then (ns', elim i a', p') // Perform elimination at row i
+         else (ns', a', p')        // a is singular, pivoting failed
+         where
+           (ns', a', p') = pivot i a p
+    else (ns, a, p)             // a is known to be singular
 
-// Pivot rows when a[i][i] == 0.  The first element of the output is
-// True when the matrix is non-singular.
+  /**
+   * Pivot rows when a[i][i] == 0.  The first element of the
+   * output is True when the matrix is non-singular.
+   */
   pivot : {n} (fin n) => [width n] -> FldMat n -> [n][width n] ->
                          (Bit, FldMat n, [n][width n])
   pivot i a perm = str ! 0
@@ -190,7 +222,9 @@ private
 //         A[j][k] -= A[j][i] * A[i][k];
 // }
 
-// Perform elimination in row i.
+  /**
+   * Perform elimination in row i.
+   */
   elim : {n} (fin n) => [width n] -> FldMat n -> FldMat n
   elim i a = map_at f a
     where
@@ -208,11 +242,7 @@ private
         else
           v
 
-// I wonder if the efficiency of the implementation of decomposition
-// could be improved by using update more often instead of buiding all
-// matrices from scratch.
-
-// ## Solving linear equations
+// Solving linear equations
 
 /*
 void LUPSolve(double **A, int *P, double *b, int N, double *x) {
@@ -233,10 +263,11 @@ void LUPSolve(double **A, int *P, double *b, int N, double *x) {
 }
 */
 
-// Solve a set of linear equations given an LUP decomposition of a
-// matrix.  That is, find x such that a * x = b, where lu and p are
-// the decomposition of matrix a.  This function assumes a is
-// non-singular.
+/**
+ * Solve a set of linear equations given an LUP decomposition of a
+ * matrix.  That is, find x such that a * x = b, where lu and p are the
+ * decomposition of matrix a.  This function assumes a is non-singular.
+ */
 LUPSolve : {n} (fin n) => FldMat n -> [n][width n] ->
                           FldVec n -> FldVec n
 LUPSolve lu p b =
@@ -251,23 +282,23 @@ LUPSolve lu p b =
       where
         str = [ x ] # [ h j y | y <- str | j <- nats`{n=n} ]
         h j y =
-          if j < i then
-            fadd y (fminus (fmul (lu @ i @ j) (fb @ j)))
-          else
-            y
+          if j < i
+          then fadd y (fminus (fmul (lu @ i @ j) (fb @ j)))
+          else y
     // Perform a backward subsitution on fb
     bb = [ bf i x | x <- fb | i <- nats`{n=n} ]
     bf i x = fdiv (str ! 0) (lu @ i @ i)
       where
         str = [ x ] # [ h j y | y <- str | j <- nats`{n=n} ]
         h j y =
-          if i < j then
-            fadd y (fminus (fmul (lu @ i @ j) (bb @ j)))
-          else
-            y
+          if i < j
+          then fadd y (fminus (fmul (lu @ i @ j) (bb @ j)))
+          else y
 
-// ## Invert a matrix
-// Returns false if the matrix is singular
+/**
+ * Invert a matrix.
+ * Return false if the matrix is singular.
+ */
 LUPInvert : {n} (fin n) => FldMat n -> (Bit, FldMat n)
 LUPInvert a =
   if ns then

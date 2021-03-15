@@ -1,0 +1,92 @@
+/* Generate random vectors and matrices
+ *
+ * This module provides functions that create random vectors,
+ * matrices, and upper triangular matrices.
+ *
+ * John D. Ramsdell -- The MITRE Corporation -- March 2021
+ */
+
+module Common::pick where
+
+/**
+ * Return the sequence of the natural numbers less that n.
+ */
+nats : {n} (fin n) => [n][width n]
+nats = take`{n} [0 .. n]
+
+// The following routines are meant to be used with the output of the
+// random function.  The infinite stream is always the first item
+// returned.
+
+/**
+ * Pick one item from an infinite stream.
+ * Return the remainder of the stream with the item.
+ */
+pickItem : {a} [inf]a -> ([inf]a, a)
+pickItem g = (tail g, head g)
+
+/**
+ * Pick a sequence of values from an infinite stream.
+ * Return the remainder of the stream with the sequence.
+ */
+pickSeq : {n, a, b} (fin n, n > 0) =>
+          ([inf]a -> ([inf]a, b)) -> [inf]a -> ([inf]a, [n]b)
+pickSeq f vals =
+  (str, map snd vec)
+  where
+    vec = [f vals] # [f g | (g, _) <- vec | i <- nats`{n=n-1}]
+    snd (_, x) = x
+    (str, _) = vec ! 0            // Get last infinite stream
+
+/**
+ * Pick a vector of values from an infinite stream.
+ * Return the remainder of the stream with the vector.
+ */
+pickVec : {n, a} (fin n, n > 0) => [inf]a -> ([inf]a, [n]a)
+pickVec = pickSeq pickItem
+
+/**
+ * Pick a matrix of values from an infinite stream.
+ * Return the remainder of the stream with the matrix.
+ */
+pickMat : {n, m, a} (fin n, n > 0, fin m, m > 0) =>
+          [inf]a -> ([inf]a, [n][m]a)
+pickMat = pickSeq pickVec
+
+/**
+ * Pick an upper trianglar matrix of values from an infinite stream.
+ * Variable pick contains the item picker.  Variable nil is the zero
+ * for type a.  Return the remainder of the stream with the matrix.
+ */
+pickTri : {n, a} (fin n, n > 0) =>
+          ([inf]a -> ([inf]a, a)) -> a -> [inf]a -> ([inf]a, [n][n]a)
+pickTri pick nil s =
+  (str, map snd vec)
+  where
+    vec = [pickSeq pick s] # [pickTriRow pick nil g i
+                             | (g, _) <- vec
+                             | i <- nats`{n=n-1}
+                             ]
+    snd (_, x) = x
+    (str, _) = vec ! 0          // Get last infinite stream
+
+private
+
+  /**
+   * Pick one row of an upper triangular matrix.
+   */
+  pickTriRow : {n, a} (fin n, n > 0) => ([inf]a -> ([inf]a, a)) ->
+               a -> [inf]a -> [width (n - 1)] -> ([inf]a, [n]a)
+  pickTriRow pick nil s j =
+    (str, map snd vec)
+    where
+      vec = [pick s] # [f g i
+                       | (g, _) <- vec
+                       | i <- nats`{n=n-1}
+                       ]
+      f g i =
+        if i < j
+        then (g, nil)
+        else pick g
+      snd (_, x) = x
+      (str, _) = vec ! 0        // Get last infinite stream
