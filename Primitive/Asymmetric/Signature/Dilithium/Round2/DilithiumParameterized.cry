@@ -24,6 +24,7 @@
 module Primitive::Asymmetric::Signature::Dilithium::Round2::DilithiumParameterized where
 import Primitive::Keyless::Hash::keccak as SHA3 (toBytes, SHAKE128, SHAKE256)
 import Common::utils (dowhile, unzip)
+import Common::bv (safe_add, safe_sub, safe_product, safe_mod)
 import Primitive::Asymmetric::Signature::Dilithium::test::test_latest (testCase1)
 
 
@@ -749,13 +750,17 @@ infNormPolyVec : { dim } (fin dim, dim >= 1) => IntPolyVec dim -> [QBits]
 infNormPolyVec v = foldl max 0 (map infNormPoly v)
 
 mod_add : {a} (fin a) => ([a], [a], [a]) -> [a]
-mod_add (q, x, y) = (x + y) % q
+mod_add (q, x, y) = safe_mod(q, safe_add(x, y))
 
 mod_sub : {a} (fin a) => ([a], [a], [a]) -> [a]
-mod_sub (q, x, y) = (x - y) % q
+mod_sub (q, x, y) = safe_mod(q, safe_sub(x, y))
 
 mod_mul : {a} (fin a) => ([a], [a], [a]) -> [a]
-mod_mul (q, x, y) = (x * y) % q
+mod_mul (q, x, y) = safe_mod(q, safe_product(x, y))
 
-mod_pow : {a} (fin a) => ([a], [a], [a]) -> [a]
-mod_pow (q, x, y) = (x ^^ y) % q
+mod_pow : {a} (fin a, 2^^(a+a) >= a) => ([a], [a], [a]) -> [a]
+mod_pow (q, x, y) = safe_mod(zext q, (x' ^^ y'))
+  where
+  x', y' : [2^^(a+a)]
+  x' = zext x
+  y' = zext y
