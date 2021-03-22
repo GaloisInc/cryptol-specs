@@ -25,6 +25,7 @@ module Primitive::Asymmetric::Signature::Dilithium::Round2::DilithiumParameteriz
 import Primitive::Keyless::Hash::keccak as SHA3 (toBytes, SHAKE128, SHAKE256)
 import Common::utils (dowhile, unzip)
 import Common::bv (safe_add, safe_sub, safe_product, safe_mod)
+import Common::mod_arith (mod_pow)
 import Primitive::Asymmetric::Signature::Dilithium::test::test_latest (testCase1)
 
 
@@ -757,10 +758,3 @@ mod_sub (q, x, y) = safe_mod(q, safe_sub(x, y))
 
 mod_mul : {a} (fin a) => ([a], [a], [a]) -> [a]
 mod_mul (q, x, y) = safe_mod(q, safe_product(x, y))
-
-mod_pow : {a} (fin a, 2^^(a+a) >= a) => ([a], [a], [a]) -> [a]
-mod_pow (q, x, y) = safe_mod(zext q, (x' ^^ y'))
-  where
-  x', y' : [2^^(a+a)]
-  x' = zext x
-  y' = zext y
