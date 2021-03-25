@@ -560,17 +560,17 @@ decompose r = if (r' - r0) == (`Q - 1) then (0, r0 - 1)
 decomposeNew : [32] -> ([32],[32])
 decomposeNew a = (af, b0)
         where t0 = a && `0x0007FFFF
-              t1 = t0 + ((a >>$ 19) << 9)
+              t1 = t0 + ((a >> 19) << 9)
               t2 = t1 - ((ALPHA/2) + 1)
               t3 = t2 + ((t2 >>$ 31) && ALPHA)
               t4 = t3 - ((ALPHA/2) - 1)
               a0 = a - t4
               u0 = a0 - 1
               u1 = u0 >>$ 31
-              a1 = (a0 >>$ 19) + 1
+              a1 = (a0 >> 19) + 1
               a2 = a1 - (u1 && 1)
-              b0 = `Q + t4 - (a2 >>$ 4)
-              af = a2 && `0x0000000f
+              b0 = `Q + t4 - (a2 >> 4)
+              af = a2 && 0x0000000f
 
 decomposePoly : Poly -> (Poly, Poly)
 decomposePoly p = unzip [ decompose x | x <- p ]
