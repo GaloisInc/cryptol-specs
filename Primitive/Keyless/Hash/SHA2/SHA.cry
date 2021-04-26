@@ -5,6 +5,8 @@ www.cryptol.net
 
 module Primitive::Keyless::Hash::SHA2::SHA where
 
+import Array
+
 sha : {L} (2 * w >= width L) => [L] -> [digest_size]
 sha M = take (join (SHA_2_Common' [ split x | x <- parse`{num_blocks L} (pad`{L} M) ]))
 
@@ -221,3 +223,58 @@ private
            , n = s.n + 1
            , sz = s.sz + 8
            }
+
+
+///////////////////////////////////////////////////////////////////////////////
+// SHA imperative specification - SMT Array
+///////////////////////////////////////////////////////////////////////////////
+
+type ByteArray = Array[64][8]
+
+type SHAState_Array =
+  { h : [8][w]
+  , block : ByteArray
+  , n : [32]
+  , sz : [w * 2]
+  }
+
+SHAInit_Array : SHAState_Array
+SHAInit_Array =
+  { h = H0
+  , block = arrayConstant 0
+  , n = 0
+  , sz = 0
+  }
+
+SHAUpdate_Array : (w >= 32) => SHAState_Array -> ByteArray -> [64] -> SHAState_Array
+SHAUpdate_Array state data len = { h = h'', block = block''', n = drop n''', sz = state.sz + (0 # len) * 8 }
+  where
+    n = 0 # state.n
+    (h', block', n', index', len') = if state.n != 0
+      then if len < 2 * `w - n
+        then (state.h, (arrayCopy state.block n data 0 len), n + len, 0, 0)
+        else ((processBlocks state.h (arrayCopy state.block n data 0 (2 * `w - n)) 0 1), (arrayCopy state.block n data 0 (2 * `w - n)), 0, (2 * `w - n), len - (2 * `w - n))
+      else (state.h, state.block, n, 0, len)
+    (h'', index'', len'') = if len' >= 2 * `w
+      then ((processBlocks h' data index' (len' / (2 * `w))), index' + len' - (len' % (2 * `w)), len' % (2 * `w))
+      else (h', index', len')
+    (block''', n''') = if len'' != 0
+      then ((arrayCopy block' 0 data index'' len''), len'')
+      else (block', n')
+
+SHAFinal_Array : (w >= 32) => SHAState_Array -> [digest_size]
+SHAFinal_Array state = take (join h''')
+  where
+    n = 0 # state.n
+    block' = arrayUpdate state.block n 0x80
+    n' = n + 1
+    (h'', block'', n'') = if n' > 2 * `w - `w / 4
+      then ((processBlocks state.h (arraySet block' n' 0 (2 * `w - n')) 0 1), (arraySet block' n' 0 (2 * `w - n')), 0)
+      else (state.h, block', n')
+    h''' = processBlocks h'' (arrayRangeUpdate (arraySet block'' n'' 0 (2 * `w - `w / 4 - n'')) (2 * `w - `w / 4) (split`{parts=(w+3)/4} (0 # state.sz))) 0 1
+
+processBlocks : [8][w] -> ByteArray -> [64] -> [64] -> [8][w]
+processBlocks h data index n = if n == 0
+  then h
+  else processBlocks (processBlock_Common h (split (join (arrayRangeLookup data index)))) data (index + 2 * `w) (n - 1)
+
