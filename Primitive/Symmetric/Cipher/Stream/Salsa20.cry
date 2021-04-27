@@ -128,12 +128,28 @@ littleendian_inverse b = reverse(split b)
 
 property littleendian_is_invertable b = littleendian_inverse(littleendian b) == b
 
+littleendian_state : [64][8] -> [16][32]
+littleendian_state b = [littleendian xi | xi <- split b]
+
+littleendian_state_inverse : [16][32] -> [64][8]
+littleendian_state_inverse w = join (map littleendian_inverse w)
+
+property littleendian_state_is_invertable b = littleendian_state_inverse(littleendian_state b) == b
+
+rounds : [16][32] -> [16][32]
+rounds xw = xw + zs@10
+  where
+    zs = [xw] # [ doubleround zi | zi <- zs ]
+
 Salsa20 : [64][8] -> [64][8]
 Salsa20 xs = join ar
   where
     ar = [ littleendian_inverse words | words <- xw + zs@10 ]
     xw = [ littleendian xi | xi <- split xs ]
     zs = [xw] # [ doubleround zi | zi <- zs ]
+
+property salsa20_is_littleendian_rounds b =
+    Salsa20 b == littleendian_state_inverse (rounds (littleendian_state b))
 
 property Salsa20_passes_tests =
   (Salsa20 [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -175,8 +191,21 @@ Salsa20_expansion(k, n) = z
     z = Salsa20(x)
     [k0, k1] = (split(k#zero)):[2][16][8]
 
+Salsa20_encrypt_with_offset : {a, l} (a >= 1, 2 >= a, l <= 2^^70) =>
+    ([16*a][8], [8][8], [64], [l][8]) -> [l][8]
+Salsa20_encrypt_with_offset(k, v, o, m) = c
+  where
+    salsa = take (join [ Salsa20_expansion(k, v#(reverse (split (o + i)))) | i <- [0, 1 ... ] ])
+    c = m ^ salsa
+
 Salsa20_encrypt : {a, l} (a >= 1, 2 >= a, l <= 2^^70) => ([16*a][8], [8][8], [l][8]) -> [l][8]
 Salsa20_encrypt(k, v, m) = c
   where
     salsa = take (join [ Salsa20_expansion(k, v#(reverse (split i))) | i <- [0, 1 ... ] ])
     c = m ^ salsa
+
+Salsa20_expansion_key32 : [32][8] -> [16][8] -> [64][8]
+Salsa20_expansion_key32 k n = Salsa20_expansion (k, n)
+
+Salsa20_encrypt_block_key32 : [32][8] -> [8][8] -> [64] -> [64][8] -> [64][8]
+Salsa20_encrypt_block_key32 k v o m = Salsa20_encrypt_with_offset (k, v, o, m)
