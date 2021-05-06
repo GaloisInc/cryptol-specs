@@ -247,20 +247,46 @@ SHAInit_Array =
   }
 
 SHAUpdate_Array : (w >= 32) => SHAState_Array -> ByteArray -> [64] -> SHAState_Array
-SHAUpdate_Array state data len = { h = h'', block = block''', n = drop n''', sz = state.sz + (0 # len) * 8 }
-  where
-    n = 0 # state.n
-    (h', block', n', index', len') = if state.n != 0
-      then if len < 2 * `w - n
-        then (state.h, (arrayCopy state.block n data 0 len), n + len, 0, 0)
-        else ((processBlocks state.h (arrayCopy state.block n data 0 (2 * `w - n)) 0 1), (arrayCopy state.block n data 0 (2 * `w - n)), 0, (2 * `w - n), len - (2 * `w - n))
-      else (state.h, state.block, n, 0, len)
-    (h'', index'', len'') = if len' >= 2 * `w
-      then ((processBlocks h' data index' (len' / (2 * `w))), index' + len' - (len' % (2 * `w)), len' % (2 * `w))
-      else (h', index', len')
-    (block''', n''') = if len'' != 0
-      then ((arrayCopy block' 0 data index'' len''), len'')
-      else (block', n')
+SHAUpdate_Array state data len =
+  if state.n != 0
+    then if len < 2 * `w - n
+      then state'
+      else state''
+    else state'''
+ where
+   n = 0 # state.n
+   state' = { h = state.h, block = block', n = drop n', sz = state.sz + (0 # len) * 8 }
+    where
+      block' = arrayCopy state.block n data 0 len
+      n' = n + len
+   state'' = { h = h'', block = block''', n = drop n''', sz = state.sz + (0 # len) * 8 }
+    where
+      h' = processBlock state.h (arrayCopy state.block n data 0 (2 * `w - n)) 0
+      block' = arrayCopy state.block n data 0 (2 * `w - n)
+      index' = 2 * `w - n
+      len' = len - (2 * `w - n)
+      (h'', index'', len'') = if len' >= 2 * `w
+        then
+          ( (processBlocks h' (arrayCopy (arrayConstant 0) 0 data index' ((len' / (2 * `w)) * (2 * `w))) 0 (len' / (2 * `w)))
+          , index' + len' - (len' % (2 * `w))
+          , len' % (2 * `w)
+          )
+        else (h', index', len')
+      (block''', n''') = if len'' != 0
+        then ((arrayCopy block' 0 data index'' len''), len'')
+        else (block', 0)
+   state''' = { h = h'', block = block''', n = drop n''', sz = state.sz + (0 # len) * 8 }
+    where
+      (h'', index'', len'') = if len >= 2 * `w
+        then
+          ( (processBlocks state.h data 0 (len / (2 * `w)))
+          , len - (len % (2 * `w))
+          , len % (2 * `w)
+          )
+        else (state.h, 0, len)
+      (block''', n''') = if len'' != 0
+        then ((arrayCopy state.block 0 data index'' len''), len'')
+        else (state.block, n)
 
 SHAFinal_Array : (w >= 32) => SHAState_Array -> [digest_size]
 SHAFinal_Array state = take (join h''')
@@ -269,12 +295,37 @@ SHAFinal_Array state = take (join h''')
     block' = arrayUpdate state.block n 0x80
     n' = n + 1
     (h'', block'', n'') = if n' > 2 * `w - `w / 4
-      then ((processBlocks state.h (arraySet block' n' 0 (2 * `w - n')) 0 1), (arraySet block' n' 0 (2 * `w - n')), 0)
+      then ((processBlock state.h (arraySet block' n' 0 (2 * `w - n')) 0), (arraySet block' n' 0 (2 * `w - n')), 0)
       else (state.h, block', n')
-    h''' = processBlocks h'' (arrayRangeUpdate (arraySet block'' n'' 0 (2 * `w - `w / 4 - n'')) (2 * `w - `w / 4) (split`{parts=(w+3)/4} (0 # state.sz))) 0 1
+    h''' = processBlock
+      h''
+      (arrayRangeUpdate
+        (arraySet block'' n'' 0 (2 * `w - `w / 4 - n''))
+        (2 * `w - `w / 4)
+        (split`{parts=(w+3)/4} (0 # state.sz)))
+      0
+
+// Imperative SHA implementation
+SHAImp_Array : (w >= 32) => ByteArray -> [64] -> [digest_size]
+SHAImp_Array msg len = SHAFinal_Array (SHAUpdate_Array SHAInit_Array msg len)
+
 
 processBlocks : [8][w] -> ByteArray -> [64] -> [64] -> [8][w]
-processBlocks h data index n = if n == 0
-  then h
-  else processBlocks (processBlock_Common h (split (join (arrayRangeLookup data index)))) data (index + 2 * `w) (n - 1)
+processBlocks [a, b, c, d, e, f, g, h] data index n = processBlock [a', b', c', d', e', f', g', h'] data index'
+  where
+    (a', b', c', d', e', f', g', h', index') = processBlocksLoop n data a b c d e f g h index
+
+processBlock : [8][w] -> ByteArray -> [64] -> [8][w]
+processBlock h block index =
+  processBlock_Common h (split (join (arrayRangeLookup block index)))
+
+processBlocksLoop : [64] -> ByteArray -> [w] -> [w] -> [w] -> [w] -> [w] -> [w] -> [w] -> [w] -> [64] -> ([w], [w], [w], [w], [w], [w], [w], [w], [64])
+processBlocksLoop num data a b c d e f g h index = if (index + 2 * `w) < (num * 2 * `w)
+  then processBlocksLoop num data a' b' c' d' e' f' g' h' (index + 2 * `w)
+  else (a, b, c, d, e, f, g, h, index)
+  where
+    [a', b', c', d', e', f', g', h'] = (processBlock [a, b, c, d, e, f, g, h] data index)
+
+arrayRangeEqual_arrayRangeLookup_lemma : {n} (fin n, n >= 1, n <= 1000) => ByteArray -> ByteArray -> Bit
+arrayRangeEqual_arrayRangeLookup_lemma a b = arrayRangeEqual a 0 b 0 `n == (arrayRangeLookup`{n=n} a 0 == arrayRangeLookup b 0)
 
