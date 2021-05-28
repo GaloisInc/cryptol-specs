@@ -15,7 +15,6 @@ parameter
 type Point = (Z P, Z P)
 G = (Gx, Gy) : Point
 a = -3 : Z P       //  Curve coefficient
-p = toInteger`{width P} `P
 
 // A convenient representation of the point-at-infinity identity element
 oo = (0, 0) : Point
