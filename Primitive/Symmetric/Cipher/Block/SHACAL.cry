@@ -64,7 +64,7 @@ type shacal2Key = 512
 // Encryption
 
 shacal2Encrypt : ([shacal2Key], [shacal2Block]) -> [shacal2Block]
-shacal2Encrypt (key, pt) = join (SHA256Block pt' key')
+shacal2Encrypt (key, pt) = join (processBlock_Common pt' key')
               where pt' = split pt : [8][32]
                     key' = split key : [16][32]
 
