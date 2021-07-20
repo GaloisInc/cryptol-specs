@@ -1,4 +1,4 @@
-module McMambo where
+module Primitive::Symmetric::Cipher::Block::McMambo where
 
 type word = [32]
 type state = [4][4]word
