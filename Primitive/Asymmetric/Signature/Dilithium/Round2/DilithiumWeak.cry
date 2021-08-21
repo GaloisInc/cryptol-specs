@@ -12,8 +12,8 @@ module Primitive::Asymmetric::Signature::Dilithium::Round2::DilithiumWeak =
 Primitive::Asymmetric::Signature::Dilithium::Round2::DilithiumParameterized where
 
 // Dilithium I (Weak) parameters
-type K = 3
-type L = 2
-ETA = 7
-BETA = 375
-type Omega = 64
+type k = 3
+type l = 2
+eta = 7
+beta = 375
+type omega = 64
