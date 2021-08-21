@@ -13,8 +13,8 @@ module Primitive::Asymmetric::Signature::Dilithium::Round2::DilithiumRecommended
 Primitive::Asymmetric::Signature::Dilithium::Round2::DilithiumParameterized where
 
 // Dilithium III (Recommended) parameters
-type K = 5
-type L = 4
-ETA = 5
-BETA = 275
-type Omega = 96
+type k = 5
+type l = 4
+eta = 5
+beta = 275
+type omega = 96
