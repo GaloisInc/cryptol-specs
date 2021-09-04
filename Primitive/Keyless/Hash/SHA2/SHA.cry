@@ -6,6 +6,7 @@ www.cryptol.net
 module Primitive::Keyless::Hash::SHA2::SHA where
 
 import Array
+import Common::ByteArray
 
 sha : {L} (2 * w >= width L) => [L] -> [digest_size]
 sha M = take (join (SHA_2_Common' [ split x | x <- parse`{num_blocks L} (pad`{L} M) ]))
@@ -228,8 +229,6 @@ private
 ///////////////////////////////////////////////////////////////////////////////
 // SHA imperative specification - SMT Array
 ///////////////////////////////////////////////////////////////////////////////
-
-type ByteArray = Array[64][8]
 
 type SHAState_Array =
   { h : [8][w]
