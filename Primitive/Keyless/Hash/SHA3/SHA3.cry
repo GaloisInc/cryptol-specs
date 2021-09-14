@@ -1,0 +1,8 @@
+module Primitive::Keyless::Hash::SHA3::SHA3 where
+import Primitive::Keyless::Hash::keccak
+
+type total = 1600
+sha3 M = take`{digest} (Keccak `{r = total - 2 * digest, c = 2 * digest} (M # 0b01))
+parameter
+    type digest : #
+    type constraint (fin digest, digest >= 224, digest <= 512)

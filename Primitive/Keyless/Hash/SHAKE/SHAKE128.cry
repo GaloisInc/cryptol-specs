@@ -1,0 +1,19 @@
+module Primitive::Keyless::Hash::SHAKE::SHAKE128 where
+import `Primitive::Keyless::Hash::SHAKE::SHAKE
+import Primitive::Keyless::Hash::utils
+type digest = 128
+
+//SHAKE -- Test Vectors
+//Author: Ajay Kumar Eeralla
+//source:https://github.com/XKCP/XKCP/tree/master/tests/TestVectors
+
+property k1 = join (toBytes (take`{512} (shake []))) == 0x7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef263cb1eea988004b93103cfb0aeefd2a686e01fa4a58e8a3639ca8a1e3f9ae57e2
+
+property k2 = join (toBytes (take`{512} (shake 0b0))) == 0xe78b86559a9ccdc72288bf7bcf8e11d574543a2922978913a02be149e89d03cae63d2c36e2cf6906791b187d7e371d4f21ebe59dcfc249a510b82255a18250dd
+
+property k3 = join (toBytes (take`{512} (shake 0b11))) == 0xf6b6c4093f0a2ceba61b9f2c2fea2ca238ce9005edcd588c380405070532ddd00cbd3a3a7448017d874c52c9e383fa3db1c184e023181fcc8550f53ac92feca5
+
+property k4 = join (toBytes (take`{512} (shake (reverse 0b110)))) == 0x178afb3be00c33b682f0c920520699e3b7e4c360274fd8b41cdeaa8d3c675bdc079be55d4513e7479aa903169430f0a0bf60169becd0ff9ff3ff6be24bc6fd83
+
+
+
