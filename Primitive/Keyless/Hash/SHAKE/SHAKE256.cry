@@ -1,16 +1,31 @@
 module Primitive::Keyless::Hash::SHAKE::SHAKE256 where
-import `Primitive::Keyless::Hash::SHAKE::SHAKE
-import Primitive::Keyless::Hash::utils
-type digest = 256
+import Primitive::Keyless::Hash::keccak
 
-//SHAKE -- Test Vectors
-//Author: Ajay Kumar Eeralla
-//source:https://github.com/XKCP/XKCP/tree/master/tests/TestVectors
+type total = 1600
+type secBits = 256
 
-property k5 = join (toBytes (take`{512} (shake []))) == 0x46b9dd2b0ba88d13233b3feb743eeb243fcd52ea62b81b82b50c27646ed5762fd75dc4ddd8c0f200cb05019d67b592f6fc821c49479ab48640292eacb3b7c4be
+shake256 M = Keccak `{r = total - 2 * secBits, c = 2 * secBits } (M # 0b1111)
 
-property k6 = join (toBytes (take`{512} (shake 0b0))) == 0x1e20b13f3bdb730d286913335c092bcec0eb1aff2798c05736faa93bd665807a48ed7652aefd600427e9f797d647b9b355d30410d71b8e275a676545600f1c35
+property k5 = join (toBytes (take`{512} (shake256 []))) == join [ 0x46b9dd2b0ba88d13233b3feb743eeb24
+                                                                , 0x3fcd52ea62b81b82b50c27646ed5762f
+                                                                , 0xd75dc4ddd8c0f200cb05019d67b592f6
+                                                                , 0xfc821c49479ab48640292eacb3b7c4be
+                                                                ]
 
-property k7 = join (toBytes (take`{512} (shake 0b11))) == 0x4f86b0eb85f7a9f6dc38b622706948adb2beb6dd6911b5e9d865fd1f9667b5c02a0dbb39c488b040a18ff3885f04ef957c98f3948e6b7959a9b8950ffd6345d5
+property k6 = join (toBytes (take`{512} (shake256 0b0))) == join [ 0x1e20b13f3bdb730d286913335c092bce
+                                                                 , 0xc0eb1aff2798c05736faa93bd665807a
+                                                                 , 0x48ed7652aefd600427e9f797d647b9b3
+                                                                 , 0x55d30410d71b8e275a676545600f1c35
+                                                                 ]
 
-property k8 = join (toBytes (take`{512} (shake (reverse 0b110)))) == 0x27b5f40b3645215e370472ebb06817aebddbe2cbd3a9a3ba3914da88e5853e7083630e6d51d7a009017d8176c3067329bec8e5f65591d65c5894c40132f1a2ab
+property k7 = join (toBytes (take`{512} (shake256 0b11))) == join [ 0x4f86b0eb85f7a9f6dc38b622706948ad
+                                                                  , 0xb2beb6dd6911b5e9d865fd1f9667b5c0
+                                                                  , 0x2a0dbb39c488b040a18ff3885f04ef95
+                                                                  , 0x7c98f3948e6b7959a9b8950ffd6345d5
+                                                                  ]
+
+property k8 = join (toBytes (take`{512} (shake256 (reverse 0b110)))) == join [ 0x27b5f40b3645215e370472ebb06817ae
+                                                                             , 0xbddbe2cbd3a9a3ba3914da88e5853e70
+                                                                             , 0x83630e6d51d7a009017d8176c3067329
+                                                                             , 0xbec8e5f65591d65c5894c40132f1a2ab
+                                                                             ]
