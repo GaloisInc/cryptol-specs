@@ -1,9 +1,0 @@
-module Primitive::Keyless::Hash::SHAKE::SHAKE where
-import Primitive::Keyless::Hash::keccak
-
-type total = 1600
-shake M = take`{digest} (Keccak `{r = total - 2 * digest, c = 2 * digest} (M # 0b01))
-parameter
-    type digest : #
-    type constraint (fin digest, digest >= 128, digest <= 256)
-
