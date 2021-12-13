@@ -12,7 +12,9 @@
 
 module Primitive::Asymmetric::Signature::Dilithium::Round1::DilithiumBitVec where
 
-import Primitive::Keyless::Hash::keccak as SHA3
+import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHA3 (shake128)
+import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHA3 (shake256)
+import Primitive::Keyless::Hash::utils as SHA3 (toBytes)
 import Common::utils
 import Common::mod_arith
 import Primitive::Asymmetric::Cipher::RSA
@@ -72,7 +74,7 @@ type SEEDBYTES = 32
 //Gen : [SEEDBYTES*8] -> (PublicKey,SecretKey)
 Gen seed = (pk, sk)
     where
-      randoms = split`{3} (join (SHA3::toBytes (take`{768} (SHA3::SHAKE256 (join (SHA3::toBytes seed))))))
+      randoms = split`{3} (join (SHA3::toBytes (take`{768} (SHA3::shake256 (join (SHA3::toBytes seed))))))
       (rho, rho', K) = (randoms@0, randoms@1, randoms@2)
       A       = ExpandA rho
       s1      = PolyUniformEtaV`{dim=l} rho' zero
@@ -255,7 +257,7 @@ PolyUniformEta : [SEEDBYTES*8] -> [8] -> poly
 PolyUniformEta rho nonce = map (\x -> (zero#eta:[23]) - x) (map (\x-> (zero#x):[23]) (take`{n} withinEta))
     where
         seed = rho#nonce
-        randoms = ((join (SHA3::toBytes (take`{2*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes seed))))))#zero)
+        randoms = ((join (SHA3::toBytes (take`{2*8*136} (SHA3::shake256 (join (SHA3::toBytes seed))))))#zero)
         withinEta = randomsInRangeDouble genS (2*eta) randoms
 
         genS : [8] -> [2][4]
@@ -270,7 +272,7 @@ H : ([384],intPolyVec k) -> poly
 H (mu,w) = map fromInteger (SampleInBall ss samples)
   where
     w_packed = pack_w w
-    randoms  = join (SHA3::toBytes (take`{4352} (SHA3::SHAKE256 (join (SHA3::toBytes (mu#w_packed))))))
+    randoms  = join (SHA3::toBytes (take`{4352} (SHA3::shake256 (join (SHA3::toBytes (mu#w_packed))))))
     ss       = take`{60}(reverse (join (reverse (split (take`{64} randoms):[8][8]))))
 
     extByte : [8] -> [8]
@@ -301,7 +303,7 @@ samplePoly K mu kappa i dim = (map (\x -> (`q+gamma1-1-(zero#x))) coeffs)
     where
         (upper:[20])      =  drop`{3}(2*gamma1-2):[20]
         kappaBytes = join (reverse (split (fromInteger (dim*kappa+i):[16]):[2][8])) // LEB order
-        s          = join (SHA3::toBytes (take`{5*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes (K#mu#kappaBytes)))))) // checked
+        s          = join (SHA3::toBytes (take`{5*8*136} (SHA3::shake256 (join (SHA3::toBytes (K#mu#kappaBytes)))))) // checked
         (coeffs:[n][20])   = take`{n} (randomsInRangeDouble extractPolyElt upper (s#zero))
 
 
@@ -316,7 +318,7 @@ extractPolyElt bits = [zero#int1, zero#int2]
                 b2'' = b2/16
 // seed should be in little endian byte order
 CRH : {b} (fin b, b>=1) => [b*8] -> [384]
-CRH seed = join (SHA3::toBytes (take`{48*8} (SHA3::SHAKE256 (join (SHA3::toBytes seed)))))
+CRH seed = join (SHA3::toBytes (take`{48*8} (SHA3::shake256 (join (SHA3::toBytes seed)))))
 
 
 ExpandA : [SEEDBYTES*8] -> [k][l]nttPoly
@@ -329,7 +331,7 @@ matrixPoly : [SEEDBYTES*8] -> [width k] -> [width l] -> nttPoly
 matrixPoly rho i j = take`{n} [ drop`{1} elt | elt <- randomElts ]
             where
             randomElts = randomsInRange extractMatElt ((>=) (`q)) (s#zero)
-            s          = join (SHA3::toBytes (take`{6720} (SHA3::SHAKE128 (join (SHA3::toBytes (rho#b))))))
+            s          = join (SHA3::toBytes (take`{6720} (SHA3::shake128 (join (SHA3::toBytes (rho#b))))))
             b          = 2^^4*(zero#j:[8])+(zero#i:[8])
 
 
