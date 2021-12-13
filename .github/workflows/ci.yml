@@ -1,0 +1,29 @@
+name: Cryptol
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  schedule:
+    - cron: "0 10 * * *" # 10am UTC -> 2/3am PST
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/galoisinc/cryptol:nightly
+      options: --user root
+    steps:
+    - name: Installing dependencies..
+      run: |
+        apt update
+        apt install -y git
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Cryptol Version
+      run: cryptol --version
+    - name: Check Cryptol Files
+      run: bash scripts/load_all_cry_files.sh
