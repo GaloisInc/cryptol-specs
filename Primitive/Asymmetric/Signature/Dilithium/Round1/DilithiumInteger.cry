@@ -495,7 +495,7 @@ private
     ntt p = nttp
          where
           r k = rootOfUnity^^k
-          exponents = join [ [i, (256+i)] | i <- [reverse ((128+i) : [9]) | i <- [0..127] ] ]
+          exponents = join [ [(zext i) : [9], (256+(zext i)) : [9]] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
           nttp = [ sum [ p@idx * (r k)^^i | idx<-[0..(n-1)]:[n][width n] | i<-[0..(n-1)]:[n]Integer]
                  | k <- exponents
                  ]
