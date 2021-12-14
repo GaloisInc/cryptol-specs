@@ -494,9 +494,9 @@ private
     ntt : poly -> nttPoly
     ntt p = nttp
          where
-          r k = rootOfUnity^^(fromZ k)
-          exponents = join [ [BVtoZ`{q} i, (256+(BVtoZ`{q} i))] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
-          nttp = [ sum [ p@idx * (r k)^^(fromZ i) | idx<-[0..(n-1)]:[n][width n] | i<-[0..(n-1)]:[n](Z q)]
+          r k = rootOfUnity^^k
+          exponents = join [ [i, (256+i)] | i <- [reverse ((128+i) : [9]) | i <- [0..127] ] ]
+          nttp = [ sum [ p@idx * (r k)^^i | idx<-[0..(n-1)]:[n][width n] | i<-[0..(n-1)]:[n]Integer]
                  | k <- exponents
                  ]
 
@@ -504,10 +504,10 @@ private
     nttinv p' = p
            where
             pu = reorder p'
-            r' i = rootOfUnityInv^^(fromZ (i*2))
-            p = [ninv*(rootOfUnityInv^^(fromZ i)) * sum [pu@jdx * (r' ((i*j)))
+            r' i = rootOfUnityInv^^(i*2)
+            p = [ninv*(rootOfUnityInv^^i) * sum [pu@jdx * (r' ((i*j)))
                                                     | jdx<-[0..(n-1)]:[n][width n]
-                                                    | j<-[0..(n-1)]:[n](Z q)
+                                                    | j<-[0..(n-1)]:[n]Integer
                                                     ]
                 | i <- [0..255]
                 ]
