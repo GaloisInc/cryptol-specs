@@ -12,7 +12,9 @@
 
 module Primitive::Asymmetric::Signature::Dilithium::Round1::DilithiumInteger where
 
-import Primitive::Keyless::Hash::keccak as SHA3
+import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHA3 (shake128)
+import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHA3 (shake256)
+import Primitive::Keyless::Hash::utils as SHA3 (toBytes)
 import Common::utils hiding (abs)
 import Primitive::Asymmetric::Signature::Dilithium::test::testDilithium
 import Primitive::Asymmetric::Signature::Dilithium::test::signFinal
@@ -70,7 +72,7 @@ type SecretKey = {rho : [256]
 Gen : [256] -> (PublicKey,SecretKey)
 Gen seed = (pk, sk)
     where
-      randoms = split`{3} (join (SHA3::toBytes (take`{768} (SHA3::SHAKE256 (join (SHA3::toBytes seed))))))
+      randoms = split`{3} (join (SHA3::toBytes (take`{768} (SHA3::shake256 (join (SHA3::toBytes seed))))))
       (rho, rho', K) = (randoms@0, randoms@1, randoms@2)
       A       = ExpandA rho
       s1      = PolyUniformEtaV`{dim=l} rho' zero
@@ -255,7 +257,7 @@ private
     PolyUniformEta rho nonce = map (\x -> eta - x) (map BVtoZ (take`{n} withinEta))
                    where
                     seed = rho#nonce
-                    randoms = ((join (SHA3::toBytes (take`{2*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes seed))))))#zero)
+                    randoms = ((join (SHA3::toBytes (take`{2*8*136} (SHA3::shake256 (join (SHA3::toBytes seed))))))#zero)
                     withinEta = randomsInRangeDouble genS (2*eta) randoms
 
                     genS : [8] -> [2][4]
@@ -270,7 +272,7 @@ private
     H (mu,w) = map fromInteger (SampleInBall ss samples)
       where
         w_packed = pack_w w
-        randoms  = join (SHA3::toBytes (take`{4352} (SHA3::SHAKE256 (join (SHA3::toBytes (mu#w_packed))))))
+        randoms  = join (SHA3::toBytes (take`{4352} (SHA3::shake256 (join (SHA3::toBytes (mu#w_packed))))))
         ss       = take`{60}(reverse (join (reverse (split (take`{64} randoms):[8][8]))))
 
         extByte : [8] -> [8]
@@ -301,7 +303,7 @@ private
                 where
                 upper      = fromInteger (2*gamma1-2) : [20]
                 kappaBytes = join (reverse (split (fromInteger (dim*kappa+i):[16]):[2][8])) // LEB order
-                s          = join (SHA3::toBytes (take`{5*8*136} (SHA3::SHAKE256 (join (SHA3::toBytes (K#mu#kappaBytes)))))) // checked
+                s          = join (SHA3::toBytes (take`{5*8*136} (SHA3::shake256 (join (SHA3::toBytes (K#mu#kappaBytes)))))) // checked
                 coeffs     = take`{n} (randomsInRangeDouble extractPolyElt upper (s#zero))
 
 
@@ -316,7 +318,7 @@ private
                     b2'' = b2/16
     // seed should be in little endian byte order
     CRH : {b} (fin b, b>=1) => [b*8] -> [384]
-    CRH seed = join (SHA3::toBytes (take`{48*8} (SHA3::SHAKE256 (join (SHA3::toBytes seed)))))
+    CRH seed = join (SHA3::toBytes (take`{48*8} (SHA3::shake256 (join (SHA3::toBytes seed)))))
 
 
     ExpandA : [256] -> [k][l]nttPoly 
@@ -329,7 +331,7 @@ private
     matrixPoly rho i j = take`{n} [ BVtoZ elt | elt <- randomElts ]
                 where
                 randomElts = randomsInRange extractMatElt ((>=) (`q)) (s#zero)
-                s          = join (SHA3::toBytes (take`{6720} (SHA3::SHAKE128 (join (SHA3::toBytes (rho#b))))))
+                s          = join (SHA3::toBytes (take`{6720} (SHA3::shake128 (join (SHA3::toBytes (rho#b))))))
                 b          = 16*(zero#j:[8])+(zero#i:[8])
 
 
@@ -493,9 +495,9 @@ private
     ntt p = nttp
          where
           r k = rootOfUnity^^k
-          exponents = join [ [BVtoZ`{q} i, (256+(BVtoZ`{q} i))] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
-          nttp = [ sum [ p@idx * (r k)^^(i) | idx<-[0..(n-1)]:[n][width n] | i<-[0..(n-1)]:[n](Z q)]
-                 | k <- exponents 
+          exponents = join [ [(zext i) : [9], (256+(zext i)) : [9]] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
+          nttp = [ sum [ p@idx * (r k)^^i | idx<-[0..(n-1)]:[n][width n] | i<-[0..(n-1)]:[n]Integer]
+                 | k <- exponents
                  ]
 
     nttinv : nttPoly -> poly
@@ -505,7 +507,7 @@ private
             r' i = rootOfUnityInv^^(i*2)
             p = [ninv*(rootOfUnityInv^^i) * sum [pu@jdx * (r' ((i*j)))
                                                     | jdx<-[0..(n-1)]:[n][width n]
-                                                    | j<-[0..(n-1)]:[n](Z q)
+                                                    | j<-[0..(n-1)]:[n]Integer
                                                     ]
                 | i <- [0..255]
                 ]

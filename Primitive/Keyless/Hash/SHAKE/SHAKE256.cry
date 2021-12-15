@@ -1,5 +1,6 @@
 module Primitive::Keyless::Hash::SHAKE::SHAKE256 where
 import Primitive::Keyless::Hash::keccak
+import Primitive::Keyless::Hash::utils (toBytes)
 
 type total = 1600
 type secBits = 256
