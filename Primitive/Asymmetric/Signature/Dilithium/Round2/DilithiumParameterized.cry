@@ -112,6 +112,10 @@ gen s = (pk, sk)
       pk        = { rho = rho, t1 = t1 }
       sk        = { rho = rho, key = key, tr = tr, s1 = s1, s2 = s2, t0 = t0 }
 
+genPacked : [3 * SeedBytes * 8] -> ([CryptoPublicKeyBytes * 8], [CryptoSecretKeyBytes * 8])
+genPacked s = (packPublicKey pk, packSecretKey sk)
+  where (pk, sk) = gen s
+
 // Known Answer Test
 // To check this property, it is necessary to import testDilithium
 //testKeyGen = (pk.rho # (packT1 pk.t1) == testCase1.pk) /\
@@ -347,13 +351,28 @@ unpackT1  pv = [ (polyT1Unpack p) |  p <- pv]
 packPk :  [SeedBytes][8] -> PolyVec K -> [CryptoPublicKeyBytes * 8]
 packPk rho t1 = (join rho) # (packT1 t1)
 
+packPublicKey : PublicKey -> [CryptoPublicKeyBytes * 8]
+packPublicKey pk = pk.rho # (packT1 pk.t1)
+
 // Unpacking public key pk into (rho, t1)
 unpackPk : [CryptoPublicKeyBytes][8] -> ([SeedBytes][8], PolyVec K)
 unpackPk pk = (take`{32} pk, [ polyT1Unpack p | p <- (split (drop`{32} pk):[K][288][_]) ])
 
+unpackPublicKey : [CryptoPublicKeyBytes * 8] -> PublicKey
+unpackPublicKey bs = {rho = join rho, t1 = t1}
+  where (rho,t1) = unpackPk (split bs)
+
 // Bit-packing secret key sk = { rho, key, tr, s1, s2, t0 }
 packSk : [SeedBytes][8] -> [SeedBytes][8] -> [CrhBytes][8] -> PolyVec L -> PolyVec K -> PolyVec K -> [CryptoSecretKeyBytes * 8]
 packSk rho key tr s1 s2 t0 = (join rho) # (join key) # (join tr)# (packPolyEtaVec s1)#(packPolyEtaVec s2) # (packT0 t0)
+
+packSecretKey : SecretKey -> [CryptoSecretKeyBytes * 8]
+packSecretKey sk = sk.rho
+                   # sk.key
+                   # sk.tr
+                   # (packPolyEtaVec sk.s1)
+                   # (packPolyEtaVec sk.s2)
+                   # (packT0 sk.t0)
 
 // Unpacking secret key sk into (rho, key, tr, s1, s2, t0)
 unpackSk : [CryptoSecretKeyBytes][8] -> ([SeedBytes][8], [SeedBytes][8], [CrhBytes][8], PolyVec L, PolyVec K, IntPolyVec K)
@@ -362,6 +381,10 @@ unpackSk sk = (sk@@[0..31], sk@@[32..63], sk@@[64..111], s1, s2, t0)// key, tr, 
                s2 = [ unpackPolyEta p | p <- (split (take`{K * PolEtaSizePacked} (drop`{L * PolEtaSizePacked} sk)):[K][128][8])] //sk@@[L * PolEtaSizePacked..(L + K)*PolEtaSizePacked-1]
                split_sk = [ [ sk@(i*448 + j) | j<- [0..447]] | i <- [0..(K -1)] ]
                t0 = unpackT0 split_sk //: [K][PolT0SizePacked][8] //sk@@[(L + K)*PolEtaSizePacked..CryptoSecretKeyBytes]
+
+unpackSecretKey : [CryptoSecretKeyBytes * 8] -> SecretKey
+unpackSecretKey bs = {rho = join rho, key = join key, tr = join tr, s1 = s1, s2 = s2, t0 = t0}
+  where (rho, key, tr, s1, s2, t0) = unpackSk (split bs)
 
 //property packSk_corr x = unpackSk (split (packSk x.0 x.1 x.2 (intToZPolyVec x.3) (intToZPolyVec x.4) x.5)) == x
 
