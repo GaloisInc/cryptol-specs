@@ -32,7 +32,7 @@ gcmEnc :
   {n} (2^^39 - 256 >= n) =>
       { key : [K], iv : [IV], aad : [AAD], pt : [n] } -> { ct : [n], tag : [T] }
 gcmEnc input = { ct = C, tag = T }
-  where (C,T) = enc_dec input.key input.iv input.aad input.pt
+  where (C,T) = enc_dec True input.key input.iv input.aad input.pt
 
 gcmDec :
   {n} (2^^39 - 256 >= n) =>
@@ -40,17 +40,19 @@ gcmDec :
   { valid : Bool, pt : [n] }
 gcmDec input = if input.tag == T then { valid = True, pt = P }
                                   else { valid = False, pt = 0 }
-  where (P,T) = enc_dec input.key input.iv input.aad input.ct
+  where (P,T) = enc_dec False input.key input.iv input.aad input.ct
 
 
 
 /**
 The basic functionality between encryption and decryption.
 In the case of decryption, the plain text is only valid if the tags match.
+
+The `encrypt` bit is `True` if we are encrypting, `False` if decrypting.
 */
 enc_dec :
-  {n} ((2^^39 - 256) >= n) => [K] -> [IV] -> [AAD] -> [n] -> ([n], [T])
-enc_dec K IV A P = (C,T)
+  {n} ((2^^39 - 256) >= n) => Bit -> [K] -> [IV] -> [AAD] -> [n] -> ([n], [T])
+enc_dec encrypt K IV A P = (C,T)
   where
   H  = (E K 0)
 
@@ -62,7 +64,8 @@ enc_dec K IV A P = (C,T)
   Cs = [ p ^ (E K y) | p <- blockify P | y <- drop`{1} Ys ]
   C  = unblockify Cs
 
-  T = take (GHASH H A C ^ (E K Y0))
+  T = if encrypt then take (GHASH H A C ^ (E K Y0))
+                 else take (GHASH H A P ^ (E K Y0))
 
 
 /** Section 2.3, equation (2) */
