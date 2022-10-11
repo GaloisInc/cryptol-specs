@@ -45,7 +45,7 @@ type hash_input_T =
 type weighted_T = n_T
 
 
--------------
+
 ////type crypto_kem_CIPHERTEXTBYTES = [226] -> 1808
 //vs. {mt_T, d_T}  (1547, 256) -> 1803
 
