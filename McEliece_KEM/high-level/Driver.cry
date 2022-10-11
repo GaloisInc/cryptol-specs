@@ -1,4 +1,4 @@
-module main where
+module Driver where
 
 import Types
 import Encapsulation
