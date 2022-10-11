@@ -1,4 +1,4 @@
-module main where
+module Dirver where
 
 import Encrypt
 import Decrypt
