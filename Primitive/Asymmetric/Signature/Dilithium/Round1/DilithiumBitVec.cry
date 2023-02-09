@@ -19,10 +19,12 @@ import Common::utils
 import Common::mod_arith
 import Primitive::Asymmetric::Cipher::RSA
 import Primitive::Asymmetric::Signature::Dilithium::test::testDilithium
+import Primitive::Asymmetric::Signature::Dilithium::Constants
 
 
 // These parameters are fixed for all four recommended implementations
-type qbits = 23
+// XXX: These are already defined in Constants, we should use from there
+type qbits = QBits
 type q = 0x7fe001 //8380417
 type n = 0x100 //256
 d = 0xe
@@ -44,8 +46,8 @@ parameter
     type l : #
     type constraint (fin l, l>=2, l<=5)
     eta : [4]
-    beta : [qbits]
-    omega : [qbits]
+    beta : [QBits]
+    omega : [QBits]
 
 // Integer polynomials; a superset of ring R referenced in specification
 type intPoly        = [n][qbits]

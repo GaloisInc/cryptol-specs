@@ -78,17 +78,20 @@ step, 'IKM' is used as the HMAC input, not as the HMAC key.)
 
 
 ```cryptol
-//HMAC has limitations on input sizes based on its own limitations and hash limits
-type constraint validHMACSizes KeyLen MsgLen =
-    ( fin KeyLen, fin MsgLen
-        , 32 >= width MsgLen
-        , 64 >= width (8 * KeyLen)
-        , 64 >= width (8 * 64 + MsgLen))
-
 parameter
 
     type HashLen : #
     type constraint (fin HashLen)
+
+    // HMAC has limitations on input sizes based on its own
+    // limitations and hash limits
+    type constraint validHMACSizes KeyLen MsgLen =
+      ( fin KeyLen, fin MsgLen
+          , 32 >= width MsgLen
+          , 64 >= width (8 * KeyLen)
+          , 64 >= width (8 * 64 + MsgLen))
+
+
 
     // Hash : {MsgSize} (fin MsgSize) => [MsgSize][8] -> [HashLen][8] The hash will come with the HMAC
 
