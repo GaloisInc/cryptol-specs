@@ -42,6 +42,10 @@ verify y z (r, s) = ((BVtoZ `{p=q} v) == r)
 
 parameter
 
+    type constraint Constraints a = (fin a, isOdd a, a >= 4)
+    //type constraint validPsize L x = (L==1024*x, 2>=x)
+    //type constraint validQsize N = (N==160) //N==224, N==256
+
     type p : #
     type constraint Constraints p
 
@@ -68,10 +72,6 @@ parameter
 
 
 private
-
-    type constraint Constraints a = (fin a, isOdd a, a >= 4)
-    //type constraint validPsize L x = (L==1024*x, 2>=x)
-    //type constraint validQsize N = (N==160) //N==224, N==256
 
 
 property signDsaCorrect x k z = (verify (BVtoZ `{p=p} (mod_pow ((ZtoBV `{1+p,L} `p), ZtoBV `{a=L} g, (zero#(ZtoBV`{p=q}x):[L])))) z (sign x k z) ) == True
