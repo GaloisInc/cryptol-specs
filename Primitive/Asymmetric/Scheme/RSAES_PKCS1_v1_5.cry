@@ -22,13 +22,13 @@ parameter
   type constraint (fin k, k >= 11) 
 
 
+  type KeySize = k * 8
   n : [KeySize]
   e : [KeySize]
   d : [KeySize]
 
 
 
-type KeySize = k * 8
 
 
 

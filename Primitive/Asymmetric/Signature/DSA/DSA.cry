@@ -9,6 +9,24 @@ module Primitive::Asymmetric::Signature::DSA::DSA where
 import Common::mod_arith
 import Common::utils
 
+parameter
+
+    type constraint HasWidth a b = (fin b, width a <= b, a >= 1)
+
+    type q : #    // prime
+    type N : #
+    type constraint HasWidth q N
+
+    type p : #    // prime, p - 1  is a multiple of q
+    type L : #
+    type constraint HasWidth p L
+
+    type constraint (N < L)
+
+    g : Z p
+
+
+
 
 sign : Z q -> Z q -> Z q -> (Z q, Z q)
 sign x k z = (r, s)
@@ -40,38 +58,12 @@ verify y z (r, s) = ((BVtoZ `{p=q} v) == r)
          q' = ZtoBV `{1+q,N} `q
 
 
-parameter
-
-    type constraint Constraints a = (fin a, isOdd a, a >= 4)
-    //type constraint validPsize L x = (L==1024*x, 2>=x)
-    //type constraint validQsize N = (N==160) //N==224, N==256
-
-    type p : #
-    type constraint Constraints p
-
-    g : Z p
-
-    type q : #
-
-    type constraint (fin q, isOdd q, q >= 4)
-
-// NIST recommended bit lengths of p and q
-//L: the size of p, N: the size of q
-
-    type L : #
-
-    type N : #
-//Comment/uncomment according to the instantiated parameters
-    //type constraint (L==1024,N==160)
-    type constraint (L==2048,N==224)
-    //type constraint (L==2048,N==256)
-    //type constraint (L==3072,N==256)
-
-
-
-
-
 private
 
 
-property signDsaCorrect x k z = (verify (BVtoZ `{p=p} (mod_pow ((ZtoBV `{1+p,L} `p), ZtoBV `{a=L} g, (zero#(ZtoBV`{p=q}x):[L])))) z (sign x k z) ) == True
+property signDsaCorrect x k z =
+  verify ( BVtoZ `{p=p} (mod_pow ((ZtoBV `{1+p,L} `p)
+         , ZtoBV `{a=L} g, (zero#(ZtoBV`{p=q}x):[L])))
+         )
+         z
+         (sign x k z)

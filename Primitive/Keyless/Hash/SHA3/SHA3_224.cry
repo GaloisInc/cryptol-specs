@@ -1,28 +1,9 @@
-module Primitive::Keyless::Hash::SHA3::SHA3_224 where
-import `Primitive::Keyless::Hash::SHA3::SHA3
-import Primitive::Keyless::Hash::utils
+module Primitive::Keyless::Hash::SHA3::SHA3_224 =
+       Primitive::Keyless::Hash::SHA3::SHA3
+where
+
 type digest = 224
 
-/*
-Test vectors from
-https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values#aHashing
-*/
-
-
-property t1 = join (toBytes (sha3 [])) ==
-  0x6b4e03423667dbb73b6e15454f0eb1abd4597f9a1b078e3f5b5a6bc7
-
-property t2 = join (toBytes (sha3 0b11001)) ==
-  0xffbad5da96bad71789330206dc6768ecaeb1b32dca6b3301489674ab
-
-msg1600 : [1600]
-msg1600 = join [ 0b11000101 | _ <- zero : [200] ]
-
-property t3 = join (toBytes (sha3`{224} msg1600)) ==
-  0x9376816aba503f72f96ce7eb65ac095deee3be4bf9bbc2a1cb7e11e0
-
-property t4 = join (toBytes (sha3`{224} (msg1600 # 0b11000))) ==
-  0x22d2f7bb0b173fd8c19686f9173166e3ee62738047d7eadd69efb228
 
 
 

@@ -24,11 +24,11 @@ parameter
 
   hash : {a} (2 * hLen >= width (8 * a) ) => [a][8] -> [8 * hLen]
 
+  type KeySize = k * 8
   n : [KeySize]
   e : [KeySize]
   d : [KeySize]
 
-type KeySize = k * 8
 
 
 RSAES_OAEP_ENCRYPT : {l,mLen}

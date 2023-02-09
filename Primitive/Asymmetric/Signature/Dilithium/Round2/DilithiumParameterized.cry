@@ -30,6 +30,8 @@ import Common::utils (dowhile, unzip)
 import Common::bv (safe_add, safe_sub, safe_product, safe_mod)
 import Common::mod_arith (mod_pow)
 import Primitive::Asymmetric::Signature::Dilithium::test::test_latest (testCase1)
+import Primitive::Asymmetric::Signature::Dilithium::Constants
+
 
 
 // Parameterize the types based on the implemenations, weak, medium, recommended, and very-high
@@ -41,7 +43,7 @@ parameter
     eta : [QBits]
     beta : [QBits]
     type omega : #
-    type constraint (fin Omega, Omega >= 64, Omega <= 120)
+    type constraint (fin omega, omega >= 64, omega <= 120)
 
 // To expose the parameters 
 type K = k 
@@ -49,24 +51,6 @@ type L = l
 ETA = eta
 BETA = beta 
 type Omega = omega
-
-// Fixed parameters
-type QBits = 23
-type UInt32T = 32
-type Q = 0x7fe001 //8380417
-type N = 0x100 //256
-type D = 0xe
-WC = 0x3c //60
-GAMMA1 = (`Q - 1)/16 : [_]
-GAMMA2 = GAMMA1/2 : [_]
-ALPHA = 2 * GAMMA2 : [_]
-QINV  = 0x00000000fc7fdfff
-type SetaBits = 4
-
-// Parameters for Number Theoretic Transform (NTT)
-ROOTOFUNITY    = 1753 : [QBits]
-ROOTOFUNITYINV = 731434 : [QBits]
-NINV           = 8347681 : [QBits]
 
 // Integer polynomials; a superset of ring R referenced in specification
 type IntPoly        = Poly
