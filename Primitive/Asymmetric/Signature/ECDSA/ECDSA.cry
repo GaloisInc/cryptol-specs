@@ -58,6 +58,9 @@ property decompress_correct k = affine_decompress_correct (ec_affinify (ec_mult 
 parameter
 
   type p : #
+  type constraint Constraints a = (fin a, isOdd a, a >= 4)
+  type ProjectivePoint a = {x : Z a, y : Z a, z : Z a}
+
   type constraint Constraints p
 
   b : Z p
@@ -71,10 +74,8 @@ parameter
 
 private
 
-  type constraint Constraints a = (fin a, isOdd a, a >= 4)
 
   type AffinePoint a = {x : Z a, y : Z a}
-  type ProjectivePoint a = {x : Z a, y : Z a, z : Z a}
 
   ec_projectify : {a} (Constraints a) => AffinePoint a -> ProjectivePoint a
   ec_projectify S = {x = S.x, y = S.y, z = 1}
