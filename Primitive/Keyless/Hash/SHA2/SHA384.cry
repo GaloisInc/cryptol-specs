@@ -15,7 +15,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 module Primitive::Keyless::Hash::SHA2::SHA384 = Primitive::Keyless::Hash::SHA2::SHA where
 
-type w = 64
+type wp = 64
 
 type digest_size = 384
 
