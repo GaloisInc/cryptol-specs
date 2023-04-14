@@ -1,0 +1,65 @@
+\section{Hashing} \label{sec:spec:hash}
+
+As for any hash-and-sign signature scheme, the first step to sign a message or verify a signature consists of hashing the message. In our case, the message needs to be hashed into a polynomial in $\bZ_q[x]/(\phi)$. An approved extendable-output hash function (XOF), as specified in FIPS 202~\cite{FIPS}, shall be used during this procedure.
+
+This XOF shall have a security level at least equal to the security level targeted by our signature scheme. In addition, we should be able to start hashing a message without knowing the security level at which it will be signed. For these reasons, we use a unique XOF for all security levels: \shake.
+\begin{itemize}
+ \item \shakeinit() denotes the initialization of a \shake hashing context;
+ \item \shakeinject(\shakectx, \str) denotes the injection of the data \str in the hashing context \shakectx;
+ \item \shakeextract(\shakectx, $b$) denotes extraction from a hashing context \shakectx of $b$ bits of pseudorandomness.
+\end{itemize}
+ 
+\longhashtopoint defines the hashing process used in \falcon. It is defined for any $q \leq 2^{16}$. In \falcon, big-endian convention is used to interpret a chunk of $b$
+bits, extracted from a \shake instance, into an integer in the $0$ to
+$2^b-1$ range (the first of the $b$ bits has numerical weight $2^{b-1}$,
+the last has weight $1$).
+
+\begin{algorithm}[htb]
+\caption{$\hashtopoint(\str, q, n)$}\label{alg:hashtopoint}
+\begin{algorithmic}[1]
+\Require{A string \str, a modulus $q \leq 2^{16}$, a degree $n \in \bN^\star$}
+\Ensure{An polynomial $c = \sum_{i=0}^{n-1} c_i x^i $ in $\bZ_q[x]$}
+\State{$k \gets \lfloor 2^{16}/q \rfloor$}
+\State{$\shakectx \gets \shakeinit()$}
+\State{$\shakeinject(\shakectx, \str)$}
+\State{$i \gets 0$}
+\While{$i < n$}
+\State{$t \gets \shakeextract(\shakectx, 16)$}\label{step:extract}
+\If{$t < k q$} \label{alg:hashtopoint:cmp}\label{step:check}
+\State{$c_i \gets t \bmod q$} \label{alg:hashtopoint:mod}
+\State{$i \gets i+1$}
+\EndIf
+\EndWhile
+\Return{$c$}
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Possible variants.}
+\begin{itemize}
+
+\item If $q > 2^{16}$, then larger chunks can be extracted from \shake
+at each step.
+
+\item \hashtopoint may be difficult to efficiently
+implement in a constant-time way; constant-timeness may be a desirable
+feature if the signed data is also secret.
+
+A variant which is easier to
+implement with constant-time code extracts $64$ bits instead of $16$ at
+step~\ref{step:extract}, and omits the conditional check of
+step~\ref{step:check}. While the omission of the check means that some
+outputs are slightly more probable than others, a
+Rényi argument~\cite{AC:BLLSS15,AC:Prest17} allows to claim that this variant is
+secure for the parameters set by NIST~\cite{NIST}.
+
+\end{itemize}
+
+Of course, any variant deviating from the procedure expressed in
+\cref{alg:hashtopoint} implies that the same message will hash
+to a different value, which breaks interoperability.
+
+% Algorithm~\ref{alg:hashtopoint} can be used to efficiently achieve this \hashtopoint operation. It is not constant-time but, for most applications, variable-time generation of the public parameter $c$ is not a problem. It is defined for $q \leq 2^{16}$ but can be easily adapted for arbitrary large $q$. As described in \cite{https://eprint.iacr.org/2016/467.pdf}, step~\ref{alg:hashtopoint:cmp}-\ref{alg:hashtopoint:mod} execute a rejection on the \shake output considered as an array of 16-bit, unsigned, little-endian integers. Each of those integers is used as a coefficient of $c$, after having been reduced modulo $q$, if it is smaller than $\lfloor 2^{16}/q \rfloor q$ and rejected otherwise.
+% 
+% Note that, when timing leak of public information can be a problem, one can use the alternative approach described in \cite{USENIX:ADPS16} to parse the \shake output, which is more slower and incompatible with the straightforward approach described above, but does not leak any timing information about $c$.
+% 
+% Todo: describe this constant-time approach?

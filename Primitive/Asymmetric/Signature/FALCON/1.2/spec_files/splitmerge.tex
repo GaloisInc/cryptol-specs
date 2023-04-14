@@ -1,0 +1,122 @@
+\section{Splitting and Merging} \label{sec:spec:splitmerge}
+
+In this section, we make explicit the chains of isomorphisms described in \cref{sec:spec:techoverview}, by presenting splitting (resp. merging) operators which allow to travel these chains from right to left (resp. left to right).
+
+Let $\phi, \phi'$ be cyclotomic polynomials such that $\phi(x) = \phi'(x^2)$ (for example, $\phi(x) = x^n + 1$ and $\phi'(x) = x^{n/2} + 1$). We define operators which are at the heart of our signing algorithm. Our algorithms require the ability to split an element of $\bQ[x]/(\phi)$ into two smaller elements of $\bQ[x]/(\phi')$. Conversely, we require the ability to merge two elements of $\bQ[x]/(\phi')$ into an element of $\bQ[x]/(\phi)$.
+
+
+\paragraph{The \splitfft operator.} Let $n$ be the degree of $\phi$, and $f = \sum_{i=0}^{n-1} a_i x^i$ be an arbitrary element of $\bQ[x]/(\phi)$, $f$ can be decomposed uniquely as $f(x) = f_0(x^2) + xf_1(x^2)$, with $f_0, f_1 \in \bQ[x]/(\phi')$. In coefficient representation, such a decomposition is straightforward to write:
+\begin{equation}\label{eq:split}
+f_0 = \sum\limits_{0 \leq i < n/2} a_{2i} x^i \text{\ \ \ and\ \ \ }f_1 = \sum\limits_{0 \leq i < n/2} a_{2i+1} x^i
+\end{equation}
+In \eqref{eq:split}, we simply split $f$ with respect to its even or odd coefficients. With this notation, we note:
+\begin{equation}\label{eq:splitdef}
+\polsplit(f) = (f_0,f_1).
+\end{equation}
+In \falcon, polynomials are repeatedly split, multiplied together, split again and so forth. To avoid switching back and forth between the coefficient and \fft representation, we always perform the split operation in the \fft representation. It is defined in \longsplitfft.
+
+
+\begin{algorithm}%[H]
+\caption{$\splitfft(\fft(f))$}\label{alg:splitfft}
+ \begin{algorithmic}[1]
+ \Require {$\fft(f) = (f(\zeta))_{\zeta}$ for some $f \in \bQ[x]/(\phi)$}
+ \Ensure {$\fft(f_0)= (f_0(\zeta'))_{\zeta'}$ and $\fft(f_1)= (f_1(\zeta'))_{\zeta'}$ for some $f_0,f_1 \in \bQ[x]/(\phi')$}
+ \Format{All polynomials are in \fft representation.}
+ \For{$\zeta$ such that $\phi(\zeta) = 0$ and Im$(\zeta) > 0$}
+ \Comment{See \cref{eq:phi} with $0 \leq k < n/2$}
+ \State{$\zeta' \gets \zeta^2$}
+ \State{$f_0(\zeta') \gets \frac{1}{2} \left[ f(\zeta) + f(-\zeta) \right]$}
+ \State{$f_1(\zeta') \gets \frac{1}{2\zeta} \left[ f(\zeta) - f(-\zeta) \right]$}
+ \EndFor
+ \Return{$(\fft(f_0), \fft(f_1))$}
+ \end{algorithmic}
+\end{algorithm}
+
+\splitfft is \polsplit realized in the \fft representation: for any $f, \fft(\polsplit(f)) = \splitfft(\fft(f))$. Readers familiar with the Fourier transform will recognize that \splitfft is a subroutine of the inverse fast Fourier transform, more precisely the part which from $\fft(f)$ computes two \fft's twice smaller.
+
+\paragraph{The \mergefft operator.} With the previous notations, we define the operator \polmerge as follows:
+\begin{equation}\label{eq:merge}
+\polmerge(f_0,f_1) = f_0(x^2) + xf_1(x^2) \in \bQ[x]/(\phi).
+\end{equation}
+Similarly to \polsplit, it is often relevant from an efficiently standpoint to perform \polmerge in the \fft representation. This is done in \longmergefft.
+
+\begin{algorithm}%[H]
+\caption{$\mergefft(f_0,f_1)$}\label{alg:mergefft}
+ \begin{algorithmic}[1]
+ \Require {$\fft(f_0) = (f_0(\zeta'))_{\zeta'}$ and $\fft(f_1) = (f_1(\zeta'))_{\zeta'}$ for some $f_0,f_1 \in \bQ[x]/(\phi')$}
+ \Ensure {$\fft(f) = (f(\zeta))_{\zeta}$ for some $f \in \bQ[x]/(\phi)$}
+ \Format{All polynomials are in \fft representation.}
+ \For{$\zeta$ such that $\phi(\zeta) = 0$}
+ \Comment{See \cref{eq:phi}}
+ \State{$\zeta' \gets \zeta^2$}
+ \State{$f(\zeta) \gets f_0(\zeta') + \zeta f_1(\zeta')$}
+%  \State{$f(-\zeta) \gets f_0(\zeta') - \zeta f_1(\zeta')$}
+ \EndFor
+ \Return{$\fft(f)$}
+ \end{algorithmic}
+\end{algorithm}
+
+It is immediate that \polsplit and \polmerge are inverses of each other, and equivalently \splitfft and \mergefft are inverses of each other. Just as for \splitfft, readers familiar with the Fourier transform can observe that \mergefft is a step of the fast Fourier transform: it is the reconstruction step which from two small \fft's computes a larger \fft.
+
+\paragraph{Relationship with the \fft.} There is no requirement on the order in which the values $f(\zeta)$ (resp. $f_0(\zeta')$, resp. $f_1(\zeta')$) are to be stored, and the choice of this order is left to the implementer. It is however recommended to use a unique order convention for the \fft, \ifft, \splitfft and \mergefft operators. Since the \fft and \ifft need to implemented anyway, this unique convention can be achieved \eg by implementing \splitfft as part of \ifft, and \mergefft as part of the \fft.
+
+\tprcomment{should we provide an example of \fft/\ifft algorithm?}
+
+The intricate relationships between the \polsplit and \polmerge operators, their counterparts in the \fft representation and the (inverse) fast Fourier transform are illustrated in the commutative diagram of \cref{fig:splitmerge}.
+
+\begin{figure}%[H]
+\centering
+\begin{tikzpicture}[]
+\matrix (m) [matrix of nodes,row sep=15mm,column sep = 25mm,draw=none]
+{
+$f\in \bQ[x]/(\phi)$ & $f_0,f_1 \in \bQ[x]/(\phi')$ \\
+$\hat f\in \fft(\bQ[x]/(\phi))$ & $\hat f_0, \hat f_1 \in \fft(\bQ[x]/(\phi'))$ \\
+};
+\draw[line] (m-1-1.259) -> (m-2-1.100) node[midway,left] {\fft};
+\draw[line] (m-1-2.259) -> (m-2-2.100) node[midway,left] {\fft};
+\draw[line] (m-2-1.80) -> (m-1-1.281) node[midway,right] {\ifft};
+\draw[line] (m-2-2.80) -> (m-1-2.281) node[midway,right] {\ifft};
+
+\draw[line] ($(m-1-1.east)+(0,.1)$) -> ($(m-1-2.west)+(0,.1)$) node[midway,above] {\polsplit~\eqref{eq:splitdef}};
+\draw[line] ($(m-2-1.east)+(0,.1)$) -> ($(m-2-2.west)+(0,.1)$) node[midway,above] {\splitfft};
+\draw[line] ($(m-1-2.west)-(0,.1)$) -> ($(m-1-1.east)-(0,.1)$) node[midway,below] {\polmerge~\eqref{eq:merge}};
+\draw[line] ($(m-2-2.west)-(0,.1)$) -> ($(m-2-1.east)-(0,.1)$) node[midway,below] {\mergefft};
+
+\end{tikzpicture}
+\caption{Relationship between \fft, \ifft, \polsplit, \polmerge, \splitfft and \mergefft}\label{fig:splitmerge}
+\end{figure}
+
+\subsection{Algebraic interpretation}\label{sec:spec:splitmerge:algebraic}
+
+  The purpose of the splitting and merging operators that we defined is not only to represent an element of $\bQ[x]/(\phi)$ using two elements of $\bQ[x]/(\phi')$, but to do so in a manner compatible with ring operations. As an illustration, we consider the operation:
+ \begin{equation}\label{eq:simpleproduct}
+ a = b c
+ \end{equation}
+where $a, b, c \in \bQ[x]/(\phi)$. For $f \in \bQ[x]/(\phi)$, we consider the associated endomorphism $\psi_f : z \in \bQ[x]/(\phi) \mapsto fz$. \eqref{eq:simpleproduct} can be rewritten as $a = \psi_c(b)$. By the $\polsplit$ isomorphism, $a$ and $b$ (resp. $\psi_c$) can also be considered as elements (resp. an endomorphism) of $(\bQ[x]/(\phi'))^2$. We can rewrite \eqref{eq:simpleproduct} as:
+   \begin{equation}\label{eq:bisection}
+  \onetwo{a_0}{a_1} = \onetwo{b_0}{b_1}  \twotwo{c_{0}}{c_{1}}{x c_{1}}{c_{0}}
+   \end{equation}
+
+ More formally, we have used the fact that splitting operators are isomorphisms between $\bQ[x]/(\phi)$ and $(\bQ[x]/(\phi'))^k$, which express elements of $\bQ[x]/(\phi)$ in the $(\bQ[x]/(\phi'))$-basis $\{1,x\}$ (hence ``breaking'' $a,b$ in vectors over a smaller field). Similarly, writing the transformation matrix of the endomorphism $\psi_c$ in the basis $\{1,x\}$ yields the $2\times 2$ matrix of \eqref{eq:bisection}.
+
+%\subsection{Relationship with the field norm}\label{sec:spec:splitmerge:fieldnorm} The splitting and merging operators allow to easily express the field norm for some specific cyclotomic fields. Let $\bL = \bQ[x]/(\phi), \bK = \bQ[x]/(\phi')$ and $f \in \bL$. Since by definition $\N_{\bL/\bK}(f) = \det_\bK(\psi_d)$, we can use \eqref{eq:bisection} to compute it explicitly. This yields:
+%\begin{itemize}
+% \item If $\phi'(x^2) = \phi(x)$, then $\N_{\bL/\bK}(f) = f_0^2 - x f_1^2$, where $(f_0, f_1) = \polsplit(f)$;
+%\end{itemize}
+%
+%For $f \in \bL$ with $\bL = \bQ[x]/(x^{2^\kappa} + 1)$, we also denote $\N(f) = f_0^2 - x f_1^2 = \N_{\bL/\bK}(f)$, where $\bK$ is the largest strict subfield of $\bL$ (see \eqref{eq:binarytower}). For the values of $\phi$ considered in this document, this allows to define $\N(f)$ in an unambiguous way.
+
+%\tprcomment{I simplified everything related to the field norm, it was too verbose}
+
+\paragraph{Relationship with the field norm.} The field norm (or relative norm) $\N_{\bL/\bK}$ maps elements of a larger field $\bL$ onto a subfield $\bK$. It is an important notion in field theory, but in this document, we only need to define it for a simple, particular case. Let $n = 2^\kappa$ a power of two, $\bL = \bQ[x]/(x^{n} + 1)$ and $\bK = \bQ[x]/(x^{n/2} + 1)$. We define the field norm $\N_{\bL/\bK}$ as follows:
+\begin{equation}\label{eq:fieldnorm}
+\begin{array}{llllc}
+\N_{\bL/\bK} & : & \bL & \rightarrow & \bK \\
+& & f & \mapsto & f_0^2 - x f_1^2
+\end{array}
+\end{equation}
+where $(f_0,f_1) = \polsplit(f) \in \bK^2$, see \eqref{eq:split} and \eqref{eq:splitdef} for explicit formulae. When $\bL$ and $\bK$ are clear from context, we simply note $\N(f) = \N_{\bL/\bK}(f)$. An equivalent formulation for $\N_{\bL/\bK}$ is:
+\begin{equation}\label{eq:fieldnormmul}
+\N_{\bL/\bK} (f) = f(x) \cdot f(-x)
+\end{equation}
+Both \eqref{eq:fieldnorm} and \eqref{eq:fieldnormmul} are valid formulae for $\N_{\bL/\bK}(f)$, but \eqref{eq:fieldnorm} is more suited to the coefficient representation, and \eqref{eq:fieldnormmul} is more suited to the NTT representation.

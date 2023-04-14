@@ -1,0 +1,270 @@
+% !TeX root = ../falcon.tex
+
+
+\section{Encoding Formats} \label{sec:spec:encode}
+
+\subsection{Bits and Bytes}
+
+A \emph{byte} is a sequence of eight bits (formally, an \emph{octet}).
+Within a byte, bits are ordered from left to right. A byte has a
+numerical value, which is obtained by adding the weighted bits; the
+leftmost bit, also called ``top bit'' or ``most significant'', has
+weight 128; the next bit has weight 64, and so on, until the rightmost
+bit, which has weight 1.
+
+Some of the encoding formats defined below use sequences of bits. When
+a sequence of bits is represented as bytes, the following rules apply:
+\begin{itemize}
+\item The first byte will contain the first eight bits of the sequence;
+the second byte will contain the next eight bits, and so on.
+\item Within each byte, bits are ordered left-to-right in the same order
+as they appear in the source bit sequence.
+\item If the bit sequence length is not a multiple of 8, up to 7 extra
+padding bits are added at the end of the sequence. The extra padding bits
+MUST have value zero.
+\end{itemize}
+
+This handling of bits matches widely deployed standard, e.g. bit
+ordering in the SHA-2 and SHA-3 functions, and \texttt{BIT STRING}
+values in ASN.1.
+
+\subsection{Compressing Gaussians} \label{sec:spec:encode:compress}
+
+% TODO: this is not what the code currently implements. This encoding
+% process should be tried and benchmarked. Notably, the cut-off at 7
+% bits may depend on the value of q.
+
+In \falcon, the signature of a message essentially consists of a polynomial $s \in \bZ_q[x]/(\phi)$ which coefficients are distributed around $0$ according to a discrete Gaussian distribution of standard deviation $\sigma \approx 1.55 \sqrt{q} \ll q$. A naive encoding of $s$ would require about $\lceil \log_2 q\rceil \cdot \deg(\phi)$ bits, which is far from optimal for communication complexity.
+
+In this section we specify algorithms for compressing and decompressing efficiently polynomials such as $s$. The description of this compression procedure is simple:
+\begin{enumerate}
+ \item
+ For each coefficient $s_i$, a compressed string $\str_i$ is defined as follows:
+ \begin{enumerate}
+  \item The first bit of $\str_i$ is the sign of $s_i$;
+  \item The $7$ next bits of $\str_i$ are the $7$ least significant bits of $|s_i|$, in order of significance, i.e. most to least significant;
+  \item The last bits of $\str_i$  are an encoding of the most significant bits of $|s_i|$ using unary coding. If $\lfloor|s_i|/2^7\rfloor = k$, then its encoding is $\underbrace{\tt{0\dots 0}}_{k \text{ times}} \tt 1$, which we also note ${{\tt 0}^k \tt 1}$; 
+ \end{enumerate}
+  \item 
+ The compression of $s$ is the concatenated string $\str \gets (\str_0\|\str_1\|\dots\|\str_{n-1})$.
+ 
+ \item 
+ \str is padded with zeroes to a fixed width \slen.
+\end{enumerate}
+This encoding is based on two observations. First, since $s_i \bmod 2^7$ is close to uniform, it is pointless to compress the $7$ least significant bits of $s_i$. Second, if a Huffman table is computed for the most significant bits of $|s_i|$, it results in the unary code we just described. So our unary code is actually a Huffman code for the distribution of the most significant bits of $|s_i|$. A formal description is given in \longcompress.
+
+\begin{algorithm}[!htp]
+\caption{$\compress(s, \slen)$ \hfill}\label{alg:compress}
+ \begin{algorithmic}[1]
+ \Require {A polynomial $s = \sum s_i x^i \in \bZ[x]$ of degree $<n$, a string bitlength $\slen$}
+ \Ensure {A compressed representation \str of $s$ of $\slen$ bits, or $\bot$}
+ \State{$\str \gets \{\}$}\Comment{\str is the empty string}
+ \For{$i$ from $0$ to $n-1$}\Comment{At each step, $\str \gets (\str\|\str_i)$, where $\str_i$ encodes $s_i$}
+ \State{$\str \gets (\str\|b)$, where $b = {\tt 1}$ if $s_i < 0$, $b = {\tt 0}$ otherwise} \Comment{Encode the sign of $s_i$}
+% \State{$\str \gets (\str\|b_6 b_5 \dots b_0)$, where $b_j = \lfloor|s_i| / 2^j\rfloor \bmod 2 $}
+ \State{$\str \gets (\str\|b_6 b_5 \dots b_0)$, where $b_j = (|s_i| \rightshift j)\ \texttt{\&} \ {\tt 0x1}$}\label{line:cbin}
+ \Comment{Encode in binary the low bits of $|s_i|$}
+% \State{$k \gets \lfloor|s_i| / 2^7\rfloor$}
+ \State{$k \gets |s_i| \rightshift 7$}\label{line:k}
+ \State{$\str \gets (\str\|{\tt 0}^k \tt 1)$}\label{line:unary} \Comment{Encode in unary the high bits of $|s_i|$}
+ \EndFor
+ \If{$(|\str| > \slen)$}\label{line:slen}
+ \State{$\str \gets \bot$} \Comment{Abort if $\str$ is too long}\label{line:slenbot}
+ \Else\label{line:else}
+ \State{$\str \gets (\str\|{\tt 0}^{\slen - |\str|})$} \Comment{Pad $\str$ to $\slen$ bits}\label{line:pad}
+ \EndIf
+ \Return{\str}
+ \end{algorithmic}
+\end{algorithm}
+
+The corresponding decompression algorithm is given in \longdecompress. For any polynomial $s \in \bZ[x]$ such that $\compress(s, \slen) \neq \bot$, it holds that $\decompress ( \compress(s, \slen), \slen) = s$. We now enforce unique encodings: a polynomial $s$ should have at most one valid encoding $\str$. This is done via three additional checks in \decompress:
+\begin{enumerate}
+	\item only accept bitstrings of length $\slen = 8\cdot \sigbytelen - 328$ (see \cref{line:fix,line:fix2});
+	\item only accept ${\tt 000000001}$ -- and not ${\tt 100000001}$ -- as a valid encoding of the coefficient $0$ (see \cref{line:zero,line:zero2});
+	\item force the last bits of $\str$ to be $\tt 0$ (see \cref{line:trail,line:trail2}).
+\end{enumerate}
+
+
+\begin{algorithm}[!htp]
+\caption{$\decompress(\str, \slen)$ \hfill}\label{alg:decompress}
+	\begin{algorithmic}[1]
+	\Ensure {A bitstring $\str = (\str[i])_{i=0, \dots, \slen-1}$, a bitlength $\slen$}
+	\Require {A polynomial $s = \sum s_i x^i \in \bZ[x]$, or $\bot$}
+	\If{$|\str| \neq \slen$}\label{line:fix} \Comment{Enforce fixed bitlength}
+	\Return{$\bot$} \label{line:fix2}
+	\EndIf
+%	\State{$j \gets 0$}
+	\For{$i$ from $0$ to $(n-1)$}
+	\State{$s_i' \gets \sum_{j=0}^6 2^{6 - j} \cdot \str[1+j]$}\label{line:dbin} \Comment{We recover the lowest bits of $|s_i|$.}
+	\State{$k \gets 0$}\Comment{We recover the highest bits of $|s_i|$.}
+	\While{$\str[8+k] = 0$}\label{line:8}
+	\State{$k \gets k+1$}
+	\EndWhile
+	\State{$s_i \gets (-1)^{\str[0]} \cdot (s_i' + 2^7 k)$}\Comment{We recompute $s_i$.}
+	\If{($s_i = 0$) and ($\str[0] = \tt 1$)}\label{line:zero} \Comment{Enforce unique encoding if $s_i = 0$}
+	\Return{$\bot$}\label{line:zero2}
+	\EndIf
+	\State{$\str \gets \str[9+k \dots \ell-1]$}\Comment{We remove the bits of \str that encore $s_i$.}
+	\EndFor
+	\If{$(\str \neq {\tt 0}^{|\str|})$}\label{line:trail} \Comment{Enforce trailing bits at ${\tt 0}$}
+	\Return{$\bot$}\label{line:trail2} 
+	\EndIf
+	\Return {$s = \sum_{i=0}^{n-1} s_i x^i$}
+	\end{algorithmic}
+\end{algorithm}
+
+\subsection{Signatures}
+
+A \falcon signature consists of two strings \salt and \comps. They may
+conceptually be encoded separately, because the salt \salt must be known
+\emph{before} beginning to hash the message itself, while the \comps
+value can be obtained or verified only after the whole message has been
+processed. In a format that supports streamed processing of long
+messages, the salt \salt would normally be encoded before the message,
+while the \comps value would appear after the message bytes. However,
+we here define an encoding that includes both \salt and \comps.
+
+The first byte is a header with the following format (bits indicated
+from most to least significant):
+\begin{verbatim}
+    0 c c 1 n n n n
+\end{verbatim}
+with these conventions:
+\begin{itemize}
+
+    \item The leftmost bit is \texttt{0}, and the fourth bit from the left
+    is \texttt{1} (in previous versions of \falcon, these bits may had
+    have different values).
+
+    \item Bits \texttt{cc} are \texttt{01} or \texttt{10} to specify the
+    encoding method for \comps. Encoding \texttt{01} uses the compression
+    algorithm described in Section~\ref{sec:spec:encode:compress};
+    encoding \texttt{10} is alternate uncompressed encoding in which each
+    coefficient of \comps is encoded over a fixed number of bits.
+
+    \item Bits \texttt{nnnn} encode a value $\ell$ such that the
+    \falcon degree is $n = 2^\ell$. $\ell$ must be in the allowed
+    range (1 to 10).
+
+\end{itemize}
+
+Following the header byte are the nonce string \salt (40 bytes), then
+the encoding of \comps itself.
+
+Signatures are then normally padded with zeros up to the prescribed
+length (\sigbytelen). Verifiers may also support unpadded signatures,
+which do not have a fixed size, but are (on average) slightly shorter
+than padded signatures. \emph{Partial} padding is not valid: if the
+signature has padding bytes, then all padding bytes must be zero, and
+the total padded length must be equal to \sigbytelen.
+
+When using the alternate uncompressed format (\texttt{cc} is \texttt{10}
+in the header byte), all elements of \comps are encoded over exactly 12
+bits each (signed big-endian encoding, using two's complement for
+negative integers; the valid range is $-2047$ to $+2047$, the value
+$-2048$ being forbidden)\footnote{In some reduced versions of \falcon,
+with degree 16 or less, fewer bits may be used. These reduced versions
+do not offer any security and are used only for research and tests.}.
+This uncompressed format yields larger signatures and is meant to
+support the uncommon situations in which signature values and signed
+messages are secret: uncompressed signatures can be decoded and encoded
+with constant-time implementations that do not leak information through
+timing-based side channels.
+
+\subsection{Public Keys}
+
+A \falcon public key is a polynomial $h$ whose coefficients are considered
+modulo $q$. An encoded public key starts with a header byte:
+\begin{verbatim}
+    0 0 0 0 n n n n
+\end{verbatim}
+with these conventions:
+\begin{itemize}
+\item The four leftmost bits are 0 (in some previous versions of \falcon,
+the leftmost bit could have been non-zero).
+\item Bits \texttt{nnnn} encode a value $\ell$ such that the degree is
+$n = 2^\ell$. $\ell$ must be in the allowed range ($1$ to $10$).
+\end{itemize}
+
+After the header byte comes the encoding of $h$: each value (in the $0$
+to $q-1$ range) is encoded as a 14-bit sequence (since $q = 12289$, 14 bits
+per value are used). The encoded values are concatenated
+into a bit sequence of $14n$ bits, which is then represented as
+$\lceil 14n/8\rceil$ bytes.
+
+\subsection{Private Keys}
+
+Private keys use the following header byte:
+\begin{verbatim}
+    0 1 0 1 n n n n
+\end{verbatim}
+with these conventions:
+\begin{itemize}
+\item The four leftmost bits are \texttt{0101}.
+\item Bits \texttt{nnnn} encode the value $\ell$ such that the degree
+is $n = 2^\ell$. $\ell$ must be in the allowed range ($1$ to $10$).
+\end{itemize}
+
+Following the header byte are the encodings of $f$, $g$, and $F$,
+in that order. Each coordinate is encoded over a fixed number of bits,
+which depends on the degree:
+\begin{itemize}
+
+    \item Coefficients of $f$ and $g$ use:
+    \begin{itemize}
+        \item 8 bits each for degrees 2 to 32;
+        \item 7 bits each for degrees 64 and 128;
+        \item 6 bits each for degrees 256 and 512;
+        \item 5 bits each for degree 1024.
+    \end{itemize}
+
+    \item Coefficients of $F$ use 8 bits each, regardless of the
+    degree.
+
+\end{itemize}
+Of course, small degrees do not offer real security, and are meant only
+for test and research purposes. In practical situations, the degree
+should be 512 or 1024.
+
+Each coefficient uses signed encoding, with two's complement for
+negative values. Moreover, the minimal value is forbidden; e.g. when
+using degree 512, the valid range for a coefficient of $f$ or $g$
+is $-31$ to $+31$; $-32$ is not allowed.
+
+The polynomial $G$ is not encoded. It is recomputed when the key is
+loaded, thanks to the NTRU equation:
+\begin{equation}
+  G = (q + gF)/f \mod \phi
+\end{equation}
+Since the coefficients of $f$, $g$, $F$ and $G$ are small, this
+computation can be done modulo $q$ as well, using the same techniques as
+signature verification (e.g. the NTT).
+
+\subsection{NIST API}
+
+The API to be implemented by candidates to the NIST call for
+post-quantum algorithms mandates a different convention, in which the
+signed message and the signature are packed into a single aggregate
+format. In this API, the following encoding is used:
+\begin{itemize}
+
+    \item First two bytes are the ``signature length'' (big-endian
+    encoding).
+
+    \item Then follows the nonce \salt (40 bytes).
+
+    \item The message data itself appears immediately after the nonce.
+
+    \item The signature comes last. This signature uses a nonce-less
+    format:
+    \begin{itemize}
+        \item Header byte is: \texttt{0010nnnn}
+        \item Encoded \comps immediately follows, using compressed
+        encoding.
+    \end{itemize}
+
+\end{itemize}
+There is no signature padding; the signature has a variable length. The
+length specified in the first two bytes of the package is the length,
+in bytes, of the signature, including its header byte, but not including
+the nonce length.

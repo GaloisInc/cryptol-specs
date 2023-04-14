@@ -1,0 +1,657 @@
+\chapter{Implementation and Performances}\label{chap:impl}
+
+We list here a number of noteworthy points related to implementation.
+
+\section{Floating-Point}
+
+Signature generation, and also part of key pair generation, involve the
+use of complex numbers. These can be approximated with standard IEEE 754
+floating-point numbers (``binary64'' format, commonly known as ``double
+precision''). Each such number is encoded over 64 bits, that split into
+the following elements:
+\begin{itemize}
+  \item a sign $s = \pm 1$ (1 bit);
+  \item an exponent $e$ in the $-1022$ to $+1023$ range (11 bits);
+  \item a mantissa $m$ such that $1\le m< 2$ (52 bits).
+\end{itemize}
+In general, the represented value is $sm2^e$. The mantissa is encoded as
+$2^{52}(m-1)$; it has 53 bits of precision, but its top bit, of value 1
+by definition, is omitted in the encoding.
+
+The exponent $e$ uses 11 bits, but its range covers only 2046 values, not
+2048. The two extra possible values for that field encode special cases:
+\begin{itemize}
+  \item The value zero. IEEE 754 has two zeros, that differ by the sign
+  bit.
+  \item Subnormals: they use the minimum value for the exponent ($-1022$)
+  but the implicit top bit of the mantissa is 0 instead of 1.
+  \item Infinites (positive and negative).
+  \item Erroneous values, known as NaN (Not a Number).
+\end{itemize}
+
+Apart from zero, \falcon does not exercise these special cases; exponents
+remain relatively close to zero; no infinite or NaN is obtained.
+
+The C language specification does not guarantee that its \verb+double+
+type maps to IEEE 754 ``binary64'' type, only that it provides an
+exponent range and precision that match at least that IEEE type. Support
+of subnormals, infinites and NaNs is left as implementation-defined. In
+practice, most C compilers will provide what the underlying hardware
+directly implements, and \emph{may} include full IEEE support for the
+special cases at the price of some non-negligible overhead, e.g. extra
+tests and supplementary code for subnormals, infinites and NaNs. Common
+x86 CPU, in 64-bit mode, use SSE2 registers and operations for
+floating-point, and the hardware already provides complete IEEE 754
+support. Other processor types have only a partial support; e.g. many
+PowerPC cores meant for embedded systems do not handle subnormals (such
+values are then rounded to zeros). \falcon works properly with such
+limited floating-point types.
+
+Some processors do not have a FPU at all. These will need to use
+some emulation using integer operations. As explained above, special
+cases need not be implemented.
+
+\section{FFT and NTT}
+
+\subsection{FFT}
+
+\todo[inline]{Replace the $\phi, \phi'$ by concrete values}
+
+The Fast Fourier Transform for a polynomial $f$ computes $f(\zeta)$
+for all roots $\zeta$ of $\phi$ (over $\bC$). It is normally expressed
+recursively. If $\phi = x^n+1$, and $f = f_0(x^2) + xf_1(x^2)$, then
+the following holds for any root $\zeta$ of $\phi$:
+\begin{equation}
+  \begin{array}{rcl}
+     f(\zeta) &=& f_0(\zeta^2) + \zeta f_1(\zeta^2) \\
+     f(-\zeta) &=& f_0(\zeta^2) - \zeta f_1(\zeta^2)
+  \end{array}
+\end{equation}
+$\zeta^2$ is a root of $x^{n/2}+1$: thus, the FFT of $f$ is easily
+computed, with $n/2$ multiplications and $n$ additions or subtractions,
+from the FFT of $f_0$ and $f_1$, both being polynomials of degree less
+than $n/2$, and taken modulo $\phi' = x^{n/2}+1$. This leads to a
+recursive algorithm of cost $O(n \log n)$ operations.
+
+The FFT can be implemented iteratively, with minimal data movement and
+no extra buffer: in the equations above, the computed $f(\zeta)$ and
+$f(-\zeta)$ will replace $f_0(\zeta^2)$ and $f_1(\zeta^2)$. This leads
+to an implementation known as ``bit reversal'', due to the resulting
+ordering of the $f(\zeta)$: if $\zeta_j = e^{i(\pi/2n)(2j+1)}$, then
+$f(\zeta_j)$ ends up in slot $\text{rev}(j)$, where $\text{rev}$ is the
+bit-reversal function over $\log_2 n$ bits (it encodes its input in
+binary with left-to-right order, then reinterprets it back as an integer
+in right-to-left order).
+
+In the iterative, bit-reversed FFT, the first step is computing the
+FFT of $n/2$ sub-polynomials of degree 1, corresponding to source
+index pairs $(0,n/2)$, $(1,n/2+1)$, and so on.
+
+Some noteworthy points for FFT implementation in \falcon are the
+following:
+\begin{itemize}
+
+  \item The FFT uses a table of pre-computed roots $\zeta_j =
+  e^{i(\pi/2n)(2j+1)}$. The inverse FFT nominally requires, similarly, a
+  table of inverses of these roots. However, $\zeta_j^{-1} =
+  \overline{\zeta_j}$; thus, inverses can be efficiently recomputed by
+  negating the imaginary part.
+
+  \item $\phi$ has $n$ distinct roots in $\bC$, leading to $n$ values
+  $f(\zeta_j)$, each being a complex number, with a real and an
+  imaginary part. Storage space requirements are then $2n$
+  floating-point numbers. However, if $f$ is real, then, for every root
+  $\zeta$ of $\phi$, $\overline\zeta$ is also a root of $\phi$, and
+  $\overline{f(\zeta)} = f(\overline\zeta)$. Thus, the FFT
+  representation is redundant, and half of the values can be omitted,
+  reducing storage space requirements to $n/2$ complex numbers, hence
+  $n$ floating-point values.
+
+  \item The Hermitian adjoint of $f$ is obtained in FFT representation
+  by simply computing the conjugate of each $f(\zeta)$, i.e. negating
+  the imaginary part. This means that when a polynomial is equal to its
+  Hermitian adjoint (e.g. $f\adj f+g\adj g$), then its FFT
+  representation contains only real values. If then multiplying or
+  dividing by such a polynomial, the unnecessary multiplications by $0$
+  can be optimized away.
+
+  \item The C language (since 1999) offers direct support for complex
+  numbers. However, it may be convenient to keep the real and imaginary
+  parts separate, for values in FFT representation. If the real and
+  imaginary parts are kept at indexes $k$ and $k+n/2$, respectively,
+  then some performance benefits are obtained:
+  \begin{itemize}
+
+    \item The first step of FFT becomes free. That step involves
+    gathering pairs of coefficients at indexes $(k,k+n/2)$, and
+    assembling them with a root of $x^2+1$, which is $i$. The source
+    coefficients are still real numbers, thus $(f_0,f_{n/2})$ yields
+    $f_0+if_{n/2}$, whose real and imaginary parts must be stored at
+    indexes $0$ and $n/2$ respectively, where they already are. The
+    whole loop disappears.
+
+    \item When a polynomial is equal to its Hermitian adjoint, all
+    its values in FFT representation are real. The imaginary parts
+    are all null, and they represent the second half of the array.
+    Storage requirements are then halved, without requiring any special
+    reordering or move of values.
+  \end{itemize}
+
+\end{itemize}
+
+
+\subsection{NTT}
+
+The \emph{Number Theoretic Transform} is the analog of the FFT, in the
+finite field $\bZ_p$ of integers modulo a prime $p$.
+$\phi = x^n+1$ will have roots in $\bZ_p$ if and only if $p = 1\bmod
+2n$. The NTT, for an input
+polynomial $f$ whose coefficients are integers modulo $p$, computes
+$f(\omega) \bmod p$ for all roots $\omega$ of $\phi$ in $\bZ_p$.
+
+Signature verification is naturally implemented modulo $q$; that
+modulus is chosen precisely to be NTT-friendly:
+$$q = 12289 = 1 + 12\cdot 2048.$$
+Computations modulo $q$ can be implemented with pure 32-bit integer
+arithmetics, avoiding divisions and branches, both being relatively
+expensive. For instance, modular addition of \verb+x+ and \verb+y+
+may use this function:
+\begin{verbatim}
+    static inline uint32_t
+    mq_add(uint32_t x, uint32_t y, uint32_t q)
+    {
+        uint32_t d;
+
+        d = x + y - q;
+        return d + (q & -(d >> 31));
+    }
+\end{verbatim}
+This code snippet uses the fact that C guarantees operations on
+\verb+uint32_t+ to be performed modulo $2^{32}$; since operands fits on
+15 bits, the top bit of the intermediate value \verb+d+ will be \verb+1+
+if and only if the subtraction of \verb+q+ yields a negative value.
+
+For multiplications, Montgomery multiplication is effective:
+\begin{verbatim}
+    static inline uint32_t
+    mq_montymul(uint32_t x, uint32_t y, uint32_t q, uint32_t q0i)
+    {
+        uint32_t z, w;
+
+        z = x * y;
+        w = ((z * q0i) & 0xFFFF) * q;
+        z = ((z + w) >> 16) - q;
+        return z + (q & -(z >> 31));
+    }
+\end{verbatim}
+The parameter \verb+q0i+ contains $1/q \bmod 2^{16}$, a value which can
+be hardcoded since $q$ is also known at compile-time. Montgomery
+multiplication, given $x$ and $y$, computes $xy/(2^{16}) \bmod q$. The
+intermediate value \verb+z+ can be shown to be less than $2q$, which is
+why a single conditional subtraction is sufficient.
+
+Modular divisions are not needed for signature verification, but they
+are handy for computing the public key $h$ from $f$ anf $g$, as part of
+key pair generation. Inversion of $x$ modulo $q$ can be computed in
+a number of ways; exponentation is straightforward:
+$1/x = x^{q-2} \bmod q$. For $12289$, minimal addition
+chains on the exponent yield the result in 18 Montgomery multiplications
+(assuming input and output are in Montgomery representation).
+
+Key pair generation may also use the NTT, modulo a number of small
+primes $p_i$, and the branchless implementation techniques described
+above. The choice of the size of such small moduli $p_i$ depends on
+the abilities of the current architecture. The \falcon reference
+implementation, that aims at portability, uses moduli $p_i$ which
+are slightly below $2^{31}$, a choice which has some nice properties:
+\begin{itemize}
+  \item Modular reductions after additions or subtractions can be
+  computed with pure 32-bit unsigned arithmetics.
+  \item Values may fit in the \emph{signed} \verb+int32_t+ type.
+  \item When doing Montgomery multiplications, intermediate values
+  are less than $2^{63}$ and thus can be managed with the standard
+  type \verb+uint64_t+.
+\end{itemize}
+On a 64-bit machine with $64\times 64\rightarrow 128$ multiplications,
+63-bit moduli would be a nice choice.
+
+\section{LDL Tree}
+
+From the private key properly said (the $f$, $g$, $F$ and $G$ short
+polynomials), signature generation involves two main steps: building the
+LDL tree, and then using it to sample a short vector. The LDL tree
+depends only on the private key, not the data to be signed, and is
+reusable for an arbitrary number of signatures; thus, it can be
+considered part of the private key. However, that tree is rather bulky
+(about 90~kB for $n = 1024$), and will use floating-point values, making
+its serialization complex to define in all generality. Therefore, the
+\falcon reference code rebuilds the LDL tree dynamically when the
+private key is loaded; its API still allows a built tree to be applied
+to many signature generation instances.
+
+It would be possible to regenerate the LDL tree on the go, for a
+computational overhead similar to that of sampling the short vector
+itself; this would save space, since at no point would the full tree
+need to be present in RAM, only a path from the tree root to the current
+leaf. For degree $n$, a saved path would amount to about $2n$
+floating-point values, i.e. roughly 16~kB. On the other hand,
+computational cost per signature would double.
+
+Both LDL tree construction and sampling involve operations on
+polynomials, including multiplications (and divisions). It is highly
+recommended to use FFT representation, since multiplication and division
+of two degree-$n$ polynomials in FFT representation requires only $n$
+elementary operations. The LDL tree is thus best kept in FFT.
+
+%\section{Gaussian Sampler}\label{sec:impl:gaussian}
+%
+%\todo[inline]{Modify to take into account the recent advancements}
+%When sampling a short vector, the inner Gaussian sampler is invoked
+%twice for each leaf of the LDL tree. Each invocation should produce an
+%integer value that follows a Gaussian distribution centered on a value
+%$\mu$ and with standard deviation $\sigma$. The centers $\mu$ change
+%from call to call, and are dynamically computed based on the message to
+%sign, and the values returned by previous calls to the sampler. The
+%values of $\sigma$ are the leaves of the LDL tree: they depend on the
+%private key, but not on the message; they range between $\sigmin$ and $\sigmax$.
+%
+%In the \falcon reference code, rejection sampling with regards to a
+%bimodal Gaussian is used:
+%\begin{itemize}
+%
+%  \item The target $\mu$ is moved into the $[0..1[$ interval by adding
+%  an appropriate integer value, which will be subtracted from the
+%  sampling result at the end. For the rest of this description, we
+%  assume that $0 \leq \mu < 1$.
+%
+%  \item A nonnegative integer $z$ is randomly sampled following a half
+%  Gaussian distribution of standard deviation $\sigma_0 = 2$, centered
+%  on $0$.
+%
+%  \item A random bit $b$ is obtained, to compute $z' = b + (2b-1)z$.
+%  The integer $z'$ follows a bimodal Gaussian distribution, and in
+%  the range of possible values for $z'$ (depending on $b$), that
+%  distribution is above the target Gaussian of center $\mu$ and
+%  standard deviation $\sigma$.
+%
+%  \item Rejection sampling is applied. $z'$ follows the distribution:
+%  \begin{equation}
+%    G(z) = e^{-(z-b)^2/(2\sigma_0^2)}
+%  \end{equation}
+%  and we target the distribution:
+%  \begin{equation}
+%    S(z) = e^{-(z-\mu)^2/(2\sigma^2)}
+%  \end{equation}
+%  We thus generate a random bit $d$, whose value is 1 with probability:
+%  \begin{equation}\label{eq:rejprob}
+%    \begin{array}{rcl}
+%      P(d = 1) &=& S(z)/G(z) \\
+%      &=& e^{(z-b)^2/(2\sigma_0^2) - (z-\mu)^2/(2\sigma^2)}
+%    \end{array}
+%  \end{equation}
+%  If bit $d$ is $1$, then we return $z'$; otherwise, we start over.
+%
+%\end{itemize}
+%
+%Random values are obtained from a custom PRNG; the reference code uses
+%ChaCha20, but any PRNG whose output is indistinguishable from random
+%bits can be used. On a recent x86 CPU, it would make sense to use AES in
+%CTR mode, to leverage the very good performance of the AES opcodes
+%implemented by the CPU.
+%
+%With a careful R\'enyi argument, the 53-bit precision of floating-point values
+%used in the sampler computations are sufficient to achieve the required
+%security levels.
+%
+%\tprcomment{Remove/update}
+%
+%It is worth noting that the Gaussian sampler in the \falcon reference code is
+%not constant time, therefore it may be a source of leakage for a side-channel
+%attack. Keeping this in mind, since the bimodal Gaussian samples can be drafted
+%off-line and the rejection sampling only leaks inaccurate information about the
+%secret key (which, based on the state of our knowledge, cannot result in a 
+%side-channel attack) we did not feel it was necessary to integrate a constant
+%time Gaussian sampler in the \falcon reference code. However, we note that
+%several proposals~\cite{EPRINT:ZWXZ18,EPRINT:ZhaSteSak18,DAC:KSVV19,
+%EPRINT:Walter19} for efficient (constant-time) Gaussian sampling over the
+%integers have been made recently and could be used in the bimodal Gaussian
+%sampler.
+%
+%Assuming that the bimodal Gaussian sampler output is unpredictable for an
+%attacker (e.g. by using a constant-time algorithm, off-line buffering or
+%time-padding techniques), simple adjustments can be made to obtain an execution
+%time independant of any secret value:
+%\begin{itemize}
+%
+%  \item The rejection probability is proportional to $\sum_{z=-\infty}^\infty
+%  e^{-(z)^2/(2\sigma^2)}$. This sum is actually a theta function and can be
+%  approximated by $\sigma\sqrt{2\pi}$. So the probability to return $z'$ is
+%  proportional to $\sigma$. However, one can easily remove this dependency by
+%  replacing the probability $p := S(z)/G(z)$ in (\ref{eq:rejprob}) by
+%  $\frac{\sigma_{\min}}{\sigma} p$. This makes the probability independent of
+%  $\sigma$: here, $\sigma_{\min}$ is a lower bound on $\sigma$ (say
+%  $\sigma_{\min} = 1.2$) which knowledge is considered not sensitive.
+%
+%  \item In the \falcon reference code, the $\exp(x)$ implementation is similar
+%  to the C standard library which uses a floating-point division. However, the
+%  compiler may replace the division operation with its own arithmetic library
+%  routine, which may not be constant-time~\cite{EPRINT:Seiler18}. One can
+%  easily avoid this division by using a polynomial evaluation at point $x$
+%  instead~\cite{EPRINT:ZhaSteSak18}.
+%
+%\end{itemize}
+
+\section{Key Pair Generation}
+
+\subsection{Gaussian Sampling}
+
+The $f$ and $g$ polynomials must be generated with an appropriate
+distribution. It is sufficient to generate each
+coefficient independently, with a Gaussian distribution centered on 0;
+values are easily tabulated.
+
+\subsection{Filtering}
+
+As per the \falcon specification, once $f$ and $g$ have been generated,
+some tests must be applied to determine their appropriateness:
+\begin{itemize}
+
+  \item $(g, -f)$ and its orthogonalized version must be short
+  enough.
+
+  \item $f$ must be invertible modulo $\phi$ and $q$; this is necessary
+  in order to be able to compute the public key $h = g/f \bmod \phi
+  \bmod q$. In practice, the NTT is used on $f$: all the resulting
+  coefficients of $f$ in NTT representation must be distinct from
+  zero. Computing $h$ is then straightforward.
+
+  \item The \falcon reference implementation furthermore requires that
+  $\res(f,\phi)$ and $\res(g,\phi)$ be both odd. If they are both even,
+  the NTRU equation does not have a solution, but our implementation
+  cannot tolerate that one is even and the other is odd. Computing the
+  resultant modulo 2 is inexpensive; here, this is equal
+  to the sum of the coefficients modulo 2.
+
+\end{itemize}
+
+If any of these tests fails, new $(f,g)$ must be generated.
+
+\subsection{Solving The NTRU Equation}
+
+Solving the NTRU equation is formally a recursive process. At each
+depth:
+\begin{enumerate}
+
+  \item Input polynomials $f$ and $g$ are received as input; they
+  are modulo $\phi = x^n+1$ for a given $n$.
+
+  \item New values $f' = \N(f)$ and $g' = \N(g)$ are computed;
+  they live modulo $\phi' = x^{n/2}+1$, i.e. half the degree of $\phi$.
+  However, their coefficients are typically twice longer than those of $f$ and $g$.
+
+  \item The solver is invoked recursively over $f'$ and $g'$, and yields
+  a solution $(F',G')$ such that $$f'G'-g'F' = q.$$
+
+  \item Unreduced values $(F,G)$ are generated, as:
+  \begin{equation}
+    \begin{array}{rcl}
+      F &=& F'(x^2)g'(x^2)/g(x) \mod \phi \\
+      G &=& G'(x^2)f'(x^2)/f(x) \mod \phi
+    \end{array}
+  \end{equation}
+  $F$ and $G$ are modulo $\phi$ (of degree $n$), and their coefficients
+  have a size which is about three times that of the coefficients of
+  inputs $f$ and $g$.
+
+  \item Babai's nearest plane algorithm is applied, to bring coefficients
+  of $F$ and $G$ down to that of the coefficients of $f$ and $g$.
+
+\end{enumerate}
+
+\subsubsection{RNS and NTT}
+
+The operations implied in the recursion are much easier when operating
+on the NTT representation of polynomials. Indeed, if working modulo $p$,
+and $\omega$ is a root of $x^n+1$ modulo $p$, then:
+\begin{equation}
+  \begin{array}{rcl}
+    f'(\omega^2) &=& N(f)(\omega^2) = f(\omega) f(-\omega) \\
+    F(\omega) &=& F'(\omega^2) g(-\omega)
+  \end{array}
+\end{equation}
+Therefore, the NTT representations of $f'$ and $g'$ can be easily computed
+from the NTT representations of $f$ and $g$; and, similarly, the NTT
+representation of $F$ and $G$ (unreduced) are as easily obtained from
+the NTT representations of $F'$ and $G'$.
+
+This naturally leads to the use of a Residue Number System (RNS), in
+which a value $x$ is encoded as a sequence of values $x_j = x \bmod p_j$
+for a number of distinct small primes $p_j$. In the \falcon reference
+implementation, the $p_j$ are chosen such that $p_j < 2^{31}$ (to make
+computations easy with pure integer arithmetics) and $p_j = 1 \bmod 2048$
+(to allow the NTT to be applied).
+
+Conversion from the RNS encoding to a plain integer in base $2^{31}$ is
+a straightforward application of the Chinese Remainder Theorem; if done
+prime by prime, then the only required big-integer primitives will be
+additions, subtractions, and multiplication by a one-word value. In
+general, coefficient values are signed, while the CRT yields values
+ranging from $0$ to $\prod p_j - 1$; normalisation is applied by
+assuming that the final value is substantially smaller, in absolute
+value, than the product of the used primes $p_j$.
+
+\subsubsection{Coefficient Sizes}
+
+Key pair generation has the unique feature that it is allowed occasional
+failures: it may reject some cases which are nominally valid, but do not
+match some assumptions. This does not induce any weakness or substantial
+performance degradation, as long as such rejections are rare enough not
+to substantially reduce the space of generated private keys.
+
+In that sense, it is convenient to use \emph{a priori} estimates of
+coefficient sizes, to perform the relevant memory allocations and decide
+how many small primes $p_j$ are required for the RNS representation of
+any integer at any point of the algorithm. The following maximum sizes
+of coefficients, in bits, have been measured over thousands of random
+key pairs, at various depths of the recursion:
+
+\begin{center}
+\begin{tabular}{|c|r|r|r|r|}
+\hline
+\textbf{\textsf{depth}} & \textbf{\textsf{max} $f$, $g$} & \textbf{\textsf{std. dev.}}
+  & \textbf{\textsf{max} $F$, $G$} & \textbf{\textsf{std. dev.}} \\
+\hline
+ 10 & 6307.52 & 24.48 & 6319.66 & 24.51 \\
+  9 & 3138.35 & 12.25 & 9403.29 & 27.55 \\
+  8 & 1576.87 &  7.49 & 4703.30 & 14.77 \\
+  7 &  794.17 &  4.98 & 2361.84 &  9.31 \\
+  6 &  400.67 &  3.10 & 1188.68 &  6.04 \\
+  5 &  202.22 &  1.87 &  599.81 &  3.87 \\
+  4 &  101.62 &  1.02 &  303.49 &  2.38 \\
+  3 &   50.37 &  0.53 &  153.65 &  1.39 \\
+  2 &   24.07 &  0.25 &   78.20 &  0.73 \\
+  1 &   10.99 &  0.08 &   39.82 &  0.41 \\
+  0 &    4.00 &  0.00 &   19.61 &  0.49 \\
+\hline
+\end{tabular}
+\end{center}
+
+These sizes are expressed in bits; for each depth, each category of
+value, and each key pair, the maximum size of the absolute value is
+gathered. The array above lists the observed averages and standard
+deviations for these values.
+
+A \falcon key pair generator may thus simply assume that values fit
+correspondingly dimensioned buffers, e.g. by using the measured average
+added to, say, six times the standard deviation. This would ensure that
+values almost always fit. A final test at the end of the process, to
+verify that the computed $F$ and $G$ match the NTRU equation, is
+sufficient to detect failures.
+
+Note that for depth 10, the maximum size of $F$ and $G$ is the one
+resulting from the extended GCD, thus similar to that of $f$ and $g$.
+
+\subsubsection{Binary GCD}
+
+At the deepest recursion level, inputs $f$ and $g$ are plain integers
+(the modulus is $\phi = x+1$); a solution can be computed directly with
+the Extended Euclidean Algorithm, or a variant thereof. The \falcon
+reference implementation uses the binary GCD. This algorithm can be
+expressed in the following way:
+\begin{itemize}
+
+  \item Values $a$, $b$, $u_0$, $u_1$, $v_0$ and $v_1$ are initialized
+  and maintained with the following invariants:
+  \begin{equation}
+    \begin{array}{rcl}
+      a &=& fu_0 - gv_0 \\
+      b &=& fu_1 - gv_1
+    \end{array}
+  \end{equation}
+  Initial values are:
+  \begin{equation}
+    \begin{array}{rcl}
+      a &=& f \\
+      u_0 &=& 1 \\
+      v_0 &=& 0 \\
+      b &=& g \\
+      u_1 &=& g \\
+      v_1 &=& f-1
+    \end{array}
+  \end{equation}
+
+  \item At each step, $a$ or $b$ is reduced: if $a$ and/or $b$ is even,
+  then it is divided by 2; otherwise, if both values are odd, then
+  the smaller of the two is subtracted from the larger, and the result,
+  now even, is divided by 2. Corresponding operations are applied on
+  $u_0$, $v_0$, $u_1$ and $v_1$ to maintain the invariants. Note that
+  computations on $u_0$ and $u_1$ are done modulo $g$, while computations
+  on $v_0$ and $v_1$ are done modulo $f$.
+
+  \item Algorithm stops when $a = b$, at which point the common value
+  is the GCD of $f$ and $g$.
+
+\end{itemize}
+
+If the GCD is 1, then a solution $(F,G) = (qv_0, qu_0)$ can be returned.
+Otherwise, the \falcon reference implementation rejects the $(f,g)$
+pair. Note that the (rare) case of a GCD equal to $q$ itself is also
+rejected; as noted above, this does not induce any particular algorithm
+weakness.
+
+The description above is a bit-by-bit algorithm. However, it can be seen
+that most of the decisions are taken only on the low bits and high bits
+of $a$ and $b$. It is thus possible to group updates of $a$, $b$ and
+other values by groups of, say, 31 bits, yielding much better
+performance.
+
+\subsubsection{Iterative Version}
+
+Each recursion depth involves receiving $(f,g)$ from the upper level,
+and saving them for the duration of the recursive call. Since degrees
+are halved and coefficients double in size at each level, the storage
+space for such an $(f,g)$ pair is mostly constant, around 13000 bits per
+depth. For $n = 1024$, depth goes to 10, inducing a space requirement of
+at least 130000 bits, or 16~kB, just for that storage. In order to
+reduce space requirements, the \falcon reference implementation
+recomputes $(f,g)$ dynamically from start when needed. Measures
+indicate a relatively low CPU overhead (about 15\%).
+
+A side-effect of this recomputation is that each recursion level
+has nothing to save. The algorithm thus becomes iterative.
+
+\subsubsection{Babai's Reduction}
+
+When candidates $F$ and $G$ have been assembled, they must be reduced
+against the current $f$ and $g$. Reduction is performed as successive
+approximate reductions, that are computed with the FFT:
+\begin{itemize}
+
+  \item Coefficients of $f$, $g$, $F$ and $G$ are converted to
+  floating-point values, yielding $\dot f$, $\dot g$, $\dot F$ and $\dot
+  G$. Scaling is applied so that the maximum coefficient of $\dot F$ and
+  $\dot G$ is about $2^{30}$ times the maximum coefficient of $\dot f$
+  and $\dot g$; scaling also ensures that all values fit in the exponent
+  range of floating-point values.
+
+  \item An integer polynomial $k$ is computed as:
+  \begin{equation}
+    k = \left\lfloor \frac{\dot F\dot f^\star + \dot G\dot g^\star}{\dot f\dot f^\star + \dot g\dot g^\star} \right\rceil
+  \end{equation}
+  This computation is typically performed in FFT representation, where
+  multiplication and division of polynomials are easy. Rounding to
+  integers, though, must be done in coefficient representation.
+
+  \item $kf$ and $kg$ are subtracted from $F$ and $G$, respectively.
+  Note that this operation must be exact, and is performed on the
+  integer values, not the floating-point approximations. At high degree
+  (i.e. low recursion depth), RNS and NTT are used: the more efficient
+  multiplications in NTT offset the extra cost for converting values to
+  RNS and back.
+
+\end{itemize}
+
+This process reduces the maximum sizes of coefficients of $F$ and $G$ by
+about 30 bits at each iteration; it is applied repeatedly as long as it
+works, i.e. the maximum size is indeed reduced. A failure is reported if
+the final maximum size of $F$ and $G$ coefficients does not fit the
+target size, i.e. the size of the buffers allocated for these values.
+
+%\newpage
+
+\section{Performances}\label{sec:impl:perf}
+
+The \falcon reference implementation achieves the following performance
+on an Intel® Core® i5-8259U CPU (``Coffee Lake'' core, clocked at
+2.3~GHz):
+
+\begin{center}
+\begin{tabular}{|c|r|r|r|r|r|r|}
+\hline
+\textbf{\textsf{degree}} & \textbf{\textsf{keygen (ms)}}
+  & \textbf{\textsf{keygen (RAM)}} & \textbf{\textsf{sign/s}}
+  & \textbf{\textsf{vrfy/s}} & \textbf{\textsf{pub length}}
+  & \textbf{\textsf{sig length}} \\
+\hline
+512  &  8.64 & 14336 & 5948.1 & 27933.0 &  897 &  \sigbytelenvali \\
+%768  & 12.69 & 27648 & 3547.9 & 20637.7 & 1441 &  993.91 \\
+1024 & 27.45 & 28672 & 2913.0 & 13650.0 & 1793 &  \sigbytelenvalv \\
+\hline
+\end{tabular}
+\end{center}
+
+The following notes apply:
+\begin{itemize}
+
+  \item For this test, in order to obtain stable benchmarks, CPU
+  frequency scaling (``TurboBoost'') has been disabled. This CPU can
+  nominally scale its frequency up to 3.9~GHz (for short durations), for
+  a corresponding increase in performance. In particular, since all
+  operations at degree 512 fit in L1 cache (both code and data), one may
+  expect performance to be proportional to frequency, up to about 10000
+  signatures per second at the maximum frequency. The figures shown
+  above are for \emph{sustained} workloads in which signatures are
+  repeatedly computed over prolonged periods of time.
+
+  \item RAM usage for key pair generation is expressed in bytes. It
+  includes temporary buffers for all intermediate values, including
+  the floating-point polynomials used for Babai's reduction.
+
+  \item Public key length and average signature length are expressed in
+  bytes. The size of public keys includes a one-byte header that
+  identifies the degree and modulus. For signatures, compression and
+  padding is used, thus leading to a fixed signature length.
+
+  \item Signature generation time does not include the LDL tree
+  building, which is done when the private key is loaded. These figures
+  thus correspond to batch usage, when many values must be signed with a
+  given key. This matches, for instance, the use case of a busy TLS
+  server. If, in a specific scenario, keys are used only once, then the
+  LDL tree building cost must be added to each signature attempt; this
+  almost doubles the signature cost, but reduces RAM usage.
+
+  \item The implementation used for this benchmark is fully constant-time.
+  It uses AVX2 and FMA opcodes for improved performance. Compiler is
+  Clang 10.0, with optimization flags:\\ \verb+-O3 -march=skylake+.
+
+\end{itemize}

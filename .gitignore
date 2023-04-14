@@ -19,10 +19,11 @@
 # these rules might exclude image files for figures etc.
 # *.ps
 # *.eps
-*.pdf
+# *.pdf
 
 ## Generated if empty string is given at "Please type another file name for output:"
-.pdf
+kyber.pdf
+falcon.pdf
 
 ## Bibliography auxiliary files (bibtex/biblatex/biber):
 *.bbl
@@ -89,7 +90,7 @@ acs-*.bib
 #(r)(e)ledmac/(r)(e)ledpar
 *.end
 *.?end
-*.[1-9]
+# *.[1-9]
 *.[1-9][0-9]
 *.[1-9][0-9][0-9]
 *.[1-9]R
