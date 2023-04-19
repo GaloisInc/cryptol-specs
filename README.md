@@ -33,11 +33,11 @@ Here you can find a list of the post-quantum cryptographic schemes that were sel
 
 The repository contains Cryptol implementations of the selected cryptographic schemes that are resistant to attacks from quantum computers.
 
-| Type          | PKE/KEM                                                            | Signature                                                              |
-|---------------|--------------------------------------------------------------------|------------------------------------------------------------------------|
-| Lattice-based | [CRYSTALS Kyber](Primitive/Asymmetric/Cipher/Kyber/3.01/kyber.tex) | [CRYSTALS Dilithium](Primitive/Asymmetric/Signature/Dilithium/Round2/) |
-|               |                                                                    | [FALCON](Primitive/Asymmetric/Signature/FALCON/1.2/falcon.tex)         |
-| Hash-based    |                                                                    | [SPHINCS+](Primitive/Asymmetric/Signature/SphincsPlus/3.1/sphincs.tex) |
+| Type          | PKE/KEM                                                   | Signature                                                       |
+|---------------|-----------------------------------------------------------|-----------------------------------------------------------------|
+| Lattice-based | [CRYSTALS Kyber](Primitive/Asymmetric/Cipher/Kyber/3.01/) | [CRYSTALS Dilithium](Primitive/Asymmetric/Signature/Dilithium/) |
+|               |                                                           | [FALCON](Primitive/Asymmetric/Signature/FALCON/1.2/)            |
+| Hash-based    |                                                           | [SPHINCS+](Primitive/Asymmetric/Signature/SphincsPlus/)         |
 
 ### Remarks
 The Cryptol specs presented here are written with the objective of being as close as possible to the specs as presented in the official papers so that even someone without cryptographic experience can verify that the Cryptol code meets the spec by reading it "line by line". As a result, the Cryptol code may not be as efficient as other implementations (for example it may implement DFT instead of FFT), yet it is closer to the paper definitions and aims to be functionally equivalent to them.
