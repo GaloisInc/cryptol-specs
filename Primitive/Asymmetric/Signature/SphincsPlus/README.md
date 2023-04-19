@@ -20,6 +20,9 @@ $ cd 3.1
 $ cryptol sphincs.tex
 ```
 
+# Known Issues
+- The Correctness of the overal SHPINCS+ primitive is currently failing although correctness of its intermediate WOTS passes.
+
 # References
 [1]. Bernstein, Daniel J., Andreas Hülsing, Stefan Kölbl, Ruben Niederhagen, Joost Rijneveld, and Peter Schwabe. "The SPHINCS+ signature framework." In Proceedings of the 2019 ACM SIGSAC conference on computer and communications security, pp. 2129-2146. 2019.
 

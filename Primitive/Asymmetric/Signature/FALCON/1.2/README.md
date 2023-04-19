@@ -19,8 +19,8 @@ To load the specs simply run
 $ cryptol falcon.tex
 ```
 
-# Caveats
-- The Correctness of the overal FALCON primitive is currently failing although correctness of its intermediate WOTS passes.
+# Known Issues
+- The Correctness of FALCON is not currently tested.
 
 # References
 [1]. Prest, Thomas, Pierre-Alain Fouque, Jeffrey Hoffstein, Paul Kirchner, Vadim Lyubashevsky, Thomas Pornin, Thomas Ricosset, Gregor Seiler, William Whyte, and Zhenfei Zhang. "Falcon." Post-Quantum Cryptography Project of NIST (2020).
