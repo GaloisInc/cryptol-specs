@@ -52,7 +52,7 @@ The Cryptol specs define several correctness properties. Cryptol is capable of p
 
 
 # Appreciations
-Without the generous contributions of the authors, who were willing to share their work with us, our team would not have been able to create such an effective codebase. We are truly grateful for their support. In particular, we'd like to thank:
+Without the generous help of the authors, who were willing to share their work with us, our team would not have been able to create such an effective codebase. We are truly grateful for their support. In particular, we'd like to thank:
 - Vadim Lyubashevsky (CRYSTALS Kyber and CRYSTALS Dilithium)
 - Andreas Hülsing (SPHINCS+)
 - Pierre-Alain Fouque and Thomas Pornin (FALCON)
