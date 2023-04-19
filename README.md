@@ -17,15 +17,13 @@ repository are listed below.
 | **Stream Cipher**          | [ChaCha20-Poly1305](Primitive/Symmetric/Cipher/Authenticated/ChaChaPolyCryptolIETF.md) |           |              |
 | **Message Authentication** | [HMAC](Primitive/Symmetric/MAC/HMAC.cry)                                               |           |              |
 | **Digital Signature**      | [ECDSA](Primitive/Asymmetric/Signature/ecdsa.cry)                                      |           |              |
-|                            | [SPHINCS+ 1.0](Primitive/Asymmetric/Signature/SphincsPlus/1.0/SphincsPlus.md)          |           |              |
-|                            | [SPHINCS+ 3.1](Primitive/Asymmetric/Signature/SphincsPlus/3.1/sphincs.tex)             |           |              |
-|                            | [FALCON 1.2](Primitive/Asymmetric/Signature/FALCON/1.2/falcon.tex)                     |           |              |
-|                            | [CRYSTALS Dilithium Round 1](Primitive/Asymmetric/Signature/Dilithium/Round1/)         |           |              |
-|                            | [CRYSTALS Dilithium Round 2](Primitive/Asymmetric/Signature/Dilithium/Round2/)         |           |              |
+|                            | [SPHINCS+](Primitive/Asymmetric/Signature/SphincsPlus/)                                |           |              |
+|                            | [FALCON](Primitive/Asymmetric/Signature/FALCON/1.2/)                                   |           |              |
+|                            | [CRYSTALS Dilithium](Primitive/Asymmetric/Signature/Dilithium/)                        |           |              |
 | **Hash**                   | [SHA1](Primitive/Keyless/Hash/SHA1.cry)                                                |           |              |
 |                            | [SHA256](Primitive/Keyless/Hash/SHA256.cry)                                            |           |              |
 |                            | [SHA2, SHA3](Primitive/Keyless/Hash/SHA.cry)                                           |           |              |
-| **Asymmetric Encryption**  | [CRYSTALS Kyber 3.01](Primitive/Asymmetric/Cipher/Kyber/3.01/kyber.tex)                |           |              |
+| **Asymmetric Encryption**  | [CRYSTALS Kyber](Primitive/Asymmetric/Cipher/Kyber/3.01/)                              |           |              |
 |                            | [RSA](Primitive/Asymmetric/Cipher/RSA.cry)                                             |           |              |
 
 ## NIST Post-Quantum Cryptography Standardization Selections
