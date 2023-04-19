@@ -7,6 +7,13 @@ starting point, however, we plan to collect as many specifications as
 we can find, as-is, and incrementally improve their presentation and
 inter-dependency.
 
+- [NIST Post-Quantum Cryptography Standardization Selections](#nist-post-quantum-cryptography-standardization-selections)
+  - [Remarks](#remarks)
+  - [Properties](#properties)
+- [Appreciations](#appreciations)
+- [Contributing](#contributing)
+
+
 Some of the widely adopted cryptographic algorithms contained in this
 repository are listed below.
 
@@ -44,7 +51,7 @@ The Cryptol specs presented here are written with the objective of being as clos
 The Cryptol specs define several correctness properties. Cryptol is capable of proving several of these properties hence guaranteeing the cryptographic correctness of the code. However, Cryptol cannot verify properties that hold only with overwhelming probability, i.e. properties that hold for almost all but not all possible inputs. As a result, cryptographic schemes with approximate correctness can only be checked by Cryptol on uniformly random inputs.
 
 
-## Appreciations
+# Appreciations
 Without the generous contributions of the authors, who were willing to share their work with us, our team would not have been able to create such an effective codebase. We are truly grateful for their support. In particular, we'd like to thank:
 - Vadim Lyubashevsky (CRYSTALS Kyber and CRYSTALS Dilithium)
 - Andreas Hülsing (SPHINCS+)
