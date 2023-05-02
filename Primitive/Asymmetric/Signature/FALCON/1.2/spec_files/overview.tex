@@ -1,0 +1,108 @@
+\section{Overview}\label{sec:spec:overview}
+
+Main elements in \falcon are polynomials of degree $n$ with integer
+coefficients. The degree $n$ is normally a power of two (typically 512 or
+1024). Computations are done modulo a monic polynomial of degree $n$ denoted
+$\phi$ (which is always of the form $\phi = x^n + 1$).
+
+
+Mathematically, within the algorithm, some polynomials are interpreted as
+vectors, and some others as matrices: a polynomial $f$ modulo $\phi$
+then stands for a square $n\times n$ matrix, whose rows are $x^if \bmod
+\phi$ for all $i$ from $0$ to $n-1$. It can be shown that addition and
+multiplication of such matrices map to addition and multiplication of
+polynomials modulo $\phi$. We can therefore express most of \falcon in
+terms of operations on polynomials, even when we really are handling
+matrices that define a \emph{lattice}.
+
+The public key is a basis for a lattice of dimension $2n$:
+\begin{equation}
+  \twotwo{-h}{I_n}{qI_n}{O_n}
+\end{equation}
+where $I_n$ is the identity matrix of dimension $n$, $O_n$ contains
+only zeros, and $h$ is a polynomial modulo $\phi$ that stands for an
+$n\times n$ sub-matrix, as explained above. Coefficients of $h$ are
+integers that range from $0$ to $q-1$, where $q$ is a specific small
+prime (in the recommended parameters, $q = 12289$).
+
+The corresponding private key is another basis for the very same lattice,
+expressed as:
+\begin{equation}
+  \twotwo{g}{-f}{G}{-F}
+\end{equation}
+where $f$, $g$, $F$ and $G$ are short integral polynomials modulo $\phi$,
+that fulfil the two following relations:
+\begin{equation}
+  \begin{array}{rcll}
+    h &=& g/f &\mod \phi \bmod q \\
+    fG - gF &=& q &\mod \phi
+  \end{array}
+\end{equation}
+Such a lattice is known as a \emph{complete NTRU lattice}, and the second
+relation, in particular, is called the \emph{NTRU equation}. Take care
+that while the relation $h = g/f$ is expressed modulo $q$, the lattice
+itself, and the polynomials, use nominally unbounded integers.
+
+\emph{Key pair generation} involves choosing random $f$ and $g$
+polynomials using an appropriate distribution that yields short, but not
+too short, vectors; then, the NTRU equation is solved to find matching
+$F$ and $G$. Keys are described in \cref{sec:spec:keys}, and
+their generation is covered in \cref{sec:spec:keygen}.
+
+\emph{Signature generation} consists in first hashing the message to
+sign, along with a random nonce, into a polynomial $c$ modulo $\phi$,
+whose coefficients are uniformly mapped to integers in the $0$ to $q-1$
+range; this process is described in \cref{sec:spec:hash}. Then,
+the signer uses his knowledge of the secret lattice basis $(f,g,F,G)$ to
+produce a pair of short polynomials $(s_1,s_2)$ such that $s_1 = c - s_2
+h \bmod \phi \bmod q$. The signature properly said is $s_2$.
+
+Finding small vectors $s_1$ and $s_2$ is, in all generality, an
+expensive process. $\falcon$ leverages the special structure of $\phi$
+to implement it as a divide-and-conquer algorithm similar to the Fast
+Fourier Transform, which greatly speeds up operations. Moreover, some
+``noise'' is added to the sampled vectors, with carefully tuned Gaussian
+distributions, to prevent signatures from leaking too much information
+about the private key. The signature generation process is described
+in \cref{sec:spec:sign}.
+
+\emph{Signature verification} consists in recomputing $s_1$ from the
+hashed message $c$ and the signature $s_2$, and then verifying that
+$(s_1,s_2)$ is an appropriately short vector. Signature verification can
+be done entirely with integer computations modulo $q$; it is described
+in \cref{sec:spec:verify}.
+
+Encoding formats for keys and signatures are described in
+\cref{sec:spec:encode}. In particular, since the signature is a
+short polynomial $s_2$, its elements are on average close to $0$, which
+allows for a custom compressed format that reduces signature size.
+
+Recommended parameters for several security levels are defined in
+\cref{sec:spec:params}.
+
+
+\section{Technical Overview}\label{sec:spec:techoverview}
+
+% TODO: explicit the use of these tower of fields
+
+In this section, we provide an overview of the used techniques. As \falcon is arguably math-heavy, a clear comprehension of the mathematical principles in action goes a long way towards understanding and implementing it.
+
+\falcon works with elements in number fields of the form $\bQ[x]/(\phi)$, with $\phi = x^n+1$ for $n = 2^\kappa$ a power-of-two. We note that $\phi$ is a cyclotomic polynomial, therefore it can be written as $\phi(x) = \prod_{k \in \bZ_{m}^\times} (x - \zeta^k)$, with $m = 2n$ and $\zeta$ an arbitrary primitive $m$-th root of $1$ (\eg $\zeta = \exp(\frac{2i\pi}{m})$).
+
+The interesting part about these number fields $\bQ[x]/(\phi)$ is that they come with a tower-of-fields structure. Indeed, we have the following tower of fields:
+\begin{equation}\label{eq:binarytower}
+\bQ \subseteq \bQ[x]/(x^{2} + 1) \subseteq \dots \subseteq \bQ[x]/(x^{n/2} + 1) \subseteq \bQ[x]/(x^{n} + 1)
+\end{equation}
+
+We will rely on this tower-of-fields structure. Even more importantly for our purposes, by splitting polynomials between their odd and even coefficients we have the following chain of space isomorphisms:
+
+\begin{equation}\label{eq:binaryisomorphism}
+\bQ^n \cong (\bQ[x]/(x^{2} + 1))^{n/2} \cong \dots \cong (\bQ[x]/(x^{n/2} + 1))^2 \cong \bQ[x]/(x^{n} + 1)
+\end{equation}
+
+
+\eqref{eq:binarytower} and \eqref{eq:binaryisomorphism} remain valid when replacing $\bQ$ by $\bZ$, in which case they describe a tower of rings and a chain of module isomorphisms.
+
+We will see in \cref{sec:spec:splitmerge} that for appropriately defined multiplications, these are actually chains of \emph{ring} isomorphisms. \eqref{eq:binaryisomorphism} will be used to make our signature generation fast and ``good'': in lattice-based cryptography, the smaller the norm of signatures are, the better. So by ``good'' we mean that our signature generation will output signatures with a small norm.
+
+On one hand, classical algebraic operations in the field $\bQ[x]/(x^{n} + 1)$ are fast, and using them will make our signature generation fast. On the other hand, we will use the isomorphisms exposed in \eqref{eq:binaryisomorphism} as a leverage to output signatures with small norm. Using these endomorphisms to their full potential entails manipulating individual coefficients of polynomials (or of their Fourier transform) and working with binary trees.

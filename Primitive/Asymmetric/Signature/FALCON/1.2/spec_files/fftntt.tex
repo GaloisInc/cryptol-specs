@@ -1,0 +1,48 @@
+\section{FFT and NTT} \label{sec:spec:fftntt}
+
+% TODO: ternary case
+
+\paragraph{The \fft.} Let $f \in \bQ[x]/(\phi)$. We note $\Omega_\phi$ the set of complex roots of $\phi$. We suppose that $\phi$ is monic with distrinct roots over $\bC$, so that $\phi(x) = \prod\limits_{\zeta \in \Omega_\phi} (x - \zeta)$. We denote by $\fft_\phi(f)$ the fast Fourier transform of $f$ with respect to $\phi$:
+\begin{equation}
+ \fft_\phi(f) = (f(\zeta))_{\zeta \in \Omega_\phi}
+\end{equation}
+When $\phi$ is clear from context, we simply note $\fft(f)$. We may also use the notation $\hat f$ to indicate that $\hat f$ is the \fft of $f$. $\fft_\phi$ is a ring isomorphism, and we note $\ifft_\phi$ its inverse. The multiplication in the \fft domain is denoted by $\fdot$. We extend the \fft and its inverse to matrices and vectors by component-wise application.
+
+Additions, subtractions, multiplications and divisions of polynomials
+modulo $\phi$ can be computed in FFT representations by simply
+performing them on each coordinate. In particular, this makes
+multiplications and divisions very efficient.
+
+For $\phi = x^n + 1$, the set of complex roots $\zeta$ of $\phi$ is:
+\begin{equation}\label{eq:phi}
+\Omega_\phi = \left\{\left. \exp\left(\frac{i (2k+1)\pi}{n}\right) \right| 0 \leq k < n \right\}
+\end{equation}
+
+
+\paragraph{A note on implementing the \fft.} There exist several ways of implementing the \fft, which may yield slightly different results. For example, some implementations of the \fft scale our definition by a constant factor (\eg $1/\deg(\phi)$). Another differentiation point is the order of (the roots of) the \fft. Common orders are the increasing order (\ie the roots are sorted by their order on the unit circle, starting at $1$ and moving clockwise) or (variants of) the bit-reversal order. In the case of \falcon:
+\begin{itemize}
+ \item The \fft is not scaled by a constant factor.
+ \item There is no constraint on the order of the \fft, the choice is left to the implementer. However, the chosen order shall be consistent for all the algorithms using the \fft.
+\end{itemize}
+
+
+\paragraph{Representation of polynomials in algorithms.} The algorithms which specify \falcon heavily rely on the fast Fourier transform, and some of them explicitly require that the inputs and/or outputs are given in \fft representation. When the directive ``\algorithmicformat'' is present at the beginning of an algorithm, it specifies in which format (coefficient or \fft representation) the input/output polynomials shall be represented. When the directive ``\algorithmicformat'' is absent, no assumption on the format of the input/output polynomials is made.
+
+\paragraph{The NTT.} The NTT (Number Theoretic Transform) is the analog
+of the FFT in the field $\bZ_p$, where $p$ is a prime such that $p = 1
+\bmod 2n$. Under these
+conditions, $\phi$ has exactly $n$ roots $(\omega_i)$ over $\bZ_p$, and
+any polynomial $f \in \bZ_p[x]/(\phi)$ can be represented by the values
+$f(\omega_i)$. Conversion to and from NTT representation can be done
+efficiently in $O(n \log n)$ operations in $\bZ_p$. When in NTT
+representation, additions, subtractions, multiplications and divisions
+of polynomials (modulo $\phi$ and $p$) can be performed coordinate-wise
+in $\bZ_p$.
+
+% Care must be taken that the roots of $\phi$ in $\bZ_p$ are unrelated to
+% the roots of $\phi$ in $\bC$. %TPr: as noticed by Gregor, there actually is a group morphism mapping the first set to the other
+In \falcon, the NTT allows for faster
+implementations of public key operations (using $\bZ_q$) and key pair
+generation (with various medium-sized primes $p$). Private key
+operations, though, rely on the fast Fourier sampling, which uses the
+FFT, not the NTT.

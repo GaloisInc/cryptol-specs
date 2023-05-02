@@ -1,0 +1,95 @@
+% !TeX root = ../falcon.tex
+
+\newcommand{\randombytes}{\texttt{randombytes}\xspace}
+
+\paragraph{Known Answer Tests (KAT).} To help the proper implementation of \longsamplerz and its subroutines, \cref{tab:kat} provides test vectors. Let $\sigmin = \sigminvali$ (the value of $\sigmin$ for \falcon-512). Each line of \cref{tab:kat} provides a tuple $(\mu, \sigma', \randombytes, z)$ such that when replacing internal calls to $\uniform()$ with reading bytes from \randombytes (acting as a random bytestring):
+\begin{equation}\label{eq:samplerz}
+	 \samplerz(\mu, \sigma') \rightarrow z
+\end{equation}
+
+For readability, \cref{tab:kat} splits \randombytes according to each iteration of \samplerz. As an example, line 1 of \cref{tab:kat} indicates that for $\mu = -91.90471153063714$, $\sigma' = 1.7037990414754918$, \randombytes = {\small \texttt{0fc5442ff043d66e91d1eacac64ea5450a22941edc6c}} and $z = -92$ , the equation \eqref{eq:samplerz} is verified when running \samplerz with randomness \randombytes. In addition, \samplerz iterates twice before terminating. More precisely, \randombytes is used as follows:
+\[
+\underbrace{\tt 0fc5442ff043d66e91|d1|ea}_{\text{Iteration 1}}| 
+\underbrace{\tt cac64ea5450a22941e|dc|6c}_{\text{Iteration 2}}
+\]
+At each iteration, the first $9$ random bytes are used by \basesampler, the next one by \cref{line:sign} and the last one(s) by \berexp. Note that at each call, \berexp has a probability $\frac{1}{2^8}$ of using more than $1$ random byte; this is rare, but happens. This is illustrated by line 9 of \cref{tab:kat}, which contain an example for which one iteration of \berexp uses $2$ random bytes.
+
+For further testing, this submission package contains more extensive and detailed test vectors. See:
+\vspace{-4mm}
+\begin{center}
+{\small\tt Supporting\_Documentation/additional/test-vector-sampler-falcon\{512,1024\}.txt}
+\end{center}
+
+
+\begin{table}[htb!]
+\caption{Test vectors for \samplerz ($\sigmin = \sigminvali$)}\label{tab:kat}
+
+\bigskip
+
+\begin{tabular} {@{\makebox[1.5em][l]{\rownumber\space}}|>{\ttfamily}l | >{\ttfamily}l |>{\ttfamily}p{51mm}|>{\ttfamily}r}
+	\gdef\rownumber{\stepcounter{magicrownumbers}\arabic{magicrownumbers}} {\normalfont Center $\mu$} & {\normalfont Standard deviation $\sigma'$} & {\normalfont \randombytes} & {\normalfont Output $z$}\\
+\hline
+\hline
+-91.90471153063714      & 1.7037990414754918    & 0fc5442ff043d66e91d1ea cac64ea5450a22941edc6c  & -92 \\
+\hline
+-8.322564895434937      & 1.7037990414754918    & f4da0f8d8444d1a77265c2 ef6f98bbbb4bee7db8d9b3  & -8 \\
+\hline
+-19.096516109216804     & 1.7035823083824078    & db47f6d7fb9b19f25c36d6 b9334d477a8bc0be68145d  & -20 \\
+\hline
+-11.335543982423326     & 1.7035823083824078    & ae41b4f5209665c74d00dc c1a8168a7bb516b3190cb4 2c1ded26cd52aed770eca7 dd334e0547bcc3c163ce0b  & -12 \\
+\hline
+7.9386734193997555      & 1.6984647769450156    & 31054166c1012780c603ae 9b833cec73f2f41ca5807c c89c92158834632f9b1555  & 8 \\
+\hline
+-28.990850086867255     & 1.6984647769450156    & 737e9d68a50a06dbbc6477  & -30 \\
+\hline
+-9.071257914091655      & 1.6980782114808988    & a98ddd14bf0bf22061d632  & -10 \\
+\hline
+-43.88754568839566      & 1.6980782114808988    & 3cbf6818a68f7ab9991514  & -41 \\
+\hline
+-58.17435547946095      & 1.7010983419195522    & 6f8633f5bfa5d26848668e 3d5ddd46958e97630410587c  & -61 \\
+\hline
+-43.58664906684732      & 1.7010983419195522    & 272bc6c25f5c5ee53f83c4 3a361fbc7cc91dc783e20a  & -46 \\
+\hline
+-34.70565203313315      & 1.7009387219711465    & 45443c59574c2c3b07e2e1 d9071e6d133dbe32754b0a  & -34 \\
+\hline
+-44.36009577368896      & 1.7009387219711465    & 6ac116ed60c258e2cbaeab 728c4823e6da36e18d08da 5d0cc104e21cc7fd1f5ca8 d9dbb675266c928448059e  & -44 \\
+\hline
+-21.783037079346236     & 1.6958406126012802    & 68163bc1e2cbf3e18e7426  & -23 \\
+\hline
+-39.68827784633828      & 1.6958406126012802    & d6a1b51d76222a705a0259  & -40 \\
+\hline
+-18.488607061056847     & 1.6955259305261838    & f0523bfaa8a394bf4ea5c1 0f842366fde286d6a30803  & -22 \\
+\hline
+-48.39610939101591      & 1.6955259305261838    & 87bd87e63374cee62127fc 6931104aab64f136a0485b  & -50 \\
+\hline
+%-101.00385632924957     & 1.694194291360674     & e72eadbc08ea77ed1c2823  & -102 \\
+%\hline
+%-55.766206519422155     & 1.694194291360674     & 3632c29bef5ff255bbba7d  & -58 \\
+%\hline
+%4.279820924390407       & 1.6937038942280862    & 11e8fbad926a8748efbd3d  & 8 \\
+%\hline
+%-6.1632330276740515     & 1.6937038942280862    & 755d7eec0dec4ab547669a 44d5113b6d8465102827bb 68fad1b91b1f32c7d65cf2 b27a2de77f5b02549f7829  & -7 \\
+%\hline
+%-12.636901236335072     & 1.6893009634650535    & 01b2bd367ee80fccf335ae 8ffdf86c0ef4ad076d7854  & -14 \\
+%\hline
+%-14.19051757550942      & 1.6893009634650535    & 99042f67f18f2a49baeea6 cdba65ef008be154fd9dfd ee32c97f885d20eefe4100  & -14 \\
+%\hline
+%15.996015013814931      & 1.6885857180002772    & f05c53d4ad1bcf824a4abb 701814bd9cb8b371715ace 3acfdc88a5af541f306e00  & 13 \\
+%\hline
+%-62.516938164862246     & 1.6885857180002772    & d33fea2db82a9a0d81cec7 455358a2e97b4b914ec392 5da04d64bb3ca6d69ec4f3 87310edf97fa43ceef7490  & -64 \\
+%\hline
+%-19.134957285144306     & 1.6907818034679203    & d229c9018b2c3c8645bd71  & -19 \\
+%\hline
+%5.121244097140291       & 1.6907818034679203    & 93f090cdb2164b5584ca95  & 4 \\
+%\hline
+%6.686630568251369       & 1.6903655284346046    & 97523a0d9b5ae3be81553f  & 8 \\
+%\hline
+%-37.88347616745064      & 1.6903655284346046    & 2b931fcd0c760fc8515a2a  & -40 \\
+%\hline
+%-6.163535730572427      & 1.6860138676808625    & 25589b7a9393883dcd8d90  & -4 \\
+%\hline
+%-12.9593836429217       & 1.6860138676808625    & ba7377dda60733a9416e5b  & -13 \\
+%\hline
+%5.996166146913          & 1.6853825380694936    & 0188370dcf1fdbaa9c4f35  & 11 \\
+\end{tabular}
+\end{table}

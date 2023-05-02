@@ -1,0 +1,141 @@
+% !TeX root = falcon.tex
+
+\chapter{Introduction}
+
+\falcon{} is a lattice-based signature scheme. It stands for the following acronym:
+\begin{center}
+\underline{Fa}st Fourier \underline{l}attice-based \underline{co}mpact signatures over \underline{N}TRU
+\end{center}
+
+The high-level design of \falcon is simple: we instantiate the theoretical framework described by Gentry, Peikert and Vaikuntanathan~\cite{STOC:GenPeiVai08} for constructing hash-and-sign lattice-based signature schemes. This framework requires two ingredients:
+\begin{itemize}
+ \item A class of cryptographic lattices. We chose the class of NTRU lattices.
+ \item A trapdoor sampler. We rely on a new technique which we call fast Fourier sampling.
+\end{itemize}
+In a nutshell, the \falcon signature scheme may therefore be described as follows:
+\begin{center}
+\falcon = GPV framework + NTRU lattices + Fast Fourier sampling
+\end{center}
+
+This document is the supporting documentation of \falcon. It is organized as follows. \cref{chap:ratio} explains the overall design of \falcon and its rationale. \cref{chap:spec} is a complete specification of \falcon. \cref{chap:impl} discusses implementation issues and possible optimizations, and described measured performance.
+
+\newpage
+
+\section{Genealogy of Falcon}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[every node/.style={draw=black,anchor=center}, align=center,>={Stealth}]
+\matrix (m) [matrix of nodes,row sep=8mm,column sep = 1.5cm,draw=none, align=center, text width=2.5cm, minimum height=1.7cm, rounded corners]
+{
+ \ntrusign \cite{RSA:HHPSW03} & \\
+ GPV Framework \cite{STOC:GenPeiVai08} & Provable \ntrusign \cite{EC:SteSte11} & Instantiation of GPV IBE \cite{AC:DucLyuPre14} & \falcon \\
+ & & Fast Fourier Sampling \cite{ISSAC:DucPre16} \\
+};
+\draw[line] (m-1-1) -> (m-2-2);
+\draw[line] (m-2-1) -> (m-2-2);
+\draw[line] (m-2-2) -> (m-2-3);
+\draw[line] (m-2-3) -> (m-2-4);
+\draw[line] (m-3-3) -> (m-2-4);
+\end{tikzpicture}
+\caption{The genealogic tree of \falcon}\label{fig:genealogictree}
+\end{figure}
+
+\falcon is the product of many years of work, not only by the authors but also by others. This section explains how these works gradually led to \falcon as we know it.
+
+The first work is the signature scheme \ntrusign~\cite{RSA:HHPSW03} by Hoffstein \textit{et al.}, which was the first, along with GGH~\cite{C:GolGolHal97b}, to propose lattice-based signatures. The use of NTRU lattices by \ntrusign allows it to be very compact. However, both had a flaw in the deterministic signing procedure which led to devastating key-recovery attacks~\cite{EC:NguReg06,AC:DucNgu12b}.
+
+At STOC 2008, Gentry, Peikert and Vaikuntanathan~\cite{STOC:GenPeiVai08} proposed a method which not only corrected the flawed signing procedure but, even better, did it in a provably secure way. The result was a generic framework (the GPV framework) for building secure hash-and-sign lattice-based signature schemes.
+
+The next step towards \falcon was the work of Stehl\'e and Steinfeld~\cite{EC:SteSte11}, who combined the GPV framework with NTRU lattices. The result could be called a provably secure \ntrusign.
+
+In a more practical work, Ducas \textit{et al.}~\cite{AC:DucLyuPre14} proposed a practical instantiation and implementation of the IBE part of the GPV framework over NTRU lattices. This IBE
+can be converted in a straightforward manner into a signature scheme. However, doing this would have resulted in a signing time in $O(n^2)$.
+
+To address the issue of a slow signing time, Ducas and Prest~\cite{ISSAC:DucPre16} proposed a new algorithm running in time $O(n \log n)$. However, how to practically instantiate this algorithm remained a open question.
+
+\falcon builds on these works to propose a practical lattice-based hash-and-sign scheme. The \cref{fig:genealogictree} shows the genealogic tree of \falcon, the first of the many trees that this document contains.
+
+
+\section{Subsequent Related Work}\label{sec:related}
+
+This section presents a non-exhaustive list of work related to \falcon, and subsequent to the Round 1 version (1.0) of the specification.
+
+\paragraph{Isochronous Gaussian sampling.} Realising efficient isochronous Gaussian sampling over the integers has long been identified as an important problem. Recent works by Zhao \textit{et al.}~\cite{TC:ZhaSteSak20}, Karmakar \textit{et al.}~\cite{DAC:KSVV19} and Howe \textit{et al.}~\cite{PQCRYPTO:HPRR20}, have proposed new techniques. The sampler in the Round 3 version of \falcon relies on \cite{TC:ZhaSteSak20,PQCRYPTO:HPRR20}. Recent work by Fouque \textit{et al.}~\cite{EC:FKTWY20} shows that isochrony is indeed an important requirement for the embedded security of \falcon.
+
+\paragraph{Raptor: Ring signatures using \falcon.}  Lu, Au and Zhang~\cite{EPRINT:LuAuZha18} have proposed Raptor, a ring signature scheme which uses \falcon as a building block. The authors provided a security proof in the random oracle model, as well as an efficient implementation.
+
+\paragraph{Implementation on ARM Cortex.} Works by Oder \textit{et al.}~\cite{PQCRYPTO:OSHG19} and Pornin~\cite{EPRINT:Pornin19} have implemented \falcon on ARM Cortex-M microprocessors. See also pqm4~\cite{EPRINT:KRSS19}. 
+
+\paragraph{Key generation.} Pornin and Prest~\cite{PKC:PorPre19} have formally studied the part of the key generation where polynomials $F,G$ are computed from $f,g$.
+This paper can be used as a complement for readers willing to understand more thoroughly this part of the key generation.
+
+\paragraph{Deployment in TLS 1.3.} Sikeridis \textit{et al.}~\cite{NDSS:SikKamDev20} studied the performance of various NIST candidate signature schemes in TLS 1.3. \falcon and Dilithium were the most favorably rated schemes.
+
+\section{NIST Requirements}
+
+In this section, we provide a mapping of the requirements by NIST to the appropriate sections of this document. This document adresses the requirements in \cite[Section 2.B]{NIST}.
+ \begin{itemize}
+  \item The complete specification as per~\cite[Section 2.B.1]{NIST} can be found in \cref{chap:spec}. A design rationale can be found in \cref{chap:ratio}.
+  \item A performance analysis, as per~\cite[Section 2.B.2]{NIST}, is provided in \cref{chap:impl}.
+  \item The security analysis of the scheme as per~\cite[Section 2.B.4]{NIST}, and the analysis of known cryptographic attacks against the scheme as per~\cite[Section 2.B.5]{NIST}, are contained in \cref{sec:rat:sec}.
+  \item Advantages and limitations as per~\cite[Section 2.B.6]{NIST} are listed in \cref{sec:ratio:advantages}.
+  \item Two sets of parameters as per NIST~\cite[Section 4.A.5]{NIST} can be found in \cref{sec:spec:params}.
+ \end{itemize}
+ 
+ Other requirements in \cite{NIST} are not addressed in this document, but in other parts of the submission package.
+ \begin{itemize}
+% \item
+% A cover sheet as per \cite[Section 2.A]{NIST} is present in this submission package. 
+ \item
+ A reference implementation as per \cite[Section 2.C.1]{NIST} and Known Answer Test values as per \cite[Section 2.B.2]{NIST} are present in this submission package.
+% \item
+% Signed statements of intellectual property, as required by \cite[Section 2.D]{NIST}, will be conveyed to NIST physically by all submitters, patent owners and implementation authors.
+ \end{itemize}
+
+\section{Changelog}
+
+This is the version 1.2 of \falcon's specification. The differences with the version 1.0~\cite{NISTPQC-R1:FALCON17} are:
+\begin{itemize}
+	\item We removed the level II-III set of parameters, which entailed $n = 768$ and $\phi = x^n - x^{n/2} + 1$; interested readers and implementers can read the version 1.0 of the specification, in which this set of parameters remains for historical purposes.
+	\item We added a section about the related work (\cref{sec:related});
+	\item We now describe a key-recovery mode which makes \falcon even more compact (\cref{sec:key-recovery});
+	\item We did a few other minor additions which essentially consist of clarifying and detailing a few points.
+\end{itemize}
+%
+The differences with the version 1.1~\cite{NISTPQC-R2:FALCON19} are:
+\begin{itemize}
+	\item We propose a formal specification of the Gaussian sampler over the integers, see \cref{sec:spec:sign:integers}. This specification consists of four algorithms (\cref{alg:basesampler,alg:approxexp,alg:berexp,alg:samplerz}). In addition, \cref{tab:kat} and {\small\tt Supporting\_Documentation/additional/test-vector-sampler-falcon\{512,1024\}.txt}\newline provide test vectors to validate the implementation of \samplerz.
+	\item We tweak \longcompress and \longdecompress in order to enforce a unique encoding of signatures. We are thankful to Quan Nguyen for pointing out to us the (benign) malleability of the original encodings.
+	\item We provide updated parameters, see \cref{tab:falconparam}. The parameter sets are more detailed and, in the case of \falcon-512, now provide a few more bits of security. In addition, we now detail our parameter selection process in \cref{sec:parametersummary} and {\small\tt Supporting\_Documentation/additional/parameters.py}. We discuss the concrete security of our parameter sets in \cref{sec:rat:sec:attacks}.
+	
+	\item We make incremental changes to some algorithms. Most reflect optimizations that the reference code was already doing (e.g. loop unrolling). Others are introduced by \samplerz and our modified \compress/\decompress.
+	Finally, we correct some typos (marked with $\dagger$ below).
+	
+	\begin{multicols*}{2}
+	\begin{itemize}
+	\setlength\itemsep{.4em}
+	\item 
+	\ntrugen:	\cref{line:sigmafg,step:ntt,line:gamma,line:botntrusolve,line:botntrusolverestart};
+	\item
+	\ntrusolve:	lines \ref{line:botgcd2}, \ref{line:g} and \ref{line:f}${}^\dagger$;
+	\item
+	\ldlalgo;
+	\item
+	\ffldl:	\cref{line:gram};
+	\item
+	\sign: \cref{line:t,line:do,line:sqsig,line:while};
+	\item
+	\ffsampling:
+	\cref{line:samplerz0,line:samplerz1};
+	\item
+	\compress: lines \ref{line:cbin}${}^\dagger$, \ref{line:k}, \ref{line:unary}, \ref{line:slen}, \ref{line:slenbot}, \ref{line:else} and \ref{line:pad};
+	\item
+	\decompress:
+	lines \ref{line:fix}, \ref{line:fix2}, \ref{line:dbin}${}^\dagger$, \ref{line:8}${}^\dagger$, \ref{line:zero}, \ref{line:zero2}, \ref{line:trail} and \ref{line:trail2};
+	\item
+	\verify:
+	\cref{line:bots2,line:rejs2,line:sqsignorm}.
+	\end{itemize}
+	\end{multicols*}
+\end{itemize}

@@ -1,0 +1,298 @@
+% !TeX root = ../falcon.tex
+
+\clearpage
+
+\section{Signature Generation}\label{sec:spec:sign}
+
+\subsection{Overview}
+
+\begin{figure}[!htb]
+	\centering
+	\begin{tikzpicture}[every node/.style={draw=black}]
+	\matrix (m) [matrix of nodes, row sep=7mm, column sep = 1.5cm, draw=none]
+	{
+		& \sign & \\
+		\hashtopoint & \ffsampling & \compress \\
+		\shake & \samplerz & \\
+		\basesampler & \berexp & \\
+		& \approxexp & \\
+	};
+	\draw[line] (m-1-2) -> (m-2-1);
+	\draw[line] (m-1-2) -> (m-2-2);
+	\draw[line] (m-1-2) -> (m-2-3);
+	\draw[line] (m-2-1) -> (m-3-1);
+	\draw[line] (m-2-2) -> (m-3-2);
+	\draw[line] (m-3-2) -> (m-4-1);
+	\draw[line] (m-3-2) -> (m-4-2);
+	\draw[line] (m-4-2) -> (m-5-2);
+	\end{tikzpicture}
+	\caption{Flowchart of the signature}\label{fig:signature}
+\end{figure}
+
+At a high level, the principle of the signature generation algorithm is simple: it first computes a hash value $c \in \bZ_q[x]/(\phi)$ from the message \msg and a salt \salt, and it then uses its knowledge of the secret key $f,g,F,G$ to compute two short values $s_1, s_2$ such that $s_1 + s_2 h = c \bmod q$.
+
+A naive way to find such short values $(s_1, s_2)$ would be to compute $\vect \gets (c,0) \cdot \matB^{-1}$, round it coefficient-wise to a vector $\vecz = \lfloor \vect \rceil$ and output $(s_1, s_2) \gets (\vect - \vecz) \matB$; it fulfils all the requirements to be a legitimate signature, but this method is known to be insecure and to leak the private key.
+
+The proper way to generate $(s_1, s_2)$ without leaking the private key is to use a trapdoor sampler (see \cref{sec:ratio:ffs} for a brief reminder on trapdoor samplers). In \falcon, we use a trapdoor sampler called fast Fourier sampling. The computation of the falcon tree \tree by \longffldl during the key pair generation is the initialization step of this trapdoor sampler.
+
+The heart of our signature generation, \longffsampling applies a randomized rounding (according to a discrete Gaussian distribution) on the coefficients of $\vect$. But it does so in an adaptive manner, using the information stored in the \falcon tree \tree.
+
+At a high level, our fast Fourier sampling algorithm can be seen as a recursive variant of Klein's well known trapdoor sampler (also known as the GPV sampler). Klein's sampler uses a matrix $\matL$ (and the norm of Gram-Schmidt vectors) as a trapdoor, whereas ours uses a tree of such matrices (or rather, a tree of their non-trivial elements).
+Given $\vect = (t_0, t_1) \in \bQ[x]/(\phi))^2$, our algorithm first splits $t_1$ using the splitting operator, recursively applies itself to it (using the right child \tree.\rchild of \tree), and uses the merging operator to lift the solution to the ring $\bZ[x]/(\phi)$; it then applies itself again recursively with $t_0$. Note that the recursions cannot be done in parallel: the second recursion takes into account the result of the first recursion, and this is done using information contained in \tree.\data.
+
+The most delicate part of our signature algorithm is the fast Fourier sampling described in \ffsampling, because it makes use of the \falcon tree and of discrete Gaussians over $\bZ$. The rest of the algorithm, including the compression of the signature, is rather straightforward to implement.
+
+Formally, given a private key \sk and a message \msg, the signer uses \sk to sign \msg as follows:
+\begin{enumerate}
+ \item A random salt \salt is generated uniformly in $\{0, 1\}^{320}$. The concatenated string $(\salt\|\msg)$ is then hashed to a point $c \in \bZ_q[x]/(\phi)$ as specified by \longhashtopoint.
+ \item A (not necessarily short) preimage $\vect$ of $c$ is computed, and is then given as input to the fast Fourier sampling algorithm, which outputs two short polynomials $s_1, s_2 \in \bZ[x]/(\phi)$ (in \fft representation) such that $s_1 + s_2 h = c \bmod q$, as specified by \longffsampling.
+ \item $s_2$ is encoded (compressed) to a bitstring $\comps$ as specified in \longcompress.
+ \item
+ The signature consists of the pair $(\salt, \comps)$.
+\end{enumerate}
+
+%\tprcomment{I added new algorithms to the flowchart}
+
+%\tprcomment{I added a check on the length/validity of the compressed signature}
+
+\begin{algorithm}[!htb]
+	\caption{\sign(\msg, \sk, $\sqsignorm$)}\label{alg:sign}
+	\begin{algorithmic}[1]
+	\Require {A message \msg, a secret key \sk, a bound $\sqsignorm$}
+	\Ensure {A signature \signature of \msg}
+	\State{$\salt \gets \{0, 1\}^{320}$ uniformly}
+	\State{$c \gets \hashtopoint(\salt\|\msg, q, n)$}
+	\State{$\vect \gets \left(- \frac{1}{q} \fft(c) \odot \fft(F), \frac{1}{q} \fft(c) \odot \fft(f) \right)$}\label{line:t}
+	\Comment{$\vect = (\fft(c), \fft(0)) \cdot \hat\matB^{-1}$}
+	\Do\label{line:do}
+	\Do
+	\State{$\vecz \gets \ffsampling_n(\vect, \tree)$}
+	\State{$\vecs = (\vect - \vecz)  \hat\matB$}
+	\Comment{At this point, $\vecs$ follows a Gaussian distribution: $\vecs \sim D_{(c, 0) + \Lambda(\matB), \sigma, 0}$}
+	\doWhile{$\|\vecs\|^2 > \sqsignorm$}\label{line:sqsig}
+	\Comment{Since $\vecs$ is in \fft representation, one may use \eqref{eq:innerfft} to compute $\|\vecs\|^2$}
+	\State{$(s_1, s_2) \gets \ifft(\vecs)$}\Comment{$s_1 + s_2 h = c \bmod (\phi, q)$}
+	\State{$\textsf{s} \gets \compress(s_2, 8 \cdot \sigbytelen - 328)$}
+	\Comment{Remove $1$ byte for the header, and $40$ bytes for \salt}
+	\doWhile{$(\textsf{s} = \bot)$}\label{line:while}
+	\Return{$\signature = (\salt, \textsf{s})$}
+	\end{algorithmic}
+\end{algorithm}
+
+
+%\tprcomment{Commented some text}
+
+%\paragraph{A note on sampling over $\bZ$.} Algorithm~\ref{alg:ffsampling} requires access to an oracle $\cD$ for the distribution $D_{\bZ, \sigma', c'}$, where $\sigma'$ can be the value of any leaf of the private \falcon tree \tree, and $c' \in \bQ$ is arbitrary. How to implement $\cD$ is outside the scope of this specification. It is only required that the R\'enyi divergence between this oracle and an ideal discrete Gaussian $D_{\bZ, \sigma', c'}$ verifies $R_{512}(\cD \| D_{\bZ, \sigma', c'}) \leq 1 + 2^{-66}$, for the definition of the R\'enyi divergence given in \eg \cite{AC:BLLSS15}. We note that several proposals~\cite{EPRINT:ZWXZ18,EPRINT:ZhaSteSak18,DAC:KSVV19,EPRINT:Walter19} for efficient (constant-time) Gaussian sampling over the integers have been made recently.
+%
+%Our reference implementation uses a Gaussian sampler based on
+%rejection sampling against a bimodal distribution; it is described in
+%Section~\ref{sec:impl:gaussian}. We note that the range of
+%possible values for the standard deviation in the Gaussian sampler is
+%limited: it is always greater than $1.2$, and always lower than $1.9$.
+
+
+ 
+ \subsection{Fast Fourier Sampling}
+ 
+ This section describes our fast Fourier sampler: \longffsampling. We note that we perform all the operations in \fft representation for efficiency reasons, but the whole algorithm could also be executed in coefficient representation instead, at a price of a $O(\log n)$ penalty in speed.
+ 
+% \tprcomment{I inserted \samplerz in \ffsampling}
+ 
+ \begin{algorithm}[!htb]
+  \caption{$\ffsampling_{\ n}(\vect, \tree)$}\label{alg:ffsampling}
+ \begin{algorithmic}[1]
+  \Require {$\vect=(t_0, t_1) \in \fft\left(\bQ[x]/(x^n+1)\right)^2$, a \falcon tree $\tree$}
+  \Ensure {$\vecz=(z_0, z_1) \in \fft\left(\bZ[x]/(x^n+1)\right)^2$}% such that $\vecz \cdot \matB \sim D_{\Lambda(\matB), \sigma, \vect \cdot \matB}$ for a given $\sigma$}
+  \Format{All polynomials are in \fft representation.}
+  \If{$n=1$}
+  \State{$\sigma' \gets \tree.\data$}
+  \Comment{It is always the case that $\sigma' \in [\sigmin, \sigmax]$}
+  \State{$ z_0 \gets \samplerz(t_0, \sigma')$}\label{line:samplerz0}
+  \Comment{Since $n=1$, $ t_i = \ifft( t_i) \in \bQ$ and $ z_i = \ifft( z_i) \in \bZ$}
+  \State{$ z_1 \gets \samplerz(t_1, \sigma')$}\label{line:samplerz1}
+%  \Comment{Since $n=1$, $ t_1 = \ifft( t_1) \in \bQ$ and $ z_1 = \ifft( z_1) \in \bZ$}
+  \Return{$ \vecz = (z_0, z_1)$}
+  \EndIf
+  \State{$(\ell, \tree_0, \tree_1) \gets (\tree.\data, \tree.\lchild, \tree.\rchild)$}
+  \State{$\vect_1 \gets \splitfft(t_1)$}\Comment{$\vect_0, \vect_1 \in \fft\left(\bQ[x]/(x^{n/2}+1)\right)^2$}
+  \State{$ \vecz_1 \gets \ffsampling_{\ n/2}(\vect_1, \tree_1)$}\Comment{First recursive call to $\ffsampling_{\ n/2}$}
+  \State{$ z_1 \gets \mergefft(\vecz_1)$}\Comment{$\vecz_0, \vecz_1 \in \fft\left(\bZ[x]/(x^{n/2}+1)\right)^2$}
+  \State{$ t_0' \gets  t_0 + ( t_1 -  z_1) \fdot  \ell$}
+  \State{$\vect_0 \gets \splitfft(t_0')$}
+  \State{$ \vecz_0 \gets \ffsampling_{\ n/2}(\vect_0, \tree_0)$}\Comment{Second recursive call to $\ffsampling_{\ n/2}$}
+  \State{$z_0 \gets \mergefft(\vecz_0)$}
+  \Return{$ \vecz = ( z_0, z_1)$}
+  \end{algorithmic}
+ \end{algorithm}
+
+\newpage
+
+\subsection{Sampler over the Integers}\label{sec:spec:sign:integers}
+
+\newcommand{\rightshift}{\ \texttt{>>}\ }
+
+Let $1 \leq \sigmin < \sigmax$. This section shows how to sample securely Gaussian samples $z \sim D_{\bZ, \sigma', \mu}$ for any $\sigma' \in [\sigmin, \sigmax]$ and $\mu \in \cR$. This is done by \longsamplerz, which calls \longbasesampler and \longberexp as subroutines. We use the notations (\rightshift) and (\texttt{\&}) to denote the bitwise right-shift and AND, respectively. We also introduce the notations $\istrue{\cdot}$ and $\uniform$:
+
+\begin{equation}
+\text{For any logical proposition }P, \quad \istrue{P} =
+\begin{cases}
+1 & \text{if $P$ is true} \\
+0 & \text{if $P$ is false} \\
+\end{cases}
+\end{equation}
+Note that $\istrue{\cdot}$ needs to be realized in constant time for our algorithms to be resistant against timing attacks.
+
+\begin{equation}\label{eq:uniform}
+\forall k \in \bZ^+, \quad \uniform(k) \text{ samples $z$ uniformly in $\{0, 1, ..., 2^k - 1\}$.}
+\end{equation}
+
+
+\paragraph{\basesampler.} Let \pdt be as in \cref{tab:chi}. Our first procedure is \longbasesampler. It samples an integer $z_0 \in \bZ^+$ according to the distribution $\chi$ of support $\{0, \dots, \cdtlen\}$ uniquely defined as:
+\begin{equation}\label{eq:chi}
+\forall i \in \{0, \dots, \cdtlen\}, \qquad \chi(i) = 2^{-72} \cdot \pdt[i]
+\end{equation}
+%One can check that $\sum_{i=0}^{\cdtlen} \pdt[i] = 2^{72}$, so that \eqref{eq:chi} does define a unique distribution.
+The distribution $\chi$ is extremely close to the ``half-Gaussian'' $D_{\bZ^+, \sigmax}$ in the sense that $R_{513}(\chi \| D_{\bZ^+, \sigmax}) \leq 1 + 2^{-78}$, where $R_*$ is the R\'enyi divergence. For completeness, \cref{tab:chi} provides the values of:
+\begin{itemize}[nolistsep,noitemsep]
+	\item the (scaled) probability distribution table $\pdt[i]$;
+	\item the (scaled) cumulative distribution table $\cdt[i] = \sum_{j\leq i} \pdt[j]$;
+	\item the (scaled) reverse cumulative distribution table $\rcdt[i] = \sum_{j > i} \pdt[j] = 2^{72} - \cdt[i]$.
+\end{itemize}
+
+{%
+\nprounddigits{0}
+\begin{table}[!htb]
+\centering
+\caption{Values of the \{probability/cumulative/reverse cumulative\} distribution table for the distribution $\chi$, scaled by a factor $2^{72}$.}\label{tab:chi}
+\medskip
+{\small
+\begin{tabular}{l|>{\ttfamily}r|>{\ttfamily}r|>{\ttfamily}r}
+\texttt{i} & \pdt{}[i] & \cdt{}[i] & \rcdt{}[i] \\
+\hline
+0 & \numprint{1697680241746640300030} & \numprint{1697680241746640300030} & \numprint{3024686241123004913666} \\
+1 & \numprint{1459943456642912959616} & \numprint{3157623698389553259646} & \numprint{1564742784480091954050} \\
+2 & \numprint{928488355018011056515} & \numprint{4086112053407564316161} & \numprint{636254429462080897535} \\
+3 & \numprint{436693944817054414619} & \numprint{4522805998224618730780} & \numprint{199560484645026482916} \\
+4 & \numprint{151893140790369201013} & \numprint{4674699139014987931793} & \numprint{47667343854657281903} \\
+5 & \numprint{39071441848292237840} & \numprint{4713770580863280169633} & \numprint{8595902006365044063} \\
+6 & \numprint{7432604049020375675} & \numprint{4721203184912300545308} & \numprint{1163297957344668388} \\
+7 & \numprint{1045641569992574730} & \numprint{4722248826482293120038} & \numprint{117656387352093658} \\
+8 & \numprint{108788995549429682} & \numprint{4722357615477842549720} & \numprint{8867391802663976} \\
+9 & \numprint{8370422445201343} & \numprint{4722365985900287751063} & \numprint{496969357462633} \\
+10 & \numprint{476288472308334} & \numprint{4722366462188760059397} & \numprint{20680885154299} \\
+11 & \numprint{20042553305308} & \numprint{4722366482231313364705} & \numprint{638331848991} \\
+12 & \numprint{623729532807} & \numprint{4722366482855042897512} & \numprint{14602316184} \\
+13 & \numprint{14354889437} & \numprint{4722366482869397786949} & \numprint{247426747} \\
+14 & \numprint{244322621} & \numprint{4722366482869642109570} & \numprint{3104126} \\
+15 & \numprint{3075302} & \numprint{4722366482869645184872} & \numprint{28824} \\
+16 & \numprint{28626} & \numprint{4722366482869645213498} & \numprint{198} \\
+17 & \numprint{197} & \numprint{4722366482869645213695} & \numprint{1} \\
+18 & \numprint{1} & \numprint{4722366482869645213696} & \numprint{0} \\
+\end{tabular}}
+\end{table}
+}
+
+\begin{algorithm}[!htb]
+	\caption{$\basesampler()$}\label{alg:basesampler}
+	\begin{algorithmic}[1]
+		\Require {-}
+		\Ensure {An integer $z_0 \in \{0, \dots, \cdtlen\}$ such that $z \sim \chi$} \Comment{$\chi$ is uniquely defined by \eqref{eq:chi}}
+		\State{$u \gets \uniform(72)$}\label{line:basesampler} \Comment{See \eqref{eq:uniform}}
+		\State{$z_0 \gets 0$}
+		\For{$i = 0, \dots, \cdtlenminus$}
+		\State{$z_0 \gets z_0 + \llbracket u < \rcdt[i] \rrbracket$} \Comment{Note that one should use \rcdt, not \pdt or \cdt}
+		\EndFor
+		\Return{$z_0$}
+	\end{algorithmic}
+\end{algorithm}
+
+
+
+\paragraph{\berexp and \approxexp.} \longberexp and its subroutine \longapproxexp serve to perform rejection sampling. Let $C$ be the following list of 64-bit numbers (in hexadecimal form):
+
+\begin{align*}
+C = & \footnotesize{\texttt{% 
+	[0x00000004741183A3, 0x00000036548CFC06, 0x0000024FDCBF140A, 0x0000171D939DE045,}} \\
+	& \footnotesize{\texttt{%
+	\ 0x0000D00CF58F6F84, 0x000680681CF796E3, 0x002D82D8305B0FEA, 0x011111110E066FD0,}}\\%
+	& \footnotesize{\texttt{%
+	\ 0x0555555555070F00, 0x155555555581FF00, 0x400000000002B400, 0x7FFFFFFFFFFF4800,}}\\%
+	& \footnotesize{\texttt{%
+	\ 0x8000000000000000]}}.%
+\end{align*}
+Let $f \in \bR[x]$ be the polynomial defined as:
+$$f(x) = 2^{-63} \cdot \sum_{i=0}^{\poldeg} C[i] \cdot x^{\poldeg - i}.$$
+$f(-x)$ serves as a very good approximation of $\exp(-x)$ over $[0, \ln(2)]$, see~\cite{TC:ZhaSteSak20}. This is leveraged by \longapproxexp to compute integral approximations of $2^{63} \cdot ccs \cdot \exp(-x)$ for $x$ in a certain range. Note that the intermediate variables $y, z$ in \approxexp are always in the range $\{0, ..., 2^{63} - 1\}$, with one exception: if $x = 0$, then at the end of the for loop (\cref{step:approxloop,step:approxloopin}) we have $y = 2^{63}$. This makes it easy to represent $x,y$ using, for example, the C type \verb+uint64_t+. 
+
+\todo[inline]{Fat warning: check that \approxexp is correct}
+
+\begin{algorithm}[!htb]
+	\caption{$\approxexp(x, ccs)$}\label{alg:approxexp}
+	\begin{algorithmic}[1]
+		\Require {Floating-point values $x \in [0, \ln(2)]$ and $ccs \in [0, 1]$}
+		\Ensure {An integral approximation of $2^{63} \cdot ccs \cdot \exp(-x)$}
+		\State{$C$ = {\footnotesize\texttt{%
+		[0x00000004741183A3,0x00000036548CFC06,0x0000024FDCBF140A,0x0000171D939DE045, 0x0000D00CF58F6F84, 0x000680681CF796E3, 0x002D82D8305B0FEA, 0x011111110E066FD0, 0x0555555555070F00, 0x155555555581FF00, 0x400000000002B400, 0x7FFFFFFFFFFF4800,	0x8000000000000000]%
+		}}}
+%	 \Comment{$C$ is indexed from $0$ to $\poldeg$}
+		\State{$y \gets C[0]$}\Comment{$y$ and $z$ remain in $\{0, ..., 2^{63} - 1\}$ the whole algorithm.}
+		\State{$z \gets \lfloor 2^{63} \cdot x \rfloor$}
+		 %\Comment{Is that what the code is doing??}
+		\For{$1 = 1, \dots, \poldeg$}\label{step:approxloop}
+		\State{$y \gets C[u] -  (z \cdot y) \rightshift 63$}\label{step:approxloopin}
+		\Comment{$(z \cdot y)$ fits in 126 bits, but we only need the top 63 bits}
+		\EndFor
+		\State{$z \gets \lfloor 2^{63} \cdot ccs \rfloor$}
+		\State{$y \gets (z \cdot y) \rightshift 63$}
+%		\Comment{Does it differ from the C code (\rightshift 64)??}
+		\Return{$y$}
+	\end{algorithmic}
+\end{algorithm}
+
+Given inputs $x, ccs \geq 0$, \longberexp returns a single bit 1 with probability $\approx ccs \cdot \exp(-x)$.
+
+\begin{algorithm}[!htb]
+	\caption{$\berexp(x, ccs)$}\label{alg:berexp}
+	\begin{algorithmic}[1]
+		\Require {Floating point values $x, ccs \geq 0$}
+		\Ensure {A single bit, equal to 1 with probability $\approx ccs \cdot \exp(-x)$}
+		\State{$s \gets \lfloor x / \ln(2) \rfloor$} \Comment{Compute the unique decomposition $x = 2^s \cdot r$, with $(r, s) \in [0, \ln 2) \times \bZ^+$}
+		\State{$r \gets x - s \cdot \ln(2)$}
+		\State{$s \gets \min(s, 63)$}
+		\State{$z \gets (2 \cdot \approxexp(r, ccs) - 1) \rightshift s$}
+		\Comment{$z \approx 2^{64-s} \cdot ccs \cdot \exp(-r) = 2^{64} \cdot ccs \cdot \exp(-x)$}
+		\State{$i \gets 64$}
+		\Do
+		\State{$i \gets i - 8$}
+		\State{$w \gets \uniform(8) - \left((z \rightshift  i)\ \texttt{\&} \ \texttt{0xFF}\right)$} \label{line:berexp}
+		\doWhile{($(w = 0)$ and $(i > 0)$)} \Comment{This loop does not need to be done in constant-time}
+		\Return{$\llbracket w < 0 \rrbracket $} \Comment{Return 1 with probability $2^{-64} \cdot z \approx ccs \cdot \exp(-x)$}
+	\end{algorithmic}
+\end{algorithm}
+
+\paragraph{\samplerz.} Finally, \longsamplerz use the previous algorithms as subroutines and, given inputs $\mu, \sigma'$ in a certain range, outputs an integer $z \sim D_{\bZ, \sigma', \mu}$ in an isochronous manner.
+
+\begin{algorithm}[!htb]
+	\caption{$\samplerz(\mu, \sigma')$}\label{alg:samplerz}
+	\begin{algorithmic}[1]
+		\Require {Floating-point values $\mu, \sigma' \in \cR$ such that $\sigma' \in [\sigmin, \sigmax]$}
+		\Ensure {An integer $z \in \bZ$ sampled from a distribution very close to $D_{\bZ, \mu, \sigma'}$}
+		\State{$r \gets \mu - \lfloor \mu \rfloor$}
+		\Comment{$r$ must be in $[0, 1)$}
+		% \State{$dss \gets 1/(2\sigma'^2)$}
+		\State{$ccs \gets \sigmin / \sigma'$} \Comment{$ccs$ helps to make the algorithm running time independent of $\sigma'$}
+		\While{(1)}
+		\State{$z_0 \gets \basesampler()$}
+		\State{$b \gets \uniform(8)\ \texttt{\&}\ \texttt{0x1}$}\label{line:sign}
+		\State{$z \gets b + (2 \cdot b - 1) z_0$}
+		\State{$x \gets \frac{(z - r)^2}{2 \sigma'^2} - \frac{z_0^2}{2 \sigmax^2}$}
+		\If{$(\berexp(x, ccs) = 1)$}
+		\Return{$z + \lfloor \mu \rfloor$}
+		\EndIf
+		\EndWhile
+	\end{algorithmic}
+\end{algorithm}
+
+%\tprcomment{TODO: add test vectors}
+
+\input{spec_files/sampler_kat}

@@ -1,0 +1,181 @@
+\subsubsection{Hash Function Address Scheme (Structure of \adrs)}\label{prelim:addresses}
+
+   An address $\adrs$ is a 32-byte value that follows a defined structure.
+   In addition, it comes with \texttt{set} methods to manipulate the address.  
+   We explain the generation of addresses in the following sections where they 
+   are used. Essentially, all functions have to keep track of the current 
+   context, updating the addresses after each hash call.
+
+   There are five different types of addresses for the different use
+   cases.  One type is used for the hashes in \wotsp schemes, one is used
+   for compression of the \wotsp public key, the third is used for
+   hashes within the main Merkle tree construction, another is used for 
+   the hashes in the Merkle tree in \fors, and the last is used for the 
+   compression of the tree roots of \fors. These types largely share a
+   common format. We describe them in more detail, below.
+
+   The structure of an address complies with word borders, with a word
+   being 32 bits long in this context.  Only the tree address
+   (i.e. the index of a specific subtree in the main tree) is too
+   long to fit a single word: for this, we reserve three words. An address is
+   structured as follows.  It always starts with a layer address of one
+   word in the most significant bits, followed by a tree address of three
+   words.  These addresses describe the position of a tree within the hypertree.
+   The layer address describes the height of a tree within the
+   hypertree starting from height zero for trees on the bottom layer.
+   The tree address describes the position
+   of a tree within a layer of a multi-tree starting with index zero for
+   the leftmost tree.  The next word defines the type of the address.
+   It is set to 0 for a \wotsp hash address, to 1 for the compression of the \wotsp public key,
+   to 2 for a hash tree address, to 3 for a \fors address, and to 4 for the compression
+   of \fors tree roots.
+
+   We first describe the \wotsp address (Figure~\ref{fig:adrs:wots}).
+   In this case, the type word
+   is followed by the key pair address that encodes the index of the \wotsp
+   key pair within the specified tree.  The next word encodes the chain address
+   (i.e. the index of the chain within \wotsp),
+   followed by a word that encodes the address of the hash function call
+   within the chain. Note that for the generation of the secret keys based on \sseed a different type of address is used (see below).
+
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}
+      \node[block, minimum width=0.2\textwidth] (layer) {layer address};
+      \node[block, minimum width=0.6\textwidth+0.4cm, right=0.2cm of layer] (tree)   {tree address};
+      \node[block, minimum width=0.2\textwidth, below=0.2cm of layer]  (type)   {\emph{type = 0}};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of type]  (wots)   {key pair address};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of wots]  (chain)  {chain address};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of chain] (hash)   {hash address};
+  \end{tikzpicture}
+  \caption{\wotsp hash address.}
+  \label{fig:adrs:wots}
+\end{figure}
+
+  The second type (Figure~\ref{fig:adrs:wotspk}) is used to compress the \wotsp public keys. The type word is
+  set to 1. Similar to the address used within \wotsp, the next word encodes
+  the key pair address. The remaining two words are not needed, and thus remain zero.
+  We zero pad the address to the constant length of 32 bytes.
+
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}
+      \node[block, minimum width=0.2\textwidth] (layer) {layer address};
+      \node[block, minimum width=0.6\textwidth+0.4cm, right=0.2cm of layer] (tree)   {tree address};
+      \node[block, minimum width=0.2\textwidth, below=0.2cm of layer]  (type)   {\emph{type = 1}};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of type]  (wots)   {key pair address};
+      \node[block, minimum width=0.4\textwidth+0.2cm, right=0.2cm of wots]  (padding)  {\emph{padding = 0}};
+  \end{tikzpicture}
+  \caption{\wotsp public key compression address.}
+  \label{fig:adrs:wotspk}
+\end{figure}
+
+   The third type (Figure~\ref{fig:adrs:hashtree}) addresses the hash functions in the main tree.
+   In this case the type word is set to 2, followed by a zero padding
+   of one word.  The next word encodes the height of the tree node
+   that is being computed, followed by a word that encodes the
+   index of this node at that height.
+
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}
+      \node[block, minimum width=0.2\textwidth] (layer) {layer address};
+      \node[block, minimum width=0.6\textwidth+0.4cm, right=0.2cm of layer] (tree)   {tree address};
+      \node[block, minimum width=0.2\textwidth, below=0.2cm of layer]  (type)   {\emph{type = 2}};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of type]  (padding)   {\emph{padding = 0}};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of padding]  (tree)   {tree height};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of tree]  (index)   {tree index};
+  \end{tikzpicture}
+  \caption{hash tree address.}
+  \label{fig:adrs:hashtree}
+\end{figure}
+
+   The next type (Figure~\ref{fig:adrs:forstree}) is of a similar format, and is used to describe the hash functions
+   in the \fors tree.  The type word is set to 3.  The key pair address is used to signify which \fors key pair is used,
+   identical to the key pair address in the \wotsp hash addresses.
+   Its value is the same as that of the \wotsp key pair that is used to authenticate it,
+   i.e. its index as a leaf in the specified tree.
+   The tree height and tree index fields are used to address the hashes within the \fors tree.
+   This is done like for the above-mentioned hashes in the main tree,
+   with the additional consideration that the tree indices are counted
+   continuously across the different \fors trees.
+   %The addresses at tree height 0 are used to generate the leaf nodes
+   %from \sseed.
+   To generate the leaf nodes from \sseed a different typ of address is used (see below).
+
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}
+      \node[block, minimum width=0.2\textwidth] (layer) {layer address};
+      \node[block, minimum width=0.6\textwidth+0.4cm, right=0.2cm of layer] (tree)   {tree address};
+      \node[block, minimum width=0.2\textwidth, below=0.2cm of layer]  (type)   {\emph{type = 3}};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of type]  (padding)   {key pair address};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of padding]  (tree)   {tree height};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of tree]  (index)   {tree index};
+  \end{tikzpicture}
+  \caption{\fors tree address.}
+  \label{fig:adrs:forstree}
+\end{figure}
+
+   The next type (Figure~\ref{fig:adrs:forspk}) is used to compress the tree roots of the \fors trees.  The type word is set to 4.
+   Like the \wotsp public key compression address, it contains only the address
+   of the \fors key pair, but is padded to the full length.
+
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}
+      \node[block, minimum width=0.2\textwidth] (layer) {layer address};
+      \node[block, minimum width=0.6\textwidth+0.4cm, right=0.2cm of layer] (tree)   {tree address};
+      \node[block, minimum width=0.2\textwidth, below=0.2cm of layer]  (type)   {\emph{type = 4}};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of type]  (wots)   {key pair address};
+      \node[block, minimum width=0.4\textwidth+0.2cm, right=0.2cm of wots]  (padding)  {\emph{padding = 0}};
+  \end{tikzpicture}
+  \caption{\fors tree roots compression address.}
+  \label{fig:adrs:forspk}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The final two types are used for secret key value generation in \wotsp and \fors. A \wotsp key generation address (Figure~\ref{fig:adrs:wots:kg}) is the same as a \wotsp hash address with two differences. First, the type word is set to 5. Second, the hash address word is constantly set to 0. When generating the secret key value for a given chain, the remaining words have to be set the same way as for the \wotsp hash addresses used for this chain.  
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}
+      \node[block, minimum width=0.2\textwidth] (layer) {layer address};
+      \node[block, minimum width=0.6\textwidth+0.4cm, right=0.2cm of layer] (tree)   {tree address};
+      \node[block, minimum width=0.2\textwidth, below=0.2cm of layer]  (type)   {\emph{type = 5}};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of type]  (wots)   {key pair address};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of wots]  (chain)  {chain address};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of chain] (hash)   {hash address = 0};
+  \end{tikzpicture}
+  \caption{\wotsp key generation address.}
+  \label{fig:adrs:wots:kg}
+\end{figure}
+
+Similarly, the \fors key generation type (Figure~\ref{fig:adrs:forskg}) is the same as the \fors tree address type, except that the type word is set to 6, and the tree height word is set to 0. As for the \wotsp key generation address, the remaining words have to be set as for the \fors tree address used when processing the generated value.
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}
+      \node[block, minimum width=0.2\textwidth] (layer) {layer address};
+      \node[block, minimum width=0.6\textwidth+0.4cm, right=0.2cm of layer] (tree)   {tree address};
+      \node[block, minimum width=0.2\textwidth, below=0.2cm of layer]  (type)   {\emph{type = 6}};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of type]  (padding)   {key pair address};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of padding]  (tree)   {tree height = 0};
+      \node[block, minimum width=0.2\textwidth, right=0.2cm of tree]  (index)   {tree index};
+  \end{tikzpicture}
+  \caption{\fors key generation address.}
+  \label{fig:adrs:forskg}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+   All fields within these addresses encode unsigned integers.  When
+   describing the generation of addresses we use \texttt{set} methods that
+   take positive integers and set the bits of a field to the binary
+   representation of that integer, in big-endian
+   notation. Throughout this document, we adhere to the convention
+   of assuming that changing the type word of an address
+   (indicated by the use of the \texttt{setType()} method)
+   initializes the subsequent three words to zero.
+
+   In order to make keeping track of the types easier throughout the pseudo-code in
+   the rest of this document, we refer to them respectively using the constants
+   \texttt{WOTS\_HASH}, \texttt{WOTS\_PK}, \texttt{TREE}, \texttt{FORS\_TREE}, \texttt{FORS\_ROOTS}, \texttt{WOTS\_PRF}, and \texttt{FORS\_PRF}.

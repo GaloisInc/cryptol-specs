@@ -1,0 +1,287 @@
+% !TeX root = ../falcon.tex
+
+\section{Key Pair Generation} \label{sec:spec:keygen}
+
+
+\subsection{Overview}\label{sec:spec:keygen:overview}
+
+The key pair generation can be decomposed in two clearly separate parts.
+\begin{itemize}
+ \item \emph{Solving the NTRU equation.} The first step of the key pair generation consists of computing polynomials $f, g, F, G \in \bZ[x]/(\phi)$ which verify \eqref{eq:ntru} -- the NTRU equation.
+ Generating $f$ and $g$ is easy; the hard part is to efficiently compute polynomials $F,G$ such that \eqref{eq:ntru} is verified.
+ 
+ To do this, we propose a novel method that exploits the tower-of-rings structure highlighted in \eqref{eq:binarytower}.
+ We use the field norm $\N$ to map the NTRU equation onto a smaller ring $\bZ[x]/(\phi')$ of the tower of rings, all the way down to $\bZ$. We then solve the equation in $\bZ$ -- using an extended gcd -- and use properties of the norm to lift the solutions $(F,G)$ back to the original ring $\bZ[x]/(\phi)$.
+ 
+ Implementers should be mindful that this step does \textit{not} perform modular reduction modulo $q$, which leads us to handle polynomials with large coefficients (a few thousands of bits per coefficient in the lowest levels of the recursion). See \cref{sec:spec:keygen:ntrugen} for a formal specification of this step, and \cite{PKC:PorPre19} for an in-depth analysis.
+ 
+ \item \emph{Computing a \falcon tree.} Once suitable polynomials $f,g,F,G$ are generated, the second part of the key generation consists of preprocessing them into an adequate format: by adequate we mean that this format should be reasonably compact and allow fast signature generation on-the-go.
+ 
+ \falcon trees are precisely this adequate format. To compute a \falcon tree, we compute the $\LDLs$ decomposition $\matG = \matL \matD \adj \matL$ of the matrix $\matG = \matB \adj \matB$, where 
+ \begin{equation}
+ \matB = \twotwo{g}{-f}{G}{-F}, 
+ \end{equation}
+ which is equivalent to computing the Gram-Schmidt orthogonalization $\matB = \matL \times \tilde \matB$. If we were using Klein's well-known sampler (or a variant thereof) as a trapdoor sampler, knowing $\matL$ would be sufficient but a bit unsatisfactory as we would not exploit the tower-of-rings structure of $\bQ[x]/(\phi)$.
+ 
+ So instead of stopping there, we store $\matL$ (or rather $L_{10}$, its bottom-left and only non-trivial term) in the root of a tree, use the splitting operators defined in \cref{sec:spec:splitmerge} to ``break'' the diagonal elements $D_{ii}$ of $\matD$ into matrices $\matG_i$ over smaller rings $\bQ[x]/(\phi')$, at which point we create subtrees for each matrix $\matG_i$ and recursively start over the process of $\LDLs$ decomposition and splitting.
+ 
+ The recursion continues until the matrix $\matG$ has its coefficients in $\bQ$, which correspond to the bottom of the recursion tree. How this is done is specified in \cref{sec:spec:keygen:ffldl}.
+ 
+ The main technicality of this part is that it exploits the tower-of-rings structure of $\bQ[x]/(\phi)$ by breaking its elements onto smaller rings. In addition, intermediate results are stored in a tree, which requires precise bookkeeping as elements of different tree levels do not live in the same field. Finally, for performance reasons, the step is realized completely in the \fft domain.
+\end{itemize}
+
+Once these two steps are done, the rest of the key pair generation is straightforward. A final step normalizes the leaves of the LDL tree to turn it into a \falcon tree. The result is wrapped in a private key \sk and the corresponding public key \pk is $h = g f^{-1} \bmod q$. 
+
+
+A formal description is given in algorithms \ref{alg:keygen} to \ref{alg:ffldl}, the main algorithm being the procedure \longkeygen. The general architecture of the key pair generation is also illustrated in \cref{fig:keygen}.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[every node/.style={draw=black}]
+\matrix (m) [matrix of nodes,row sep=7mm,column sep = 1.5cm,draw=none]
+{
+& \keygen & \\
+\ntrugen &  & \ffldl \\
+\ntrusolve & & \ldlalgo \\
+};
+\draw[line] (m-1-2) -> (m-2-1);
+\draw[line] (m-1-2) -> (m-2-3);
+\draw[line] (m-1-2) -> (m-2-3);
+\draw[line] (m-2-1) -> (m-3-1);
+\draw[line] (m-2-3) -> (m-3-3);
+\end{tikzpicture}
+\caption{Flowchart of the key generation}\label{fig:keygen}
+\end{figure}
+
+
+
+ \begin{algorithm}[!htp]
+  \caption{$\keygen(\phi, q)$}\label{alg:keygen}
+ \begin{algorithmic}[1]
+  \Require{A monic polynomial $\phi \in \bZ[x]$, a modulus $q$}
+  \Ensure{A secret key $\sk$, a public key $\pk$}
+  \State{$f,g,F,G \gets \ntrugen(\phi, q)$}\label{alg:keygen:ntru}\Comment{Solving the NTRU equation}
+  \State{$\matB \gets \twotwo{g}{-f}{G}{-F}$}\label{alg:keygen:bgnhatb}
+  \State{$\hat \matB \gets \fft(\matB)$} \Comment{Compute the FFT for each of the 4 components $\{g, -f, G, -F\}$}
+  \State{$\matG \gets \hat\matB \times \adj{\hat\matB}$}\label{alg:keygen:endhatb}
+  \State{$\tree \gets \ffldl(\matG)$}\label{alg:keygen:bgnftree}\Comment{Computing the $\LDLs$ tree}
+%  \State{$\sigma \gets 1.55 \sqrt{q}$}
+  \For{each leaf \leaf of \tree}\label{normal:start}\Comment{Normalization step}
+  \State{$\leaf.\data \gets \sigma / \sqrt{\leaf.\data}$}\label{normal:end}
+  \EndFor
+  \State{$\sk \gets (\hat\matB, \tree)$}
+  \State{$h \gets gf^{-1} \bmod q$}\label{alg:keygen:pk}
+  \State{$\pk \gets h$}
+  \Return{$\sk, \pk$}
+  \end{algorithmic}
+ \end{algorithm}
+
+% \pagebreak
+
+\subsection{Generating the polynomials \texorpdfstring{$f,g,F,G$}{f, g, F, G}.}\label{sec:spec:keygen:ntrugen}
+
+The first step of the key pair generation generates suitable polynomials $f,g,F,G$ verifying \eqref{eq:ntru}. This is specified in \longntrugen. We provide a general explanation of \ntrugen:
+\begin{enumerate}
+ \item First, the polynomials $f,g$ are generated randomly. A few conditions over $f,g$ are checked to ensure they are suitable for our purposes (\cref{step:ntt} to \cref{step:endgenfg}). It particular:
+ \begin{enumerate}
+  \item Line~\ref{step:ntt} ensures a public key $h$ can be computed from $f,g$. This is true if and only if $f$ is invertible $\bmod\ q$, which is true if and only if $\ntt(f)$ contains no coefficient set to $0$.
+  \item The polynomials $f,g,F,G$ must allow to generate short signatures. This is true if:
+  \begin{equation}
+  \gamma~=~\max \left\{ \norm{(g,-f)},  \norm{\left(\frac{q\adj f}{\ffgg},\frac{q\adj g}{\ffgg}\right)} \right\} \leq 1.17\sqrt{q}.
+  \end{equation}
+  We recall that the norm $\|\cdot\|$ is easily computed by using \eqref{eq:norm} with either \eqref{eq:innerfft} or \eqref{eq:innercoef}, depending on the representation (FFT or coefficient).
+ \end{enumerate}
+ \item Second, short polynomials $F,G$ are computed such that $f,g,F,G$ verify \eqref{eq:ntru}. This is done by the procedure \longntrusolve.
+ \end{enumerate}
+ 
+\begin{algorithm}%[!htp]
+  \caption{$\ntrugen(\phi, q)$ \hfill}\label{alg:ntrugen}
+ \begin{algorithmic}[1]
+  \Require{A monic polynomial $\phi \in \bZ[x]$ of degree $n$, a modulus $q$}
+  \Ensure{Polynomials $f,g,F,G$}
+%   \Format{The polynomials $\phi, f,g,F,G$ are in coefficient representation.}
+  \State{$\sigmafg \gets  1.17 \sqrt{q/2n}$}\label{step:genfg}\Comment{$\sigmafg$ is chosen so that $\bE[\|(f,g)\|] = 1.17 \sqrt{q}$}
+  \For{$i$ from $0$ to $n-1$}
+  \State{$f_i \gets D_{\bZ,\sigmafg,0}$}\label{line:sigmafg} \Comment{See also \eqref{eq:sigmastar}}
+  \State{$g_i \gets D_{\bZ,\sigmafg,0}$}
+  \EndFor
+  \State{$f \gets \sum_i f_i x^i$}\Comment{$f \in \bZ[x]/(\phi)$}\label{line:fi}
+  \State{$g \gets \sum_i g_i x^i$}\Comment{$g \in \bZ[x]/(\phi)$}\label{line:gi}
+  \If{$\ntt(f)$ contains $0$ as a coefficient}\label{step:ntt} \Comment{Check that $f$ is invertible $\bmod\ q$}
+  \Restart
+  \EndIf
+  \State{$\gamma \gets \max \left\{ \norm{(g,-f)},  \norm{\left(\frac{q\adj f}{\ffgg},\frac{q\adj g}{\ffgg}\right)} \right\}$}\label{line:gamma}
+  \Comment{Using \eqref{eq:norm} with \eqref{eq:innerfft} or \eqref{eq:innercoef}}
+  \If{$\gamma > 1.17\sqrt{q}$}
+  \Comment{Check that $\gamma = \gsnorm{\matB}$ is short}
+  \Restart
+  \EndIf\label{step:endgenfg}
+% New NTRUSolve
+  \State{$F, G \gets \ntrusolve_{n,q}(f, g)$} \Comment{Computing $F, G$ such that $fG - gF = q \bmod \phi$}
+  \If{$(F,G) = \bot$}\label{line:botntrusolve}
+  \Restart\label{line:botntrusolverestart}
+  \EndIf
+  \Return{$f,g,F,G$}
+  \end{algorithmic}
+\end{algorithm}
+
+\newcommand{\sigmastar}{{\sigma^*}}
+One way to sample $z \gets D_{\sigmafg}$ (\cref{line:fi,line:gi}) is to perform:
+\begin{equation}\label{eq:sigmastar}
+z = \sum_{i = 1}^{4096/n} z_i, \quad \text{where} \begin{cases}
+z_i \gets \samplerz(0, \sigmastar),\\
+\sigmastar = 1.17 \cdot \sqrt\frac{q}{8192} \approx 1.43300980528773
+\end{cases}
+\end{equation}
+This exploits the fact the sum of $k$ Gaussians of standard deviation $\sigmastar$ is a Gaussian of standard deviation $\sigmastar \sqrt{k}$. Here $\sigmastar$ is chosen so that $\sigmastar \leq \sigmax$, see \cref{sec:spec:sign:integers}. Note that the reference code currently implements a similar idea, but with a $\sigmastar > \sigmax$ for which we sample using a precomputed table.
+
+ \subsubsection{Solving the NTRU equation \eqref{eq:ntru}}
+ 
+ We now explain how to solve \eqref{eq:ntru}. As mentioned in \cref{sec:spec:keygen:overview}, we repeatedly use the field norm $\N$ to map $f,g$ to a smaller ring $\bZ[x]/(x^{n/2}+1)$, until we reach the ring $\bZ$. Solving \eqref{eq:ntru} then amounts to computing an extended GCD over $\bZ$, which is simple. We then use the multiplicative properties of the field norm to repeatedly lift the solutions up to $\bZ[x]/(x^{n}+1)$, at which point we have solved \eqref{eq:ntru}.
+ 
+% \todo{Fix algorithm}
+ 
+% \tprcomment{I changed lines 11 and 12 of \ntrusolve}
+
+  \begin{algorithm}[!htp]
+  \caption{$\ntrusolve_{n,q}(f, g)$\hfill}\label{alg:ntrusolve}
+ \begin{algorithmic}[1]
+  \Require{$f, g \in \bZ[x]/(x^n+1)$ with $n$ a power of two}
+  \Ensure{Polynomials $F,G$ such that \eqref{eq:ntru} is verified}
+
+  \If{$n=1$}
+  \State{Compute $u,v \in \bZ$ such that $u f - v g = \gcd(f, g)$}\Comment{Using the extended GCD}
+  \If{$\gcd(f, g) \neq 1$}\label{line:botgcd}
+  \State{abort and return $\bot$}\label{line:botgcd2}
+  \EndIf
+  \State{$(F,G) \gets (vq, uq)$}
+  \Return{$(F,G)$}
+  \Else
+  \State{$f' \gets \N(f)$}\Comment{$f', g', F', G' \in \bZ[x]/(x^{n/2}+1)$}
+  \State{$g' \gets \N(g)$}\Comment{$\N$ as defined in either \eqref{eq:fieldnorm} or \eqref{eq:fieldnormmul}}
+  \State{$(F',G') \gets \ntrusolve_{n/2,q}(f', g')$}\Comment{Recursive call}
+
+  \State{$F \gets F'(x^2) g(-x)$}\label{line:g} \Comment{$F, G \in \bZ[x]/(x^{n}+1)$}
+  \State{$G \gets G'(x^2) f(-x)$}\label{line:f}
+  \State{$\reduce(f,g,F,G)$}\Comment{$(F,G)$ is reduced with respect to $(f,g)$}
+  \EndIf
+  \Return{$(F,G)$}
+  \end{algorithmic}
+ \end{algorithm}
+ 
+ \ntrusolve uses \longreduce as a subroutine to reduce the size of the solutions $F,G$.
+ The principle of \reduce is a simple generalization of textbook vectors' reduction. Given vectors $\vecu, \vecv \in \bZ^k$, reducing $\vecu$ with respect to $\vecv$ is done by simply performing $\vecu \gets \vecu - \left\lfloor \frac{ \inner{\vecu}{\vecv} }{ \inner{\vecv}{\vecv} } \right\rceil \vecv$. \reduce does the same by replacing $\bZ^k$ by $(\bZ[x]/(\phi))^2$, $\vecu$ by $(F,G)$ and $\vecv$ by $ (f,g)$. A detailed explanation of the mathematical and algorithmic principles underlying \ntrusolve can be found in~\cite{PKC:PorPre19}.
+ 
+  \begin{algorithm}[!htp]
+  \caption{$\reduce(f,g,F,G)$}\label{alg:reduce}
+ \begin{algorithmic}[1]
+  \Require{Polynomials $f,g,F,G \in \bZ[x]/(\phi)$}
+  \Ensure{$(F,G)$ is reduced with respect to $(f,g)$}
+  
+  \Do
+  \State{$k \gets \left \lfloor \frac{F\adj f + G\adj g}{\ffgg}\right\rceil$}
+  \Comment{$\frac{F\adj f + G\adj g}{\ffgg} \in \bQ[x]/(\phi)$ and $k \in \bZ[x]/(\phi)$}
+  \State{$F \gets F - k f$}
+  \State{$G \gets G - k g$}
+  \doWhile{$k \neq 0$}
+  \Comment{Multiple iterations may be needed, e.g. if $k$ is computed in small precision.}
+  \end{algorithmic}
+ \end{algorithm}
+
+\clearpage
+
+\subsection{Computing a \falcon Tree} \label{sec:spec:keygen:ffldl}
+ 
+ The second step of the key generation consists of preprocessing the polynomials $f,g,F,G$ into an adequate secret key format. The secret key is of the form $\sk = (\hat\matB, \tree)$, where:
+ \begin{itemize}
+ \item $\hat\matB = \twotwo{\fft(g)}{-\fft(f)}{\fft(G)}{-\fft(F)}$
+ \item \tree is a \falcon tree computed in two steps:
+ \begin{enumerate}
+ \item First, a tree \tree is computed from $\matG \gets \hat \matB \times \adj{\hat\matB}$, called an \emph{LDL tree}. This is specified in \longffldl. At this point, \tree is a \falcon tree but it is not normalized.
+ \item Second, $\tree$ is normalized with respect to a standard deviation $\sigma$. It is described in steps \ref{normal:start}-\ref{normal:end} of \longkeygen.
+ \end{enumerate}
+ For efficiency reasons, polynomials manipulated in \longldlalgo and \longffldl always remain in \fft representation.
+ \end{itemize}
+ 
+ At a high level, the method for computing the LDL tree at step 1 (before normalization) is simple:
+ \begin{enumerate}
+  \item We compute the LDL decomposition of $\matG$: we write $\matG = \matL \times \matD \times \adj{\matL} $, with $\matL$ a lower triangular matrix with $1$'s on the diagonal and $\matD$ a diagonal matrix. See \longldlalgo.
+
+  We store $\matL$ in \tree.\data, which is the value of the root of \tree. Since $\matL$ is of the form $\matL = \twotwo{1}{\ \ \ 0\ \ \ }{L_{10}}{1}$, we only need to store $L_{10} \in \bQ[x]/(\phi)$.
+  
+  \item We then use the splitting operator to ``break'' each diagonal element of $\matD$ into a matrix of smaller elements. More precisely, for a diagonal element $d \in \bQ[x]/(x^n + 1)$, we consider the associated endomorphism $\psi_d : z \in \bQ[x]/(x^n + 1) \mapsto dz$ and write its transformation matrix over the smaller ring $\bQ[x]/(x^{n/2} + 1)$. Following the argument of \cref{sec:spec:splitmerge:algebraic}, the transformation matrix of $\psi_d$ can be written as
+   \begin{equation}\label{eq:matsplit1}
+    \twotwo{d_{0}}{d_{1}}{x d_{1}}{d_{0}} \left( =  \twotwo{d_{0}}{d_{1}}{\adj d_{1}}{d_{0}} \right)\footnote{The equality in parentheses is true if and only if d is self-adjoint, \ie $\adj d = d$. This is the case in \longffldl.}.
+   \end{equation}
+ 
+  For each diagonal element broken into a self-adjoint matrix $\matG_i$ over a smaller ring, we recursively compute its LDL tree as in step 1 and store the result in the left or right child of \tree (which we denote \tree.\lchild and \tree.\rchild respectively).
+  
+  We continue the recursion until we end up with coefficients in the ring $\bQ$.
+  
+ \end{enumerate}
+ 
+ An implementation of this ``LDL tree'' strategy is given in \longffldl. Note that in \falcon, the input of \ffldl is always a matrix of dimension $2 \times 2$, which greatly simplifies the implementation of its subroutine \longldlalgo.
+
+% \tprcomment{Should we simplify the description of \ldlalgo?}
+
+% \tprcomment{Corrected a typo}
+% \begin{algorithm}[!htp]
+% \caption{$\ldlalgo(\matG)$}\label{alg:ldlalgo}
+% \begin{algorithmic}[1]
+% \Require {A full-rank autoadjoint matrix $\matG = (G_{ij}) \in \fft(\bQ[x]/(\phi))^{\ell \times \ell }$}
+% \Ensure {The \LDLs decomposition $\matG = \L \matD \adj\L$ over $\fft(\bQ[x]/(\phi))$}
+%  \Format{All polynomials are in \fft representation.}
+% \State{$\L, \matD \gets \matzero^{\ \ell \times \ell }$}
+% \For{$i$ from $0$ to $(\ell - 1)$}
+% \State{$\l_{ii} \gets 1$}
+% \For{$j$ from $0$ to $(i-1)$}
+% \State {$\l_{ij} \gets \frac{1}{D_{j}} \left( G_{ij} -  \sum_{k<j} \l_{ik} \fdot  \adj \l_{jk} \fdot D_k \right)$}
+% \EndFor
+% \State {$D_{i} \gets G_{ii} - \sum_{j<i} \l_{ij} \fdot \adj \l_{ij} \fdot D_j$} 
+% \EndFor
+% \Return{$(\L, \matD )$} \Comment{$\matL = \twotwo{1}{0}{L_{10}}{1}, \matD = \twotwo{D_{00}}{0}{0}{D_{11}}$}
+% \end{algorithmic}
+% \end{algorithm}
+
+%\tprcomment{Attempt at simplified version}
+
+\begin{algorithm}[!htb]
+	\caption{$\ldlalgo(\matG)$}\label{alg:ldlalgo}
+	\begin{algorithmic}[1]
+		\Require {A full-rank self-adjoint matrix $\matG = (G_{ij}) \in \fft(\bQ[x]/(\phi))^{2 \times 2}$}
+		\Ensure {The \LDLs decomposition $\matG = \L \matD \adj\L$ over $\fft(\bQ[x]/(\phi))$}
+		\Format{All polynomials are in \fft representation.}
+		\State{$D_{00} \gets G_{00}$}
+		\State{$\l_{10} \gets G_{10} / G_{00} $}
+		\State{$D_{11} \gets G_{11} - \l_{10} \fdot \adj \l_{10} \fdot G_{00}$}
+		\State{$\matL \gets \twotwo{1}{0}{L_{10}}{1}, \matD \gets \twotwo{D_{00}}{0}{0}{D_{11}}$}
+		\Return{$(\L, \matD )$}
+	\end{algorithmic}
+\end{algorithm}
+ 
+ 
+ \begin{algorithm}[!htb]
+ \caption{$\ffldl(\matG)$\hfill}\label{alg:ffldl}
+ \begin{algorithmic}[1]
+ \Require {A full-rank Gram matrix $\matG \in \fft\left(\bQ[x]/(x^n+1)\right)^{2\times 2}$}
+ \Ensure {A binary tree \tree}
+  \Format{All polynomials are in \fft representation.}
+ \State {$(\L,\matD) \leftarrow \ldlalgo(\matG)$}\label{step:ldl}\Comment{$\matL = \twotwo{1}{0}{L_{10}}{1}, \matD = \twotwo{D_{00}}{0}{0}{D_{11}}$}
+ \State {$\tree.\data \gets L_{10}$}
+ \If{$(n=2)$}
+ \State {$\tree.\lchild \gets D_{00}$}
+ \State {$\tree.\rchild \gets D_{11}$}
+ \Return \tree
+ \Else
+ \State{$d_{00}, d_{01} \gets \splitfft(D_{00})$}\Comment{$ d_{ij} \in \fft \left(\bQ[x]/(x^{n/2}+1)\right)$}
+ \State{$d_{10}, d_{11} \gets \splitfft(D_{11})$}
+ % I commented the next line and replaced it by an equivalent formulation
+ % \State{$\matG_0 \gets \twotwo{d_{00}}{d_{01}}{x d_{01}}{d_{00}}$, $\matG_1 \gets \twotwo{d_{10}}{d_{11}}{x d_{11}}{d_{10}}$}
+ \State{$\matG_0 \gets \twotwo{d_{00}}{d_{01}}{\adj d_{01}}{d_{00}}$, $\matG_1 \gets \twotwo{d_{10}}{d_{11}}{\adj d_{11}}{d_{10}}$}\label{line:gram}
+ \Comment{Since $D_{00}, D_{11}$ are self-adjoint, \eqref{eq:matsplit1} applies}
+ \State {$\tree.\lchild \gets \ffldl(\matG_0)$}\Comment{Recursive calls}
+ \State {$\tree.\rchild \gets \ffldl(\matG_1)$}
+ \Return \tree
+ \EndIf
+ \end{algorithmic}
+ \end{algorithm}

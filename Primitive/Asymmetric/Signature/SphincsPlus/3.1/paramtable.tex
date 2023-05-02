@@ -1,0 +1,28 @@
+\begin{table}
+  \caption{Example parameter sets for \spx targeting different security levels and different tradeoffs between size and speed. Note that these parameter sets have been update for round 3.
+  The column labeled ``bitsec'' gives the bit security computed as described in~\autoref{sec:security}; 
+  the column labeled ``sec level'' gives the security level according to the levels specified in Section 4.A.5 of the Call for Proposals.
+  As explained later,
+  \textbf{for Haraka the security level is limited to 2:}
+  i.e., it is 1 for $n=16$, and 2 for $n=24$ or $n=32$.}
+  \label{tab:params}
+  \def\arraystretch{1.2}
+  \begin{tabularx}{\textwidth}{Xrrrrrrrrr}
+    \hline
+                  & $n$  & $h$  & $d$  & $\log(t)$ & $k$  & $w$  & bitsec & sec level   & sig bytes \\
+    \hline
+    \spxlowsmall  & $16$ & $63$ &  $7$ &      $12$ & $14$ & $16$ &  $133$ %~=-log(1/128+1/133)/log2
+	              & \textbf{1}  &  $7\,856$ \\
+    \spxlowfast   & $16$ & $66$ & $22$ &       $6$ & $33$ & $16$ &  $128$ %=-log(1/128+1/128)/log2 
+	              & \textbf{1}  & $17\,088$ \\
+    \spxmidsmall  & $24$ & $63$ &  $7$ &      $14$ & $17$ & $16$ &  $193$ %~=-log(1/192+1/196)/log2
+	              & \textbf{3}  & $16\,224$ \\
+    \spxmidfast   & $24$ & $66$ & $22$ &       $8$ & $33$ & $16$ &  $194$ %~=-log(1/192+1/194)/log2
+	              & \textbf{3}  & $35\,664$ \\
+    \spxhighsmall & $32$ & $64$ &  $8$ &      $14$ & $22$ & $16$ &  $255$ %~=-log(1/256+1/255)/log2
+	              & \textbf{5}  & $29\,792$ \\
+    \spxhighfast  & $32$ & $68$ & $17$ &      $9$ & $35$ & $16$ &  $255$ %~=-log(1/256+1/254)/log2
+	              & \textbf{5}  & $49\,856$ \\
+    \hline
+  \end{tabularx}
+\end{table}

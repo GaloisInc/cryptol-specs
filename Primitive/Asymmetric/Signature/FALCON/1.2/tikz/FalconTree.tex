@@ -1,0 +1,41 @@
+\documentclass[crop,tikz]{standalone}
+\input{header}
+
+
+ %%%%%%%%%%
+ %FFO
+ %%%%%%%%%%
+\newcommand{\largeur}{150mm}
+\newcommand{\hauteur}{8mm}
+\tikzstyle{case}=[rectangle, thin, minimum width=\largeur, minimum height=\hauteur, draw = black, fill=white, inner sep = 0cm, anchor=south west]
+\newcommand{\da}[2]{ \draw[->] (C#1.south) -> (C#2.north); }
+
+\begin{document}
+
+\begin{tikzpicture}[>=stealth]
+ 
+ \node[case,minimum width=\largeur] (C) at (0,0) {$\ell$};
+
+ \foreach \i in {0,1}%
+ {%
+     \node[case,minimum width=0.495*\largeur] (C\i) at (0.5*\i*\largeur,-1.5*\hauteur) {$\ell_\i$};%
+     \da{}{\i};
+     \foreach \k in {0,1}{
+         \node[case,minimum width=0.245*\largeur] (C\i\k) at (0.25*\k*\largeur+0.5*\i*\largeur,-3*\hauteur) {$\ell_{\i\k}$};
+         \da{\i}{\i\k};
+          \foreach \l in {0,1}{
+             \node[case,minimum width=0.12*\largeur] (C\i\k\l) at (0.25*\k*\largeur+0.5*\i*\largeur+0.125*\l*\largeur,-4.5*\hauteur) {$\sigma_{\i\k\l}$};
+             \da{\i\k}{\i\k\l};
+         }
+     }
+ }
+ 
+ \foreach \l in {1,...,8}{
+ \node[case,minimum width=0.12*\largeur] at (0.125*\l*\largeur-0.125*\largeur,-4.5*\hauteur) {$\sigma_\l$};
+ } 
+
+
+\end{tikzpicture}
+
+\end{document}
+

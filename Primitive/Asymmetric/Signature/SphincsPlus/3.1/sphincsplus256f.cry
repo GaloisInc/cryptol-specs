@@ -1,0 +1,19 @@
+module sphincsplus256f=specification where
+
+import Primitive::Keyless::Hash::SHAKE::SHAKE256
+
+type n = 32
+type h = 68
+type d = 17
+type a = 9
+type k = 35
+type loglogw = 2
+
+H_msg(R, PKseed, PKroot, M) =
+    groupBy(take(shake256(join R # join PKseed # join PKroot # join M)))
+PRF(Seed, ADRS) =
+    groupBy(take(shake256(join Seed # join ADRS)))
+PRF_msg(SKprf, OptRand, M) =
+    groupBy(take(shake256(join SKprf # join OptRand # join M)))
+T(PKseed, ADRS, M) =
+    groupBy(take(shake256(join PKseed # join ADRS # join M)))

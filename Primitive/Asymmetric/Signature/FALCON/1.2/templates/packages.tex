@@ -1,0 +1,89 @@
+% !TeX root = ../falcon.tex
+
+% This file contains the packages
+\usepackage[T1]{fontenc}
+\usepackage[utf8x]{inputenc}
+\usepackage[english]{babel}
+\usepackage{lmodern}
+\usepackage{fullpage}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage[dvipsnames]{xcolor}     % For colors
+\input{./templates/colors.tex}
+\usepackage[%
+% pdftex = true,%
+colorlinks,%
+citecolor=color_cite,%
+backref=page,%
+linkcolor=color_link,%
+linktocpage=true,%
+% draft=false,%
+urlcolor=color_url,%
+% https://tex.stackexchange.com/a/26530/176500
+pdfauthor={%
+	Pierre-Alain Fouque, Jeffrey Hoffstein, Paul Kirchner, Vadim Lyubashevsky, Thomas Pornin, Thomas Prest, Thomas Ricosset, Gregor Seiler, William Whyte, Zhenfei Zhang%
+},%
+pdftitle={Falcon: Fast-Fourier Lattice-based Compact Signatures over NTRU},%
+% https://tex.stackexchange.com/a/156404/176500
+hypertexnames=false,
+]{hyperref}
+\usepackage{xspace}
+\usepackage{tabularx}
+\usepackage[bottom]{footmisc}
+\usepackage{numprint}
+
+%%%
+%%% For algorithms
+%%%
+\usepackage[noend]{algpseudocode}
+\usepackage{algorithm}
+%\usepackage{algorithmicx}
+
+
+%%%
+%%% Tikz
+%%%
+\usepackage{tikz}
+\usetikzlibrary{matrix,calc}
+\usetikzlibrary{tikzmark}
+\usetikzlibrary{decorations.pathreplacing}
+\usetikzlibrary{arrows,shapes.geometric,arrows.meta}
+\tikzset{
+line/.style = {draw, -latex'}
+}
+
+%%%
+%%% These packages will probably be useful
+%%%
+\usepackage{pifont}
+\usepackage{scrextend}
+\usepackage{multirow}   % To fuse rows in tables
+\usepackage{hhline}     % For double lines in tables
+\usepackage{amsmath}    % AMS Math symbols
+\usepackage{amssymb}    % AMS symbols
+\usepackage{stmaryrd}   % Math stuff
+\usepackage{array}      % for "\newcolumntype" macro
+\usepackage{enumitem}   % For fancy enumerate and itemize
+\usepackage{mathtools}
+\usepackage{multicol}
+\usepackage{cleveref}
+\usepackage{etoolbox}   % Macro generation
+\usepackage{titlesec}   % Change space before/after titles
+\usepackage[textwidth=40mm]{todonotes}
+\usepackage[nomessages]{fp}% http://ctan.org/pkg/fp
+
+% Font choices:
+%   eb-garamond with matching math mode and "modern" digits
+%   linux biolinum as sans-serif font
+% These fonts are free (in the "free software" sense) and available in
+% TeXlive. Install texlive-fonts-extra on Ubuntu.
+\usepackage[lf]{ebgaramond}
+% TPr: I had to comment these packages because some math characters were not printing correctly
+% \usepackage[cmintegrals,cmbraces]{newtxmath} 
+% \usepackage{ebgaramond-maths}
+\usepackage{biolinum}
+\usepackage{sectsty}    % For section headings
+
+\usepackage{verbatim}
+\usepackage{fancyvrb}
+\DefineVerbatimEnvironment{code}{Verbatim}{frame=single, samepage=true, gobble=2, numbers=left, framerule=0.8mm}
