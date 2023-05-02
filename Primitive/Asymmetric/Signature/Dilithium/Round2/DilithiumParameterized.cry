@@ -671,29 +671,64 @@ modSum (p, l) = sums!0
     where
     sums = [ zero ] # [ mod_add`{s}(p, x, y) | x <- l | y <- sums ]
 
+type NN = 2^^8
+type QQ = 2^^23 - 2^^13 + 1
+unityroot =  1753^^2 : (Z QQ)
+type R_qq = [NN](Z QQ)
+
+ParametricNTT : R_qq -> (Z QQ) -> R_qq
+ParametricNTT f root = [term i | i <- [0 .. NN-1]]
+    where term i = sum [(f@j)*((root^^i)^^j) | j <- [0 .. NN-1]]
+
+CorrectnessRecip : (Z QQ) -> Bit
+property CorrectnessRecip a = (a * (recip a)) == 1
+
+NTT' : R_qq -> R_qq
+NTT' f = ParametricNTT f unityroot
+
+NTTInv' : R_qq -> R_qq
+NTTInv' f = [term*(recip `NN) | term <- ParametricNTT f (recip unityroot)]
+
+CorrectnessNTT : R_qq -> Bit
+property CorrectnessNTT f =  NTTInv' (NTT' f) == f
+
+fromRing : R_qq -> Poly
+fromRing f = map fromInteger (map fromZ f)
+
+toRing : Poly -> R_qq
+toRing f = map fromInteger (map toInteger f)
+
+CorrectnessConversion : R_qq -> Bit
+property CorrectnessConversion f = (toRing (fromRing f)) == f
+
 ntt : Poly -> NttPoly
-ntt p = nttp
-    where
-    r k = mod_pow(`Q, ROOTOFUNITY, k)
-    exponents = join [ [zext i, (256 + (zext i))] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
-    nttp = [ modSum (`Q, [ (mod_mul(`Q, (p@idx), (mod_pow (`Q, (r k), i))))
-                         | idx<-[0..(N-1)]:[N][width N]
-                         | i<-[0..(N-1)]:[N][QBits]
-                         ])
-           | k <- exponents
-           ]
+ntt f = fromRing (NTT' (toRing f))
+// ntt p = nttp
+//     where
+//     r k = mod_pow(`Q, ROOTOFUNITY, k)
+//     exponents = join [ [zext i, (256 + (zext i))] | i <- [reverse ((128+i) : [8]) | i <- [0..127] ] ]
+//     nttp = [ modSum (`Q, [ (mod_mul(`Q, (p@idx), (mod_pow (`Q, (r k), i))))
+//                          | idx<-[0..(N-1)]:[N][width N]
+//                          | i<-[0..(N-1)]:[N][QBits]
+//                          ])
+//            | k <- exponents
+//            ]
 
 nttInv : NttPoly -> Poly
-nttInv p' = p
-    where
-        pu = reorder p'
-        r' i = mod_pow (`Q, ROOTOFUNITYINV, i * 2)
-        p = [ mod_mul(`Q, NINV, mod_mul(`Q, mod_pow(`Q, ROOTOFUNITYINV, i), (modSum (`Q, [mod_mul(`Q, (pu@jdx), (r' ((i*j))))
-            | jdx <- [0..(N-1)]:[N][width N]
-            | j <- [0..(N-1)]:Poly
-            ]))))
-            | i <- [0..(N-1)]:Poly
-            ]
+nttInv f = fromRing (NTTInv' (toRing f))
+// nttInv p' = p
+//     where
+//         pu = reorder p'
+//         r' i = mod_pow (`Q, ROOTOFUNITYINV, i * 2)
+//         p = [ mod_mul(`Q, NINV, mod_mul(`Q, mod_pow(`Q, ROOTOFUNITYINV, i), (modSum (`Q, [mod_mul(`Q, (pu@jdx), (r' ((i*j))))
+//             | jdx <- [0..(N-1)]:[N][width N]
+//             | j <- [0..(N-1)]:Poly
+//             ]))))
+//             | i <- [0..(N-1)]:Poly
+//             ]
+
+NTT_Correct : Poly -> Bit
+property NTT_Correct f =  nttInv (ntt f) == f
 
 // Dilithium uses a non-standard ordering of elements in the NTT domain; this function reorders the elements.
 reorder : NttPoly -> NttPoly
