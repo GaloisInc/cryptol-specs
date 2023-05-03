@@ -1,0 +1,75 @@
+\documentclass[11pt]{scrartcl}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+\usepackage{setup}
+
+
+\include{macros}
+
+\newif\ifpublish
+\publishtrue
+
+
+\author{
+  Jean-Philippe Aumasson,
+  Daniel J. Bernstein,
+  Ward Beullens,\\
+  Christoph Dobraunig,
+  Maria Eichlseder,
+  Scott Fluhrer,
+  Stefan-Lukas Gazdag,\\
+  Andreas Hülsing,
+  Panos Kampanakis,
+  Stefan Kölbl,
+  Tanja Lange,\\
+  Martin M. Lauridsen,
+  Florian Mendel,
+  Ruben Niederhagen,
+  Christian Rechberger,\\
+  Joost Rijneveld,
+  Peter Schwabe,
+  Bas Westerbaan 
+}
+
+\date{June 10, 2022}
+
+\title{\spx}
+\subtitle{Submission to the NIST post-quantum project, v.3.1}
+
+\begin{document}
+
+\maketitle
+
+\newpage
+\tableofcontents
+\newpage
+
+\ifpublish
+\else
+\input{todo}
+\fi
+
+\begin{code}
+  module sphincs where
+
+  import sphincsplus256f
+\end{code}
+
+\input{specification}
+
+% \input{instantiations}
+\input{rational}
+\input{security}
+\input{performance}
+\input{discussion}
+\input{ack}
+
+\bibliographystyle{plain}
+\bibliography{collection}
+
+\begin{appendix}
+\input{appendix}
+\end{appendix}
+
+\end{document}

@@ -1,0 +1,58 @@
+\newpage
+\section{Signature Verification} \label{sec:spec:verify}
+
+\subsection{Overview}
+
+The signature verification procedure is much simpler than the key pair generation and the signature generation.
+Given a public key $\pk = h$, a message \msg, a signature \signature = (\salt,\comps) and an acceptance bound $\sqsignorm$, the verifier uses \pk to verify that \signature is a valid signature for the message \msg as specified hereinafter:
+\begin{enumerate}
+ \item
+ The value \salt (called ``the salt'') and the message \msg are concatenated to a string $(\salt\|\msg)$ which is hashed to a polynomial $c\in \bZ_q[x]/(\phi)$ as specified by \longhashtopoint.
+ \item
+ \comps is decoded (decompressed) to a polynomial $s_2 \in \bZ[x]/(\phi)$, see \longdecompress.
+ \item
+ The value $s_1  = c - s_2 h \bmod q$ is computed.
+ \item
+ If $\|(s_1,s_2)\|^2 \leq \sqsignorm$, then the signature is accepted as valid. Otherwise, it is rejected.
+\end{enumerate}
+
+%We recall that the norm $\|\cdot\|$ is easily computed by using \eqref{eq:norm} with \eqref{eq:innercoef}.
+
+%The only subtlety here is that, as recalled in the notations, $\|\|$
+%denotes the embedding norm and not the coefficient norm. However, it is
+%possible to compute it in linear time. Given two polynomials $a$ and $b$
+%in $\bZ_q[x]/(\phi)$, whose coefficients are denoted $a_j$ and $b_j$,
+%respectively, the norm $\|(a,b)\|$ is such that:
+%\begin{equation}
+%  \|(a,b)\|^2 = \sum_{j=0}^{n-1} (a_j^2 + b_j^2)
+%\end{equation}
+
+\subsection{Specification}
+
+The specification of the signature verification is given in \longverify.
+
+\begin{algorithm}%[H]
+\caption{\verify(\msg, \signature, \pk, $\sqsignorm$)}\label{alg:verify}
+ \begin{algorithmic}[1]
+ \Require {A message \msg, a signature $\signature = (\salt, \comps)$, a public key $\pk = h \in \bZ_q[x]/(\phi)$, a bound $\sqsignorm$}
+ \Ensure {Accept or reject}
+ \State{$c \gets \hashtopoint(\salt\|\msg, q, n)$}
+ \State{$s_2 \gets \decompress(\comps, 8 \cdot \sigbytelen - 328)$}
+ \If{$(s_2 = \bot)$}\label{line:bots2}
+ \Reject  \Comment{Reject invalid encodings}\label{line:rejs2}
+ \EndIf
+ \State{$s_1 \gets c - s_2 h \bmod q$} \Comment{$s_1$ should be normalized between $\left\lceil - \frac{q}{2} \right\rceil$ and $\left\lfloor \frac{q}{2} \right\rfloor$}
+ \If{$\|(s_1,s_2)\|^2 \leq \sqsignorm$}\label{line:sqsignorm}
+ \Accept
+ \Else
+ \Reject \Comment{Reject signatures that are too long}
+ \EndIf
+ \end{algorithmic}
+\end{algorithm}
+
+Computation of $s_1$ can be performed entirely in $\bZ_q[x]/(\phi)$; the
+resulting values should then be normalized to the $\lceil -q/2 \rceil$
+to $\lfloor q/2 \rfloor$ range.
+% /!\ Norm already defined in the notations.
+In order to avoid computing a square root, the squared norm can be computed, using only integer operations,
+and then compared to $\sqsignorm$.

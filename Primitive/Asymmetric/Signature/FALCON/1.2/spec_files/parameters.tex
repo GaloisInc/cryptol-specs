@@ -1,0 +1,114 @@
+\section{A Note on the Key-Recovery Mode}\label{sec:key-recovery}
+
+We mentioned in Section~\ref{sec:ratio:advantages} that \falcon can be implemented in key-recovery mode. While we do not propose this mode as part of the specification, we outline here how this can be done:
+\begin{itemize}
+	\item The public key becomes $\pk = H(h)$ for some collision-resistant hash function $H$;
+	\item The signature becomes $(\comps_1, \comps_2, \salt)$, with $\comps_i = \compress(s_i)$;
+	\item The verifier accepts the signatures if and only if:
+	\begin{itemize}[noitemsep]
+		\item $(s_1, s_2)$ is short;
+		\item $ \pk = H \left(s_2^{-1} \left( \hashtopoint(\salt\|\msg, q, n) - s_1 \right) \right)$
+	\end{itemize}
+\end{itemize}
+We note that $h = s_2^{-1} \left( \hashtopoint(\salt\|\msg, q, n) - s_1 \right)$, so the verifier can recover $h$ during the verification process, hence the name \textit{key-recovery mode}.
+We also note that unlike the other modes, this one requires $s_2$ to be invertible $\bmod (\phi, q)$. Finally, the output of $H$ should be $2 \lambda$ bits long to ensure collision-resistance, but if we assume that the adversary can query at most $q_s$ public keys (similarly to the bound imposed on the number of signatures), perhaps it can be shortened to $\lambda + \log_2 q_s$.
+
+The main impact of this mode is that the public key becomes extremely compact: $|\pk| = 2 \lambda$. The signature becomes about twice larger, but the total size $|\pk| + |\signature|$ becomes about 15\% shorter. Indeed, we trade $h$ with $s_1$; the bitsize of $s_1$ can be reduced by about 35\% using \compress, whereas $h$ cannot be compressed efficiently (it is assumed to be computationally indistinguishable from random).
+
+
+\section{Recommended Parameters} \label{sec:spec:params}
+
+We specify two sets of parameters that address security levels I and V as defined by NIST~\cite[Section 4.A.5]{NIST}. These can be found in Table~\ref{tab:falconparam}. Core-SVP hardness is given for the best known classical (C) and quantum (Q) algorithms. 
+
+\todo[inline]{Tentative new table}
+
+\begin{table}[htb!]
+	\centering
+	\begin{tabular}{|c|c|c|}
+	\hline
+	& \falcon-512 & \falcon-1024 \\
+	\hline
+	Target NIST Level & I &  V \\
+	\hline
+	Ring degree $n$ & 512 & 1024 \\
+	\hline
+	Modulus $q$ & \multicolumn{2}{c|}{12289} \\
+	\hline
+	Standard deviation $\sigma$ & \sigmavali & \sigmavalv \\
+	\hline
+	$\sigmin$ & \sigminvali & \sigminvalv \\
+	\hline
+	$\sigmax$ & \multicolumn{2}{c|}{\sigmaxvali}  \\
+	\hline
+	Max. signature square norm $\sqsignorm$ & \sqsignormvali & \sqsignormvalv \\
+	\hline
+	Public key bytelength & 897 & 1~793 \\
+	Signature bytelength $\sigbytelen$ & \sigbytelenvali & \sigbytelenvalv \\	
+	\hhline{|=|=|=|}
+	\multirow{3}{*}{$\text{Key-recovery:}\begin{cases}
+		\text{BKZ blocksize $B$ \eqref{eq:blocksize_keyrecovery}} \\[-1.1ex]
+		\text{Core-SVP hardness (C)} \\[-.8ex]
+		\text{Core-SVP hardness (Q)}
+		\end{cases} 
+		$} & \keyrecbkzi & \keyrecbkzv \\
+	& \keyrecclassici & \keyrecclassicv \\
+	& \keyrecquantumi & \keyrecquantumv \\
+	\hline
+	\multirow{3}{*}{$\text{Forgery:}\begin{cases}
+	\text{BKZ blocksize $B$ \eqref{eq:blocksize_forgery}} \\[-1.1ex]
+	\text{Core-SVP hardness (C)} \\[-.8ex]
+	\text{Core-SVP hardness (Q)}
+	\end{cases} 
+	$} & \forgebkzi & \forgebkzv \\
+	& \forgeclassici & \forgeclassicv \\
+	& \forgequantumi & \forgequantumv \\
+	\hline
+	\end{tabular}
+	\caption{\falcon parameter sets.}\label{tab:falconparam}
+\end{table}
+
+\tprcomment{I commented the paragraph on the acceptance bound}
+%\paragraph{Acceptance bound.} It is important that signers and verifiers
+%agree \emph{exactly} on the acceptance bound $\beta$, since signatures may come
+%arbitrarily close to that bound (signers restart the signing process
+%when they exceed it).
+%Banaszczyk~\cite[Lemma 1.5]{Banaszczyk93} provided values for $\beta$ so that the signing process restarts with negligible probability,
+%however we can relax it to a $\beta$ so that it restarts with small probability:
+%\begin{equation}
+%    \bound^2 = \left\lfloor \frac{87067565 n}{1024} \right\rfloor.
+%\end{equation}
+
+%and, in the ternary case (with $q = 18433$):
+%\begin{equation}
+%    \bound^2 = \left\lfloor \frac{100464491 n}{768} \right\rfloor
+%\end{equation}
+
+% [TPo] These other parameters are already included in the descriptions
+% of the relevant algorithms. No need to recall them here, especially
+% since they differ between binary and ternary cases.
+%
+%\paragraph{Other parameters.} From the parameters $n,q,\phi,\beta^2$ speficied in table~\ref{tab:falconparam}, we can derive the parameters used in the key generation procedure:
+%\begin{itemize}
+% \item Each coefficient of $f$ and $g$ is sampled with a standard deviation $\sigma' = 1.17\sqrt{q/2n}$;
+% \item The polynomials $f,g$ are rejected if the computed value $\gamma$ verifies $\gamma > 1.17\sqrt{q}$;
+% \item The tree \tree is normalized with respect to a value $\sigma = 1.55\sqrt{q}$.
+%\end{itemize}
+
+% \paragraph{Set of parameters for $n=768$.} We intend to propose a third set of parameters for the final submission package, for $n=768$. The description of \falcon for $n=768$ is different from the other cases and is not yet described in this document. Since $n = 768$ is not a power of two, the modulus polynomial $\phi$ will not be $x^n+1$, as for $n$ a power of two, but $x^{n}-x^{n/2}+1$. Overall, we do not intend to provide more than three distinct sets of parameters to cover the five security strength categories defined in \cite[Section 4.A.5]{NIST}
+
+% TODO: Move these explanations to the rationale?
+% 
+% \paragraph{Smoothing Parameter.}
+% The smoothing parameter \(\eta_\epsilon(\Lambda)\) quantifies the minimal discrete Gaussian standard deviation $\sigma$ required to obtain a given level of smoothness on the lattice $\Lambda$. Intuitively, if one picks a noise vector over a lattice from a discrete Gaussian distribution with radius at least as large as the smoothing parameter, and reduces this modulo the fundamental parallelepiped of the lattice, then the resulting distribution is very close to uniform (for details and formal definition see \cite{MicReg07?}). Since the number of queries is $q_s \leq 2^{64}$, we may set $\epsilon \leq 2^{-64}$ and we therefore have $\eta_\epsilon(\bZ^n) \leq 1.29$.
+% 
+% \paragraph{Norm of the NTRU Polynomials $\|(f,g)\|$.}
+% The polynomials $f$ and $g$ shall be chosen as to minimize the Gram-Schmidt norm of the secret NTRU basis $\|\matB\|_{GS}$. This leads to more secure trapdoor sampling. In this regard, a close to optimal is to have the Euclidean norm of $(f,g) \in \bZ^{2n}$ close to but smaller than $1.2 \cdot \sqrt{q} \approx 133.03$.
+% 
+% \paragraph{Standard Deviation $\sigma$.}
+% $\ffsampling$ shall be used with a standard deviation $\sigma$ close to but greater than $\eta_\epsilon(\bZ^n)\cdot\|\matB\|_{GS}$. From the discussions above, it is clear that $\sigma = 1.55 \cdot \sqrt{q} \approx 171.83$ is enough. Note that $\sigma$ can be derived from $q$ as well as the upper bound on the Gram-Schmidt norm of the secret NTRU basis, therefore each of these two parameters have only one specified value for the three quantum security level specified.
+% 
+% \paragraph{Acceptance Bound $\bound$.}
+% The signature shall be accepted if and only if its Euclidean norm is less than $\bound = 1.2\cdot\sigma \cdot \sqrt{2n}$ (see Table~\ref{tab:falconparam}). Note that the $1.2$ factor is a security-efficiency trade-off. If we define the acceptance bound as $\bound = \delta\cdot\sigma \cdot \sqrt{2n}$ with $\delta \geq 1$, then the greater $\delta$ the smaller the security and the smaller $\delta$ the greater the probability of obtaining a signature whose the norm is too large during the signature generation.
+
+
+

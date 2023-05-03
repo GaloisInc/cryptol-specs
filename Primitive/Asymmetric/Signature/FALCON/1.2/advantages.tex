@@ -1,0 +1,41 @@
+\section{Advantages and Limitations of \falcon}\label{sec:ratio:advantages}
+
+%This section lists the advantages and limitations of \falcon.
+
+\subsection{Advantages}
+
+\paragraph{Compactness.} The main advantage of \falcon is its compactness. This doesn't really come as a surprise as \falcon was designed with compactness as the main criterion. Stateless hash-based signatures often have small public keys, but large signatures. Conversely, some multivariate schemes achieve very small signatures but require large public keys. Lattice-based schemes~\cite{NISTPQC-R2:CRYSTALS-DILITHIUM19} can offer the best of both worlds, but no NIST candidate gets $|\pk|+|\signature|$ to be as small as \falcon does.
+
+\paragraph{Fast signature generation and verification.} The signature generation and verification procedures are very fast. This is especially true for the verification algorithm, but even the signature algorithm can perform more than $1000$ signatures per second on a moderately-powered computer.
+
+\paragraph{Security in the ROM and QROM.} The GPV framework comes with a security proof in the random oracle (ROM), and a security proof in the quantum random oracle model (QROM) was later provided in \cite{AC:BDFLSZ11}. See also \cite{PKC:ChaDeb20}. In contrast, the Fiat-Shamir heuristic has only recently been proven secure in the QROM, and under certain conditions~\cite{C:LiuZha19,C:DFMS19}.
+
+\paragraph{Modular design.} The design of \falcon is modular. Indeed, we instantiate the GPV framework with NTRU lattices, but it would be easy to replace NTRU lattices with another class of lattices if necessary. Similarly, we use fast Fourier sampling as our trapdoor sampler, but it is not necessary either. Actually, an extreme simplicity/speed trade-off would be to replace our fast Fourier sampler with Klein's sampler: signature generation would be two orders of magnitudes slower, but it would be simpler to implement and its black-box security would be the same.
+
+%\paragraph{Message recovery mode.} In some situations, it can be advantageous to use \falcon in message-recovery mode. The signature becomes twice as long but the message does not need to be sent anymore, which induces a gain on the total communication complexity.
+
+\paragraph{Signatures with message recovery.}
+In \cite{SCN:delLyuPoi16}, it has been shown that a preliminary version of \falcon can be instantiated in message-recovery mode: the message \msg can be recovered from the signature \signature. It makes the signature twice longer, but allows to entirely recover a message which size is slightly less than half the size of the original signature. In situations where we can apply it, it makes \falcon even more competitive from a compactness viewpoint.
+
+\paragraph{Key recovery mode.} \falcon can also be instantiated in key-recovery mode. In this mode, The signature becomes twice longer but the key is reduced to a single hash value. In addition to incurring a very short key, this reduces the total size $|\pk|+|\signature|$ by about 15\%. More details are given in Section~\ref{sec:key-recovery}.
+
+\paragraph{Identity-based encryption.} As shown in \cite{AC:DucLyuPre14}, \falcon can be converted into an identity-based encryption scheme in a straightforward manner.
+
+\paragraph{Easy signature verification.} The signature procedure is very simple: essentially, one just needs to compute $[H(\salt\|\msg) - s_2 h] \bmod q$, which boils down to a few NTT operations and a hash computation.
+
+
+\subsection{Limitations}
+
+%\falcon also has a few limitations. These limitations are implementation-related and interestingly, they concern only the signer. We list them below.
+
+\paragraph{Delicate implementation.} We believe that both the key generation procedure and the fast Fourier sampling are non-trivial to understand and delicate to implement, and constitute the main shortcoming of \falcon. On the bright side, the fast Fourier sampling uses subroutines of the fast Fourier transform as well as trees, two objects most implementers are familiar with.
+
+\paragraph{Floating-point arithmetic.} Our signing procedure uses floating-point arithmetic with 53 bits of precision. While this poses no problem for a software implementation, it may prove to be a major limitation when implementation on constrained devices -- in particular those without a floating-point unit -- will be considered.
+
+% \paragraph{Cumbersome key generation.} In \falcon, the key generation is reasonably fast (less than 2 seconds on a moderately-powered computer), but its memory cost is rather high (about $4$ MBytes). Combined to the fact that it requires rather complex operations on multiprecision integers, this fact may preclude the implementation of the key generation procedure on constrained devices.
+
+%\paragraph{Unclear side-channel resistance.} \falcon relies heavily on discrete Gaussian sampling over the integers. How to implement this securely with respect to timing and side-channel attacks has remained largely unstudied, although this has recently started to change~\cite{EPRINT:ZhaSteSak18,DAC:KSVV19,C:MicWal17,EPRINT:RRVV14}.
+
+\medskip
+
+We previously listed ``unclear side-channel resistance'' as a limitation of \falcon, due to discrete Gaussian sampling over the integers. This is much less the case now: constant-time implementations for this step and for the whole scheme are provided in \cite{PQCRYPTO:HPRR20} and \cite{EPRINT:Pornin19}, respectively. A challenging next step is to implement \falcon in a masked fashion.

@@ -1,0 +1,214 @@
+% Packages
+\usepackage{a4wide}
+
+\usepackage{amsfonts,amsmath,amscd,amssymb,array}
+\usepackage{mathtools}
+
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+\usepackage{booktabs}
+
+\usepackage{tabularx}
+\usepackage{verbatim}
+
+\usepackage{fancyvrb}
+\DefineVerbatimEnvironment{code}{Verbatim}{frame=single, samepage=true, gobble=2, numbers=left, framerule=0.8mm, label=Cryptol}
+
+\usepackage{xcolor}
+\definecolor{linkcolor}{rgb}{0.65,0,0}
+\definecolor{citecolor}{rgb}{0,0.65,0}
+\definecolor{urlcolor}{rgb}{0,0,0.65}
+\usepackage[colorlinks=true, backref=page, linkcolor=linkcolor, urlcolor=urlcolor, citecolor=citecolor]{hyperref}
+
+\def\sectionautorefname{Section}
+\def\subsectionautorefname{Section}
+\def\subsubsectionautorefname{Section}
+
+\usepackage{breakurl}
+
+\usepackage[T1]{tipa}
+
+\usepackage{xspace}
+% \usepackage{todo}
+\usepackage{etoolbox}
+\usepackage[colorinlistoftodos]{todonotes}
+\newcounter{commentm}
+\newcommand{\TODO}[2][]{%
+\refstepcounter{commentm}%
+{%
+\todo[color={red!40},size=\small,inline,#1]{%
+\textbf{[TODO \thecommentm]}~#2}%
+}}{}
+
+\newcommand{\XXX}{\textbf{\textcolor{red}{XXX}}}
+
+\usepackage{tikz}
+
+% Custom commands
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
+
+
+\def\subheading#1{\medskip\noindent{\boldmath\textbf{#1}}~\ignorespaces}
+\def\subsubheading#1{\medskip\noindent{\textit{#1}}~}
+
+%%%%%%%%%%%%%  Provide Theorem environments %%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{korollar}[theorem]{Corollary}
+\newtheorem{definition}[theorem]{Def\/inition}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{construction}[theorem]{Construction}%{\bfseries}{\itshape}
+\newtheorem{assumption}[theorem]{Assumption}%{\bfseries}{\itshape}
+\newtheorem{claim}[theorem]{Claim}{\bfseries}{\itshape}
+
+
+\newcommand{\qed}{{ }\hfill$\Box$}
+
+\newenvironment{proof}[1][\@noarg]{%
+ \begin{trivlist}
+ \providecommand{\proofname}{Proof}
+ \item[]
+ \ifthenelse{\equal{#1}{\@noarg}}{\textit{\proofname{}. }}{\textit{\proofname{} (#1). }}}{%
+ \end{trivlist}}
+ 
+
+
+
+% Tikz Styles
+\tikzstyle{block}=[draw=black, rectangle, align=center, minimum width=5cm,
+                   minimum height=1cm, node distance=1cm]
+
+% Code Formatting
+\usepackage{listings}
+
+\renewcommand{\lstlistingname}{Algorithm}
+
+\definecolor{doc@lstidentifier}{HTML}{000000}   % black
+\definecolor{doc@lstcomment}{HTML}{CC3300}      % dark orange
+\definecolor{doc@lstfunctions}{HTML}{006600}    % dark green
+\definecolor{doc@lststring}{HTML}{FF5500}       % orange
+\definecolor{doc@lstkeyword}{HTML}{0000CC}      % deep blue
+\definecolor{doc@lstdirective}{HTML}{881000}    % dark red
+\definecolor{doc@lstconstants}{HTML}{0033AA}    % dark blue
+\definecolor{doc@lstidentifiers2}{HTML}{FF0033} % purple-red
+\definecolor{doc@lstnumbers}{HTML}{AA00AA}      % purple
+
+\definecolor{doc@lstbackground}{HTML}{FFFFFF}   % white
+\definecolor{doc@lstframe}{HTML}{FFFFFF}        % white
+
+\lstdefinelanguage{pseudoc}{%
+  morekeywords=[1]{for, if, return, extern, while},
+  morekeywords=[5]{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+  sensitive=true,
+  alsoletter   = {0,1,2,3,4,5,6,7,8,9},
+  morestring=[b]",
+  morecomment=[l]{//},
+  identifierstyle=\color[rgb]{0,0,0},
+  commentstyle=\color{doc@lstcomment}\itshape,
+  stringstyle=\color{doc@lststring},
+  keywordstyle=\color{doc@lstkeyword},
+  keywordstyle=[1]\color{doc@lstidentifiers2},
+  keywordstyle=[2]\color{doc@lstconstants},
+  keywordstyle=[4]\color{doc@lstfunctions},
+  keywordstyle=[5]\color{doc@lstnumbers},
+  delim=[l][\color{doc@lstdirective}]{\#},
+}
+
+\lstloadlanguages{% check documentation for other languages...
+  C
+}
+
+\lstset{%
+  lineskip=-0.1em,
+  %
+  basicstyle=\ttfamily\small, % font that is used for the code
+  identifierstyle=\color{doc@lstidentifier},
+  commentstyle=\color{doc@lstcomment}\itshape,
+  stringstyle=\color{doc@lststring},
+  keywordstyle=\color{doc@lstkeyword},
+  keywordstyle=[2]\color[rgb]{0,0,0.75},
+  keywordstyle=[3]\color[rgb]{0.127,0.427,0.514},
+  keywordstyle=[4]\color[rgb]{1,0.4,0},
+  %
+  extendedchars=true,
+  inputencoding=utf8,
+  upquote=true, %
+  tabsize=2, % set default tabsize to 4 spaces
+  showtabs=false, % show tabs within strings adding particular underscores
+  %  tab=$\to$,
+  showspaces=false, % show spaces adding particular underscores
+  showstringspaces=false, % underline spaces within strings
+  %
+  numbers=left, % where to put the line numbers
+  stepnumber=0, % step between two line numbers
+  numberstyle=\small, % line number font size
+  %
+  captionpos=b, % set the caption position to `bottom'
+  %
+  xleftmargin=1.4em, % text to the right
+  xrightmargin=0.4em, % text to the left
+  breaklines=false, % don't break long lines of code
+  %
+  frame=leftline, % add a frame around the code
+  framexleftmargin=0pt, % frame back to the left
+  framexrightmargin=0pt, % frame back to the right
+  backgroundcolor=\color{doc@lstbackground}, % set the background color
+  rulecolor=\color{doc@lstframe}, % frame color
+  %
+  columns=flexible, % try not to ruin the spacing intended by the font designer
+  keepspaces=true, % don't drop spaces to fix column alignment
+  directivestyle={\color{doc@lstdirective}},
+  %
+  % mathescape, % allow escaping to (La)TeX mode within $..$
+  escapechar=², % allow escaping to (La)TeX mode within ²..²
+  % The backquote was NOT judicious: in some code (comments), I wrap vars
+  % between such a backquote (`var')
+  %
+  % conversion of UTF-8 chars to latin1
+  literate=
+  { }{{~}}1
+  {á}{{\'a}}1
+  {à}{{\`a}}1
+  {â}{{\^a}}1
+  {ä}{{\"a}}1
+  {ç}{{\c{c}}}1
+  {é}{{\'e}}1
+  {è}{{\`e}}1
+  {ê}{{\^e}}1
+  {ë}{{\"e}}1
+  {í}{{\'i}}1
+  {ì}{{\`i}}1
+  {î}{{\^i}}1
+  {ï}{{\"i}}1
+  {ó}{{\'o}}1
+  {ò}{{\`o}}1
+  {ô}{{\^o}}1
+  {ö}{{\"o}}1
+  {ú}{{\'u}}1
+  {ù}{{\`u}}1
+  {û}{{\^u}}1
+  {ü}{{\"u}}1
+  {Á}{{\'A}}1
+  {À}{{\`A}}1
+  {Â}{{\^A}}1
+  {Ä}{{\"A}}1
+  {Ç}{{\c{C}}}1
+  {É}{{\'E}}1
+  {È}{{\`E}}1
+  {Ê}{{\^E}}1
+  {Ë}{{\"E}}1
+  {Í}{{\'I}}1
+  {Ì}{{\`I}}1
+  {Î}{{\^I}}1
+  {Ï}{{\"I}}1
+  {Ó}{{\'O}}1
+  {Ò}{{\`O}}1
+  {Ô}{{\^O}}1
+  {Ö}{{\"O}}1
+  {Ú}{{\'U}}1
+  {Ù}{{\`U}}1
+  {Û}{{\^U}}1
+  {Ü}{{\"U}}1
+}

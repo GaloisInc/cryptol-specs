@@ -1,0 +1,39 @@
+% !TeX root = ../falcon.tex
+
+
+% This file contains the parameters of the document
+\setlength{\pdfpagewidth}{\paperwidth}
+\setlength{\pdfpageheight}{\paperheight}
+\newcommand*{\eg}{e.g.\@\xspace}
+\newcommand*{\ie}{i.e.\@\xspace}
+
+% \hypersetup{pdftex}
+
+% Use the sans-serif font for section headings
+\allsectionsfont{\sffamily}
+
+\setlength{\parskip}{1ex}
+\setlength{\parindent}{0in}
+
+% Cleveref options
+\crefname{section}{Section}{Sections}
+\crefname{table}{Table}{Tables}
+\crefname{chapter}{Chapter}{Chapters}
+
+% To parameterize the item separations and top separations in the itemize and enumerate environments
+\setlist[itemize]{itemsep=1mm, topsep=0mm}
+\setlist[enumerate]{itemsep=1mm, topsep=0mm}
+
+% Numprint: numbers formatting
+%\npthousandsep{~}
+\npdecimalsign{.}
+\nprounddigits{9}
+
+% Change spacing in the table of contents
+% https://tex.stackexchange.com/a/56550/176500
+%\makeatletter
+%\addtocontents{toc}{\protect\addvspace{-28\p@}}
+%\pretocmd{\chapter}{\addtocontents{toc}{\protect\addvspace{-10\p@}}}{}{}
+%\pretocmd{\section}{\addtocontents{toc}{\protect\addvspace{-7\p@}}}{}{}
+%\pretocmd{\subsection}{\addtocontents{toc}{\protect\addvspace{-10\p@}}}{}{}
+%\makeatother

@@ -1,0 +1,333 @@
+% !TeX root = ../falcon.tex
+
+%%%%%%%%%%%%%%%%%%%%
+% Macro generation %
+%%%%%%%%%%%%%%%%%%%%
+\def\do#1{\csdef{b#1}{\ensuremath{\mathbb{#1}}}}
+\docsvlist{A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z}
+
+\def\do#1{\csdef{c#1}{\ensuremath{\mathcal{#1}}}}
+\docsvlist{A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z}
+
+\def\do#1{\csdef{mat#1}{\ensuremath{\mathbf{#1}}}}
+\docsvlist{A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z}
+
+\def\do#1{\csdef{vec#1}{\ensuremath{\mathbf{#1}}}}
+\docsvlist{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z}
+
+
+%%%%%%%%%%%%%%
+% Math stuff %
+%%%%%%%%%%%%%%
+\DeclareMathOperator{\gpd}{gpd}
+\DeclareMathOperator{\N}{N}
+\DeclareMathOperator{\Diag}{Diag}
+\DeclareMathOperator{\Span}{Span}
+\DeclareMathOperator{\res}{Res}
+\DeclareMathOperator{\gal}{Gal}
+\DeclareMathOperator{\g}{g}
+
+\newcommand{\matzero}{\mathbf{0}}
+\newcommand{\veczero}{\mathbf{0}}
+\newcommand{\dotp}[2]{\langle #1, #2 \rangle}
+\newcommand{\inner}[2]{\langle #1, #2 \rangle}
+\newcommand{\adj}[1]{#1^\star}
+\newcommand{\frc}[2]{#1 / (#2)}
+\newcommand{\ffgg}{ f\adj f + g\adj g}
+\newcommand{\norm}[1]{\left\|#1\right\|}
+\newcommand{\gsnorm}[1]{\norm{#1}_{\textsc{GS}}}
+% \newcommand{\maxnorm}[1]{\|#1\|_{\max}}
+\newcommand{\onetwo}[2]{\left[\begin{array}{c|c} #1 & #2 \end{array} \right]}
+\newcommand{\twoone}[2]{\left[\begin{array}{c} #1 \\ \hline #2 \end{array} \right]}
+\newcommand{\twotwo}[4]{\left[\begin{array}{c|c} #1 & #2 \\ \hline #3 & #4 \end{array} \right]}
+\newcommand{\gaussround}[2]{D_{\bZ,\ #2,\ #1}}
+\newcommand{\fdot}{\ensuremath{ \odot }}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% Fast Fourier sampling %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\gso}{GSO\xspace}
+\renewcommand{\L}{ \ensuremath{ \matL } }
+\renewcommand{\l}{ \ensuremath{ L } }
+\newcommand{\LDL}{ \ensuremath{ \text{LDL} } }
+\renewcommand{\t}{\text{t}}
+\newcommand{\LDLs}{ \ensuremath{ \text{LDL}^\star } }
+\newcommand{\tBB}{ \ensuremath{ \tilde{\matB} } }
+
+
+%%%%%%%%%%
+% Falcon %
+%%%%%%%%%%
+
+% Falcon
+\newcommand{\falcon}{\textsc{Falcon}\xspace}
+\newcommand{\ntrusign}{\textsc{NTRUSign}\xspace}
+
+% Metasyntactic variables
+\newcommand{\sk}{\textsf{sk}\xspace}
+\newcommand{\pk}{\textsf{pk}\xspace}
+\newcommand{\msg}{\textsf{m}\xspace}
+\newcommand{\salt}{\textsf{r}\xspace}
+\newcommand{\comps}{\textsf{s}\xspace}
+\newcommand{\signature}{\textsf{sig}\xspace}
+\newcommand{\str}{\textsf{str}\xspace}
+
+% Algorithms names
+\newcommand{\declarealgo}[2]{%
+	 \csdef{#1}{\hyperref[alg:#1]{\textsf{#2}}\xspace} %
+	 \csdef{long#1}{\hyperref[alg:#1]{\textsf{#2}} (\cref{alg:#1})\xspace} %
+} % A macro to declare linkable algorithms. Examples below
+\declarealgo{compress}{Compress}
+\declarealgo{decompress}{Decompress}
+\declarealgo{keygen}{Keygen}
+\declarealgo{ntrugen}{NTRUGen}
+\declarealgo{reduce}{Reduce}
+\declarealgo{ntrusolve}{NTRUSolve}
+\declarealgo{normalize}{Normalize}
+\declarealgo{sign}{Sign}
+\declarealgo{verify}{Verify}
+\declarealgo{hashtopoint}{HashToPoint}
+\declarealgo{samplepreimage}{SamplePreimage}
+\declarealgo{ffsampling}{ffSampling}
+\declarealgo{basesampler}{BaseSampler}
+\declarealgo{berexp}{BerExp}
+\declarealgo{approxexp}{ApproxExp}
+\declarealgo{samplerz}{SamplerZ}
+\declarealgo{ldlalgo}{\ensuremath{ \adj{\mathsf{LDL}} }}
+\declarealgo{ffldl}{\ensuremath{ \adj{\mathsf{ffLDL}} }}
+\declarealgo{ffldlter}{\ensuremath{ \adj{\mathsf{ffLDL_3}} }}
+\declarealgo{splitfft}{{splitfft}}
+\declarealgo{mergefft}{{mergefft}}
+
+% SHAKE
+\newcommand{\shake}{\textsf{SHAKE-256}\xspace}
+\newcommand{\shakectx}{\textsf{ctx}\xspace}
+\newcommand{\shakeinit}{\shake\textsf{-Init}\xspace}
+\newcommand{\shakeinject}{\shake\textsf{-Inject}\xspace}
+\newcommand{\shakeextract}{\shake\textsf{-Extract}\xspace}
+
+% Split, merge, FFT and invFFT
+\newcommand{\polsplit}{\textsf{split}\xspace}
+\newcommand{\polmerge}{\textsf{merge}\xspace}
+
+\newcommand{\fft}{\textsf{FFT}\xspace}
+\newcommand{\ifft}{\textsf{invFFT}\xspace}
+\newcommand{\ntt}{\textsf{NTT}\xspace}
+\newcommand{\intt}{\textsf{invNTT}\xspace}
+
+% Trees
+\newcommand{\tree}{\textsf{T}\xspace}
+\newcommand{\data}{\textsf{value}\xspace}
+\newcommand{\lchild}{\textsf{leftchild}\xspace}
+\newcommand{\mchild}{\textsf{middlechild}\xspace}
+\newcommand{\rchild}{\textsf{rightchild}\xspace}
+\newcommand{\leaf}{\textsf{leaf}\xspace}
+
+% Constants
+\newcommand{\sigmafg}{\sigma_{\{f,g\}}}
+\newcommand{\sigmin}{\sigma_{\min}}
+\newcommand{\sigmax}{\sigma_{\max}}
+\newcommand{\queries}{Q_s}
+\newcommand{\sigrate}{\tau_{\text{\textsc{sig}}}}
+\newcommand{\slen}{\textsf{slen}\xspace}
+%\newcommand{\siglen}{\textsf{siglen}\xspace}
+\newcommand{\ctr}{\textsf{ctr}\xspace}
+\newcommand{\sqsignorm}{\lfloor \beta^2 \rfloor}
+\newcommand{\sigbytelen}{\textsf{sbytelen}\xspace}
+
+% Other sutff
+\newcommand{\uniform}{\textsf{UniformBits}\xspace}
+%\newcommand{\bound}{\beta}
+\newcommand{\klein}{\textsf{Klein}\xspace}
+\newcommand{\sis}{\textsf{SIS}\xspace}
+\newcommand{\yes}{\textcolor{black!50!green}{Yes}}
+\newcommand{\no}{\textcolor{red}{No}}
+
+% Sampler over the integers
+\newcommand{\pdt}{\texttt{pdt}\xspace}
+\newcommand{\cdt}{\texttt{cdt}\xspace}
+\newcommand{\rcdt}{\texttt{RCDT}\xspace}
+\newcommand{\cdtlen}{18}
+\newcommand{\cdtlenminus}{17}
+\newcommand{\poldeg}{12}
+\newcommand{\poldegpone}{13}
+\newcommand{\istrue}[1]{\llbracket #1 \rrbracket}
+
+
+%%%%%%%%%%%%%%%%%%%%
+% Hardcoded values %
+%%%%%%%%%%%%%%%%%%%%
+% These values are lifted from:
+% https://github.com/tprest/NIST/blob/master/scripts/parameters.py
+% See also http://aleph.sagemath.org/?q=ivokvl
+\newcommand{\sigrateval}{1.1}
+
+% Parameters for Falcon-512 (NIST Level I)
+\newcommand{\sigmavali}{\numprint{165.7366171829776}}
+\newcommand{\sigminvali}{\numprint{1.2778336969128337}}
+\newcommand{\sigmaxvali}{1.8205}
+\newcommand{\sqsignormvali}{{34~034~726}}
+\newcommand{\sigbytelenvali}{{666}}
+
+% Parameters for Falcon-1024 (NIST Level V)
+\newcommand{\sigmavalv}{\numprint{168.38857144654395}}
+\newcommand{\sigminvalv}{\numprint{1.298280334344292}}
+\newcommand{\sigmaxvalv}{1.8205}
+\newcommand{\sqsignormvalv}{{70~265~242}}
+\newcommand{\sigbytelenvalv}{{1~280}}
+
+% Concrete security for Falcon-512 (NIST Level I)
+% Old
+\newcommand{\keyrecbkzi}{458}
+\newcommand{\keyrecclassici}{133}
+\newcommand{\keyrecquantumi}{121}
+\newcommand{\forgebkzi}{411}
+\newcommand{\forgeclassici}{120}
+\newcommand{\forgequantumi}{108}
+\newcommand{\keyrecsievei}{418}
+\newcommand{\keyrecclassicopti}{122}
+\newcommand{\keyrecquantumopti}{110}
+\newcommand{\forgesievei}{374}
+\newcommand{\forgeclassicopti}{109}
+\newcommand{\forgequantumopti}{99}
+
+% Concrete security for Falcon-1024 (NIST Level V)
+\newcommand{\keyrecbkzv}{936}
+\newcommand{\keyrecclassicv}{273}
+\newcommand{\keyrecquantumv}{248}
+\newcommand{\forgebkzv}{952}
+\newcommand{\forgeclassicv}{277}
+\newcommand{\forgequantumv}{252}
+\newcommand{\keyrecsievev}{869}
+\newcommand{\keyrecclassicoptv}{253}
+\newcommand{\keyrecquantumoptv}{230}
+\newcommand{\forgesievev}{884}
+\newcommand{\forgeclassicoptv}{258}
+\newcommand{\forgequantumoptv}{234}
+
+%%%%%%%%%%%%%%%%
+% Algorithmic  %
+%%%%%%%%%%%%%%%%
+\renewcommand\Return[1]{\State\textbf{return} #1}
+\newcommand\Accept{\State\textbf{accept}}
+\newcommand\Reject{\State\textbf{reject}}
+\newcommand\Abort{\State\textbf{abort}}
+\newcommand\Restart{\State\textbf{restart}}
+\algdef{SE}[DOWHILE]{Do}{doWhile}{\algorithmicdo}[1]{\algorithmicwhile\ #1}%
+\algnewcommand\algorithmicformat{\textbf{Format:}}
+\algnewcommand\Format{\item[\algorithmicformat]}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Macros for Renyi stuff and proofs %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\supp}{\text{Supp}}
+\newcommand{\sd}{\text{SD}}
+\newcommand{\kld}{\text{KLD}}
+\newcommand{\rd}{\text{R\'enyi divergence}}
+\newcommand{\smooth}{\eta_\epsilon}
+\newcommand{\smoothZ}{\smooth(\bZ^{2n})}
+\newcommand{\ds}{\delta_\sigma}
+\newcommand{\dc}{\delta_c}
+\newcommand{\err}[1]{\bar #1}
+
+% Checked box for statements
+\providecommand{\CheckBox}{\makebox[0pt][l]{$\square$}\raisebox{.15ex}{\hspace{0.1em}$\checkmark$}}
+\renewcommand{\CheckBox}{\makebox[0pt][l]{$\square$}\raisebox{.15ex}{\hspace{0.1em}$\checkmark$}}
+
+%%%%%%%%%%%%%%
+% Our names  %
+%%%%%%%%%%%%%%
+\newcommand{\pierrealain}{Pierre-Alain Fouque\xspace}
+\newcommand{\jeffrey}{Jeffrey Hoffstein\xspace}
+\newcommand{\paul}{Paul Kirchner\xspace}
+\newcommand{\vadim}{Vadim Lyubashevsky\xspace}
+\newcommand{\thomaspo}{Thomas Pornin\xspace}
+\newcommand{\thomaspr}{Thomas Prest\xspace}
+\newcommand{\thomasr}{Thomas Ricosset\xspace}
+\newcommand{\gregor}{Gregor Seiler\xspace}
+\newcommand{\william}{William Whyte\xspace}
+\newcommand{\zhenfei}{Zhenfei Zhang\xspace}
+
+% With link
+\newcommand{\pierrealainlink}{\href{mailto:pa.fouque@gmail.com}{\pierrealain}}
+\newcommand{\jeffreylink}{\href{mailto:jhoff@math.brown.edu}{\jeffrey}}
+\newcommand{\paullink}{\href{mailto:pkirchne@clipper.ens.fr}{\paul}}
+\newcommand{\vadimlink}{\href{mailto:VAD@zurich.ibm.com}{\vadim}}
+\newcommand{\thomaspolink}{\href{mailto:thomas.pornin@nccgroup.trust}{\thomaspo}}
+\newcommand{\thomasprlink}{\href{mailto:thomas.prest@thalesgroup.com}{\thomaspr}}
+\newcommand{\thomasrlink}{\href{mailto:thomas.ricosset@thalesgroup.com}{\thomasr}}
+\newcommand{\gregorlink}{\href{mailto:gseiler@inf.ethz.ch}{\gregor}}
+\newcommand{\williamlink}{\href{mailto:wwhyte@securityinnovation.com}{\william}}
+\newcommand{\zhenfeilink}{\href{mailto:zzhang@onboardsecurity.com}{\zhenfei}}
+
+% Company
+\newcommand{\thales}{Thales Communications \& Security\xspace}
+
+
+\presetkeys%
+{todonotes}%
+{inline}{}
+
+%\newcommand{\tprcomment}[1]{\textcolor{burgundy}{TPr: #1}}
+\newcommand{\tprcomment}[1]{\todo[linecolor=blue,backgroundcolor=blue!25,bordercolor=blue]{\textbf{TPr:} #1}}
+
+% Redefine \todo
+\renewcommand{\todo}[2][1=]{}
+\renewcommand{\tprcomment}[1]{}
+
+
+% Hacker trick to number lines in tabular
+% https://tex.stackexchange.com/a/21245/176500
+\preto\tabular{\setcounter{magicrownumbers}{0}}
+\newcounter{magicrownumbers}
+\def\rownumber{}
+
+% https://tex.stackexchange.com/a/224811/176500
+\makeatletter
+\def\smallunderbrace#1{\mathop{\vtop{\m@th\ialign{##\crcr
+				$\hfil\displaystyle{#1}\hfil$\crcr
+				\noalign{\kern3\p@\nointerlineskip}%
+				\tiny\upbracefill\crcr\noalign{\kern3\p@}}}}\limits}
+\makeatother
+\newcommand{\myclap}[1]{\makebox[0pt]{#1}}
+\newcommand\tb[2]{\smallunderbrace{]1}_{\text{\clap{#2}}}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Added vertical lines to algorithms                %%%
+%%% See https://tex.stackexchange.com/a/147751/176500 %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\errorcontextlines\maxdimen
+
+\newcommand{\ALGtikzmarkcolor}{black} %customise if needed
+\newcommand{\ALGtikzmarkextraindent}{.3ex} % same
+\newcommand{\ALGtikzmarkverticaloffsetstart}{-.6ex} % same
+\newcommand{\ALGtikzmarkverticaloffsetend}{-.5ex} % same
+\makeatletter
+\newcounter{ALG@tikzmark@tempcnta}
+
+\newcommand\ALG@tikzmark@start{%
+	\global\let\ALG@tikzmark@last\ALG@tikzmark@starttext%
+	\expandafter\edef\csname ALG@tikzmark@\theALG@nested\endcsname{\theALG@tikzmark@tempcnta}%
+	\tikzmark{ALG@tikzmark@start@\csname ALG@tikzmark@\theALG@nested\endcsname}%
+	\addtocounter{ALG@tikzmark@tempcnta}{1}%
+}
+
+\def\ALG@tikzmark@starttext{start}
+\newcommand\ALG@tikzmark@end{%
+	\ifx\ALG@tikzmark@last\ALG@tikzmark@starttext
+	% ignore this, the block was opened then closed directly without any other blocks in between (so just a \State basically)
+	% don't draw a vertical line here
+	\else
+	\tikzmark{ALG@tikzmark@end@\csname ALG@tikzmark@\theALG@nested\endcsname}%
+	\tikz[overlay,remember picture] \draw[\ALGtikzmarkcolor] let \p{S}=($(pic cs:ALG@tikzmark@start@\csname ALG@tikzmark@\theALG@nested\endcsname)+(\ALGtikzmarkextraindent,\ALGtikzmarkverticaloffsetstart)$), \p{E}=($(pic cs:ALG@tikzmark@end@\csname ALG@tikzmark@\theALG@nested\endcsname)+(\ALGtikzmarkextraindent,\ALGtikzmarkverticaloffsetend)$) in (\x{S},\y{S})--(\x{S},\y{E});%
+	\fi
+	\gdef\ALG@tikzmark@last{end}%
+}
+
+% the following line injects our new tikzmarking code
+\apptocmd{\ALG@beginblock}{\ALG@tikzmark@start}{}{\errmessage{failed to patch}}
+\pretocmd{\ALG@endblock}{\ALG@tikzmark@end}{}{\errmessage{failed to patch}}
+\makeatother
+% end vertical rule patch for algorithmicx

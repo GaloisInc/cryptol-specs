@@ -1,0 +1,66 @@
+\documentclass[letterpaper,12pt]{book}
+
+% TODO: since this is a submission to US-based NIST, we use a "letter"
+% paper size. However, it is tempting to use A4 to teach them the glory
+% of the metric system.
+
+\input{templates/packages}
+\input{templates/params}
+\input{templates/macros}
+
+% TODO: make a better title page with the Falcon logo
+%\title{\texorpdfstring%
+%{Falcon: Fast-Fourier Lattice-based\\Compact Signatures over NTRU}%
+%{\textsf{Falcon: Fast-Fourier Lattice-based\\Compact Signatures over NTRU\\
+\title{\falcon: Fast-Fourier Lattice-based\\Compact Signatures over NTRU\\
+\textsf{\large Specification v1.2 --- 01/10/2020}}
+\author{%
+\pierrealain \and%
+\jeffrey \and%
+\paul \and%
+\vadim \and%
+\thomaspo \and%
+\thomaspr \and%
+\thomasr \and%
+\gregor \and%
+\william \and%
+\zhenfei
+}
+
+\date{\href{falcon@ens.fr}{\textsf{falcon@ens.fr}}}
+
+\bibliographystyle{alpha}
+
+\begin{document}
+
+\maketitle
+
+{
+% Change paragraph space only for the ToC
+\setlength{\parskip}{.3ex}
+\tableofcontents
+}
+
+\begin{code}
+  module falcon where
+
+  import falcon_512
+\end{code}
+
+% \input{abstract.tex}
+\input{intro.tex}
+
+\input{rationale.tex} %TPr: I moved the rationale before the spec
+\input{advantages.tex}
+\input{spec2.tex} 
+\input{impl.tex}
+
+% \input{ffsampling.tex}
+\appendix
+% \input{sampling.tex}
+
+{\small
+\bibliography{bib/abbrev2,bib/crypto_crossref,bib/other_biblio}}
+
+
+\end{document}
