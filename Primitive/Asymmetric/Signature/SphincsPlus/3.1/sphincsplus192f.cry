@@ -8,6 +8,9 @@ type d = 22
 type a = 8
 type k = 33
 type loglogw = 2
+type m = (k*logt+7)/8 + (h-h/d+7)/8 + (h/d+7)/8
+type t = 2^^a
+type logt = a
 
 H_msg(R, PKseed, PKroot, M) =
     groupBy(take(shake256(join R # join PKseed # join PKroot # join M)))

@@ -176,7 +176,8 @@ have identical length.  We assume big-endian representation for any
 data types or structures.
 
 \begin{code}
-  type Byte = [8]
+  parameter
+    type Byte = [8]
 
   property ByteLength = length (groupBy`{8} 0xe534f0) == 3
 \end{code}
@@ -1909,9 +1910,14 @@ consists of the selected private key elements and the associated authentication
 paths.
 
 \begin{code}
-  type FORSMessage = [k * a]Bit
-  type FORSPrKey = [k*t][n]Byte
-  type FORSPbKey = [n]Byte
+  parameter
+    type t : #
+    type constraint (fin t, t >= 1)
+    type logt : #
+    type constraint (logt == a)
+    type FORSMessage = [k * a]Bit
+    type FORSPrKey = [k * t][n]Byte
+    type FORSPbKey = [n]Byte
 \end{code}
 
 \spx uses implicit verification for \fors, only using a method to compute
@@ -2323,9 +2329,6 @@ generation.
     // it is a that is instantiated.
     type a : #
     type constraint (fin a, a >= 1)
-
-  type t = 2^^a
-  type logt = a
 \end{code}
 
 All the restrictions stated in the previous sections apply. Recall that 
@@ -2337,7 +2340,9 @@ computed as
   $$m=\floor{(k\log t +7)/ 8} + \floor{(h - h/d +7)/ 8} + \floor{(h / d +7)/ 8}.$$
 
 \begin{code}
-  type m = (k*logt+7)/8 + (h-h/d+7)/8 + (h/d+7)/8
+  parameter
+    type m : #
+    type constraint (m == (k*logt+7)/8 + (h-h/d+7)/8 + (h/d+7)/8)
 \end{code}
 
   While only $h + k\log t$ bits would be needed, using the longer $m$ as defined 
