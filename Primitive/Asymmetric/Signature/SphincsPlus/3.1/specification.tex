@@ -939,6 +939,29 @@ wots_PKgen(SK.seed, PK.seed, ADRS) {
     wotspkADRS' = setType(wotspkADRS, WOTS_PK)
     wotspkADRS'' = setKeyPairAddress(wotspkADRS', getKeyPairAddress(ADRS))
     pk = T`{len}(PKseed, wotspkADRS'', join tmp)
+
+  // Generate public key from secret key.
+  // The main difference from wots_PKgen is that wots_PKgen uses the secret
+  // key seed to generate the public key, while this function uses the secret
+  // key itself to generate the public key.
+  wots_PKfromSK : ([len][n]Byte, [n]Byte, Address) -> [n]Byte
+  wots_PKfromSK(sk, PKseed, ADRS) = pk where
+    mkADRS i = ADRSi' where
+      ADRSi = setChainAddress(ADRS, i)
+      ADRSi' = setHashAddress(ADRSi, 0)
+    tmp = [ chain(ski, 0, `w - 1, PKseed, mkADRS i)
+          | ski <- sk
+          | i <- [0 .. len-1] ]
+    wotspkADRS = setType(ADRS, WOTS_PK)
+    wotspkADRS' = setKeyPairAddress(wotspkADRS, getKeyPairAddress(ADRS))
+    pk = T`{len}(PKseed, wotspkADRS', join tmp)
+
+  // Assert equivalence of wots_PKfromSK and wots_PKgen.
+  wotsPKCheck : [n]Byte -> [n]Byte -> Address -> Bit
+  property wotsPKCheck SKseed PKseed ADRS = (pk1 == pk2) where
+    pk1 = wots_PKgen(SKseed, PKseed, ADRS)
+    sk = wots_SKgen(SKseed, ADRS)
+    pk2 = wots_PKfromSK(sk, PKseed, ADRS)
 \end{code}
 
 \subsection{\wotsp Signature Generation (Function \texttt{wots\_sign})}
