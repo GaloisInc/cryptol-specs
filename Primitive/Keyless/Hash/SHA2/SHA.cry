@@ -91,6 +91,12 @@ private
   parse : {m} [m * block_size] -> [m][block_size]
   parse = split
 
+SHAH0 = H0
+S0 = SIGMA_0
+S1 = SIGMA_1
+s0 = sigma_0
+s1 = sigma_1
+
 /**
 SHA-256 and SHA-512 (and their respective derivatives) use a similar
 message schedule that can be expressed in the same way relative to their
