@@ -20,7 +20,7 @@
 
 module Primitive::Symmetric::MAC::HMAC where
 
-import Primitive::Keyless::Hash::SHA256
+import Primitive::Keyless::Hash::SHA2::SHA256
 
 //////// Functional version ////////
 

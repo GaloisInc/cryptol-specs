@@ -6,7 +6,7 @@
 
 module Primitive::Keyless::Hash::SHA2::SHA512_224 = Primitive::Keyless::Hash::SHA2::SHA where
 
-type w = 64
+type wp = 64
 
 type digest_size = 224
 
