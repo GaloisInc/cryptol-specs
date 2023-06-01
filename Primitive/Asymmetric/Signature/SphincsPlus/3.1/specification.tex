@@ -935,7 +935,7 @@ wots_PKgen(SK.seed, PK.seed, ADRS) {
       ADRSi = setChainAddress(ADRS, i)
       ADRSi' = setHashAddress(ADRSi, 0)
       tmpi = chain(ski, 0, `w - 1, PKseed, ADRSi')
-    tmp = [mkTmp i | i <- [0 .. len-1]]
+    tmp = parmap mkTmp [0 .. len-1]
     wotspkADRS' = setType(wotspkADRS, WOTS_PK)
     wotspkADRS'' = setKeyPairAddress(wotspkADRS', getKeyPairAddress(ADRS))
     pk = T`{len}(PKseed, wotspkADRS'', join tmp)
@@ -949,9 +949,8 @@ wots_PKgen(SK.seed, PK.seed, ADRS) {
     mkADRS i = ADRSi' where
       ADRSi = setChainAddress(ADRS, i)
       ADRSi' = setHashAddress(ADRSi, 0)
-    tmp = [ chain(ski, 0, `w - 1, PKseed, mkADRS i)
-          | ski <- sk
-          | i <- [0 .. len-1] ]
+    tmp = parmap (\ (ski, i) -> chain(ski, 0, `w - 1, PKseed, mkADRS i) )
+                 (zip sk [0 .. len-1])
     wotspkADRS = setType(ADRS, WOTS_PK)
     wotspkADRS' = setKeyPairAddress(wotspkADRS, getKeyPairAddress(ADRS))
     pk = T`{len}(PKseed, wotspkADRS', join tmp)
@@ -1064,7 +1063,7 @@ wots_sign(M, SK.seed, PK.seed, ADRS) {
       ADRSi' = setHashAddress(ADRSi, 0)
       sig_i = chain(ski, 0, toInteger(msg'@i), PKseed, ADRSi')
 
-    sig = [mksig i| i <- [0 .. len-1]]
+    sig = parmap mksig [0 .. len-1]
 \end{code}
 
 The data format for a signature is given in \autoref{fig:wots_signature}.
@@ -1155,7 +1154,7 @@ wots_pkFromSig(sig, M, PK.seed, ADRS) {
       ADRSi = setChainAddress(ADRS, i)
       msgi = toInteger(msg'@i)
       tmpi = chain(sig@i, msgi, `w - 1 - msgi, PKseed, ADRSi)
-    tmp = [makeTmp i | i <- [0 .. len-1]]
+    tmp = parmap makeTmp [0 .. len-1]
     
     wotspkADRS' = setType(wotspkADRS, WOTS_PK)
     wotspkADRS'' = setKeyPairAddress(wotspkADRS', getKeyPairAddress(ADRS))
