@@ -94,13 +94,6 @@ private
   parse : {m} [m * block_size] -> [m][block_size]
   parse = split
 
-  type SHAState_Array =
-    { h : [8][w]
-    , block : ByteArray
-    , n : [32]
-    , sz : [w * 2]
-    }
-
 SHAH0 = H0
 S0 = SIGMA_0
 S1 = SIGMA_1
@@ -170,8 +163,86 @@ SHA_2_Common' blocks = hash ! 0
   hash = [H0] # [ processBlock_Common h b | h <- hash | b <- blocks]
 
 ///////////////////////////////////////////////////////////////////////////////
+// SHA imperative specification
+///////////////////////////////////////////////////////////////////////////////
+
+/*
+ * This section contains an SHA specification that more closely matches the
+ * BoringSSL C implementation to simplify SAW correctness proofs of the
+ * implementation.
+ */
+
+//////// Imperative top level ////////
+
+type SHAState = { h : [8][w]
+                , block : [w * 2][8]
+                , n : [32]
+                , sz : [w * 2]
+                }
+
+// Initial state for SHA
+SHAInit : SHAState
+SHAInit = { h = H0
+          , block = zero
+          , n = 0
+          , sz = 0
+          }
+
+// Process message being hashed, iteratively updating the SHA state with the
+// input message.
+SHAUpdate : {n} (fin n) => SHAState -> [n][8] -> SHAState
+SHAUpdate sinit bs = ss!0
+  where ss = [sinit] # [ SHAUpdate1 s b | s <- ss | b <- bs ]
+
+// Add padding and size and process the final block.
+SHAFinal : SHAState -> [digest_size]
+SHAFinal s = take (join (processBlock_Common h b'))
+  // Because the message is always made up of bytes, and the size is a
+  // fixed number of bytes, the 1 pad will always be at least a byte.
+  where s' = SHAUpdate1 s 0x80
+        // Don't need to add zeros. They're already there. Just update
+        // the count of bytes in this block. After adding the 1 pad, there
+        // are two possible cases: the size will fit in the current block,
+        // or it won't.
+        (h, b) = if s'.n <= (`w*2 - (`w/4)) then (s'.h, s'.block)
+                 else (processBlock_Common s'.h (split (join s'.block)), zero)
+        b' = split (join b || (zero # s.sz))
+
+// Imperative SHA implementation
+SHAImp : {n} (fin n) => [n][8] -> [digest_size]
+SHAImp msg = SHAFinal (SHAUpdate SHAInit msg)
+
+
+private
+
+  // SHAUpdate1 updates a single byte at position s.n in s.block and return a
+  // new state to pass to subsequent updates.  If s.n is 128, updates position 0
+  // to b and zeros the remainder of the block, setting s.n to 1 for the next
+  // update.
+  SHAUpdate1 : SHAState -> [8] -> SHAState
+  SHAUpdate1 s b =
+    if s.n == (2 * `w - 1)
+      then { h = processBlock_Common s.h (split (join (update s.block s.n b)))
+           , block = zero
+           , n = 0
+           , sz = s.sz + 8
+           }
+      else { h = s.h
+           , block = update s.block s.n b
+           , n = s.n + 1
+           , sz = s.sz + 8
+           }
+
+///////////////////////////////////////////////////////////////////////////////
 // SHA imperative specification - SMT Array
 ///////////////////////////////////////////////////////////////////////////////
+
+type SHAState_Array =
+  { h : [8][w]
+  , block : ByteArray
+  , n : [32]
+  , sz : [w * 2]
+  }
 
 SHAInit_Array : SHAState_Array
 SHAInit_Array =
