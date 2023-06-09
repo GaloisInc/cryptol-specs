@@ -15,6 +15,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 module Primitive::Keyless::Hash::SHA2::SHA where
 
+import Array
+import Common::ByteArray
+
 sha : {L} (2 * w >= width L) => [L] -> [digest_size]
 sha M = take (join (SHA_2_Common' [ split x | x <- parse`{num_blocks L} (pad`{L} M) ]))
 
@@ -27,7 +30,7 @@ parameter
   */
 
   type wp : #
-  type constraint (fin wp, wp >= 1)
+  type constraint (fin wp, wp >= 32, 64 >= wp)
 
   type digest_size : #
   type constraint (fin digest_size, 8*wp >= digest_size)
@@ -91,6 +94,13 @@ private
   parse : {m} [m * block_size] -> [m][block_size]
   parse = split
 
+  type SHAState_Array =
+    { h : [8][w]
+    , block : ByteArray
+    , n : [32]
+    , sz : [w * 2]
+    }
+
 SHAH0 = H0
 S0 = SIGMA_0
 S1 = SIGMA_1
@@ -109,7 +119,7 @@ messageSchedule_Common : [16][w] -> [j][w]
 messageSchedule_Common Mi = take W
   where
   W : [inf][_]
-  W = Mi # [ w1 + sigma_0 w2 + w3 + sigma_1 w4
+  W = Mi # [ w1 + s0 w2 + w3 + s1 w4
            | w1 <- W
            | w2 <- drop`{1} W
            | w3 <- drop`{9} W
@@ -124,6 +134,7 @@ to SHA-512, modulo respective constants, sigma functions,
 and message schedules.
 */
 
+
 compress_Common : [8][w] -> [j][w] -> [8][w]
 compress_Common H W =
   // XXX: This whole definitions looks like it might be simplifiable.
@@ -137,9 +148,9 @@ compress_Common H W =
     (hs ! 0) + (H @ 7)
   ]
   where
-    T1 = [h + SIGMA_1 e + Ch e f g + k_t + w_t
+    T1 = [h + S1 e + Ch e f g + k_t + w_t
               | h <- hs | e <- es | f <- fs | g <- gs | k_t <- K | w_t <- W]
-    T2 = [ SIGMA_0 a + Maj a b c | a <- as | b <- bs | c <- cs]
+    T2 = [ S0 a + Maj a b c | a <- as | b <- bs | c <- cs]
     hs = take`{j + 1}([H @ 7] # gs)
     gs = take`{j + 1}([H @ 6] # fs)
     fs = take`{j + 1}([H @ 5] # es)
@@ -149,7 +160,6 @@ compress_Common H W =
     bs = take`{j + 1}([H @ 1] # as)
     as = take`{j + 1}([H @ 0] # [t1 + t2 | t1 <- T1 | t2 <- T2])
 
-
 processBlock_Common : [8][w] -> [16][w] -> [8][w]
 processBlock_Common H Mi = compress_Common H (messageSchedule_Common Mi)
 
@@ -158,3 +168,98 @@ SHA_2_Common' : {L} (fin L) => [L][16][w] -> [8][w]
 SHA_2_Common' blocks = hash ! 0
   where
   hash = [H0] # [ processBlock_Common h b | h <- hash | b <- blocks]
+
+///////////////////////////////////////////////////////////////////////////////
+// SHA imperative specification - SMT Array
+///////////////////////////////////////////////////////////////////////////////
+
+SHAInit_Array : SHAState_Array
+SHAInit_Array =
+  { h = H0
+  , block = arrayConstant 0
+  , n = 0
+  , sz = 0
+  }
+
+SHAUpdate_Array : SHAState_Array -> ByteArray -> [64] -> SHAState_Array
+SHAUpdate_Array state data len =
+  if state.n != 0
+    then if len < 2 * `w - n
+      then state'
+      else state''
+    else state'''
+ where
+   n = 0 # state.n
+   state' = { h = state.h, block = block', n = drop n', sz = state.sz + (0 # len) * 8 }
+    where
+      block' = arrayCopy state.block n data 0 len
+      n' = n + len
+   state'' = { h = h'', block = block''', n = drop n''', sz = state.sz + (0 # len) * 8 }
+    where
+      h' = processBlock state.h (arrayCopy state.block n data 0 (2 * `w - n)) 0
+      block' = arrayCopy state.block n data 0 (2 * `w - n)
+      index' = 2 * `w - n
+      len' = len - (2 * `w - n)
+      (h'', index'', len'') = if len' >= 2 * `w
+        then
+          ( (processBlocks h' (arrayCopy (arrayConstant 0) 0 data index' ((len' / (2 * `w)) * (2 * `w))) 0 (len' / (2 * `w)))
+          , index' + len' - (len' % (2 * `w))
+          , len' % (2 * `w)
+          )
+        else (h', index', len')
+      (block''', n''') = if len'' != 0
+        then ((arrayCopy block' 0 data index'' len''), len'')
+        else (block', 0)
+   state''' = { h = h'', block = block''', n = drop n''', sz = state.sz + (0 # len) * 8 }
+    where
+      (h'', index'', len'') = if len >= 2 * `w
+        then
+          ( (processBlocks state.h data 0 (len / (2 * `w)))
+          , len - (len % (2 * `w))
+          , len % (2 * `w)
+          )
+        else (state.h, 0, len)
+      (block''', n''') = if len'' != 0
+        then ((arrayCopy state.block 0 data index'' len''), len'')
+        else (state.block, n)
+
+SHAFinal_Array : SHAState_Array -> [digest_size]
+SHAFinal_Array state = take (join h''')
+  where
+    n = 0 # state.n
+    block' = arrayUpdate state.block n 0x80
+    n' = n + 1
+    (h'', block'', n'') = if n' > 2 * `w - `w / 4
+      then ((processBlock state.h (arraySet block' n' 0 (2 * `w - n')) 0), (arraySet block' n' 0 (2 * `w - n')), 0)
+      else (state.h, block', n')
+    h''' = processBlock
+      h''
+      (arrayRangeUpdate
+        (arraySet block'' n'' 0 (2 * `w - `w / 4 - n''))
+        (2 * `w - `w / 4)
+        (split`{parts=(w+3)/4} (0 # state.sz)))
+      0
+
+// Imperative SHA implementation
+SHAImp_Array : ByteArray -> [64] -> [digest_size]
+SHAImp_Array msg len = SHAFinal_Array (SHAUpdate_Array SHAInit_Array msg len)
+
+
+processBlocks : [8][w] -> ByteArray -> [64] -> [64] -> [8][w]
+processBlocks [a, b, c, d, e, f, g, h] data index n = processBlock [a', b', c', d', e', f', g', h'] data index'
+  where
+    (a', b', c', d', e', f', g', h', index') = processBlocksLoop n data a b c d e f g h index
+
+processBlock : [8][w] -> ByteArray -> [64] -> [8][w]
+processBlock h block index =
+  processBlock_Common h (split (join (arrayRangeLookup block index)))
+
+processBlocksLoop : [64] -> ByteArray -> [w] -> [w] -> [w] -> [w] -> [w] -> [w] -> [w] -> [w] -> [64] -> ([w], [w], [w], [w], [w], [w], [w], [w], [64])
+processBlocksLoop num data a b c d e f g h index = if (index + 2 * `w) < (num * 2 * `w)
+  then processBlocksLoop num data a' b' c' d' e' f' g' h' (index + 2 * `w)
+  else (a, b, c, d, e, f, g, h, index)
+  where
+    [a', b', c', d', e', f', g', h'] = (processBlock [a, b, c, d, e, f, g, h] data index)
+
+arrayRangeEqual_arrayRangeLookup_lemma : {n} (fin n, n >= 1, n <= 1000) => ByteArray -> ByteArray -> Bit
+arrayRangeEqual_arrayRangeLookup_lemma a b = arrayRangeEqual a 0 b 0 `n == (arrayRangeLookup`{n=n} a 0 == arrayRangeLookup b 0)
