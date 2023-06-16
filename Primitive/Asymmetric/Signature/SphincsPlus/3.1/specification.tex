@@ -936,10 +936,32 @@ wots_PKgen(SK.seed, PK.seed, ADRS) {
       ADRSi = setChainAddress(ADRS, i)
       ADRSi' = setHashAddress(ADRSi, 0)
       tmpi = chain(ski, 0, `w - 1, PKseed, ADRSi')
-    tmp = [mkTmp i | i <- [0 .. len-1]]
+    tmp = parmap mkTmp [0 .. len-1]
     wotspkADRS' = setType(wotspkADRS, WOTS_PK)
     wotspkADRS'' = setKeyPairAddress(wotspkADRS', getKeyPairAddress(ADRS))
     pk = T`{len}(PKseed, wotspkADRS'', join tmp)
+
+  // Generate public key from secret key.
+  // The main difference from wots_PKgen is that wots_PKgen uses the secret
+  // key seed to generate the public key, while this function uses the secret
+  // key itself to generate the public key.
+  wots_PKfromSK : ([len][n]Byte, [n]Byte, Address) -> [n]Byte
+  wots_PKfromSK(sk, PKseed, ADRS) = pk where
+    mkADRS i = ADRSi' where
+      ADRSi = setChainAddress(ADRS, i)
+      ADRSi' = setHashAddress(ADRSi, 0)
+    tmp = parmap (\ (ski, i) -> chain(ski, 0, `w - 1, PKseed, mkADRS i) )
+                 (zip sk [0 .. len-1])
+    wotspkADRS = setType(ADRS, WOTS_PK)
+    wotspkADRS' = setKeyPairAddress(wotspkADRS, getKeyPairAddress(ADRS))
+    pk = T`{len}(PKseed, wotspkADRS', join tmp)
+
+  // Assert equivalence of wots_PKfromSK and wots_PKgen.
+  wotsPKCheck : [n]Byte -> [n]Byte -> Address -> Bit
+  property wotsPKCheck SKseed PKseed ADRS = (pk1 == pk2) where
+    pk1 = wots_PKgen(SKseed, PKseed, ADRS)
+    sk = wots_SKgen(SKseed, ADRS)
+    pk2 = wots_PKfromSK(sk, PKseed, ADRS)
 \end{code}
 
 \subsection{\wotsp Signature Generation (Function \texttt{wots\_sign})}
@@ -1042,7 +1064,7 @@ wots_sign(M, SK.seed, PK.seed, ADRS) {
       ADRSi' = setHashAddress(ADRSi, 0)
       sig_i = chain(ski, 0, toInteger(msg'@i), PKseed, ADRSi')
 
-    sig = [mksig i| i <- [0 .. len-1]]
+    sig = parmap mksig [0 .. len-1]
 \end{code}
 
 The data format for a signature is given in \autoref{fig:wots_signature}.
@@ -1133,7 +1155,7 @@ wots_pkFromSig(sig, M, PK.seed, ADRS) {
       ADRSi = setChainAddress(ADRS, i)
       msgi = toInteger(msg'@i)
       tmpi = chain(sig@i, msgi, `w - 1 - msgi, PKseed, ADRSi)
-    tmp = [makeTmp i | i <- [0 .. len-1]]
+    tmp = parmap makeTmp [0 .. len-1]
     
     wotspkADRS' = setType(wotspkADRS, WOTS_PK)
     wotspkADRS'' = setKeyPairAddress(wotspkADRS', getKeyPairAddress(ADRS))
