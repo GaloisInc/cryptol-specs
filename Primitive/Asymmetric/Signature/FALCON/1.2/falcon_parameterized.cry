@@ -307,8 +307,8 @@ ffLDL(G) | k == 1 => T where
             T = newTree`{k}(L@1@0, left_leaf, right_leaf)
          | k >  1 => T where
             (L, D) = LDL`{k}(G) : ([2][2](FFT n), [2][2](FFT n))
-            (d00, d01) = splitfft`{k}(D@0@0)
-            (d10, d11) = splitfft`{k}(D@1@1)
+            [d00, d01] = splitfft`{k}(D@0@0)
+            [d10, d11] = splitfft`{k}(D@1@1)
             G0 = [[resize d00,resize d01],[resize d01, resize d00]] // Revise this
             G1 = [[resize d10,resize d11],[resize d11, resize d10]]
             Tleftchild = ffLDL`{k-1}(G0)
