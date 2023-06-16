@@ -28,7 +28,8 @@ load_cry_files() {
     done
 }
 
-load_cry_files "."
+load_cry_files "Common"
+load_cry_files "Primitive"
 
 rm $SCRIPT
 
