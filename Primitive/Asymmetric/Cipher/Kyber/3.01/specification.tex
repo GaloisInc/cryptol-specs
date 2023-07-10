@@ -777,7 +777,7 @@ we define key generation, encapsulation, and decapsulation of \KyberCCAKEM.
 \begin{code}
   // We make the random message m explicit
   CEnc : ([12*k*n/8+32]Byte, [32]Byte) -> ([d_u*k*n/8+d_v*n/8]Byte, [inf]Byte)
-  CEnc (pk, m) = (c,K) where
+  CEnc (pk, m) = (c, map reverse K) where
     m' = H(m) // Cryptol warns about shadowing
     (KBar,r) = G(m'#H(pk))
     c = Enc(pk,m',r)
@@ -809,8 +809,7 @@ we define key generation, encapsulation, and decapsulation of \KyberCCAKEM.
 
 \begin{code}
   CDec : ([d_u*k*n/8+d_v*n/8]Byte,[24*k*n/8+96]Byte) -> [inf]Byte
-  CDec (c,sk) = if (c == c') then KDF(KBar'#H(c))
-                             else KDF(z#H(c))
+  CDec (c,sk) = map reverse K
     where
       sk' = sk@@[0 .. 12*k*n/8 - 1] //We make the first portion explicit
       pk = sk@@[12*k*n/8 .. 24*k*n/8+32 - 1]
@@ -819,6 +818,8 @@ we define key generation, encapsulation, and decapsulation of \KyberCCAKEM.
       m' = Dec(sk',c)
       (KBar', r') = G(m'#h)
       c' = Enc(pk,m',r')
+      K = if (c == c') then KDF(KBar'#H(c))
+                       else KDF(z#H(c))
 
 
   CorrectnessKEM : ([32]Byte, [32]Byte, [32]Byte) -> Bit
