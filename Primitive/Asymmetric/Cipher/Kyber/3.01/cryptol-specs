@@ -1,0 +1,20 @@
+#! /bin/sh
+
+# This script sets CRYPTOLPATH to the parent directory cryptol-specs.
+#
+# Copy this script into $HOME/bin.
+#
+# Usage example for Kyber:
+#
+#   $ cd cryptol-specs/Primitive/Asymmetric/Cipher/Kyber/3.01
+#   $ cryptol-specs make test
+#
+# John Ramsdell -- MITRE -- May 2023
+
+a=$(pwd)
+while [ $(basename "$a") != "cryptol-specs" -a $(basename "$a") != "/" ]
+do
+    a=$(dirname "$a")
+done
+
+CRYPTOLPATH="$a" "$@"
