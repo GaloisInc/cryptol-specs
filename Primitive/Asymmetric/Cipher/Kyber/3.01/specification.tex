@@ -775,7 +775,10 @@ we define key generation, encapsulation, and decapsulation of \KyberCCAKEM.
 \end{algorithm}
 
 \begin{code}
-  // We make the random message m explicit
+  // We make the random message m explicit.
+  // The output is reversed as a consequence of the current
+  // implementation of the BytesToBits Cryptol function that considers
+  // the rightmost bit of a byte to be the least significant.
   CEnc : ([12*k*n/8+32]Byte, [32]Byte) -> ([d_u*k*n/8+d_v*n/8]Byte, [inf]Byte)
   CEnc (pk, m) = (c, map reverse K) where
     m' = H(m) // Cryptol warns about shadowing
@@ -808,6 +811,9 @@ we define key generation, encapsulation, and decapsulation of \KyberCCAKEM.
 \end{algorithm}
 
 \begin{code}
+  // The output is reversed as a consequence of the current
+  // implementation of the BytesToBits Cryptol function that considers
+  // the rightmost bit of a byte to be the least significant.
   CDec : ([d_u*k*n/8+d_v*n/8]Byte,[24*k*n/8+96]Byte) -> [inf]Byte
   CDec (c,sk) = map reverse K
     where
