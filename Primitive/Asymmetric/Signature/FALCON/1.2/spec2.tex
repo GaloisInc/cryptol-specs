@@ -1446,6 +1446,8 @@ Formally, given a private key \sk and a message \msg, the signer uses \sk to sig
 \end{algorithm}
 
 \begin{code}
+  // The bound floor(beta^2) is a parameter of the system
+  // and not an argument of the function.
   type signature = ([320], [slen])
   Sign : {len} (fin len) => ([len], privateKey, [320]) -> signature
   Sign(m, sk, _r) = sig where 
@@ -1952,6 +1954,8 @@ The specification of the signature verification is given in \longverify.
 \end{algorithm}
 
 \begin{code}
+  // The bound floor(beta^2) is a parameter of the system
+  // and not an argument of the function.
   Verify : {len} (fin len) => ([len], signature, publicKey) -> Bit
   Verify(m, sig, pk) = 
     if s2 == zero then
