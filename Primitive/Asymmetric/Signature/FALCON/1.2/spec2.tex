@@ -1446,9 +1446,11 @@ Formally, given a private key \sk and a message \msg, the signer uses \sk to sig
 \end{algorithm}
 
 \begin{code}
+  // The bound floor(beta^2) is a parameter of the system
+  // and not an argument of the function.
   type signature = ([320], [slen])
-  Sign : {len} (fin len) => ([len], privateKey, Integer, [320]) -> signature
-  Sign(m, sk, beta, _r) = sig where 
+  Sign : {len} (fin len) => ([len], privateKey, [320]) -> signature
+  Sign(m, sk, _r) = sig where 
     (_, Bhat, T) = sk
     c = HashToPoint`{q,_k}(_r#m)
     [[FFTg,FFT_f],[FFTG,FFT_F]] = Bhat // Bhat stores them in FFT repr
@@ -1952,8 +1954,10 @@ The specification of the signature verification is given in \longverify.
 \end{algorithm}
 
 \begin{code}
-  Verify : {len} (fin len) => ([len], signature, publicKey, Integer) -> Bit
-  Verify(m, sig, pk, beta) = 
+  // The bound floor(beta^2) is a parameter of the system
+  // and not an argument of the function.
+  Verify : {len} (fin len) => ([len], signature, publicKey) -> Bit
+  Verify(m, sig, pk) = 
     if s2 == zero then
       0
     else if norm_sq`{2,_k}([s1',s2']) < (fromInteger beta) then
@@ -2379,6 +2383,7 @@ We specify two sets of parameters that address security levels I and V as define
   parameter
     sigma_min : Float64
     sigma_max : Float64
+    beta : Integer
 \end{code}
 
 \tprcomment{I commented the paragraph on the acceptance bound}

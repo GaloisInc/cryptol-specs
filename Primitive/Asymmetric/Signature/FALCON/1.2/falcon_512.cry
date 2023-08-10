@@ -12,6 +12,7 @@ submodule falcon_inst = spec2
     sigma = 165.736617183
     sigma_min = 1.277833697
     sigma_max = 1.8205
+    beta = 34034726
 
     Omega_phi = [
         (1, 0),
