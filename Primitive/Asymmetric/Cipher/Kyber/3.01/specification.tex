@@ -67,12 +67,22 @@ by computing $\beta_i = \left((b_{i/8} / 2^{(i\mod 8)}) \mod 2\right)$.
 \begin{code}
   type Byte = [8]
   
-  BytesToBits2 : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
-  BytesToBits2 input = join (map reverse input)
+  BytesToBits : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
+  BytesToBits input = join (map reverse input)
+
+  // The following helper functions are also used.
+  BitsToBytes : {ell} (fin ell, ell > 0) => [ell*8]Bit -> [ell]Byte
+  BitsToBytes input = map reverse (groupBy input)
 
   BitToZ : {p} (fin p, p > 1) => Bit -> Z p
   BitToZ b = if b then 1 else 0
   
+  BitstoZ : {ell} (fin ell, ell > 0) => [ell] -> (Z q)
+  BitstoZ betas = fromInteger (toInteger (reverse betas))
+
+  ZtoBits : {ell} (fin ell, ell > 0) => (Z q) -> [ell]
+  ZtoBits fi = reverse (fromInteger (fromZ fi))
+
   plus : {x, y} (fin x) => [x+y]Byte -> [y]Byte
   plus = drop
 
@@ -164,6 +174,7 @@ The functions satisfying these requirements are defined as:
 \end{align*}
 
 \begin{code}
+  // Since q is fixed but d varies, we parameterize by d instead of by q.
   Compress'' : {d} (d < lg2 q) => Z q -> [d]
   Compress'' x = fromInteger(roundAway(((2^^`d)/.`q) * fromInteger(fromZ(x))) % 2^^`d)
 
@@ -189,7 +200,6 @@ the procedure is applied to each coefficient individually.
   Decompress' : {d} (d < lg2 q) => [n][d] -> R_q
   Decompress' x = map Decompress''`{d} x
 
-  
   Decompress2' : {d} (d < lg2 q) => [n][d] -> R_q
   Decompress2' x = reverse (Decompress' x)
 
@@ -466,7 +476,7 @@ defined as described in Algorithm~\ref{alg:cbd}.
 \begin{code}
   CBD: {eta} (fin eta, eta > 0) => [64 * eta]Byte -> R_q
   CBD B = [f i | i <- [0 .. 255]]
-      where betas = BytesToBits2 B : [512 * eta]
+      where betas = BytesToBits B : [512 * eta]
             a i = sum [BitToZ`{q} (betas@(2*i*`eta+j)) | j <- [0 .. (eta-1)]]
             b i = sum [BitToZ`{q} (betas@(2*i*`eta+`eta+j)) | j <- [0 .. (eta-1)]]
             f i = (a i) - (b i)
@@ -480,32 +490,19 @@ via the identity, so we need to define how we serialize and deserialize polynomi
 \begin{code}
   // We make this trivial serialization explicit, since it is not an identity in Cryptol
 
-  EncodeBytes' : {ell} (fin ell, ell > 0) => [n][ell] -> [32 * ell]Byte
-  EncodeBytes' B = groupBy(join (reverse B))
-
   DecodeBytes' : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> [n][ell]
-  DecodeBytes' B = groupBy(join (reverse B))
+  DecodeBytes' B = groupBy (join (reverse B))
   
-  EncodeBytes2' : {ell} (fin ell, ell > 0) => [n][ell] -> [32 * ell]Byte
-  EncodeBytes2' B = reverse (groupBy(join (reverse B)))
-
-  DecodeBytes2' : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> [n][ell]
-  DecodeBytes2' B = reverse (groupBy(join (reverse B)))
-
-  CorrectnessEncodeBytes2' : [n][2] -> Bit
-  property CorrectnessEncodeBytes2' B = DecodeBytes2'(EncodeBytes2' B) == B
+  EncodeBytes' : {ell} (fin ell, ell > 0) => [n][ell] -> [32 * ell]Byte
+  EncodeBytes' B = reverse (groupBy (join (reverse B)))
   
   EncodeBytes : {ell, k1} (fin ell, ell > 0, fin k1) =>
       [k1][n][ell] -> [32 * ell * k1]Byte
-  EncodeBytes B = groupBy(join (reverse (join (reverse B))))
-    
-  EncodeBytes2 : {ell, k1} (fin ell, ell > 0, fin k1) =>
-      [k1][n][ell] -> [32 * ell * k1]Byte
-  EncodeBytes2 B = join (map reverse (split`{k1, 32 * ell} (EncodeBytes B)))
-  
+  EncodeBytes B = reverse (groupBy (join (reverse (join B))))
+
   DecodeBytes : {ell, k1} (fin ell, ell > 0, fin k1) =>
       [32 * ell * k1]Byte -> [k1][n][ell]
-  DecodeBytes B = groupBy(reverse (groupBy(join (reverse B))))
+  DecodeBytes B = groupBy (reverse (groupBy (join (reverse B))))
   
   CorrectnessEncodeBytes : [k][n][2] -> Bit
   property CorrectnessEncodeBytes B = DecodeBytes(EncodeBytes B) == B
@@ -521,19 +518,14 @@ Whenever we apply $\Encode_\ell$ to a vector of polynomials we encode
 each polynomial individually and concatenate the output byte arrays.
 
 \begin{code}
-  Encode2 : {ell, k1} (fin ell, ell > 0, fin k1) => [k1]R_q -> [32 * ell * k1]Byte
-  Encode2 fVec = join (map Encode'`{ell} fVec)
+  Encode : {ell, k1} (fin ell, ell > 0, fin k1) => [k1]R_q -> [32 * ell * k1]Byte
+  Encode fVec = join (map Encode'`{ell} fVec)
+
+  Decode : {ell, k1} (fin ell, ell > 0, fin k1) => [32 * ell * k1]Byte -> [k1]R_q
+  Decode BVec = map Decode'`{ell} (split BVec)
   
   CorrectnessEncodeDecode : [k]R_q -> Bit
   property CorrectnessEncodeDecode fVec = all CorrectnessEncodeDecode' fVec
-\end{code}
-
-\begin{code}  
-  Decode2 : {ell, k1} (fin ell, ell > 0, fin k1) => [32 * ell * k1]Byte -> [k1]R_q
-  Decode2 BVec = map Decode'`{ell} (split BVec)
-  
-  CorrectnessEncodeDecode2 : [k]R_q -> Bit
-  property CorrectnessEncodeDecode2 fVec = (Decode2`{1, k} (Encode2`{1, k} fVec)) == fVec
 \end{code}
 
 \begin{algorithm}
@@ -552,14 +544,22 @@ each polynomial individually and concatenate the output byte arrays.
 \end{algorithm}
 
 \begin{code}
-  Decode' : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> R_q
-  Decode' B = [f i | i <- [0 .. 255]]
-      where betas = BytesToBits2 B : [256 * ell]
+  DecodeSpec : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> R_q
+  DecodeSpec B = [f i | i <- [0 .. 255]]
+      where betas = BytesToBits B : [256 * ell]
             f i = sum [ BitToZ`{q}(betas@(i*`ell+j))*fromInteger(2^^j)
                       | j <- [0 .. (ell-1)]]
+
+  // We include a more efficient way to compute decoding
+  // together with a property that it is equivalent.
+  Decode' : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> R_q
+  Decode' B = map BitstoZ`{ell} (split (BytesToBits B))
+
+  DecodeEquiv : [32 * 12]Byte -> Bit
+  property DecodeEquiv B = (Decode' B == DecodeSpec B)
   
   Encode' : {ell} (fin ell, ell > 0) => R_q -> [32 * ell]Byte
-  Encode' f = map reverse (groupBy`{8} (join [reverse (fromInteger((fromZ(fi)))) | fi <- f : R_q]))
+  Encode' f = BitsToBytes (join (map ZtoBits`{ell} f))
   
   CorrectnessEncodeDecode' : R_q -> Bit
   property CorrectnessEncodeDecode' f = Decode'`{12}(Encode'`{12} f) == f
@@ -635,8 +635,8 @@ A more high-level view of these algorithms is given in the comments.
     shat = NTT(s)
     ehat = NTT(e)
     that = (dotMatVec Ahat shat) + ehat
-    pk = Encode2`{12}(that) # rho
-    sk = Encode2`{12}(shat)
+    pk = Encode`{12}(that) # rho
+    sk = Encode`{12}(shat)
 \end{code}
 
 \begin{algorithm}
@@ -676,7 +676,7 @@ A more high-level view of these algorithms is given in the comments.
 \begin{code}
   Enc : ([12*k*n/8+32]Byte, [32]Byte, [32]Byte) -> [d_u*k*n/8 + d_v*n/8]Byte
   Enc(pk, m, r) = c where
-    that = Decode2`{12} (take pk)
+    that = Decode`{12} (take pk)
     rho = plus`{12*k*n/8} pk : [32]Byte
     Ahat = [[Parse (XOF(rho,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]R_q
     rvec = [CBD`{eta_1}(PRF`{eta_1}(r,N)) | N <- [0 .. k-1]] : [k]R_q
@@ -685,8 +685,8 @@ A more high-level view of these algorithms is given in the comments.
     rvechat = NTT rvec
     u = NTTInv (dotMatVec (transpose Ahat) rvechat) + e1 : [k]R_q
     v = (NTTInv' (dotVecVec that rvechat)) + e2 + Decompress2'`{1}(DecodeBytes'`{1} m)
-    c1 = EncodeBytes2`{d_u}(Compress`{d_u}(u))
-    c2 = EncodeBytes2'`{d_v}(Compress'`{d_v}(v))
+    c1 = EncodeBytes`{d_u}(Compress`{d_u}(u))
+    c2 = EncodeBytes'`{d_v}(Compress'`{d_v}(v))
     c = c1#c2
 \end{code}
 
@@ -709,8 +709,8 @@ A more high-level view of these algorithms is given in the comments.
   Dec(sk, c) = m where
     u = Decompress`{d_u}(DecodeBytes`{d_u}(take`{d_u*k*n/8}c))   : [k]R_q
     v = Decompress'`{d_v}(reverse(DecodeBytes'`{d_v}(plus`{d_u*k*n/8}c))) : R_q
-    shat = Decode2`{12} sk : [k]R_q
-    m = EncodeBytes2'`{1}(Compress'`{1}(v - NTTInv' (dotVecVec shat (NTT u))))
+    shat = Decode`{12} sk : [k]R_q
+    m = EncodeBytes'`{1}(Compress'`{1}(v - NTTInv' (dotVecVec shat (NTT u))))
 
   // Kyber is correct with probability 1-delta and not 1. As a result,
   // running :prove Correctness will not succeed since there is a 
