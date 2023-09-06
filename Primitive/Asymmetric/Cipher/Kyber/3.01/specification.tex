@@ -200,9 +200,6 @@ the procedure is applied to each coefficient individually.
   Decompress' : {d} (d < lg2 q) => [n][d] -> R_q
   Decompress' x = map Decompress''`{d} x
 
-  Decompress2' : {d} (d < lg2 q) => [n][d] -> R_q
-  Decompress2' x = reverse (Decompress' x)
-
   Compress : {d, k1} (d < lg2 q, fin k1) => [k1]R_q -> [k1][n][d]
   Compress x = map Compress'`{d} x
   
@@ -488,13 +485,16 @@ byte arrays and (vectors of) polynomials. Byte arrays are trivially serialized
 via the identity, so we need to define how we serialize and deserialize polynomials.
 
 \begin{code}
-  // We make this trivial serialization explicit, since it is not an identity in Cryptol
-
-  DecodeBytes' : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> [n][ell]
-  DecodeBytes' B = groupBy (join (reverse B))
+  // We make this trivial serialization explicit, since it is not an identity in Cryptol.
   
   EncodeBytes' : {ell} (fin ell, ell > 0) => [n][ell] -> [32 * ell]Byte
   EncodeBytes' B = reverse (groupBy (join (reverse B)))
+
+  DecodeBytes' : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> [n][ell]
+  DecodeBytes' B = reverse (groupBy (join (reverse B)))
+
+  CorrectnessEncodeBytes' : [n][2] -> Bit
+  property CorrectnessEncodeBytes' B = DecodeBytes'(EncodeBytes' B) == B
   
   EncodeBytes : {ell, k1} (fin ell, ell > 0, fin k1) =>
       [k1][n][ell] -> [32 * ell * k1]Byte
@@ -684,7 +684,7 @@ A more high-level view of these algorithms is given in the comments.
     e2 = CBD`{eta_2}(PRF`{eta_2}(r,2*`k)) : R_q
     rvechat = NTT rvec
     u = NTTInv (dotMatVec (transpose Ahat) rvechat) + e1 : [k]R_q
-    v = (NTTInv' (dotVecVec that rvechat)) + e2 + Decompress2'`{1}(DecodeBytes'`{1} m)
+    v = (NTTInv' (dotVecVec that rvechat)) + e2 + Decompress'`{1}(DecodeBytes'`{1} m)
     c1 = EncodeBytes`{d_u}(Compress`{d_u}(u))
     c2 = EncodeBytes'`{d_v}(Compress'`{d_v}(v))
     c = c1#c2
@@ -708,7 +708,7 @@ A more high-level view of these algorithms is given in the comments.
   Dec : ([12*k*n/8]Byte, [d_u*k*n/8 + d_v*n/8]Byte) -> [32]Byte
   Dec(sk, c) = m where
     u = Decompress`{d_u}(DecodeBytes`{d_u}(take`{d_u*k*n/8}c))   : [k]R_q
-    v = Decompress'`{d_v}(reverse(DecodeBytes'`{d_v}(plus`{d_u*k*n/8}c))) : R_q
+    v = Decompress'`{d_v}(DecodeBytes'`{d_v}(plus`{d_u*k*n/8}c)) : R_q
     shat = Decode`{12} sk : [k]R_q
     m = EncodeBytes'`{1}(Compress'`{1}(v - NTTInv' (dotVecVec shat (NTT u))))
 
