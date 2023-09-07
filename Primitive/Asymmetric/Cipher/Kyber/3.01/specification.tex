@@ -66,13 +66,23 @@ by computing $\beta_i = \left((b_{i/8} / 2^{(i\mod 8)}) \mod 2\right)$.
 
 \begin{code}
   type Byte = [8]
-
-  BytesToBits : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
-  BytesToBits input = [ (input@(i/8))@(i%8) | i <- [0 .. (ell*8-1)]]
   
+  BytesToBits : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
+  BytesToBits input = join (map reverse input)
+
+  // The following helper functions are also used.
+  BitsToBytes : {ell} (fin ell, ell > 0) => [ell*8]Bit -> [ell]Byte
+  BitsToBytes input = map reverse (groupBy input)
+
   BitToZ : {p} (fin p, p > 1) => Bit -> Z p
   BitToZ b = if b then 1 else 0
   
+  BitstoZ : {ell} (fin ell, ell > 0) => [ell] -> (Z q)
+  BitstoZ betas = fromInteger (toInteger (reverse betas))
+
+  ZtoBits : {ell} (fin ell, ell > 0) => (Z q) -> [ell]
+  ZtoBits fi = reverse (fromInteger (fromZ fi))
+
   plus : {x, y} (fin x) => [x+y]Byte -> [y]Byte
   plus = drop
 
@@ -126,8 +136,8 @@ For an element $x \in \mathbb{Q}$ we denote by $\lceil x \rfloor$
 rounding of $x$ to the closest integer with ties being rounded up.
 
 \begin{code}
-  // In Cryptol, rounding is computed via the built-in function roundToEven
-  property rounding = ((roundToEven(1.5) == 2) && (roundToEven(1.4) == 1))
+  // In Cryptol, rounding is computed via the built-in function roundAway
+  property rounding = ((roundAway(1.5) == 2) && (roundAway(1.4) == 1))
 \end{code}
 
 \subheading{Sizes of elements.}
@@ -164,18 +174,15 @@ The functions satisfying these requirements are defined as:
 \end{align*}
 
 \begin{code}
+  // Since q is fixed but d varies, we parameterize by d instead of by q.
   Compress'' : {d} (d < lg2 q) => Z q -> [d]
-  Compress'' x = fromInteger(roundToEven(((2^^`d)/.`q) * fromInteger(fromZ(x))) % 2^^`d)
+  Compress'' x = fromInteger(roundAway(((2^^`d)/.`q) * fromInteger(fromZ(x))) % 2^^`d)
 
   Decompress'' : {d} (d < lg2 q) => [d] -> Z q 
-  Decompress'' x = fromInteger(roundToEven(((`q)/.(2^^`d))*fromInteger(toInteger(x))))
-
-  DecompressM'' : {d} (d < lg2 q) => [d] -> Z q 
-  DecompressM'' x = fromInteger(roundToEven(((`q+1)/.(2^^`d))*fromInteger(toInteger(x))))
-
+  Decompress'' x = fromInteger(roundAway(((`q)/.(2^^`d))*fromInteger(toInteger(x))))
 
   B_q : {d} (d < lg2 q) => Integer
-  B_q = roundToEven((`q/.(2^^(`d+1))))
+  B_q = roundAway((`q/.(2^^(`d+1))))
 
   CorrectnessCompress : Z q -> Bit
   property CorrectnessCompress x = err <= B_q`{d_u} where
@@ -192,18 +199,12 @@ the procedure is applied to each coefficient individually.
   
   Decompress' : {d} (d < lg2 q) => [n][d] -> R_q
   Decompress' x = map Decompress''`{d} x
-  
-  DecompressM' : {d} (d < lg2 q) => [n][d] -> R_q
-  DecompressM' x = map DecompressM''`{d} x
 
   Compress : {d, k1} (d < lg2 q, fin k1) => [k1]R_q -> [k1][n][d]
   Compress x = map Compress'`{d} x
   
   Decompress : {d, k1} (d < lg2 q, fin k1) => [k1][n][d] -> [k1]R_q
   Decompress x = map Decompress'`{d} x
-
-  DecompressM : {d, k1} (d < lg2 q, fin k1) => [k1][n][d] -> [k1]R_q
-  DecompressM x = map Decompress'`{d} x
 \end{code}
 
 The main reason for defining the \KyberCompress and \KyberDecompress 
@@ -484,24 +485,26 @@ byte arrays and (vectors of) polynomials. Byte arrays are trivially serialized
 via the identity, so we need to define how we serialize and deserialize polynomials.
 
 \begin{code}
-  // We make this trivial serialization explicit, since it is not an identity in Cryptol
-
-  EncodeBytes' : {ell} (fin ell, ell > 0) => [n][ell] -> [32 * ell]Byte
-  EncodeBytes' B = groupBy(join (reverse B))
-
-  DecodeBytes' : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> [n][ell]
-  DecodeBytes' B = groupBy(join (reverse B))
+  // We make this trivial serialization explicit, since it is not an identity in Cryptol.
+  // Byte encoding and decoding involves regrouping 8-bit arrays into ell-bit arrays.
+  regroup B = reverse (groupBy (join (reverse B)))
   
+  EncodeBytes' : {ell, c} (fin ell, ell > 0, fin c) => [c * 8][ell] -> [c * ell]Byte
+  EncodeBytes' = regroup
+
+  DecodeBytes' : {ell, c} (fin ell, ell > 0, fin c) => [c * ell]Byte -> [c * 8][ell]
+  DecodeBytes' = regroup
+
   CorrectnessEncodeBytes' : [n][2] -> Bit
   property CorrectnessEncodeBytes' B = DecodeBytes'(EncodeBytes' B) == B
   
-  EncodeBytes : {ell, k1} (fin ell, ell > 0, fin k1) =>
-      [k1][n][ell] -> [32 * ell * k1]Byte
-  EncodeBytes B = groupBy(join (reverse (join (reverse B))))
-  
-  DecodeBytes : {ell, k1} (fin ell, ell > 0, fin k1) =>
-      [32 * ell * k1]Byte -> [k1][n][ell]
-  DecodeBytes B = groupBy(reverse (groupBy(join (reverse B))))
+  EncodeBytes : {ell, k1, c} (fin ell, ell > 0, fin k1, fin c) =>
+      [k1][c * 8][ell] -> [c * ell * k1]Byte
+  EncodeBytes B = EncodeBytes' (join B)
+
+  DecodeBytes : {ell, k1, c} (fin ell, ell > 0, fin k1, fin c) =>
+      [c * ell * k1]Byte -> [k1][c * 8][ell]
+  DecodeBytes B = groupBy (DecodeBytes' B)
   
   CorrectnessEncodeBytes : [k][n][2] -> Bit
   property CorrectnessEncodeBytes B = DecodeBytes(EncodeBytes B) == B
@@ -518,10 +521,10 @@ each polynomial individually and concatenate the output byte arrays.
 
 \begin{code}
   Encode : {ell, k1} (fin ell, ell > 0, fin k1) => [k1]R_q -> [32 * ell * k1]Byte
-  Encode fVec = join [(Encode'`{ell} f) | f <- fVec]
-  
+  Encode fVec = join (map Encode'`{ell} fVec)
+
   Decode : {ell, k1} (fin ell, ell > 0, fin k1) => [32 * ell * k1]Byte -> [k1]R_q
-  Decode BVec = [(Decode'`{ell} B) | B <- split BVec]
+  Decode BVec = map Decode'`{ell} (split BVec)
   
   CorrectnessEncodeDecode : [k]R_q -> Bit
   property CorrectnessEncodeDecode fVec = all CorrectnessEncodeDecode' fVec
@@ -543,14 +546,22 @@ each polynomial individually and concatenate the output byte arrays.
 \end{algorithm}
 
 \begin{code}
-  Decode' : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> R_q
-  Decode' B = [f i | i <- [0 .. 255]]
+  DecodeSpec : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> R_q
+  DecodeSpec B = [f i | i <- [0 .. 255]]
       where betas = BytesToBits B : [256 * ell]
             f i = sum [ BitToZ`{q}(betas@(i*`ell+j))*fromInteger(2^^j)
                       | j <- [0 .. (ell-1)]]
+
+  // We include a more efficient way to compute decoding
+  // together with a property that it is equivalent.
+  Decode' : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> R_q
+  Decode' B = map BitstoZ`{ell} (split (BytesToBits B))
+
+  DecodeEquiv : [32 * 12]Byte -> Bit
+  property DecodeEquiv B = (Decode' B == DecodeSpec B)
   
   Encode' : {ell} (fin ell, ell > 0) => R_q -> [32 * ell]Byte
-  Encode' f = groupBy`{8} (join [reverse (fromInteger((fromZ(fi)))) | fi <- f : R_q])
+  Encode' f = BitsToBytes (join (map ZtoBits`{ell} f))
   
   CorrectnessEncodeDecode' : R_q -> Bit
   property CorrectnessEncodeDecode' f = Decode'`{12}(Encode'`{12} f) == f
@@ -620,19 +631,14 @@ A more high-level view of these algorithms is given in the comments.
   KeyGen: ([32]Byte) -> ([12*k*n/8+32]Byte, [12*k*n/8]Byte)
   KeyGen(d) = (pk,sk) where
     (rho,sigma) = G(d)
-    Ahat = [[Parse (XOF(rho,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]R_q
-    s = [CBD`{eta_1}(PRF`{eta_1}(sigma,N)) | N <- [0 .. k-1]] : [k]R_q
-    e = [CBD`{eta_1}(PRF`{eta_1}(sigma,N)) | N <- [k .. (2*k-1)]] : [k]R_q
-    shat = NTT(s)
-    ehat = NTT(e)
-    that = (dotMatVec Ahat shat) + ehat
-    
-    pk_rev = Encode`{12}(that)
-    pk = [reverse (pk_rev@(i) : Byte) | i <- [0 .. 12*k*n/8-1]] # rho
-
-    sk_rev = Encode`{12}(shat)
-    sk = [reverse (sk_rev@(i) : Byte) | i <- [0 .. 12*k*n/8-1]]
-
+    A_hat = [[Parse (XOF(rho,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]R_q
+    s = [CBD`{eta_1}(PRF(sigma,N)) | N <- [0 .. k-1]] : [k]R_q
+    e = [CBD`{eta_1}(PRF(sigma,N)) | N <- [k .. (2*k-1)]] : [k]R_q
+    s_hat = NTT(s)
+    e_hat = NTT(e)
+    t_hat = (dotMatVec A_hat s_hat) + e_hat
+    pk = Encode`{12}(t_hat) # rho
+    sk = Encode`{12}(s_hat)
 \end{code}
 
 \begin{algorithm}
@@ -671,23 +677,19 @@ A more high-level view of these algorithms is given in the comments.
 
 \begin{code}
   Enc : ([12*k*n/8+32]Byte, [32]Byte, [32]Byte) -> [d_u*k*n/8 + d_v*n/8]Byte
-  Enc(pk, m, r) = c1#c2 where
-    pk_rev = [reverse (pk@(i) : Byte) | i <- [0 .. 12*k*n/8-1]]
-    that = Decode`{12} (take`{12*k*n/8} pk_rev) : [k]R_q
+  Enc(pk, m, r) = c where
+    t_hat = Decode`{12} (take pk)
     rho = plus`{12*k*n/8} pk : [32]Byte
-    Ahat = [[Parse (XOF(rho,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]R_q
-    rvec = [CBD`{eta_1}(PRF`{eta_1}(r,N)) | N <- [0 .. k-1]] : [k]R_q
-    e1 = [CBD`{eta_2}(PRF`{eta_2}(r,N)) | N <- [k .. (2*k-1)]] : [k]R_q
-    e2 = CBD`{eta_2}(PRF`{eta_2}(r,2*`k)) : R_q
+    A_hat = [[Parse (XOF(rho,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]R_q
+    rvec = [CBD`{eta_1}(PRF(r,N)) | N <- [0 .. k-1]] : [k]R_q
+    e1 = [CBD`{eta_2}(PRF(r,N)) | N <- [k .. (2*k-1)]] : [k]R_q
+    e2 = CBD`{eta_2}(PRF(r,2*`k)) : R_q
     rvechat = NTT rvec
-    u = NTTInv (dotMatVec (transpose Ahat) rvechat) + e1 : [k]R_q
-    v = (NTTInv' (dotVecVec that rvechat)) + e2 + reverse(DecompressM'`{1}(DecodeBytes'`{1} m))
-
-    c1_rev = EncodeBytes`{10}(Compress`{10}(u))
-    c1 = join [reverse [c1_rev@(j+i*`d_u*`n/8) | j <- [0 .. d_u*n/8-1]] | i <- [0 .. k-1]] : [d_u*k*n/8]Byte
-    
-    c2_rev = EncodeBytes'`{d_v}(Compress'`{d_v}(v))
-    c2 = reverse (c2_rev) : [d_v*n/8]Byte    
+    u = NTTInv (dotMatVec (transpose A_hat) rvechat) + e1 : [k]R_q
+    v = (NTTInv' (dotVecVec t_hat rvechat)) + e2 + Decompress'`{1}(DecodeBytes'`{1} m)
+    c1 = EncodeBytes`{d_u}(Compress`{d_u}(u))
+    c2 = EncodeBytes'`{d_v}(Compress'`{d_v}(v))
+    c = c1#c2
 \end{code}
 
 \begin{algorithm}
@@ -707,12 +709,10 @@ A more high-level view of these algorithms is given in the comments.
 \begin{code}
   Dec : ([12*k*n/8]Byte, [d_u*k*n/8 + d_v*n/8]Byte) -> [32]Byte
   Dec(sk, c) = m where
-    u = Decompress`{d_u}(DecodeBytes`{d_u}(take`{d_u*k*n/8}c))   : [k]R_q
-    v = Decompress'`{d_v}(reverse(DecodeBytes'`{d_v}(plus`{d_u*k*n/8}c))) : R_q
-    sk_rev = [reverse (sk@(i) : Byte) | i <- [0 .. 12*k*n/8-1]]
-    shat = Decode`{12}(sk_rev) : [k]R_q
-
-    m = reverse (EncodeBytes'`{1}(Compress'`{1}(v - NTTInv' (dotVecVec shat (NTT u)))))
+    u = Decompress`{d_u}(DecodeBytes`{d_u}(take c))   : [k]R_q
+    v = Decompress'`{d_v}(DecodeBytes'`{d_v}(plus`{d_u*k*n/8}c)) : R_q
+    s_hat = Decode`{12} sk : [k]R_q
+    m = EncodeBytes'`{1}(Compress'`{1}(v - NTTInv' (dotVecVec s_hat (NTT u))))
 
   // Kyber is correct with probability 1-delta and not 1. As a result,
   // running :prove Correctness will not succeed since there is a 
@@ -776,17 +776,12 @@ we define key generation, encapsulation, and decapsulation of \KyberCCAKEM.
 
 \begin{code}
   // We make the random message m explicit.
-  // The output is reversed as a consequence of the current
-  // implementation of the BytesToBits Cryptol function that considers
-  // the rightmost bit of a byte to be the least significant.
   CEnc : ([12*k*n/8+32]Byte, [32]Byte) -> ([d_u*k*n/8+d_v*n/8]Byte, [inf]Byte)
-  CEnc (pk, m) = (c, map reverse K) where
-    m' = H(m) // Cryptol warns about shadowing
+  CEnc (pk, m) = (c, K) where
+    m' = H(m)
     (KBar,r) = G(m'#H(pk))
     c = Enc(pk,m',r)
     K = KDF(KBar#H(c))
-    // K_r = take`{32}(KDF(KBar#H(c)))
-    // K = [reverse (K_r@(i)) | i <- [0 .. 31]]
 \end{code}
 
 \begin{algorithm}
@@ -811,11 +806,8 @@ we define key generation, encapsulation, and decapsulation of \KyberCCAKEM.
 \end{algorithm}
 
 \begin{code}
-  // The output is reversed as a consequence of the current
-  // implementation of the BytesToBits Cryptol function that considers
-  // the rightmost bit of a byte to be the least significant.
   CDec : ([d_u*k*n/8+d_v*n/8]Byte,[24*k*n/8+96]Byte) -> [inf]Byte
-  CDec (c,sk) = map reverse K
+  CDec (c,sk) = K
     where
       sk' = sk@@[0 .. 12*k*n/8 - 1] //We make the first portion explicit
       pk = sk@@[12*k*n/8 .. 24*k*n/8+32 - 1]
@@ -925,7 +917,7 @@ as follows:
       where result = split`{2} (toBytes(sha3 `{digest = 512} (fromBytes(M))))
   
   import Primitive::Keyless::Hash::SHAKE::SHAKE256
-  PRF(s,b) = (groupBy`{8}(shake256(fromBytes(s)# reverse b)))@@[0 .. (64*prfeta-1)]
+  PRF(s,b) = map reverse (take (groupBy`{8} (shake256(fromBytes(s)# reverse b))))
   
   KDF input = groupBy`{8}(shake256 (fromBytes(input)))
 \end{code}
