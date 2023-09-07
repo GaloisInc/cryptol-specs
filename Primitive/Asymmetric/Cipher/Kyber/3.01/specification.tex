@@ -631,14 +631,14 @@ A more high-level view of these algorithms is given in the comments.
   KeyGen: ([32]Byte) -> ([12*k*n/8+32]Byte, [12*k*n/8]Byte)
   KeyGen(d) = (pk,sk) where
     (rho,sigma) = G(d)
-    Ahat = [[Parse (XOF(rho,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]R_q
+    A_hat = [[Parse (XOF(rho,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]R_q
     s = [CBD`{eta_1}(PRF(sigma,N)) | N <- [0 .. k-1]] : [k]R_q
     e = [CBD`{eta_1}(PRF(sigma,N)) | N <- [k .. (2*k-1)]] : [k]R_q
-    shat = NTT(s)
-    ehat = NTT(e)
-    that = (dotMatVec Ahat shat) + ehat
-    pk = Encode`{12}(that) # rho
-    sk = Encode`{12}(shat)
+    s_hat = NTT(s)
+    e_hat = NTT(e)
+    t_hat = (dotMatVec A_hat s_hat) + e_hat
+    pk = Encode`{12}(t_hat) # rho
+    sk = Encode`{12}(s_hat)
 \end{code}
 
 \begin{algorithm}
@@ -678,15 +678,15 @@ A more high-level view of these algorithms is given in the comments.
 \begin{code}
   Enc : ([12*k*n/8+32]Byte, [32]Byte, [32]Byte) -> [d_u*k*n/8 + d_v*n/8]Byte
   Enc(pk, m, r) = c where
-    that = Decode`{12} (take pk)
+    t_hat = Decode`{12} (take pk)
     rho = plus`{12*k*n/8} pk : [32]Byte
-    Ahat = [[Parse (XOF(rho,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]R_q
+    A_hat = [[Parse (XOF(rho,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]R_q
     rvec = [CBD`{eta_1}(PRF(r,N)) | N <- [0 .. k-1]] : [k]R_q
     e1 = [CBD`{eta_2}(PRF(r,N)) | N <- [k .. (2*k-1)]] : [k]R_q
     e2 = CBD`{eta_2}(PRF(r,2*`k)) : R_q
     rvechat = NTT rvec
-    u = NTTInv (dotMatVec (transpose Ahat) rvechat) + e1 : [k]R_q
-    v = (NTTInv' (dotVecVec that rvechat)) + e2 + Decompress'`{1}(DecodeBytes'`{1} m)
+    u = NTTInv (dotMatVec (transpose A_hat) rvechat) + e1 : [k]R_q
+    v = (NTTInv' (dotVecVec t_hat rvechat)) + e2 + Decompress'`{1}(DecodeBytes'`{1} m)
     c1 = EncodeBytes`{d_u}(Compress`{d_u}(u))
     c2 = EncodeBytes'`{d_v}(Compress'`{d_v}(v))
     c = c1#c2
@@ -711,8 +711,8 @@ A more high-level view of these algorithms is given in the comments.
   Dec(sk, c) = m where
     u = Decompress`{d_u}(DecodeBytes`{d_u}(take c))   : [k]R_q
     v = Decompress'`{d_v}(DecodeBytes'`{d_v}(plus`{d_u*k*n/8}c)) : R_q
-    shat = Decode`{12} sk : [k]R_q
-    m = EncodeBytes'`{1}(Compress'`{1}(v - NTTInv' (dotVecVec shat (NTT u))))
+    s_hat = Decode`{12} sk : [k]R_q
+    m = EncodeBytes'`{1}(Compress'`{1}(v - NTTInv' (dotVecVec s_hat (NTT u))))
 
   // Kyber is correct with probability 1-delta and not 1. As a result,
   // running :prove Correctness will not succeed since there is a 
