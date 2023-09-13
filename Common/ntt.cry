@@ -1,0 +1,184 @@
+/* Recursive NTT
+
+   John D. Ramsdell -- The MITRE Corporation -- May 2022
+
+   Copyright (c) 2023 The MITRE Corporation.  Distributed under a
+   standard, three-clause BSD license shown in ntt_license.txt. */
+
+/* It type checks, and it succeeds in meeting the ntt_correct property
+   below which says that the inverse ntt applied to the ntt is the
+   identity function.  It also shows a way to use fast algorithms to
+   compute the naive ntt. */
+
+module Common::ntt where
+
+/*
+ * Dilithium parameters:
+ * q = 8380417
+ * n = 256
+ * r = 1753
+ */
+
+type q = 8380417
+
+type Fld = Z q
+
+type nn = 256
+
+/**
+ * Primitive 512-th root of unity r mod q
+ */
+r : Fld
+r = 1753
+
+/* Naive NTT */
+
+all_powers : {n} (fin n) => Fld -> [n]Fld
+all_powers w = take`{n} (iterate ((*) w) 1)
+
+odd_powers : {n} (fin n) => Fld -> [n]Fld
+odd_powers w = take`{n} (iterate ((*) (w * w)) w)
+
+naive_ntt : {n} (fin n) => [n]Fld -> [n]Fld
+naive_ntt xs = map (polyeval xs) (odd_powers r)
+
+// Little endian
+polyeval : {n} (fin n) => [n]Fld -> Fld -> Fld
+polyeval p x = foldl (\y pi -> (x * y) + pi) 0 (reverse p)
+
+/**
+ * n = 256 and ivn is the inverse of n in the field.
+ */
+ivn : Fld
+ivn = recip (`nn : Fld)
+
+/**
+ * Inverse of the root of unity
+ */
+ivr : Fld
+ivr = recip r
+
+naive_ivntt : {n} (fin n) => [n]Fld -> [n]Fld
+naive_ivntt xs = map ((*) ivn) ys
+  where
+    ys = [ foldl (+) 0 (zipWith (*) (reverse xs) (odd_powers wi))
+         | wi <- all_powers r ]
+
+naive_ntt_correct : [nn]Fld -> Bool
+property naive_ntt_correct a = naive_ivntt (naive_ntt a) == a
+
+/**
+ * Unit vectors
+ */
+unit : {n} (n < nn) => [nn]Fld
+unit =
+  [ if `n == i then 1 else 0 | i <- [0 .. <nn]]
+
+/* Recursive NTT */
+
+/**
+ * Powers of the squares of the primitive root of unity
+ */
+roots : [inf]Fld
+roots = iterate ((*) (r * r)) 1
+
+/**
+ * An O(n log n) number theortic transform for Dilithium.
+ */
+ntt : [nn]Fld -> [nn]Fld
+ntt a = ntt_r`{lg2 nn} 0 a
+
+ntt_r : {n} (fin n) => Integer -> [2 ^^ n]Fld -> [2 ^^ n]Fld
+ntt_r depth a =
+  if `n == 0 then
+    a
+  else
+    coerceSize (butterfly depth even odd)
+    where
+      (lft, rht) = shuffle (coerceSize a)
+      even = ntt_r`{max 1 n - 1} (depth + 1) lft
+      odd = ntt_r`{max 1 n - 1} (depth + 1) rht
+
+coerceSize : {m, n, a} [m]a -> [n]a
+coerceSize xs = [ xs @ i | i <- [0 .. <n]]
+
+/**
+ * Group even indices in first half and odd indices in second half.
+ * This implementation uses list comprehension to make the code
+ * obviously correct.
+ */
+shuffle : {n, a} (fin n, n > 0) => [2 * n]a -> ([n]a, [n]a)
+shuffle a =
+  ([ a @ (i * 2) | i <- [0 .. <n]], [ a @ (i * 2 + 1) | i <- [0 .. <n]])
+
+/**
+ * Perform the butterfly operation.
+ */
+butterfly : {n} (fin n, n > 0) => Integer -> [n]Fld -> [n]Fld -> [2 * n]Fld
+butterfly depth even odd =
+  lft # rht
+  where
+    j = 2 ^^ depth
+    lft = [ even @ i + roots @ (i * j) * odd @ i | i <- [0 .. <n] ]
+    rht = [ even @ i - roots @ (i * j) * odd @ i | i <- [0 .. <n] ]
+
+/* INVERSE NTT */
+
+/**
+ * Powers of the inverse squares of the root of unity
+ */
+ivroots : [inf]Fld
+ivroots = iterate ((*) (ivr * ivr)) 1
+
+/**
+ * An O(n log n) inverse number theortic transform for Dilithium.
+ */
+ivntt : [nn]Fld -> [nn]Fld
+ivntt a =
+  map ((*) ivn) (ivntt_r`{lg2 nn} 0 a)
+
+ivntt_r : {n} (fin n) => Integer -> [2 ^^ n]Fld -> [2 ^^ n]Fld
+ivntt_r depth a =
+  if `n == 0 then
+    a
+  else
+    coerceSize (ivbutterfly depth even odd)
+    where
+      (lft, rht) = shuffle (coerceSize a)
+      even = ivntt_r`{max 1 n - 1} (depth + 1) lft
+      odd = ivntt_r`{max 1 n - 1} (depth + 1) rht
+
+/**
+ * Perform the butterfly operation with inverse roots.
+ */
+ivbutterfly : {n} (fin n, n > 0) => Integer -> [n]Fld -> [n]Fld -> [2 * n]Fld
+ivbutterfly depth even odd =
+  lft # rht
+  where
+    j = 2 ^^ depth
+    lft = [ even @ i + ivroots @ (i * j) * odd @ i | i <- [0 .. <n] ]
+    rht = [ even @ i - ivroots @ (i * j) * odd @ i | i <- [0 .. <n] ]
+
+// Try prove
+ntt_correct : [nn]Fld -> Bool
+property ntt_correct a = ivntt (ntt a) == a
+
+/* Connection with naive ntt and recursive ntt */
+
+fntt : [nn]Fld -> [nn]Fld
+fntt xs = ntt (zipWith (*) xs (all_powers r))
+
+// Try prove
+fntt_correct : [nn]Fld -> Bool
+property fntt_correct a = naive_ntt a == fntt a
+
+fivntt : [nn]Fld -> [nn]Fld
+fivntt xs = zipWith (*) (all_powers ivr) (ivntt xs)
+
+// Try prove
+fivntt_correct : [nn]Fld -> Bool
+property fivntt_correct a = fivntt a == naive_ivntt a
+
+// Try prove
+ffivntt_correct : [nn]Fld -> Bool
+property ffivntt_correct a = fivntt (fntt a) == a
