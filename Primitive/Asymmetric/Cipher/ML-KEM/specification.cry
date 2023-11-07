@@ -1,0 +1,403 @@
+module specification where
+
+type Byte = [8]
+
+BytesToBits : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
+BytesToBits input = join (map reverse input)
+
+// The following helper functions are also used.
+BitsToBytes : {ell} (fin ell, ell > 0) => [ell*8]Bit -> [ell]Byte
+BitsToBytes input = map reverse (groupBy input)
+
+BitToZ : {p} (fin p, p > 1) => Bit -> Z p
+BitToZ b = if b then 1 else 0
+
+BitstoZ : {ell} (fin ell, ell > 0) => [ell] -> (Z q)
+BitstoZ betas = fromInteger (toInteger (reverse betas))
+
+ZtoBits : {ell} (fin ell, ell > 0) => (Z q) -> [ell]
+ZtoBits fi = reverse (fromInteger (fromZ fi))
+
+plus : {x, y} (fin x) => [x+y]Byte -> [y]Byte
+plus = drop
+
+// Cryptol's built-in operator for concatenation is #
+concatPlus : {x, y} (fin x, fin y) => [x]Byte -> [y]Byte -> [y]Byte
+concatPlus a b = plus`{x} (a#b)
+
+concatPlusCorrect : {x, y} (fin y, fin x) => [x]Byte -> [y]Byte -> Bit
+property concatPlusCorrect a b = concatPlus a b == b
+
+
+
+type n = 256
+
+// Z is a Cryptol primitive such that Z q represents integers mod q that are 
+// closed under arithmetic operations
+type R = [n]Integer
+type R_q = [n](Z q)
+
+
+
+modpm : {alpha} (fin alpha, alpha > 0) => Z alpha -> Integer
+modpm r = if r' > (`alpha / 2) then r' - `alpha else r'
+  where r' = fromZ(r)
+
+
+
+// In Cryptol, rounding is computed via the built-in function roundAway
+property rounding = ((roundAway(1.5) == 2) && (roundAway(1.4) == 1))
+
+
+
+// Cryptol does not support sampling. Therefore, for every algorithm, we denote
+// its randomness as an explicit input value.
+
+
+
+// Since q is fixed but d varies, we parameterize by d instead of by q.
+Compress'' : {d} (d < lg2 q) => Z q -> [d]
+Compress'' x = fromInteger(roundAway(((2^^`d)/.`q) * fromInteger(fromZ(x))) % 2^^`d)
+
+Decompress'' : {d} (d < lg2 q) => [d] -> Z q 
+Decompress'' x = fromInteger(roundAway(((`q)/.(2^^`d))*fromInteger(toInteger(x))))
+
+B_q : {d} (d < lg2 q) => Integer
+B_q = roundAway((`q/.(2^^(`d+1))))
+
+CorrectnessCompress : Z q -> Bit
+property CorrectnessCompress x = err <= B_q`{d_u} where
+  x' = Decompress''`{d_u}(Compress''`{d_u}(x))
+  err = abs(modpm(x'-x))
+
+
+
+Compress' : {d} (d < lg2 q) => R_q -> [n][d]
+Compress' x = map Compress''`{d} x
+
+Decompress' : {d} (d < lg2 q) => [n][d] -> R_q
+Decompress' x = map Decompress''`{d} x
+
+Compress : {d, k1} (d < lg2 q, fin k1) => [k1]R_q -> [k1][n][d]
+Compress x = map Compress'`{d} x
+
+Decompress : {d, k1} (d < lg2 q, fin k1) => [k1][n][d] -> [k1]R_q
+Decompress x = map Decompress'`{d} x
+
+
+
+// These types distinguish infinite from finite length
+PRF : {prfeta} (fin prfeta, prfeta > 0) => ([32]Byte, Byte) -> [64 * prfeta]Byte
+XOF : ([32]Byte, Byte, Byte) -> [inf]Byte
+H : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
+J : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
+G : {ginl} (fin ginl) => [ginl]Byte -> ([32]Byte, [32]Byte)
+KDF : {kdfinl} (fin kdfinl, kdfinl > 0) => [kdfinl]Byte -> [inf]Byte
+
+
+
+zeta = 17 : Z q
+
+QMinusOne : Bit
+property QMinusOne = `q - 1 == 2^^8*13
+
+Is256thRootOfq : [lg2 q] -> Bit
+property Is256thRootOfq p = (p == 0) || (p >= 256) || (zeta^^p != 1)
+
+br7 : [8] -> [8]
+br7 = reverse
+
+
+
+ParametricNTT : R_q -> (Z q) -> R_q
+ParametricNTT f root = join[[f2i i, f2iPlus1 i] | i <- [0 .. 127]]
+  where f2i i      = sum [f@(2*j)   * root ^^ ((2*(br7 i >> 1)+1)*j) | j <- [0 .. 127]]
+        f2iPlus1 i = sum [f@(2*j+1) * root ^^ ((2*(br7 i >> 1)+1)*j) | j <- [0 .. 127]]
+
+ParametricNTTInv : R_q -> (Z q) -> R_q
+ParametricNTTInv f root = join[[f2i i, f2iPlus1 i] | i <- [0 .. 127]]
+  where f2i i      = sum [f@(2*j)   * root ^^ ((2*(br7 j >> 1)+1)*i) | j <- [0 .. 127]]
+        f2iPlus1 i = sum [f@(2*j+1) * root ^^ ((2*(br7 j >> 1)+1)*i) | j <- [0 .. 127]]
+
+NTT' : R_q -> R_q
+NTT' f = ParametricNTT f zeta
+
+NTTInv' : R_q -> R_q
+NTTInv' f = [term*(recip 128) | term <- ParametricNTTInv f (recip zeta)]
+
+CorrectnessNTT : R_q -> Bit
+property CorrectnessNTT f =  NTTInv' (NTT' f) == f
+
+
+
+base_mul : [2] (Z q) -> [2] (Z q) -> (Z q) -> [2] (Z q)
+base_mul a b root = [r0, r1]
+  where
+    r0 = a@1 * b@1 * root + a@0 * b@0
+    r1 = a@0 * b@1 + a@1 * b@0
+
+point2mul : R_q -> R_q -> R_q
+point2mul a b = join [base_mul (poly1 i) (poly2 i) (root i) | i : Byte <- [0 .. 127]]
+  where
+    poly1 i = [a@(2*i),a@(2*i+1)]
+    poly2 i = [b@(2*i),b@(2*i+1)]
+    root i = (zeta^^(reverse (64 + (i >> 1)) >> 1) * ((-1 : (Z q)) ^^ (i)))
+
+prod : R_q -> R_q -> R_q
+prod f g = NTTInv' (point2mul (NTT' f) (NTT' g))
+
+// Testing that (1+x)^2 = 1+2x+x^2
+TestMult : Bit
+property TestMult = prod f f == fsq where
+  f = [1, 1] # [0 | i <- [3 .. 256]]
+  fsq = [1,2,1] # [0 | i <- [4 .. 256]]
+
+dot : R_q -> R_q -> R_q
+dot f g = point2mul f  g
+
+add : R_q -> R_q -> R_q
+add f g = f + g
+
+
+
+NTT v = map NTT' v
+NTTInv v = map NTTInv' v
+
+
+
+dotVecVec : {k1} (fin k1) => [k1]R_q -> [k1]R_q -> R_q
+dotVecVec v1 v2 = foldl add zero (zipWith dot v1 v2)
+
+dotMatVec : {k1,k2} (fin k1, fin k2) => [k1][k2]R_q -> [k2]R_q -> [k1]R_q
+dotMatVec matrix vector = [dotVecVec v1 vector | v1 <- matrix]
+
+dotMatMat :{k1,k2,k3} (fin k1, fin k2, fin k3) =>
+  [k1][k2]R_q -> [k2][k3]R_q -> [k1][k3]R_q
+dotMatMat matrix1 matrix2 = transpose [dotMatVec matrix1 vector | vector <- m']
+    where m' = transpose matrix2
+
+
+
+// Since Cryptol does not natively support while loops, we approach this
+// potentially infinite loop with recursion. We define SampleNTTInf that 
+// converts an infinite sequence of bytes to an infinite sequence of
+// elements in Z q. We then pick the first n elements for the result.
+
+SampleNTT : [inf]Byte -> R_q // Spec has a typo
+SampleNTT b = take`{n} elements
+    where elements = SampleNTTInf b
+
+// SampleNTTInf implements a filter. It scans the input 3 by 3, calculates
+// the elements d1 and d2 and finally returns the elements that satisfy 
+// the conditions together with the result of itself when applied to the
+// tail.
+
+SampleNTTInf: [inf]Byte -> [inf](Z q)
+SampleNTTInf ([bi,bi1,bi2] # tailS) =
+    if d1 < `q then
+        if d2 < `q then
+            [fromInteger(d1),fromInteger(d2)] # SampleNTTInf tailS
+        else
+            [fromInteger(d1)] # SampleNTTInf tailS
+    else
+        if d2 < `q then
+            [fromInteger(d2)] # SampleNTTInf tailS
+        else
+            SampleNTTInf tailS
+    where
+        d1 = toInteger(reverse bi) + 256 * (toInteger(reverse bi1) % 16)
+        d2 = floor(ratio (toInteger(reverse bi1)) 16) + 16 * toInteger(reverse bi2)
+
+
+
+CBD: {eta} (fin eta, eta > 0) => [64 * eta]Byte -> R_q
+CBD B = [f i | i <- [0 .. 255]]
+    where betas = BytesToBits B : [512 * eta]
+          a i = sum [BitToZ`{q} (betas@(2*i*`eta+j)) | j <- [0 .. (eta-1)]]
+          b i = sum [BitToZ`{q} (betas@(2*i*`eta+`eta+j)) | j <- [0 .. (eta-1)]]
+          f i = (a i) - (b i)
+
+
+
+// We make this trivial serialization explicit, since it is not an identity in Cryptol.
+// Byte encoding and decoding involves regrouping 8-bit arrays into ell-bit arrays.
+regroup B = reverse (groupBy (join (reverse B)))
+
+EncodeBytes' : {ell, c} (fin ell, ell > 0, fin c) => [c * 8][ell] -> [c * ell]Byte
+EncodeBytes' = regroup
+
+DecodeBytes' : {ell, c} (fin ell, ell > 0, fin c) => [c * ell]Byte -> [c * 8][ell]
+DecodeBytes' = regroup
+
+CorrectnessEncodeBytes' : [n][2] -> Bit
+property CorrectnessEncodeBytes' B = DecodeBytes'(EncodeBytes' B) == B
+
+EncodeBytes : {ell, k1, c} (fin ell, ell > 0, fin k1, fin c) =>
+    [k1][c * 8][ell] -> [c * ell * k1]Byte
+EncodeBytes B = EncodeBytes' (join B)
+
+DecodeBytes : {ell, k1, c} (fin ell, ell > 0, fin k1, fin c) =>
+    [c * ell * k1]Byte -> [k1][c * 8][ell]
+DecodeBytes B = groupBy (DecodeBytes' B)
+
+CorrectnessEncodeBytes : [k][n][2] -> Bit
+property CorrectnessEncodeBytes B = DecodeBytes(EncodeBytes B) == B
+
+
+
+Encode : {ell, k1} (fin ell, ell > 0, fin k1) => [k1]R_q -> [32 * ell * k1]Byte
+Encode fVec = join (map Encode'`{ell} fVec)
+
+Decode : {ell, k1} (fin ell, ell > 0, fin k1) => [32 * ell * k1]Byte -> [k1]R_q
+Decode BVec = map Decode'`{ell} (split BVec)
+
+CorrectnessEncodeDecode : [k]R_q -> Bit
+property CorrectnessEncodeDecode fVec = all CorrectnessEncodeDecode' fVec
+
+
+
+DecodeSpec : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> R_q
+DecodeSpec B = [f i | i <- [0 .. 255]]
+    where betas = BytesToBits B : [256 * ell]
+          f i = sum [ BitToZ`{q}(betas@(i*`ell+j))*fromInteger(2^^j)
+                    | j <- [0 .. (ell-1)]]
+
+// We include a more efficient way to compute decoding
+// together with a property that it is equivalent.
+Decode' : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> R_q
+Decode' B = map BitstoZ`{ell} (split (BytesToBits B))
+
+DecodeEquiv : [32 * 12]Byte -> Bit
+property DecodeEquiv B = (Decode' B == DecodeSpec B)
+
+Encode' : {ell} (fin ell, ell > 0) => R_q -> [32 * ell]Byte
+Encode' f = BitsToBytes (join (map ZtoBits`{ell} f))
+
+CorrectnessEncodeDecode' : R_q -> Bit
+property CorrectnessEncodeDecode' f = Decode'`{12}(Encode'`{12} f) == f
+
+
+
+K_PKE_KeyGen: ([32]Byte) -> ([384*k+32]Byte, [384*k]Byte)
+K_PKE_KeyGen(d) = (pk,sk) where
+  (rho,sigma) = G(d)
+  A_hat = [[SampleNTT (XOF(rho,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]R_q
+  s = [CBD`{eta_1}(PRF(sigma,N)) | N <- [0 .. k-1]] : [k]R_q
+  e = [CBD`{eta_1}(PRF(sigma,N)) | N <- [k .. (2*k-1)]] : [k]R_q
+  s_hat = NTT(s)
+  e_hat = NTT(e)
+  t_hat = (dotMatVec A_hat s_hat) + e_hat
+  pk = Encode`{12}(t_hat) # rho
+  sk = Encode`{12}(s_hat)
+
+
+
+K_PKE_Encrypt : ([384*k+32]Byte, [32]Byte, [32]Byte) -> [32*(d_u*k+d_v)]Byte
+K_PKE_Encrypt(pk, m, r) = c where
+  t_hat = Decode`{12} (take pk)
+  rho = plus`{12*k*n/8} pk : [32]Byte
+  A_hat = [[SampleNTT (XOF(rho,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]R_q
+  rvec = [CBD`{eta_1}(PRF(r,N)) | N <- [0 .. k-1]] : [k]R_q
+  e1 = [CBD`{eta_2}(PRF(r,N)) | N <- [k .. (2*k-1)]] : [k]R_q
+  e2 = CBD`{eta_2}(PRF(r,2*`k)) : R_q
+  rvechat = NTT rvec
+  u = NTTInv (dotMatVec (transpose A_hat) rvechat) + e1 : [k]R_q
+  v = (NTTInv' (dotVecVec t_hat rvechat)) + e2 + Decompress'`{1}(DecodeBytes'`{1} m)
+  c1 = EncodeBytes`{d_u}(Compress`{d_u}(u))
+  c2 = EncodeBytes'`{d_v}(Compress'`{d_v}(v))
+  c = c1#c2
+
+
+
+K_PKE_Decrypt : ([384*k]Byte, [32*(d_u*k+d_v)]Byte) -> [32]Byte
+K_PKE_Decrypt(sk, c) = m where
+  u = Decompress`{d_u}(DecodeBytes`{d_u}(take c))   : [k]R_q
+  v = Decompress'`{d_v}(DecodeBytes'`{d_v}(plus`{d_u*k*n/8}c)) : R_q
+  s_hat = Decode`{12} sk : [k]R_q
+  m = EncodeBytes'`{1}(Compress'`{1}(v - NTTInv' (dotVecVec s_hat (NTT u))))
+
+// Kyber is correct with probability 1-delta and not 1. As a result,
+// running :prove Correctness will not succeed since there is a 
+// fraction delta of seeds d,r that do not work. Therefore, we can 
+// only run :check Correctness. Cryptol does not currently support counting.
+
+CorrectnessPKE : ([32]Byte, [32]Byte, [32]Byte) -> Bit
+property CorrectnessPKE(d, m, r) = (m' == m) where
+  (pk, sk) = K_PKE_KeyGen(d)
+  c = K_PKE_Encrypt(pk, m, r)
+  m' = K_PKE_Decrypt(sk, c)
+
+
+
+// We make the randomness of K_PKE_KeyGen explicit
+ML_KEM_KeyGen : ([32]Byte,[32]Byte) -> ([384*k+32]Byte, [768*k+96]Byte)
+ML_KEM_KeyGen (z,d) = (pk,sk) where
+  (pk,sk') = K_PKE_KeyGen(d)
+  sk = sk'#pk#H(pk)#z
+
+
+
+// We make the random message m explicit.
+ML_KEM_Encaps : ([384*k+32]Byte, [32]Byte) -> ([32]Byte, [32*(d_u*k+d_v)]Byte)
+ML_KEM_Encaps (ek, m) = (K, c) where
+  (K,r) = G(m#H(ek))
+  c = K_PKE_Encrypt(ek,m,r)
+
+
+
+ML_KEM_Decaps : ([32*(d_u*k+d_v)]Byte, [768*k+96]Byte) -> [32]Byte
+ML_KEM_Decaps (c, sk) = K
+  where
+    sk' = sk@@[0 .. 12*k*n/8 - 1] // We make the first portion explicit
+    pk = sk@@[12*k*n/8 .. 24*k*n/8+32 - 1]
+    h = sk@@[24*k*n/8+32 .. 24*k*n/8+64-1] : [32]Byte
+    z = plus`{24*k*n/8+64} sk
+    m' = K_PKE_Decrypt(sk',c)
+    (K', r') = G(m'#h)
+    Kbar = J(z#c) : [32]Byte // Spec has a typo
+    c' = K_PKE_Encrypt(pk,m',r')
+    K = if (c != c') then Kbar // Implicitly reject
+                     else K'
+
+
+CorrectnessKEM : ([32]Byte, [32]Byte, [32]Byte) -> Bit
+property CorrectnessKEM(z, d, m) = (K == K') where
+  (pk, sk) = ML_KEM_KeyGen(z, d)
+  (K, c) = ML_KEM_Encaps(pk, m)
+  K' = ML_KEM_Decaps(c, sk)
+
+
+
+parameter
+  type q : #
+  type constraint (prime q, fin q, lg2 q > 10)
+  type k : #
+  type constraint (width k > 0, width 2*k <= 8)
+  type eta_1 : #
+  type constraint (fin eta_1, eta_1 > 0)
+  type eta_2 : #
+  type constraint (fin eta_2, eta_2 > 0)
+  type d_u : #
+  type constraint (fin d_u, d_u < lg2 q, d_u > 0)
+  type d_v : #
+  type constraint (fin d_v, d_v < lg2 q, d_v > 0)
+
+
+
+import Primitive::Keyless::Hash::utils
+import Primitive::Keyless::Hash::SHAKE::SHAKE128
+XOF(rho, i, j) = groupBy`{8}(shake128((fromBytes(rho))# reverse i# reverse j))
+J(s) = zero //TODO
+
+import `Primitive::Keyless::Hash::SHA3::SHA3
+H M = toBytes(sha3 `{digest = 256} (fromBytes(M)))
+
+G M = (result@0, result@1)
+    where result = split`{2} (toBytes(sha3 `{digest = 512} (fromBytes(M))))
+
+import Primitive::Keyless::Hash::SHAKE::SHAKE256
+PRF(s,b) = map reverse (take (groupBy`{8} (shake256(fromBytes(s)# reverse b))))
+
+KDF input = groupBy`{8}(shake256 (fromBytes(input)))
+
+
