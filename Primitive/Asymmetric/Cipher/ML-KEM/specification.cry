@@ -34,8 +34,7 @@ type n = 256
 
 // Z is a Cryptol primitive such that Z q represents integers mod q that are 
 // closed under arithmetic operations
-type R = [n]Integer
-type R_q = [n](Z q)
+type Z_q_256 = [n](Z q)
 
 
 
@@ -72,16 +71,16 @@ property CorrectnessCompress x = err <= B_q`{d_u} where
 
 
 
-Compress' : {d} (d < lg2 q) => R_q -> [n][d]
+Compress' : {d} (d < lg2 q) => Z_q_256 -> [n][d]
 Compress' x = map Compress''`{d} x
 
-Decompress' : {d} (d < lg2 q) => [n][d] -> R_q
+Decompress' : {d} (d < lg2 q) => [n][d] -> Z_q_256
 Decompress' x = map Decompress''`{d} x
 
-Compress : {d, k1} (d < lg2 q, fin k1) => [k1]R_q -> [k1][n][d]
+Compress : {d, k1} (d < lg2 q, fin k1) => [k1]Z_q_256 -> [k1][n][d]
 Compress x = map Compress'`{d} x
 
-Decompress : {d, k1} (d < lg2 q, fin k1) => [k1][n][d] -> [k1]R_q
+Decompress : {d, k1} (d < lg2 q, fin k1) => [k1][n][d] -> [k1]Z_q_256
 Decompress x = map Decompress'`{d} x
 
 
@@ -104,47 +103,47 @@ property QMinusOne = `q - 1 == 2^^8*13
 Is256thRootOfq : [lg2 q] -> Bit
 property Is256thRootOfq p = (p == 0) || (p >= 256) || (zeta^^p != 1)
 
-br7 : [8] -> [8]
-br7 = reverse
+BitRev7 : [8] -> [8]
+BitRev7 = reverse
 
 
 
-ParametricNTT : R_q -> (Z q) -> R_q
+ParametricNTT : Z_q_256 -> (Z q) -> Z_q_256
 ParametricNTT f root = join[[f2i i, f2iPlus1 i] | i <- [0 .. 127]]
-  where f2i i      = sum [f@(2*j)   * root ^^ ((2*(br7 i >> 1)+1)*j) | j <- [0 .. 127]]
-        f2iPlus1 i = sum [f@(2*j+1) * root ^^ ((2*(br7 i >> 1)+1)*j) | j <- [0 .. 127]]
+  where f2i i      = sum [f@(2*j)   * root ^^ ((2*(BitRev7 i >> 1)+1)*j) | j <- [0 .. 127]]
+        f2iPlus1 i = sum [f@(2*j+1) * root ^^ ((2*(BitRev7 i >> 1)+1)*j) | j <- [0 .. 127]]
 
-ParametricNTTInv : R_q -> (Z q) -> R_q
+ParametricNTTInv : Z_q_256 -> (Z q) -> Z_q_256
 ParametricNTTInv f root = join[[f2i i, f2iPlus1 i] | i <- [0 .. 127]]
-  where f2i i      = sum [f@(2*j)   * root ^^ ((2*(br7 j >> 1)+1)*i) | j <- [0 .. 127]]
-        f2iPlus1 i = sum [f@(2*j+1) * root ^^ ((2*(br7 j >> 1)+1)*i) | j <- [0 .. 127]]
+  where f2i i      = sum [f@(2*j)   * root ^^ ((2*(BitRev7 j >> 1)+1)*i) | j <- [0 .. 127]]
+        f2iPlus1 i = sum [f@(2*j+1) * root ^^ ((2*(BitRev7 j >> 1)+1)*i) | j <- [0 .. 127]]
 
-NTT' : R_q -> R_q
+NTT' : Z_q_256 -> Z_q_256
 NTT' f = ParametricNTT f zeta
 
-NTTInv' : R_q -> R_q
+NTTInv' : Z_q_256 -> Z_q_256
 NTTInv' f = [term*(recip 128) | term <- ParametricNTTInv f (recip zeta)]
 
-CorrectnessNTT : R_q -> Bit
+CorrectnessNTT : Z_q_256 -> Bit
 property CorrectnessNTT f =  NTTInv' (NTT' f) == f
 
 
 
-base_mul : [2] (Z q) -> [2] (Z q) -> (Z q) -> [2] (Z q)
-base_mul a b root = [r0, r1]
+BaseCaseMultiply : [2] (Z q) -> [2] (Z q) -> (Z q) -> [2] (Z q)
+BaseCaseMultiply a b root = [r0, r1]
   where
     r0 = a@1 * b@1 * root + a@0 * b@0
     r1 = a@0 * b@1 + a@1 * b@0
 
-point2mul : R_q -> R_q -> R_q
-point2mul a b = join [base_mul (poly1 i) (poly2 i) (root i) | i : Byte <- [0 .. 127]]
+MultiplyNTTs : Z_q_256 -> Z_q_256 -> Z_q_256
+MultiplyNTTs a b = join [BaseCaseMultiply (poly1 i) (poly2 i) (root i) | i : Byte <- [0 .. 127]]
   where
     poly1 i = [a@(2*i),a@(2*i+1)]
     poly2 i = [b@(2*i),b@(2*i+1)]
     root i = (zeta^^(reverse (64 + (i >> 1)) >> 1) * ((-1 : (Z q)) ^^ (i)))
 
-prod : R_q -> R_q -> R_q
-prod f g = NTTInv' (point2mul (NTT' f) (NTT' g))
+prod : Z_q_256 -> Z_q_256 -> Z_q_256
+prod f g = NTTInv' (MultiplyNTTs (NTT' f) (NTT' g))
 
 // Testing that (1+x)^2 = 1+2x+x^2
 TestMult : Bit
@@ -152,10 +151,10 @@ property TestMult = prod f f == fsq where
   f = [1, 1] # [0 | i <- [3 .. 256]]
   fsq = [1,2,1] # [0 | i <- [4 .. 256]]
 
-dot : R_q -> R_q -> R_q
-dot f g = point2mul f  g
+dot : Z_q_256 -> Z_q_256 -> Z_q_256
+dot f g = MultiplyNTTs f  g
 
-add : R_q -> R_q -> R_q
+add : Z_q_256 -> Z_q_256 -> Z_q_256
 add f g = f + g
 
 
@@ -165,14 +164,14 @@ NTTInv v = map NTTInv' v
 
 
 
-dotVecVec : {k1} (fin k1) => [k1]R_q -> [k1]R_q -> R_q
+dotVecVec : {k1} (fin k1) => [k1]Z_q_256 -> [k1]Z_q_256 -> Z_q_256
 dotVecVec v1 v2 = foldl add zero (zipWith dot v1 v2)
 
-dotMatVec : {k1,k2} (fin k1, fin k2) => [k1][k2]R_q -> [k2]R_q -> [k1]R_q
+dotMatVec : {k1,k2} (fin k1, fin k2) => [k1][k2]Z_q_256 -> [k2]Z_q_256 -> [k1]Z_q_256
 dotMatVec matrix vector = [dotVecVec v1 vector | v1 <- matrix]
 
 dotMatMat :{k1,k2,k3} (fin k1, fin k2, fin k3) =>
-  [k1][k2]R_q -> [k2][k3]R_q -> [k1][k3]R_q
+  [k1][k2]Z_q_256 -> [k2][k3]Z_q_256 -> [k1][k3]Z_q_256
 dotMatMat matrix1 matrix2 = transpose [dotMatVec matrix1 vector | vector <- m']
     where m' = transpose matrix2
 
@@ -183,8 +182,8 @@ dotMatMat matrix1 matrix2 = transpose [dotMatVec matrix1 vector | vector <- m']
 // converts an infinite sequence of bytes to an infinite sequence of
 // elements in Z q. We then pick the first n elements for the result.
 
-SampleNTT : [inf]Byte -> R_q // Spec has a typo
-SampleNTT b = take`{n} elements
+SampleNTT : [inf]Byte -> Z_q_256 // Spec has a typo
+SampleNTT b = take elements
     where elements = SampleNTTInf b
 
 // SampleNTTInf implements a filter. It scans the input 3 by 3, calculates
@@ -210,12 +209,12 @@ SampleNTTInf ([bi,bi1,bi2] # tailS) =
 
 
 
-CBD: {eta} (fin eta, eta > 0) => [64 * eta]Byte -> R_q
-CBD B = [f i | i <- [0 .. 255]]
+SamplePolyCBD: {eta} (fin eta, eta > 0) => [64 * eta]Byte -> Z_q_256
+SamplePolyCBD B = [f i | i <- [0 .. 255]]
     where betas = BytesToBits B : [512 * eta]
-          a i = sum [BitToZ`{q} (betas@(2*i*`eta+j)) | j <- [0 .. (eta-1)]]
-          b i = sum [BitToZ`{q} (betas@(2*i*`eta+`eta+j)) | j <- [0 .. (eta-1)]]
-          f i = (a i) - (b i)
+          x i = sum [BitToZ`{q} (betas@(2*i*`eta+j)) | j <- [0 .. (eta-1)]]
+          y i = sum [BitToZ`{q} (betas@(2*i*`eta+`eta+j)) | j <- [0 .. (eta-1)]]
+          f i = (x i) - (y i)
 
 
 
@@ -245,18 +244,18 @@ property CorrectnessEncodeBytes B = DecodeBytes(EncodeBytes B) == B
 
 
 
-Encode : {ell, k1} (fin ell, ell > 0, fin k1) => [k1]R_q -> [32 * ell * k1]Byte
+Encode : {ell, k1} (fin ell, ell > 0, fin k1) => [k1]Z_q_256 -> [32 * ell * k1]Byte
 Encode fVec = join (map Encode'`{ell} fVec)
 
-Decode : {ell, k1} (fin ell, ell > 0, fin k1) => [32 * ell * k1]Byte -> [k1]R_q
+Decode : {ell, k1} (fin ell, ell > 0, fin k1) => [32 * ell * k1]Byte -> [k1]Z_q_256
 Decode BVec = map Decode'`{ell} (split BVec)
 
-CorrectnessEncodeDecode : [k]R_q -> Bit
+CorrectnessEncodeDecode : [k]Z_q_256 -> Bit
 property CorrectnessEncodeDecode fVec = all CorrectnessEncodeDecode' fVec
 
 
 
-DecodeSpec : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> R_q
+DecodeSpec : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> Z_q_256
 DecodeSpec B = [f i | i <- [0 .. 255]]
     where betas = BytesToBits B : [256 * ell]
           f i = sum [ BitToZ`{q}(betas@(i*`ell+j))*fromInteger(2^^j)
@@ -264,45 +263,46 @@ DecodeSpec B = [f i | i <- [0 .. 255]]
 
 // We include a more efficient way to compute decoding
 // together with a property that it is equivalent.
-Decode' : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> R_q
+Decode' : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> Z_q_256
 Decode' B = map BitstoZ`{ell} (split (BytesToBits B))
 
 DecodeEquiv : [32 * 12]Byte -> Bit
 property DecodeEquiv B = (Decode' B == DecodeSpec B)
 
-Encode' : {ell} (fin ell, ell > 0) => R_q -> [32 * ell]Byte
+Encode' : {ell} (fin ell, ell > 0) => Z_q_256 -> [32 * ell]Byte
 Encode' f = BitsToBytes (join (map ZtoBits`{ell} f))
 
-CorrectnessEncodeDecode' : R_q -> Bit
+CorrectnessEncodeDecode' : Z_q_256 -> Bit
 property CorrectnessEncodeDecode' f = Decode'`{12}(Encode'`{12} f) == f
 
 
 
 K_PKE_KeyGen: ([32]Byte) -> ([384*k+32]Byte, [384*k]Byte)
-K_PKE_KeyGen(d) = (pk,sk) where
-  (rho,sigma) = G(d)
-  A_hat = [[SampleNTT (XOF(rho,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]R_q
-  s = [CBD`{eta_1}(PRF(sigma,N)) | N <- [0 .. k-1]] : [k]R_q
-  e = [CBD`{eta_1}(PRF(sigma,N)) | N <- [k .. (2*k-1)]] : [k]R_q
+K_PKE_KeyGen(d) = (ekPKE, dkPKE) where
+  (ρ,σ) = G(d)
+  A_hat = [[SampleNTT (XOF(ρ,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]Z_q_256
+  s = [SamplePolyCBD`{eta_1}(PRF(σ,N)) | N <- [0 .. k-1]] : [k]Z_q_256
+  e = [SamplePolyCBD`{eta_1}(PRF(σ,N)) | N <- [k .. (2*k-1)]] : [k]Z_q_256
   s_hat = NTT(s)
   e_hat = NTT(e)
   t_hat = (dotMatVec A_hat s_hat) + e_hat
-  pk = Encode`{12}(t_hat) # rho
-  sk = Encode`{12}(s_hat)
+  ekPKE = Encode`{12}(t_hat) # ρ
+  dkPKE = Encode`{12}(s_hat)
 
 
 
 K_PKE_Encrypt : ([384*k+32]Byte, [32]Byte, [32]Byte) -> [32*(d_u*k+d_v)]Byte
-K_PKE_Encrypt(pk, m, r) = c where
-  t_hat = Decode`{12} (take pk)
-  rho = plus`{12*k*n/8} pk : [32]Byte
-  A_hat = [[SampleNTT (XOF(rho,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]R_q
-  rvec = [CBD`{eta_1}(PRF(r,N)) | N <- [0 .. k-1]] : [k]R_q
-  e1 = [CBD`{eta_2}(PRF(r,N)) | N <- [k .. (2*k-1)]] : [k]R_q
-  e2 = CBD`{eta_2}(PRF(r,2*`k)) : R_q
+K_PKE_Encrypt(ekPKE, m, r) = c where
+  t_hat = Decode`{12} (ekPKE@@[0 .. 384*k - 1])
+  rho = ekPKE@@[384*k .. 384*k + 32 - 1]
+  A_hat = [[SampleNTT (XOF(rho,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]Z_q_256
+  rvec = [SamplePolyCBD`{eta_1}(PRF(r,N)) | N <- [0 .. k-1]] : [k]Z_q_256
+  e1 = [SamplePolyCBD`{eta_2}(PRF(r,N)) | N <- [k .. (2*k-1)]] : [k]Z_q_256
+  e2 = SamplePolyCBD`{eta_2}(PRF(r,2*`k)) : Z_q_256
   rvechat = NTT rvec
-  u = NTTInv (dotMatVec (transpose A_hat) rvechat) + e1 : [k]R_q
-  v = (NTTInv' (dotVecVec t_hat rvechat)) + e2 + Decompress'`{1}(DecodeBytes'`{1} m)
+  u = NTTInv (dotMatVec (transpose A_hat) rvechat) + e1 : [k]Z_q_256
+  mu = Decompress'`{1}(DecodeBytes'`{1} m)
+  v = (NTTInv' (dotVecVec t_hat rvechat)) + e2 + mu
   c1 = EncodeBytes`{d_u}(Compress`{d_u}(u))
   c2 = EncodeBytes'`{d_v}(Compress'`{d_v}(v))
   c = c1#c2
@@ -311,10 +311,13 @@ K_PKE_Encrypt(pk, m, r) = c where
 
 K_PKE_Decrypt : ([384*k]Byte, [32*(d_u*k+d_v)]Byte) -> [32]Byte
 K_PKE_Decrypt(sk, c) = m where
-  u = Decompress`{d_u}(DecodeBytes`{d_u}(take c))   : [k]R_q
-  v = Decompress'`{d_v}(DecodeBytes'`{d_v}(plus`{d_u*k*n/8}c)) : R_q
-  s_hat = Decode`{12} sk : [k]R_q
-  m = EncodeBytes'`{1}(Compress'`{1}(v - NTTInv' (dotVecVec s_hat (NTT u))))
+  c1 = c@@[0 .. 32*d_u*k - 1]
+  c2 = c@@[32*d_u*k .. 32*(d_u*k+d_v) - 1]
+  u = Decompress`{d_u}(DecodeBytes`{d_u} c1)   : [k]Z_q_256
+  v = Decompress'`{d_v}(DecodeBytes'`{d_v} c2) : Z_q_256
+  s_hat = Decode`{12} sk : [k]Z_q_256
+  w = v - NTTInv' (dotVecVec s_hat (NTT u))
+  m = EncodeBytes'`{1}(Compress'`{1}(w))
 
 // Kyber is correct with probability 1-delta and not 1. As a result,
 // running :prove Correctness will not succeed since there is a 
@@ -331,32 +334,33 @@ property CorrectnessPKE(d, m, r) = (m' == m) where
 
 // We make the randomness of K_PKE_KeyGen explicit
 ML_KEM_KeyGen : ([32]Byte,[32]Byte) -> ([384*k+32]Byte, [768*k+96]Byte)
-ML_KEM_KeyGen (z,d) = (pk,sk) where
-  (pk,sk') = K_PKE_KeyGen(d)
-  sk = sk'#pk#H(pk)#z
+ML_KEM_KeyGen (z,d) = (ek, dk) where
+  (ekPKE, dkPKE) = K_PKE_KeyGen(d)
+  ek = ekPKE
+  dk = dkPKE#ek#H(ek)#z
 
 
 
 // We make the random message m explicit.
 ML_KEM_Encaps : ([384*k+32]Byte, [32]Byte) -> ([32]Byte, [32*(d_u*k+d_v)]Byte)
 ML_KEM_Encaps (ek, m) = (K, c) where
-  (K,r) = G(m#H(ek))
-  c = K_PKE_Encrypt(ek,m,r)
+  (K, r) = G(m#H(ek))
+  c = K_PKE_Encrypt(ek, m, r)
 
 
 
 ML_KEM_Decaps : ([32*(d_u*k+d_v)]Byte, [768*k+96]Byte) -> [32]Byte
-ML_KEM_Decaps (c, sk) = K
+ML_KEM_Decaps (c, dk) = K
   where
-    sk' = sk@@[0 .. 12*k*n/8 - 1] // We make the first portion explicit
-    pk = sk@@[12*k*n/8 .. 24*k*n/8+32 - 1]
-    h = sk@@[24*k*n/8+32 .. 24*k*n/8+64-1] : [32]Byte
-    z = plus`{24*k*n/8+64} sk
-    m' = K_PKE_Decrypt(sk',c)
+    dkPKE = dk@@[0 .. 384*k - 1]
+    ekPKE = dk@@[384*k .. 768*k + 32 - 1]
+    h = dk@@[768*k + 32 .. 768*k + 64 - 1]
+    z = dk@@[768*k + 64 .. 768*k + 96 - 1]
+    m' = K_PKE_Decrypt(dkPKE, c)
     (K', r') = G(m'#h)
     Kbar = J(z#c) : [32]Byte // Spec has a typo
-    c' = K_PKE_Encrypt(pk,m',r')
-    K = if (c != c') then Kbar // Implicitly reject
+    c' = K_PKE_Encrypt(ekPKE, m', r')
+    K = if (c != c') then Kbar // Suggestion to spec: Rename K' to K
                      else K'
 
 
@@ -387,7 +391,7 @@ parameter
 import Primitive::Keyless::Hash::utils
 import Primitive::Keyless::Hash::SHAKE::SHAKE128
 XOF(rho, i, j) = groupBy`{8}(shake128((fromBytes(rho))# reverse i# reverse j))
-J(s) = zero //TODO
+J(s) = take(groupBy(shake256(fromBytes(s))))
 
 import `Primitive::Keyless::Hash::SHA3::SHA3
 H M = toBytes(sha3 `{digest = 256} (fromBytes(M)))
