@@ -1,0 +1,14 @@
+// Dilithium 3 parameters for round FIPS204 ML-DSA Final Draft
+
+module Dilithium3 = DilithiumParameterized where
+
+type gamma1 = 524288 //2^^19
+type gamma2 = 261888 //(8380417-1)/32
+type k = 6
+type l = 5
+type eta = 4
+beta = 196
+type omega = 55
+type tau = 49
+type w_len = 4
+type lambda = 192
