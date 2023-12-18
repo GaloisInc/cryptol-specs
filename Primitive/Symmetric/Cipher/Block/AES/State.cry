@@ -1,6 +1,6 @@
 module Primitive::Symmetric::Cipher::Block::AES::State where
 
-import Primitive::Symmetric::Cipher::Block::AES::GF28
+import Common::GF28
 
 type State       = [4][Nb]GF28
 type Nb          = 4
@@ -11,5 +11,3 @@ msgToState msg = transpose (split (split msg))
 
 stateToMsg : State -> [128]
 stateToMsg st = join (join (transpose st))
-
-

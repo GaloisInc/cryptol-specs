@@ -1,0 +1,47 @@
+module Common::GF24 where
+
+type GF24 = [4]
+
+irreducible = <| x^^4 + x + 1 |>
+
+// Addition in GF24
+gf24Add : {n} (fin n) => [n]GF24 -> GF24
+gf24Add ps = foldl (^) zero ps
+
+// Polynomial multiplication in GF24
+gf24Mult : GF24 -> GF24 -> GF24
+gf24Mult x y = pmod (pmult x y) irreducible
+
+// Define a power of an element in GF24
+gf24Pow : GF24 -> GF24 -> GF24
+gf24Pow n k = pow k
+    where
+        sq x = gf24Mult x x
+        pow i = if i == 0 then 1
+                else if i ! 0
+                     then gf24Mult n (sq (pow (i >> 1)))
+                     else sq (pow (i >> 1))
+
+// Self adding gives zero
+polySelfAdd' : GF24 -> Bit
+property polySelfAdd' x = x ^ x == zero
+
+// Inverse of an element in GF24
+gf24Inverse : GF24 -> GF24
+gf24Inverse x = gf24Pow x 14
+
+property gf24InverseCorrect x = gf24Inverse (gf24Inverse x) == x
+
+// Dot product in GF24
+gf24DotProduct : {n} (fin n) => [n]GF24 -> [n]GF24 -> GF24
+gf24DotProduct xs ys = gf24Add [ gf24Mult x y | x <- xs | y <- ys ]
+
+// Vector multiplication in GF24
+gf24VectorMult : {n, m} (fin n) => [n]GF24 -> [m][n]GF24 -> [m]GF24
+gf24VectorMult v ms = [ gf24DotProduct v m | m <- ms ]
+
+// Matrix multiplication in GF24
+gf24MatrixMult : {n, m, k} (fin m) => [n][m]GF24 -> [m][k]GF24 -> [n][k]GF24
+gf24MatrixMult xss yss = [ gf24VectorMult xs yss' | xs <- xss ]
+    where
+        yss' = transpose yss

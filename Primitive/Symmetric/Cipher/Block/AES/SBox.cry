@@ -1,6 +1,6 @@
 module Primitive::Symmetric::Cipher::Block::AES::SBox where
 
-import Primitive::Symmetric::Cipher::Block::AES::GF28
+import Common::GF28
 import Primitive::Symmetric::Cipher::Block::AES::SubBytePlain
 
 type SBox = [256] GF28
