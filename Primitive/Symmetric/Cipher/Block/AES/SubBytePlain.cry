@@ -1,6 +1,6 @@
 module Primitive::Symmetric::Cipher::Block::AES::SubBytePlain where
 
-import Primitive::Symmetric::Cipher::Block::AES::GF28
+import Common::GF28
 
 // The SubBytes transform and its inverse
 SubByte : GF28 -> GF28
@@ -17,5 +17,3 @@ xformByte b = gf28Add [b, (b >>> 4), (b >>> 5), (b >>> 6), (b >>> 7), c]
 
 xformByte' : GF28 -> GF28
 xformByte' b = gf28Add [(b >>> 2), (b >>> 5), (b >>> 7), d] where d = 0x05
-
-

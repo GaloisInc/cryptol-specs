@@ -4,26 +4,46 @@
 // Author: Ajay Kumar Eeralla
 
 module Primitive::Symmetric::Cipher::Block::Modes::TDES_CBC where
-//import Primitive::Symmetric::Cipher::Block::Modes::CBC
-import Primitive::Symmetric::Cipher::Block::TripleDES
+
+import Primitive::Symmetric::Cipher::Block::TripleDES (encrypt, decrypt)
 
 // Test vectors from https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/TDES_CBC.pdf
 type iv = [64]
 type block = [64]
-
 type k1 = [64]
 type k2 = [64]
 type k3 = [64]
 
-cbcTDesEnc : {n} (fin n) => k1 -> k2 -> k3->iv -> [n]block -> [n]block
+cbcTDesEnc : {n} (fin n) => k1 -> k2 -> k3 -> iv -> [n]block -> [n]block
 cbcTDesEnc k1 k2 k3 iv ps = cs
-    where cs = [ blockEncrypt (k1, k2, k3, (p ^ c')) | p <- ps | c' <- [iv] # cs ]
+    where
+        ks = [ k1, k2, k3 ]
+        cs = [ encrypt ks (p ^ c') | p <- ps | c' <- [iv] # cs ]
+
+cbcTDesDec : {n} (fin n) => k1 -> k2 -> k3 -> iv -> [n]block -> [n]block
+cbcTDesDec k1 k2 k3 iv cts = pts
+    where
+        ks  = [ k1, k2, k3 ]
+        pts = [ (decrypt ks ct) ^ fb |  ct <- cts | fb <- [iv] # cts  ]
+
+cbcTDESEncryptDecryptInverts : k1 -> k2 -> k3 -> iv -> [3]block -> Bit
+property cbcTDESEncryptDecryptInverts k1 k2 k3 iv pt = pt == pt'
+    where
+        ct  = cbcTDesEnc k1 k2 k3 iv pt
+        pt' = cbcTDesDec k1 k2 k3 iv ct
 
 // Number of blocks := 2
 
-testKey ={ k1=0x0123456789ABCDEF, k2=0x23456789ABCDEF01, k3=0x456789ABCDEF0123,      iv=0xF69F2445DF4F9B17 }
-testPt = [[0x6BC1BEE22E409F96, 0xE93D7E117393172A, 0xAE2D8A571E03AC9C, 0x9EB76FAC45AF8E51]]
-testCt = [[0x2079C3D53AA763E1, 0x93B79E2569AB5262, 0x516570481F25B50F, 0x73C0BDA85C8E0DA7]]
+testKey = { k1=0x0123456789ABCDEF
+          , k2=0x23456789ABCDEF01
+          , k3=0x456789ABCDEF0123
+          , iv=0xF69F2445DF4F9B17
+          }
+testPt  = [0x6BC1BEE22E409F96, 0xE93D7E117393172A, 0xAE2D8A571E03AC9C, 0x9EB76FAC45AF8E51]
+testCt  = [0x2079C3D53AA763E1, 0x93B79E2569AB5262, 0x516570481F25B50F, 0x73C0BDA85C8E0DA7]
 
-property testPass = and [(cbcTDesEnc testKey.k1 testKey.k2 testKey.k3 testKey.iv ps) == cs
-                        | ps <- testPt | cs <- testCt]
+property testsPass = pt == testPt
+                  /\ ct == testCt
+    where
+        ct = cbcTDesEnc testKey.k1 testKey.k2 testKey.k3 testKey.iv testPt
+        pt = cbcTDesDec testKey.k1 testKey.k2 testKey.k3 testKey.iv testCt

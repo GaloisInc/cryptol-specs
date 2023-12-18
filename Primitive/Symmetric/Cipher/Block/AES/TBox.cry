@@ -1,6 +1,6 @@
 module Primitive::Symmetric::Cipher::Block::AES::TBox where
 
-import Primitive::Symmetric::Cipher::Block::AES::GF28
+import Common::GF28
 import Primitive::Symmetric::Cipher::Block::AES::State
 import Primitive::Symmetric::Cipher::Block::AES::SBox
 import Primitive::Symmetric::Cipher::Block::AES::Round
