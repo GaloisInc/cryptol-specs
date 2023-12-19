@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2013-2018 Galois, Inc.
  * Distributed under the terms of the BSD3 license (see LICENSE file)
- */
 
 /* Cryptol specification of the Speck block cipher
  * Author: David Lazar

@@ -1,7 +1,6 @@
 // Cryptol AES CBC test vectors
 // Copyright (c) 2010-2018, Galois Inc.
 // www.cryptol.net
-// You can freely use this source code for educational purposes.
 // Author: Ajay Kumar Eeralla
 
 module Primitive::Symmetric::Cipher::Block::Modes::AES_CBC where

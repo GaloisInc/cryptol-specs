@@ -1,7 +1,6 @@
 /* Cryptol LED Implementation
    Copyright (c) 2018, Galois Inc.
    www.cryptol.net
-   You can freely use this source code for educational purposes.
 
    Author: Ajay Kumar Eeralla
    Source: "The LED Block Cipher" by Guo et. al: https://sites.google.com/site/ledblockcipher/
