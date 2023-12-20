@@ -33,6 +33,8 @@ repository are listed below.
 | **Asymmetric Encryption**  | [CRYSTALS Kyber](Primitive/Asymmetric/Cipher/Kyber/3.01/)                              |           |              |
 |                            | [RSA](Primitive/Asymmetric/Cipher/RSA.cry)                                             |           |              |
 
+All Cryptol files in this repository are covered by the BSDv3 license. See LICENSE file.
+
 # NIST Post-Quantum Cryptography Standardization Selections
 Here you can find a list of the post-quantum cryptographic schemes that were selected during the final round of NIST's post-quantum cryptography standardization process.
 
