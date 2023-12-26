@@ -182,7 +182,7 @@ dotMatMat matrix1 matrix2 = transpose [dotMatVec matrix1 vector | vector <- m']
 // converts an infinite sequence of bytes to an infinite sequence of
 // elements in Z q. We then pick the first n elements for the result.
 
-SampleNTT : [inf]Byte -> Z_q_256 // Spec has a typo
+SampleNTT : [inf]Byte -> Z_q_256
 SampleNTT b = take elements
     where elements = SampleNTTInf b
 
