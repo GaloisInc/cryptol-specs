@@ -352,11 +352,11 @@ ML_KEM_Encaps (ek, m) = (K, c) where
 ML_KEM_Decaps : ([32*(d_u*k+d_v)]Byte, [768*k+96]Byte) -> [32]Byte
 ML_KEM_Decaps (c, dk) = K
   where
-    dkPKE = dk@@[0 .. 384*k - 1]
-    ekPKE = dk@@[384*k .. 768*k + 32 - 1]
-    h = dk@@[768*k + 32 .. 768*k + 64 - 1]
-    z = dk@@[768*k + 64 .. 768*k + 96 - 1]
-    m' = K_PKE_Decrypt(dkPKE, c)
+    dkPKE = dk@@[0 .. 384*k - 1] // extract (from KEM decaps key) the PKE decryption key
+    ekPKE = dk@@[384*k .. 768*k + 32 - 1] // extract PKE encryption key
+    h = dk@@[768*k + 32 .. 768*k + 64 - 1] // extract hash of PKE encryption key
+    z = dk@@[768*k + 64 .. 768*k + 96 - 1] // extract implicit rejection value
+    m' = K_PKE_Decrypt(dkPKE, c) // decrypt ciphertext
     (K', r') = G(m'#h)
     Kbar = J(z#c) : [32]Byte // Spec has a typo
     c' = K_PKE_Encrypt(ekPKE, m', r')
