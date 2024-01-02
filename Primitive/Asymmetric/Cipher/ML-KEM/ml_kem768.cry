@@ -1,0 +1,8 @@
+module ml_kem768 = specification where
+
+type q = 3329
+type k = 3
+type eta_1 = 2
+type eta_2 = 2
+type d_u = 10
+type d_v = 4
