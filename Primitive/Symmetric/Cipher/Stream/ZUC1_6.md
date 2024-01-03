@@ -2,15 +2,23 @@
 
 ## Welcome
 
-This document is a literate [Cryptol](https://cryptol.net/) document. This means that if you install Cryptol from the website you can run ```cryptol ZUC1_6.md``` in your terminal and all of the definitions will be typecheck, and the test cases can be run.
+This document is a literate [Cryptol](https://cryptol.net/) document. This means that if you install
+Cryptol from the website you can run ```cryptol ZUC1_6.md``` in your terminal and all of the
+definitions will be typecheck, and the test cases can be run.
 
-All text in this document is directly from the [ZUC 1.6 specification](https://www.gsma.com/aboutus/wp-content/uploads/2014/12/eea3eia3zucv16.pdf).
+All text in this document is directly from the
+[ZUC 1.6 specification](https://www.gsma.com/aboutus/wp-content/uploads/2014/12/eea3eia3zucv16.pdf).
 
 ## 1 Introduction
 
-ZUC is a word-oriented stream cipher. It takes a 128-bit initial key and a 128-bit initial vector (IV) as input, and outputs a keystream of 32-bit words (where each 32-bit word is hence called a *key-word*). This keystream can be used for encryption/decryption.
+ZUC is a word-oriented stream cipher. It takes a 128-bit initial key and a 128-bit initial vector
+(IV) as input, and outputs a keystream of 32-bit words (where each 32-bit word is hence called a
+*key-word*). This keystream can be used for encryption/decryption.
 
-The execution of ZUC has two stages: initialization stage and working stage. In the first stage, a key/IV initialization is performed, i.e., the cipher is clocked without producing output (see section 3.6.1). The second stage is a working stage. In this stage, with every clock pulse, it produces a 32-bit word of output (see section 3.6.2).
+The execution of ZUC has two stages: initialization stage and working stage. In the first stage, a
+key/IV initialization is performed, i.e., the cipher is clocked without producing output (see
+section 3.6.1). The second stage is a working stage. In this stage, with every clock pulse, it
+produces a 32-bit word of output (see section 3.6.2).
 
 ```cryptol
 module Primitive::Symmetric::Cipher::Stream::ZUC1_6 where
@@ -20,7 +28,9 @@ module Primitive::Symmetric::Cipher::Stream::ZUC1_6 where
 
 ### 2.1 Radix
 
-In this document, integers are represented as decimal numbers unless specified otherwise. We use the prefix `0x` to indicate hexadecimal numbers, and the prefix `0b` to indicate a number in binary representation. [Note: the original document uses the subscript `2` to represent bianry numbers].
+In this document, integers are represented as decimal numbers unless specified otherwise. We use the
+prefix `0x` to indicate hexadecimal numbers, and the prefix `0b` to indicate a number in binary
+representation. [Note: the original document uses the subscript `2` to represent binary numbers].
 
 **Example 1:** Integer a can be written in different representations:
 
@@ -33,7 +43,8 @@ property example1 = a == 0x499602D2      // hexadecimal representation
 
 ### 2.2 Bit ordering
 
-In this document, all data variables are presented with the most significant bit(byte) on the left hand side and the least significant bit(byte) on the right hand side.
+In this document, all data variables are presented with the most significant bit(byte) on the left
+hand side and the least significant bit(byte) on the right hand side.
 
 **Example 2:**
 
@@ -63,7 +74,10 @@ property example2 = most_sig == take`{1} a  // the leftmost bit
 | `a >> 1` | The 1-bit right shift of integer a |
 | `(a1,a2,...an) → (b1,b2,...bn)` | The assignment of the values of ai to bi in parallel |
 
-**Example 3:** For any two strings a and b, the presentation of the string c created by the concatenation of a and b also follows the rules defined in section 2.2 i.e., the most significant digits are on the left hand side and the least significant digits are on the right hand side. For instance,
+**Example 3:** For any two strings a and b, the presentation of the string c created by the
+concatenation of a and b also follows the rules defined in section 2.2 i.e., the most significant
+digits are on the left hand side and the least significant digits are on the right hand side. For
+instance,
 
 ```cryptol
 property example3 = a # b == 0x12345678
@@ -112,11 +126,14 @@ property example6 as = and [ as@i == bs@i | i <- [0..15] ]
 
 ### 3.1 General structure of the algorithm
 
-ZUC has three logical layers, see Fig. 1 in the original document. The top layer is a linear feedback shift register (LFSR) of 16 stages, the middle layer is for bit-reorganization (BR), and the bottom layer is a nonlinear function *F*.
+ZUC has three logical layers, see Fig. 1 in the original document. The top layer is a linear
+feedback shift register (LFSR) of 16 stages, the middle layer is for bit-reorganization (BR), and
+the bottom layer is a nonlinear function *F*.
 
 ### 3.2 The linear feedback shift register (LFSR)
 
-The linear feedback shift register (LFSR) has 16 of 31-bit cells (s0,s1,...,s15). Each cell si (0<=i<=15) is restricted to take values from the following set:
+The linear feedback shift register (LFSR) has 16 of 31-bit cells (s0,s1,...,s15). Each cell si
+(0<=i<=15) is restricted to take values from the following set:
 `{1,2,3,...,2^31-1}`
 
 ```cryptol
@@ -125,7 +142,9 @@ type LFSR = [16][31]
 
 The LFSR has 2 modes of operations: the initialization mode and the working mode.
 
-In the initialization mode, the LFSR receives a 31-bit inputs word *u*, which is obtained by removing the rightmost bit from the 32-bit output W of the nonlinear function *F*, i.e., `u=W>>1`. More specifically, the initialization mode works as follows:
+In the initialization mode, the LFSR receives a 31-bit inputs word *u*, which is obtained by
+removing the rightmost bit from the 32-bit output W of the nonlinear function *F*, i.e., `u=W>>1`.
+More specifically, the initialization mode works as follows:
 
 ```cryptol
 LFSRWithInitialisationMode : [31] -> LFSR -> LFSR
@@ -148,7 +167,10 @@ LFSRWithWorkMode s = s@@[1..15] # [s16]  // step3
                         else 2^^31 - 1  // step2
 ```
 
-*Informative note:* Since the multiplication of a 31-bit string *s* by 2^i over GF(2^31-1) can be implemented by a cyclic shift of *s* to the left by *i* bits, only addition modulo 2^31-1 is needed in step 1 of the above function. More precisely, step 1 of the function LFSRWithInitialisationMode can be implemented by
+*Informative note:* Since the multiplication of a 31-bit string *s* by 2^i over GF(2^31-1) can be
+implemented by a cyclic shift of *s* to the left by *i* bits, only addition modulo 2^31-1 is needed
+in step 1 of the above function. More precisely, step 1 of the function LFSRWithInitialisationMode
+can be implemented by
 
 ```cryptol
 step1 : LFSR -> [31]
@@ -165,9 +187,11 @@ step1 s = v
 and the same implementation is needed for step 1 of the function LFSRWithWorkMode.
 
 
-*Informative note:* For two elements a, b over GF(2^31-1), the computation of `v=a+b mod (2^31-1)` can be done by
-
-(1) compute `v=a+b`; and (2) if the carry bit is 1, then set `v=v+1`. Alternatively, (and better if the implementation should resist possible timing attacks): (1) compute `w=a+b`, where w is a 32-bit value; and (2) set `v = (least significant 31 bits of w)+(most significant bit of w)`.
+*Informative note:* For two elements a, b over GF(2^31-1), the computation of `v=a+b mod (2^31-1)`
+can be done by (1) compute `v=a+b`; and (2) if the carry bit is 1, then set `v=v+1`. Alternatively,
+(and better if the implementation should resist possible timing attacks): (1) compute `w=a+b`,
+where w is a 32-bit value; and (2) set `v = (least significant 31 bits of w)+(most significant bit
+of w)`.
 
 ```cryptol
 add : [31] -> [31] -> [31]
@@ -190,9 +214,12 @@ property addEquiv a b = add a b == addAlt a b
 
 ### 3.3 The bit-reorganization
 
-The middle layer of the algorithm is the bit-reorganization. It extracts 128 bits from the cells of the LFSR and forms 4 of 32-bit words, where the first three words will be used by the nonlinear function *F* in the bottom layer, and the last word will be involved in producing the keystream,
+The middle layer of the algorithm is the bit-reorganization. It extracts 128 bits from the cells of
+the LFSR and forms 4 of 32-bit words, where the first three words will be used by the nonlinear
+function *F* in the bottom layer, and the last word will be involved in producing the keystream,
 
-Let *s0,s2,s5,s7,s9,s11,s14,s15* by 8 cells of LFSR as in section 3.2. The the bit-reorganization forms 4 of 32-bit words *X0,X1,X2,X3* from the above cells as follows:
+Let *s0,s2,s5,s7,s9,s11,s14,s15* by 8 cells of LFSR as in section 3.2. The the bit-reorganization
+forms 4 of 32-bit words *X0,X1,X2,X3* from the above cells as follows:
 
 ```cryptol
 Bitreorganization : LFSR -> [4][32]
@@ -204,11 +231,14 @@ Bitreorganization s = [X0, X1, X2, X3]
         X3 = L (s@2)  # H (s@0)
 ```
 
-*Note*: That *s_i* are 31-bit integers, so *s_iH* means bits 30..15 and not 31..16 of *s_i*, for 0<=i<=15.
+*Note*: That *s_i* are 31-bit integers, so *s_iH* means bits 30..15 and not 31..16 of *s_i*, for
+0<=i<=15.
 
 ### 3.4 The nonlinear function F
 
-The nonlinear funnction *F* has 2 of 32-bit memory cells *R1* and *R2*. Let the inputs to *F* be *X0,X1* and *X2*, which come from the outputs of the bit-reorganization (see section 3.3), then the function *F* outputs a 32-bit word *W*. The detailed process of *F* is as follows:
+The nonlinear function *F* has 2 of 32-bit memory cells *R1* and *R2*. Let the inputs to *F* be
+*X0,X1* and *X2*, which come from the outputs of the bit-reorganization (see section 3.3), then the
+function *F* outputs a 32-bit word *W*. The detailed process of *F* is as follows:
 
 ```cryptol
 F : [2][32] -> [3][32] -> ([32], [2][32])
@@ -221,11 +251,14 @@ F [R1, R2] [X0, X1, X2] = (W, [R1', R2'])
         R2' = S (L2 (L W2 # H W1))
 ```
 
-where *S* is a 32x32 S-box, see section 3.4.1, *L1* and *L2* are linear transforms as defined in section 3.4.2.
+where *S* is a 32x32 S-box, see section 3.4.1, *L1* and *L2* are linear transforms as defined in
+section 3.4.2.
 
 #### 3.4.1 The S-box *S*
 
-The 32x32 S-box S is composed of 4 juxtaposed 8x8 S-boxes, i.e., *S=(S0,S1,S2,S3)*, where *S0=S2,S1=S3*. The definitions of *S0* and *S1* can be found in table 3.1 and table 3.2 respectively.
+The 32x32 S-box S is composed of 4 juxtaposed 8x8 S-boxes, i.e., *S=(S0,S1,S2,S3)*, where
+*S0=S2,S1=S3*. The definitions of *S0* and *S1* can be found in table 3.1 and table 3.2
+respectively.
 
 ```cryptol
 S0 : [8] -> [8]
@@ -245,7 +278,9 @@ S3 : [8] -> [8]
 S3 = S1
 ```
 
-Let *x* be an 8-bit input to *S0* (or *S1*). Write *x* into two hexadecimal digits as `x=h||l`, then the entry at the intersection of the *h*-th row and the *l*-th column in table 3.1 (or table 3.2) is the output of *S0* (or *S1*).
+Let *x* be an 8-bit input to *S0* (or *S1*). Write *x* into two hexadecimal digits as `x=h||l`, then
+the entry at the intersection of the *h*-th row and the *l*-th column in table 3.1 (or table 3.2) is
+the output of *S0* (or *S1*).
 
 **Example 7:**
 
@@ -326,7 +361,8 @@ S1Table =
 
 #### 3.4.2 The linear transforms *L1* and *L2*
 
-Both *L1* and *L2* are linear transforms from 32-bit words to 32-bit words, and are defined as follows:
+Both *L1* and *L2* are linear transforms from 32-bit words to 32-bit words, and are defined as
+follows:
 
 ```cryptol
 L1 : [32] -> [32]
@@ -338,7 +374,9 @@ L2 X = X ^ (X <<< 8) ^ (X <<< 14) ^ (X <<< 22) ^ (X <<< 30)
 
 ### 3.5 Key loading
 
-The key loading procedure will expand the initial key and the initial vector into 16 of 31-bit integers as the initial state of the LFSR. Let the 128-bit initial key *k* and the 128-bit initial vector *iv* be
+The key loading procedure will expand the initial key and the initial vector into 16 of 31-bit
+integers as the initial state of the LFSR. Let the 128-bit initial key *k* and the 128-bit initial
+vector *iv* be
 
 `k=k0||k1||k2||...||k15`
 
@@ -346,7 +384,8 @@ and
 
 `iv=iv0||iv1||iv2||...||iv15`
 
-respectively, where *k_i* and *iv_i*, 0<=i<=15, are all bytes. Then *k* and *iv* are loaded to the cells *s0,s1,...,s15* of LFSR as follows:
+respectively, where *k_i* and *iv_i*, 0<=i<=15, are all bytes. Then *k* and *iv* are loaded to the
+cells *s0,s1,...,s15* of LFSR as follows:
 
 ```cryptol
 D : [16][15]
@@ -368,9 +407,19 @@ KeyLoad k iv = s
 
 The execution of ZUC has two stages: the initialization stage and the working stage.
 
+```cryptol
+ZUC : [128] -> [128] -> [inf][32]
+ZUC key iv = WorkStage initZuc
+    where
+        initZuc = InitializeStage key iv
+```
+
 #### 3.6.1 The initialization stage
 
-During the initialization stage, the algorithm calls the key loading procedure (see section 3.5) to load the 128-bit initial key *k* and the 128-bit initial vector *iv* into the LFSR, and set the 32-bit memory cells *R1* and *R2* to be all 0. The the cipher runs the following operations 32 times:
+During the initialization stage, the algorithm calls the key loading procedure (see section 3.5) to
+load the 128-bit initial key *k* and the 128-bit initial vector *iv* into the LFSR, and set the
+32-bit memory cells *R1* and *R2* to be all 0. The the cipher runs the following operations 32
+times:
 
 ```cryptol
 InitializeStage : [128] -> [128] -> (LFSR, [2][32])
@@ -390,7 +439,8 @@ InitializeStep s Rs = (s', Rs')
 
 #### 3.6.2 The working stage
 
-After the initialization stage, the algorithm moves in the working stage. At the working stage, the algorithm executes the following operations once, and discards the output *W* of *F*:
+After the initialization stage, the algorithm moves in the working stage. At the working stage, the
+algorithm executes the following operations once, and discards the output *W* of *F*:
 
 ```cryptol
 WorkStep1 : LFSR -> [2][32] -> (LFSR, [2][32])
@@ -401,7 +451,8 @@ WorkStep1 s Rs = (s', Rs')
         s' = LFSRWithWorkMode s
 ```
 
-Then the algorithm goes into the stage of producing keystream, i.e., for each iteration, the following operations are executed once, and a 32-bit word *Z* is produced as an output:
+Then the algorithm goes into the stage of producing keystream, i.e., for each iteration, the
+following operations are executed once, and a 32-bit word *Z* is produced as an output:
 
 ```cryptol
 WorkStep2 : LFSR -> [2][32] -> ([32], LFSR, [2][32])
@@ -412,12 +463,12 @@ WorkStep2 s Rs = (Z, s', Rs')
         Z = w ^ X3
         s' = LFSRWithWorkMode s
 
-WorkStage : {n} (fin n, n > 1) => LFSR -> [2][32] -> [n][32]
-WorkStage s Rs = zs
+WorkStage : (LFSR, [2][32]) -> [inf][32]
+WorkStage (s, Rs) = zs
     where
         (s', Rs') = WorkStep1 s Rs
         z0 = zero : [32]
         keystream = [ (z0, s', Rs') ]
-                  # [ WorkStep2 si Ri | (_, si, Ri) <- keystream | i <- [1..n]]
-        zs = [ (keystream@i).0 | i <- [1..n] ]
+                  # [ WorkStep2 si Ri | (_, si, Ri) <- keystream | i <- [1...]]
+        zs = [ (keystream@i).0 | i <- [1...] ]
 ```

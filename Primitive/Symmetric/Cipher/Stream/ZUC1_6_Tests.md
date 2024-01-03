@@ -2,9 +2,12 @@
 
 ## Welcome
 
-This document is a literate [Cryptol](https://cryptol.net/) document. This means that if you install Cryptol from the website you can run ```cryptol ZUC1_6_Tests.md``` in your terminal and all of the definitions will be typecheck, and the test cases can be run.
+This document is a literate [Cryptol](https://cryptol.net/) document. This means that if you install
+Cryptol from the website you can run ```cryptol ZUC1_6_Tests.md``` in your terminal and all of the
+definitions will be typecheck, and the test cases can be run.
 
-All text in this document is directly from the [ZUC Implementor's Test Data](https://www.gsma.com/security/wp-content/uploads/2019/05/eea3eia3testdatav11.pdf).
+All text in this document is directly from the
+[ZUC Test Data](https://www.gsma.com/security/wp-content/uploads/2019/05/eea3eia3testdatav11.pdf).
 
 
 ## 3 ZUC
@@ -25,9 +28,10 @@ Each test set starts by showing the input and output data values.
 
 This is followed by a table showing the state of the LFSR at the beginning of the computation.
 
-Then for the first 10 steps of the initialisation the content of X0,X1,X2,X3,R1,R2 is given in a table. Steps are indexed by *t* (for "time").
+Then for the first 10 steps of the initialization the content of X0,X1,X2,X3,R1,R2 is given in a
+table. Steps are indexed by *t* (for "time").
 
-Then the state of the LFSR and the nonlinear function F at the end of the initialisation is given.
+Then the state of the LFSR and the nonlinear function F at the end of the initialization is given.
 
 For the first 3 steps of keystream generation X0,X1,X2,X3,R1,R2 are given in a table.
 
@@ -36,7 +40,7 @@ For the first 3 steps of keystream generation X0,X1,X2,X3,R1,R2 are given in a t
 ```cryptol
 property test1 = KeyLoad key iv == sKeyLoad
               /\ InitializeStage key iv == (sAfterInit, RAfterInit)
-              /\ WorkStage`{2} sAfterInit RAfterInit == [z1, z2]
+              /\ take (WorkStage (sAfterInit, RAfterInit)) == [z1, z2]
     where
         key = 0x00000000000000000000000000000000
         iv  = 0x00000000000000000000000000000000
@@ -61,7 +65,7 @@ property test1 = KeyLoad key iv == sKeyLoad
 ```cryptol
 property test2 = KeyLoad key iv == sKeyLoad
               /\ InitializeStage key iv == (sAfterInit, RAfterInit)
-              /\ WorkStage`{2} sAfterInit RAfterInit == [z1, z2]
+              /\ take (WorkStage (sAfterInit, RAfterInit)) == [z1, z2]
     where
         key = 0xffffffffffffffffffffffffffffffff
         iv  = 0xffffffffffffffffffffffffffffffff
@@ -86,7 +90,7 @@ property test2 = KeyLoad key iv == sKeyLoad
 ```cryptol
 property test3 = KeyLoad key iv == sKeyLoad
               /\ InitializeStage key iv == (sAfterInit, RAfterInit)
-              /\ WorkStage`{2} sAfterInit RAfterInit == [z1, z2]
+              /\ take (WorkStage (sAfterInit, RAfterInit)) == [z1, z2]
     where
         key = 0x3d4c4be96a82fdaeb58f641db17b455b
         iv  = 0x84319aa8de6915ca1f6bda6bfbd8c766
@@ -111,7 +115,7 @@ property test3 = KeyLoad key iv == sKeyLoad
 ```cryptol
 property test4 = KeyLoad key iv == sKeyLoad
               /\ InitializeStage key iv == (sAfterInit, RAfterInit)
-              /\ (keystream@@[0..1] # [keystream ! 0]) == [z1, z2, z2000]
+              /\ (keystream@@[0..1] # [keystream@1999]) == [z1, z2, z2000]
     where
         key = 0x4d320bfad4c285bfd6b8bd00f39d8b41
         iv  = 0x52959daba0bf176ece2dc315049eb574
@@ -129,5 +133,32 @@ property test4 = KeyLoad key iv == sKeyLoad
                               , 0x7da8d7b5, 0x58f45afe, 0x42814800, 0x56d7e7d8
                               ] : LFSR
         RAfterInit = [ 0x52761a25, 0x38f712e1 ]
-        keystream = WorkStage`{2000} sAfterInit RAfterInit
+        keystream = WorkStage (sAfterInit, RAfterInit)
+```
+
+## Backwards Compatibility
+
+Test vectors from the original ZUC implementation are included to ensure backwards compatibility is
+maintained.
+
+```cryptol
+property ZUC_TestVectors =
+    t1 /\ t2 /\ t3 /\ t4
+    where
+      t1 = take (ZUC zero    zero   ) == [0x27BEDE74, 0x018082DA]
+      t2 = take (ZUC (~zero) (~zero)) == [0x0657CFA0, 0x7096398B]
+      t3 = take (ZUC (join [ 0x3D, 0x4C, 0x4B, 0xE9, 0x6A, 0x82, 0xFD, 0xAE
+                           , 0xB5, 0x8F, 0x64, 0x1D, 0xB1, 0x7B, 0x45, 0x5B
+                           ])
+                     (join [ 0x84, 0x31, 0x9A, 0xA8, 0xDE, 0x69, 0x15, 0xCA
+                           , 0x1F, 0x6B, 0xDA, 0x6B, 0xFB, 0xD8, 0xC7, 0x66
+                           ])) == [0x14F1C272, 0x3279C419]
+      t4 = take ks # [ks @ 1999] == [0xED4400E7, 0x0633E5C5, 0x7A574CDB]
+        where
+          ks = ZUC (join [ 0x4D, 0x32, 0x0B, 0xFA, 0xD4, 0xC2, 0x85, 0xBF
+                         , 0xD6, 0xB8, 0xBD, 0x00, 0xF3, 0x9D, 0x8B, 0x41
+                         ])
+                   (join [ 0x52, 0x95, 0x9D, 0xAB, 0xA0, 0xBF, 0x17, 0x6E
+                         , 0xCE, 0x2D, 0xC3, 0x15, 0x04, 0x9E, 0xB5, 0x74
+                         ])
 ```

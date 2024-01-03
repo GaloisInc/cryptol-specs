@@ -2,13 +2,17 @@
 
 ## Welcome
 
-This document is a literate [Cryptol](https://cryptol.net/) document. This means that if you install Cryptol from the website you can run ```cryptol Salsa20.md``` in your terminal and all of the definitions will be typecheck, and the test cases can be run
+This document is a literate [Cryptol](https://cryptol.net/) document. This means that if you install
+Cryptol from the website you can run ```cryptol Salsa20.md``` in your terminal and all of the
+definitions will be typecheck, and the test cases can be run.
 
-All text in this document is directly from the [Salsa20 specification](http://cr.yp.to/snuffle/spec.pdf).
+All text in this document is directly from the
+[Salsa20 specification](http://cr.yp.to/snuffle/spec.pdf).
 
 ## Abstract
 
-This document defines the Salsa20 hash function, the Salsa20 expansion function, and the Salsa20 encryption function.
+This document defines the Salsa20 hash function, the Salsa20 expansion function, and the Salsa20
+encryption function.
 
 ```cryptol
 module Primitive::Symmetric::Cipher::Stream::Salsa20 where
@@ -16,30 +20,44 @@ module Primitive::Symmetric::Cipher::Stream::Salsa20 where
 
 ## 1 Introduction
 
-The core of Salsa20 is a hash function with 64-byte input and 64-byte output. The hash function is used in counter mode as a stream cipher: Salsa20 encrypts a 64-byte block of plaintext by hashing the key, nonce, and block number and xor'ing the result with the plaintext.
+The core of Salsa20 is a hash function with 64-byte input and 64-byte output. The hash function is
+used in counter mode as a stream cipher: Salsa20 encrypts a 64-byte block of plaintext by hashing
+the key, nonce, and block number and xor'ing the result with the plaintext.
 
-This document defines Salsa20 from bottom up, starting with three simple operations on 4-byte words, continuing through the Salsa20 hash function, and finishing with the Salsa20 encryption function.
+This document defines Salsa20 from bottom up, starting with three simple operations on 4-byte words,
+continuing through the Salsa20 hash function, and finishing with the Salsa20 encryption function.
 
-In this document, a `byte` is an element of `{0,1,...,255}`. There are many common ways to represent a byte as a sequence of electrical signals; the details of this representation are of no relevance to the definition of Salsa20.
+In this document, a `byte` is an element of `{0,1,...,255}`. There are many common ways to represent
+a byte as a sequence of electrical signals; the details of this representation are of no relevance
+to the definition of Salsa20.
 
 ## 2 Words
 
-A **word** is an element of `{0,1,...,2^32-1}`. Words in the document are often written in hexadecimal, indicated by the symbols `0x`: for example, ```
+A **word** is an element of {0,1,...,2<sup>32</sup>-1}. Words in the document are often written in
+hexadecimal, indicated by the symbols `0x`: for example, ```
 0xc0a8787e = 12·2^28 + 0·2^24 + 10·2^20 + 8·2^16 + 7·2^12 + 8·2^8 + 7·2^4 + 14·2^0 = 3232266366```.
 
-The **sum** of two words *u*, *v* is `u+v mod 2^32`. The sum is denoted `u + v`; there is not risk of confusion. For example,
+The **sum** of two words *u*, *v* is `u+v mod 2^32`. The sum is denoted `u + v`; there is not risk
+of confusion. For example,
 
 ```cryptol
 property exampleSum = 0xc0a8787e + 0x9fd1161d == 0x60798e9b
 ```
 
-The **exclusive-or** of two words *u*, *v*, denoted by `u^v`, is the sum of *u* and *v* with carries suppressed. In other words, ...  For example,
+The **exclusive-or** of two words *u*, *v*, denoted by `u^v`, is the sum of *u* and *v* with carries
+suppressed. In other words, if *u=∑<sub>i</sub> 2<sup>i</sup>u<sub>i</sub>* and
+*v=∑<sub>i</sub> 2<sup>i</sup>v<sub>i</sub>* then
+*u⊕v=∑<sub>i</sub> 2<sup>i</sup>(u<sub>i</sub>+v<sub>i</sub>-2u<sub>i</sub>v<sub>i</sub>)*. For
+example,
 
 ```cryptol
 property exampleXor = 0xc0a8787e ^ 0x9fd1161d == 0x5f796e63
 ```
 
-For each `c ∈ {0,1,2,3...}`, the *c*-**bit left rotation** of a word *u*, denoted `u <<< c`, is the unique nonzero word congruent to `2^c u modulo 2^32 - 1`, except that `0 <<< c = 0`. In other words, ... For example,
+For each `c ∈ {0,1,2,3...}`, the *c*-**bit left rotation** of a word *u*, denoted `u <<< c`, is the
+unique nonzero word congruent to `2^c u modulo 2^32 - 1`, except that `0 <<< c = 0`. In other words,
+if *u=∑<sub>i</sub> 2<sup>i</sup>u<sub>i</sub>* then
+*u <<< c = ∑<sub>i</sub> 2<sup>i+c mod 32</sup>u<sub>i</sub>*. For example,
 
 ```cryptol
 property exampleLeftRot = 0xc0a8787e <<< 5 == 0x150f0fd8
@@ -83,7 +101,9 @@ property quarterroundExamples = quarterround [0x00000000, 0x00000000, 0x00000000
 
 ### Comments
 
-Once can visualize the quarterround function as modifying *y* in place: first y1 changes to z1, then y2 changes to z2, then y3 changes to z3, then y0 changes to z0. Each modification is invertible, so the entire function is invertible.
+One can visualize the quarterround function as modifying *y* in place: first y1 changes to z1, then
+y2 changes to z2, then y3 changes to z3, then y0 changes to z0. Each modification is invertible, so
+the entire function is invertible.
 
 ```cryptol
 property quarterroundInverts y y' = y != y' ==> quarterround y != quarterround y'
@@ -136,9 +156,20 @@ property rowroundExamples = rowround [ 0x00000001, 0x00000000, 0x00000000, 0x000
 
 ### Comments
 
-One can visualize the input (y0,y1,..,y15) as a square matrix.
+One can visualize the input (y0,y1,..,y15) as a square matrix:
 
-The rowround function modifies the rows of the matrix in parallel by feeding a permutation of each row through the quarterround function. In the first row, the rowround function modifies y1, then y2, then y3, then y0; in the second row, the rowround function modifies y6, then y7, then y4, then y5; in the third row, the rowround function modifies y11, then y8, then y9, then y10; in the fourth row, the rowround function modifies y12, then y13, then y14, then y15.
+```example
+ y0  y1  y2  y3
+ y4  y5  y6  y7
+ y8  y9 y10 y11
+y12 y13 y14 y15
+```
+
+The rowround function modifies the rows of the matrix in parallel by feeding a permutation of each
+row through the quarterround function. In the first row, the rowround function modifies y1, then y2,
+then y3, then y0; in the second row, the rowround function modifies y6, then y7, then y4, then y5;
+in the third row, the rowround function modifies y11, then y8, then y9, then y10; in the fourth row,
+the rowround function modifies y12, then y13, then y14, then y15.
 
 ## 5 The columnround function
 
@@ -200,9 +231,21 @@ property columnroundExamples = columnround [ 0x00000001, 0x00000000, 0x00000000,
 
 ### Comments
 
-One can visualize the inputs `(x0,x1,...,x15)` as a square matrix, as in Section 4.
+One can visualize the inputs `(x0,x1,...,x15)` as a square matrix, as in Section 4:
 
-The columnround function is, from this perspective, simply the transpose of the rowround function: it modifies the columns of the matrix in parallel by feeding a permutation of each column through the quarterround function. In the first column, the columnround function modifies y4, then y8, then y12, then y0; in the second column, the columnround function modifies y9, then y13, then y1, then y5; in the third column, the columnround function modifies y14, then y2, then y6, then y10; in the fourth column, the columnround function modifies y3, then y7, then y11, then y15.
+```example
+ x0  x1  x2  x3
+ x4  x5  x6  x7
+ x8  x9 x10 x11
+x12 x13 x14 x15
+```
+
+The columnround function is, from this perspective, simply the transpose of the rowround function:
+it modifies the columns of the matrix in parallel by feeding a permutation of each column through
+the quarterround function. In the first column, the columnround function modifies y4, then y8, then
+y12, then y0; in the second column, the columnround function modifies y9, then y13, then y1, then
+y5; in the third column, the columnround function modifies y14, then y2, then y6, then y10; in the
+fourth column, the columnround function modifies y3, then y7, then y11, then y15.
 
 ## 6 The doubleround function
 
@@ -245,7 +288,8 @@ property doubleroundExamples = doubleround [ 0x00000001, 0x00000000, 0x00000000,
 
 ### Comments
 
-One can visualize a double round as modifying the columns of the input in parallet, and then modifying the rows in parallel. Each word is modified twice.
+One can visualize a double round as modifying the columns of the input in parallel, and then
+modifying the rows in parallel. Each word is modified twice.
 
 ## 7 The littleendian function
 
@@ -259,7 +303,9 @@ littleendian : [4][8] -> [32]
 
 ### Definition
 
-If `b = (b0,b1,b2,b3)` then `littleendian(b) = b0 + 2^8 b1 + 2^16 b2 + 2^24 b3`.
+If *b = (b<sub>0</sub>,b<sub>1</sub>,b<sub>2</sub>,b<sub>3</sub>)* then
+*littleendian(b) = b<sub>0</sub> + 2<sup>8</sup>b<sub>1</sub> + 2<sup>16</sup>b<sub>2</sub> +
+2<sup>24</sup>b<sub>3</sub>*.
 
 ```cryptol
 littleendian b = join (reverse b)
@@ -302,7 +348,8 @@ Salsa20 : [64][8] -> [64][8]
 
 ### Definition
 
-In short: Salsa20(x) = x + doubleround^10 (x), where each 4-byte sequence is viewed as a word in little-endian form.
+In short: Salsa20(x) = x + doubleround^10 (x), where each 4-byte sequence is viewed as a word in
+little-endian form.
 
 In detail:
 
@@ -352,16 +399,66 @@ property Salsa20Examples = Salsa20 [  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 
 ### Inputs and outputs
 
-If k is a 32-byte or 16-byte sequence and n is a 16-byte sequence then Salsa20k(n) is a 64-byte sequence.
+*Note: The original document defines the Salsa20 expansion function as Salsa20<sub>k</sub>(n). For*
+*clarity it is defined in this document to Salsa20_expansion(k, n).*
+
+If k is a 32-byte or 16-byte sequence and n is a 16-byte sequence then Salsa20_expansion(k, n) is a
+64-byte sequence.
 
 ```cryptol
-Salsa20k : {a} (a >= 1, 2 >= a) => [16*a][8] -> [16][8] -> [64][8]
+Salsa20_expansion : {a} (a >= 1, 2 >= a) => [16*a][8] -> [16][8] -> [64][8]
 ```
 
 ### Definition
 
 ```cryptol
-Salsa20k k n = Salsa20 x
+Salsa20_expansion k n = Salsa20 x
+    where
+        [σ0, σ1, σ2, σ3] = σ0σ1σ2σ3
+        [τ0, τ1, τ2, τ3] = τ0τ1τ2τ3
+        [ k0, k1 ] = split (k # zero) : [2][16][8]
+        x = if `a == 2 then σ0 # k0 # σ1 # n # σ2 # k1 # σ3
+                       else τ0 # k0 # τ1 # n # τ2 # k0 # τ3
+```
+
+### Examples
+
+```cryptol
+property Salsa20kExamples = Salsa20_expansion (k0 # k1) n == [ 69, 37, 68, 39, 41, 15,107,193,255,139,122, 6
+                                                             ,170,233,217, 98, 89,144,182,106, 21, 51,200, 65
+                                                             ,239, 49,222, 34,215,114, 40,126,104,197, 7,225
+                                                             ,197,153, 31, 2,102, 78, 76,176, 84,245,246,184
+                                                             ,177,160,133,130, 6, 72,149,119,192,195,132,236
+                                                             ,234,103,246, 74 ]
+                         /\ Salsa20_expansion k0 n        == [ 39,173, 46,248, 30,200, 82, 17, 48, 67,254,239
+                                                             , 37, 18, 13,247,241,200, 61,144, 10, 55, 50,185
+                                                             ,  6, 47,246,253,143, 86,187,225,134, 85,110,246
+                                                             ,161,163, 43,235,231, 94,171, 51,145,214,112, 29
+                                                             , 14,232, 5, 16,151,140,183,141,171, 9,122,181
+                                                             ,104,182,177,193 ]
+    where
+        k0 = [1..16]
+        k1 = [201..216]
+        n  = [101..116]
+```
+
+### Comments
+
+"Expansion" refers to the expansion of (k,n) into Salsa20_expansion(k, n). It also refers to the
+expansion of k into a long stream of Salsa20_expansion outputs for various n's; see Section 10.
+
+The constants `σ0 # σ1 # σ2 # σ3` and `τ0 # τ1 # τ2 # τ3` are "expand 32-byte k" and
+"expand 16-byte k" in ASCII.
+
+```cryptol
+σ0σ1σ2σ3 : [4][4][8]
+σ0σ1σ2σ3 = split "expand 32-byte k"
+
+τ0τ1τ2τ3 : [4][4][8]
+τ0τ1τ2τ3 = split "expand 16-byte k"
+
+property expansionConstants = [σ0, σ1, σ2, σ3] == σ0σ1σ2σ3
+                           /\ [τ0, τ1, τ2, τ3] == τ0τ1τ2τ3
     where
         σ0 = [ 101, 120, 112,  97 ]
         σ1 = [ 110, 100,  32,  51 ]
@@ -371,79 +468,62 @@ Salsa20k k n = Salsa20 x
         τ1 = [ 110, 100,  32,  49 ]
         τ2 = [  54,  45,  98, 121 ]
         τ3 = [ 116, 101,  32, 107 ]
-        [ k0, k1 ] = split (k # zero) : [2][16][8]
-        x = if `a == 2 then σ0 # k0 # σ1 # n # σ2 # k1 # σ3
-                       else τ0 # k0 # τ1 # n # τ2 # k0 # τ3
 ```
-
-### Examples
-
-```cryptol
-property Salsa20kExamples = Salsa20k (k0 # k1) n == [ 69, 37, 68, 39, 41, 15,107,193,255,139,122, 6
-                                                    ,170,233,217, 98, 89,144,182,106, 21, 51,200, 65
-                                                    ,239, 49,222, 34,215,114, 40,126,104,197, 7,225
-                                                    ,197,153, 31, 2,102, 78, 76,176, 84,245,246,184
-                                                    ,177,160,133,130, 6, 72,149,119,192,195,132,236
-                                                    ,234,103,246, 74 ]
-                         /\ Salsa20k k0 n        == [ 39,173, 46,248, 30,200, 82, 17, 48, 67,254,239
-                                                    , 37, 18, 13,247,241,200, 61,144, 10, 55, 50,185
-                                                    ,  6, 47,246,253,143, 86,187,225,134, 85,110,246
-                                                    ,161,163, 43,235,231, 94,171, 51,145,214,112, 29
-                                                    , 14,232, 5, 16,151,140,183,141,171, 9,122,181
-                                                    ,104,182,177,193 ]
-    where
-        k0 = [1..16]
-        k1 = [201..216]
-        n  = [101..116]
-```
-
-### Comments
-
-"Expansion" refers to the expansion of (k,n) into Salsa20k(n). It also refers to the expansion of k into a long stream of Salsa20k outputs for various n's; see Section 10.
-
-The constants `σ0σ1σ2σ3` and `τ0τ1τ2τ3` are "expand 32-byte k" and "expand 16-byte k" in ASCII.
 
 ## 10 The Salsa20 encryption function
 
 ### Inputs and outputs
 
-Let k be a 32-byte or 16-byte sequence. Let v be an 8-byte sequence. Let m be an l-byte sequence for some `l ∈ {0,1,...,2^70}`. The **Salsa20 encryption of** m **with nonce** v **under key** k, denoted Salsa20k(v) ⊕ m, is an l-byte sequence.
+*Note: The original document defines the Salsa20 encryption function as Salsa20<sub>k</sub>(v) ⊕ m.*
+*For clarity it is defined in this document to Salsa20_encrypt(k, v, m).*
 
-Normally k is a secret key (preferably 32 bytes); v is a nonce, i.e., a unique message number; m is a plaintext message; and Salsa20k(v) ⊕ m is a ciphertext message. Or m can be a ciphertext message, in which case Salsa20k(v) ⊕ m is the original plaintext message.
+Let k be a 32-byte or 16-byte sequence. Let v be an 8-byte sequence. Let m be an l-byte sequence for
+some `l ∈ {0,1,...,2^70}`. The **Salsa20 encryption of** m **with nonce** v **under key** k, denoted
+Salsa20_encrypt(k, v, m), is an l-byte sequence.
+
+Normally k is a secret key (preferably 32 bytes); v is a nonce, i.e., a unique message number; m is
+a plaintext message; and Salsa20_encrypt(k, v, m) is a ciphertext message. Or m can be a ciphertext message,
+in which case Salsa20_encrypt(k, v, m) is the original plaintext message.
 
 ```cryptol
-Salsa20Encrypt : {a, l} (a >= 1, 2 >= a, l >= 0, 2^^70 >= l)
+Salsa20_encrypt : {a, l} (a >= 1, 2 >= a, l >= 0, 2^^70 >= l)
        => [16*a][8] -> [8][8] -> [l][8] -> [l][8]
 ```
 
 ### Definition
 
-Salsa20k(v) is the 2^70-byte sequence
+Salsa20_expansion(k, v) is the 2^70-byte sequence
 
-Salsa20k(v,0), Salsa20k(v,1), Salsa20k(v,2),..., Salsa20k(v,2^64-1)
+*Salsa20_expansion(k,v#0), Salsa20_expansion(k,v#1), Salsa20_expansion(k,v#2),...,
+Salsa20_expansion(k,v#2^64-1)*
 
-Here i is the unique 8-byte sequence (i0,i1,...,i7) such that `i = i0 + 2^8 i1 + 2^16 i2 +...+ 2^56 i7`.
+Here i is the unique 8-byte sequence (i<sub>0</sub>,i<sub>1</sub>,...,i<sub>7</sub>) such that
+*i = i<sub>0</sub> + 2<sup>8</sup>i<sub>1</sub> + 2<sup>16</sup>i<sub>2</sub>+ ...
++2<sup>56</sup>i<sub>7</sub>*.
 
-The formula Salsa20k(v) ⊕ m implicitly truncates Salsa20k(v) to the same length as m. In other words,
+The formula Salsa20_encrypt(k, v, m) implicitly truncates Salsa20_expansion(k, v) to the same length
+as m. In other words,
 
-Salsa20k(v) ⊕ (m[0],m[1],...,m[l-1]) = (c[0],c[1],...,c[l-1])
+Salsa20_encrypt(k,v,m) = Salsa20_expansion(k,v) ⊕ (m[0],m[1],...,m[l-1]) = (c[0],c[1],...,c[l-1])
 
-where c[i] = m[i] ⊕ Salsa20k(v,⌊i/64⌋)[i mod 64].
+where c[i] = m[i] ⊕ Salsa20_expansion(k,v#⌊i/64⌋)[i mod 64].
 
 ```cryptol
-Salsa20Encrypt k v m = m ^ s
+Salsa20_encrypt k v m = m ^ s
     where
-        s = take (join [ Salsa20k k (v # (reverse (split i))) | i <- [0,1...] ])
+        s = take (join [ Salsa20_expansion k (v # (reverse (split i))) | i <- [0,1...] ])
 
-Salsa20EncryptDecrypts : [32][8] -> [8][8] -> [32][8] -> Bit
-property Salsa20EncryptDecrypts k v m = m == Salsa20Encrypt k0 v c1
-                                     /\ m == Salsa20Encrypt k v c2
+Salsa20_encryptDecrypts : [32][8] -> [8][8] -> [32][8] -> Bit
+property Salsa20_encryptDecrypts k v m = m == Salsa20_encrypt k0 v c1
+                                      /\ m == Salsa20_encrypt k v c2
     where
         [ k0, k1 ] = split k : [2][16][8]
-        c1  = Salsa20Encrypt k0 v m  // with 16 bit k
-        c2  = Salsa20Encrypt k v m  // with 32 bit k
+        c1  = Salsa20_encrypt k0 v m  // with 16 bit k
+        c2  = Salsa20_encrypt k v m  // with 32 bit k
 ```
 
 ### Comments
 
-The definition of Salsa20 could easily be generalized from byte sequences to bit sequences, given an encoding of bytes as sequences of bits. However, there is no apparent application of this generalization.
+The definition of Salsa20 could easily be generalized from byte sequences to bit sequences, given an
+encoding of bytes as sequences of bits. However, there is no apparent application of this
+generalization.
