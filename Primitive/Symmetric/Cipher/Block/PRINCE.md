@@ -2,9 +2,12 @@
 
 ## Welcome
 
-This document is a literate [Cryptol](https://cryptol.net/) document. This means that if you install Cryptol from the website you can run ```cryptol PRINCE.md``` in your terminal and all of the definitions will be typecheck, and the test cases can be run.
+This document is a literate [Cryptol](https://cryptol.net/) document. This means that if you install
+Cryptol from the website you can run ```cryptol PRINCE.md``` in your terminal and all of the
+definitions will be typecheck, and the test cases can be run.
 
-All text in this document is directly from the [PRINCE Specification](https://eprint.iacr.org/2012/529.pdf).
+All text in this document is directly from the
+[PRINCE Specification](https://eprint.iacr.org/2012/529.pdf).
 
 ```cryptol
 module Primitive::Symmetric::Cipher::Block::PRINCE where
@@ -12,7 +15,15 @@ module Primitive::Symmetric::Cipher::Block::PRINCE where
 
 ## 2 Cipher Description
 
-PRINCE is a 64-bit block cipher with a 128-bit key. The key is split into two parts of 64 bits each,
+PRINCE is a 64-bit block cipher with a 128-bit key.
+
+```cryptol
+type PrinceBlock = [64]
+type PrinceKey   = [128]
+type PrinceKeyPt = [64]
+```
+
+The key is split into two parts of 64 bits each,
 
 ```example
 k = k0||k1
@@ -21,17 +32,19 @@ k = k0||k1
 and extended to 192 bits by the mapping
 
 ```cryptol
-keyExtend : [128] -> [3][64]
+keyExtend : PrinceKey -> [3]PrinceKeyPt
 keyExtend k = [k0, k0', k1]
     where
         k0' = (k0 >>> 1) ^ (k0 >> 63)
         [k0, k1] = groupBy`{64} k
 ```
 
-PRINCE is based on the so-called *FX* construction [7,30]: the first two subkeys k0 and k0' are used as whitening keys, while the key k1 is the 64-bit key for a 12-round block cipher we refer to as PRINCE_core. We provide test vectors in Appendix A.
+PRINCE is based on the so-called *FX* construction [7,30]: the first two subkeys k0 and k0' are used
+as whitening keys, while the key k1 is the 64-bit key for a 12-round block cipher we refer to as
+PRINCE_core. We provide test vectors in Appendix A.
 
 ```cryptol
-PRINCE : [128] -> [64] -> [64]
+PRINCE : PrinceKey -> PrinceBlock -> PrinceBlock
 PRINCE k m = m' ^ k0'
     where
         [k0, k0', k1] = keyExtend k
@@ -43,7 +56,7 @@ PRINCE k m = m' ^ k0'
 The whole encryption process of PRINCE_core is depicted below.
 
 ```cryptol
-PRINCE_core : [64] -> [64] -> [64]
+PRINCE_core : PrinceKeyPt -> PrinceBlock -> PrinceBlock
 PRINCE_core k1 pt = c6 ^ k1
     where
         c1 = pt ^ k1
@@ -55,7 +68,7 @@ PRINCE_core k1 pt = c6 ^ k1
         cs' = [c5] # [ round' c k1 i | c <- cs' | i <- [6..10] ]
         c6 = (RC@11) ^ (last cs')
 
-PRINCE_core' : [64] -> [64] -> [64]
+PRINCE_core' : PrinceKeyPt -> PrinceBlock -> PrinceBlock
 PRINCE_core' k1 ct = c1 ^ k1
     where
         c6 = ct ^ k1
@@ -69,14 +82,14 @@ PRINCE_core' k1 ct = c1 ^ k1
 
 property PRINCE_coreInverts k1 pt = PRINCE_core' k1 (PRINCE_core k1 pt) == pt
 
-round : [64] -> [64] -> [8] -> [64]
+round : PrinceBlock -> PrinceKeyPt -> [8] -> PrinceBlock
 round state k1 i = kiAdd stateR k1
     where
         stateS = S state
         stateM = M stateS
         stateR = (RC@i) ^ stateM
 
-round' : [64] -> [64] -> [8] -> [64]
+round' : PrinceBlock -> PrinceKeyPt -> [8] -> PrinceBlock
 round' state k1 i = SInv stateM'
     where
         stateK  = kiAdd state k1
@@ -89,16 +102,18 @@ property roundInverts state k1 = state == state''
         state'' = round' state' k1 1
 ```
 
-Each round of PRINCE_core consists of a key addition, an Sbox-layer, a linear layer, and the addtion of a round constant.
+Each round of PRINCE_core consists of a key addition, an Sbox-layer, a linear layer, and the addition
+of a round constant.
 
-**k_i-add**. Here the 64-bit state is xored with the 64-bit subkey.
+**k_i-add**. Here the 64-bit state is xor-ed with the 64-bit subkey.
 
 ```cryptol
-kiAdd : [64] -> [64] -> [64]
+kiAdd : PrinceBlock -> PrinceKeyPt -> PrinceBlock
 kiAdd state k1 = state ^ k1
 ```
 
-**S-Layer**. The cipher uses one 4-bit Sbox. The action of the Sbox in hexadecimal notation is given by the following table.
+**S-Layer**. The cipher uses one 4-bit Sbox. The action of the Sbox in hexadecimal notation is given
+by the following table.
 
 |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |
 | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
@@ -118,13 +133,13 @@ sbox' = [ 0xb, 0x7, 0x3, 0x2
         , 0xa, 0x6, 0x4, 0x0
         , 0x5, 0xe, 0xc, 0x1 ]
 
-S : [64] -> [64]
+S : PrinceBlock -> PrinceBlock
 S m = join s
     where
         m' = groupBy`{4} m
         s = [ sbox@x | x <- m' ]
 
-SInv : [64] -> [64]
+SInv : PrinceBlock -> PrinceBlock
 SInv m = join s
     where
         m' = groupBy`{4} m
@@ -133,10 +148,11 @@ SInv m = join s
 property SInverts m = SInv (S m) == m
 ```
 
-**The Matrices: M/M'-layer**. In the M and M' layer the 64-bit state is multiplied with a 64x64 matrix *M* (resp. *M'*) defined in Section 3.3.
+**The Matrices: M/M'-layer**. In the M and M' layer the 64-bit state is multiplied with a 64x64
+matrix *M* (resp. *M'*) defined in Section 3.3.
 
 ```cryptol
-Multiply : [64] -> [4][4][4][4][4] -> [64]
+Multiply : PrinceBlock -> [4][4][4][4][4] -> PrinceBlock
 Multiply input Ms = join (join out)
     where
         input' = split (split input) : [4][4][4]
@@ -155,7 +171,8 @@ SingleMultiply xx mm = foldl (^) zero xm'
         xm' = foldl (+) zero xm
 ```
 
-**RC_i-add**. In the RC_*i* add step a 64-bit round constant is xored with the state. We define the constants used below (in hex notation)
+**RC_i-add**. In the RC_*i* add step a 64-bit round constant is xor-ed with the state. We define the
+constants used below (in hex notation)
 
 ```cryptol
 RC : [12][64]
@@ -174,43 +191,54 @@ RC = [ 0x0000000000000000
      ]
 ```
 
-Note that, for all 0 <= i <= 11, `RC_i ⊕ RC_(11-i)` is the constant `α = c0ac29b7c97c50dd`, `RC_0 = 0` and that RC_i, ..., RC_5 and `α` are derived from the fraction part of `π = 3.141...`.
+Note that, for all 0 <= i <= 11, `RC_i ⊕ RC_(11-i)` is the constant `α = c0ac29b7c97c50dd`,
+`RC_0 = 0` and that RC_i, ..., RC_5 and `α` are derived from the fraction part of `π = 3.141...`.
 
 ```cryptol
 property note1 = and [ (RC@i) ^ (RC@(11 - i)) == 0xc0ac29b7c97c50dd
                      | i <- [0..11] ]
 ```
 
-From the fact that the round constants satisfy `RC_i ⊕ RC_(11-i) = α` and that M' is an involution, we deduce that the core cipher is such that the inverse of PRINCE_core parameterized with `k` is equal to PRINCE_core parameterize with (`k ⊕ α`). We call this property of PRINCE_core the `α-reflection property`. It follows that, for any expanded key `(k0||k0'||k1)`,
+From the fact that the round constants satisfy `RC_i ⊕ RC_(11-i) = α` and that M' is an involution,
+we deduce that the core cipher is such that the inverse of PRINCE_core parameterized with `k` is
+equal to PRINCE_core parameterize with (`k ⊕ α`). We call this property of PRINCE_core the
+`α-reflection property`. It follows that, for any expanded key `(k0||k0'||k1)`,
 
 ```cryptol
 property aReflection k m = PRINCE_core' k m == PRINCE_core (k ^ a) m
     where
         a = 0xc0ac29b7c97c50dd
 
-Encrypt : [128] -> [64] -> [64]
-Encrypt k pt =  ct ^ k0'
+encrypt : PrinceKey -> PrinceBlock -> PrinceBlock
+encrypt k pt =  ct ^ k0'
     where
         [k0, k0', k1] = keyExtend k
         ct = PRINCE_core k1 (pt ^ k0)
 
-Decrypt : [128] -> [64] -> [64]
-Decrypt k ct = pt ^ k0'
+decrypt : PrinceKey -> PrinceBlock -> PrinceBlock
+decrypt k ct = pt ^ k0'
     where
         [k0', k0, k1] = keyExtend k
         a  = 0xc0ac29b7c97c50dd
         pt = PRINCE_core (k1 ^ a) (ct ^ k0)
 
-property EncryptDecrypt k pt = Decrypt k (Encrypt k pt) == pt
+property EncryptDecrypt k pt = decrypt k (encrypt k pt) == pt
 ```
 
-where `α` is the 64-bit constant `α=c0ac29b7c97c50dd`. Thus, for decryption one only has to do a very cheap change to the master key and afterwards reused the exact same circuit.
+where `α` is the 64-bit constant `α=c0ac29b7c97c50dd`. Thus, for decryption one only has to do a
+very cheap change to the master key and afterwards reused the exact same circuit.
 
 ## 3 Design Decisions
 
 ### 3.3 The Linear Layer
 
-In the *M* and *M'*-layer the 64-bit state is multiplied with a 64 x 64 matrix *M* (resp. *M'*) defined below. We have different requirements for the two different linear layers. The *M'*-layer is only used in the middle round, thus *M'* has to be an involution to ensure the `α`-reflection property. This requirement does not apply for the *M*-layer used in the round functions. Here we want to ensure full diffusion after two rounds. To achieve this we combine the *M'*-mapping with an application of matrix *S R* which behaves like the AES shifft rows and permutes the 16 nibbles in the following way
+In the *M* and *M'*-layer the 64-bit state is multiplied with a 64 x 64 matrix *M* (resp. *M'*)
+defined below. We have different requirements for the two different linear layers. The *M'*-layer is
+only used in the middle round, thus *M'* has to be an involution to ensure the `α`-reflection
+property. This requirement does not apply for the *M*-layer used in the round functions. Here we
+want to ensure full diffusion after two rounds. To achieve this we combine the *M'*-mapping with an
+application of matrix *S R* which behaves like the AES shift rows and permutes the 16 nibbles in
+the following way
 
 ```example
 |0|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15| --> |0|5|10|15|4|9|14|3|8|13|2|7|12|1|6|11|
@@ -235,14 +263,14 @@ SR' = [ 0x0, 0xd, 0xa, 0x7
 Thus `M = SR ◦ M'`.
 
 ```cryptol
-M : [64] -> [64]
+M : PrinceBlock -> PrinceBlock
 M input = join shifted
     where
         output  = Multiply input M'Matrix
         output' = groupBy`{4} output
         shifted = [ output'@sr | sr <- SR ]
 
-MInv : [64] -> [64]
+MInv : PrinceBlock -> PrinceBlock
 MInv input = output
     where
         input' = groupBy`{4} input
@@ -250,7 +278,12 @@ MInv input = output
         output  = Multiply (join shifted) M'Matrix
 ```
 
-Additionally the implementation costs should be minimized, meaning that the number of ones in the matrices *M'* and *M* should be minimal, while at the same time it should be guaranteed that at least 16 Sboxes are active in 4 consecutive rounds (cf. Appendix C.1 for details). Thus, trivially each output bit of an Sbox has to influence 3 Sboxes in the next round and therefore the minimum number of ones per row and column is 3. Thus we can use the following four 4 x 4 matrices as building blocks for the *M'*-layer.
+Additionally the implementation costs should be minimized, meaning that the number of ones in the
+matrices *M'* and *M* should be minimal, while at the same time it should be guaranteed that at
+least 16 Sboxes are active in 4 consecutive rounds (cf. Appendix C.1 for details). Thus, trivially
+each output bit of an Sbox has to influence 3 Sboxes in the next round and therefore the minimum
+number of ones per row and column is 3. Thus we can use the following four 4 x 4 matrices as
+building blocks for the *M'*-layer.
 
 ```cryptol
 m0 : [4][4]
@@ -282,7 +315,10 @@ m3 = [ 0b1000
      ]
 ```
 
-In the next step we generate a 4 x 4 block matrix M^ where each row and column in a permutation of the four 4 x 4 matrices M0, ..., M3. The row permutations are chosen such that we obtain a symmetric block matrix. The choice of the building blocks and the symmetric structure ensures that the resulting 16 x 16 matrix is an involution. We define
+In the next step we generate a 4 x 4 block matrix M^ where each row and column in a permutation of
+the four 4 x 4 matrices M0, ..., M3. The row permutations are chosen such that we obtain a symmetric
+block matrix. The choice of the building blocks and the symmetric structure ensures that the
+resulting 16 x 16 matrix is an involution. We define
 
 ```cryptol
 M0 : [4][4][4][4]
@@ -306,13 +342,16 @@ M1' : [4][4][4][4]
 M1' = reverse (M1 >>> 1)
 ```
 
-In order to obtain a permutation for the full 64-bit state, we construct a 64 x 64 block diagonal matrix *M'* with (M0, M1, M1, M0) as diagonal blocks. The matrix *M'* is an involution with 2^32 fixed points, which is average for a randomly chosen involution. The linear layer *M* is not an involution anymore due to the composition of *M'* and shift rows, which is not an involution.
+In order to obtain a permutation for the full 64-bit state, we construct a 64 x 64 block diagonal
+matrix *M'* with (M0, M1, M1, M0) as diagonal blocks. The matrix *M'* is an involution with 2^32
+fixed points, which is average for a randomly chosen involution. The linear layer *M* is not an
+involution anymore due to the composition of *M'* and shift rows, which is not an involution.
 
 ```cryptol
 M'Matrix : [4][4][4][4][4]
 M'Matrix = [ M0', M1', M1', M0' ]
 
-M' : [64] -> [64]
+M' : PrinceBlock -> PrinceBlock
 M' input = Multiply input M'Matrix
 
 property M'Involutes input = M' (M' input) == input
@@ -324,7 +363,7 @@ The 128-bit key `(k0||k1)` is extended to a 192-bit key
 
 ## Appendix
 
-### A Testvectors
+### A Test Vectors
 
 | plaintext | k0 | k1 | ciphertext |
 | --------- | -- | -- | ---------- |
@@ -373,9 +412,11 @@ test5 = PRINCE (k0 # k1) pt == ct
         ct = 0xae25ad3ca8fa9ccf
 ```
 
-### B All Sboxes for the PRINCE-Familty Up To Equivalence
+### B All Sboxes for the PRINCE-Family Up To Equivalence
 
-In Table 3 we list all Sboxes for the PRINCE-Family, up to affine equivalence. Note that `S0` is equivalent to the inverse function `F16` and the Sbox of PRINCE defined in Section 2 is equivalent to S7.
+In Table 3 we list all Sboxes for the PRINCE-Family, up to affine equivalence. Note that `S0` is
+equivalent to the inverse function `F16` and the Sbox of PRINCE defined in Section 2 is equivalent
+to S7.
 
 | | |
 | -- | -- |
@@ -387,3 +428,30 @@ In Table 3 we list all Sboxes for the PRINCE-Family, up to affine equivalence. N
 | S5 | 0x0, 0x1, 0x2, 0xD, 0x4, 0x7, 0xF, 0x6, 0x8, 0xE, 0xB, 0xA, 0x5, 0x9, 0xC, 0x3 |
 | S6 | 0x0, 0x1, 0x2, 0xD, 0x4, 0x7, 0xF, 0x6, 0x8, 0xE, 0xB, 0xA, 0x9, 0x3, 0xC, 0x5 |
 | S7 | 0x0, 0x1, 0x2, 0xD, 0x4, 0x7, 0xF, 0x6, 0x8, 0xE, 0xC, 0x9, 0x5, 0xB, 0xA, 0x3 |
+
+## Backwards Compatibility
+
+The following cryptol methods are defined to maintain backwards compatibility with previous
+implementations of the PRINCE algorithms.
+
+```cryptol
+type princeBlockSize = 64
+type princeKeySize = 128
+
+princeEncrypt : ([princeKeySize], [princeBlockSize]) -> [princeBlockSize]
+princeEncrypt (key, pt) = encrypt key pt
+
+princeDecrypt : ([princeKeySize], [princeBlockSize]) -> [princeBlockSize]
+princeDecrypt (key, ct) = decrypt key ct
+
+princeEncrypt64 : ([princeBlockSize], [princeBlockSize]) -> [princeBlockSize]
+princeEncrypt64 (key, pt) = encrypt (key # zero) pt
+
+princeDecrypt64 : ([princeBlockSize], [princeBlockSize]) -> [princeBlockSize]
+princeDecrypt64 (key, ct) = decrypt (key # zero) ct
+
+property princeCorrectPrime key m = princeDecrypt64 (key, princeEncrypt64 (key, m)) == m
+
+princeEncrypt128 : ([princeKeySize], [princeKeySize]) -> [princeKeySize]
+princeEncrypt128 (key, pt) = (encrypt key (take`{64} pt)) # zero
+```

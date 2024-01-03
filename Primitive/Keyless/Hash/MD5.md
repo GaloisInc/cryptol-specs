@@ -2,7 +2,9 @@
 
 ## Welcome
 
-This document is a literate [Cryptol](https://cryptol.net/) document. This means that if you install Cryptol from the website you can run ```cryptol MD5.md``` in your terminal and all of the definitions will be typecheck, and the test cases can be run.
+This document is a literate [Cryptol](https://cryptol.net/) document. This means that if you install
+Cryptol from the website you can run ```cryptol MD5.md``` in your terminal and all of the
+definitions will be typechecked, and the test cases can be run.
 
 All text in this document is directly from the [MD5 Specification](https://www.ietf.org/rfc/rfc1321.txt).
 
@@ -12,7 +14,12 @@ module Primitive::Keyless::Hash::MD5 where
 
 ## 2 Terminology and Notation
 
-In this document, a "word" is a 32-bit quantity and a "byte" is an 8-bit quantity. A sequence of bits can be interpreted in a natural manner as a sequence of bytes, where each consecutive group of eight bits is interpreted as a byte with the high-order (most significant) bit of each byte listed first. Similarly, a sequence of bytes can be interpreted as a sequence of 32-bit words, where each consecutive group of four bytes is interpreted as a word with the low-order (least significant) byte given first.
+In this document, a "word" is a 32-bit quantity and a "byte" is an 8-bit quantity. A sequence of
+bits can be interpreted in a natural manner as a sequence of bytes, where each consecutive group of
+eight bits is interpreted as a byte with the high-order (most significant) bit of each byte listed
+first. Similarly, a sequence of bytes can be interpreted as a sequence of 32-bit words, where each
+consecutive group of four bytes is interpreted as a word with the low-order (least significant)
+byte given first.
 
 ```cryptol
 convert_length : [64] -> [64]
@@ -38,13 +45,20 @@ property test_convert_msg = convert msg == output
         output = 0xd41d8cd98f00b204e9800998ecf8427e
 ```
 
-Let x_i denote "x sub i". If the subscript is an expression, we surround it in braces, as in x_{i+1}. Similarly, we use ^ for superscripts (exponentiation), so that x^i denotes x to the i-th power.
+Let x_i denote "x sub i". If the subscript is an expression, we surround it in braces, as in
+x_{i+1}. Similarly, we use ^ for superscripts (exponentiation), so that x^i denotes x to the
+i-th power.
 
-Let the symbol "+" denote addition of words (i.e., modulo-2^32 addition). Let `X <<< s` denote the 32-bit value obtained by circularly shifting (rotating) X left by s bit positions. Let `not(X)` denote the bit-wise complement of X, and let `X v Y` denote the bit-wise OR of X and Y. Let `X xor Y` denote the bit-wise XOR of X and Y, and let `XY` denote the bit-wise AND of X and Y.
+Let the symbol "+" denote addition of words (i.e., modulo-2^32 addition). Let `X <<< s` denote the
+32-bit value obtained by circularly shifting (rotating) X left by s bit positions. Let `not(X)`
+denote the bit-wise complement of X, and let `X v Y` denote the bit-wise OR of X and Y. Let
+`X xor Y` denote the bit-wise XOR of X and Y, and let `XY` denote the bit-wise AND of X and Y.
 
 ## 3 MD5 Algorithm Description
 
-We begin by supposing that we have a b-bit message as input, and that we wish to find its message digest. Here `b` is an arbitrary nonnegative integer; `b` may be zero, it need not be a multiple of eight, and it may be arbitrarily large. We imagine the bits of the message written down as follows:
+We begin by supposing that we have a b-bit message as input, and that we wish to find its message
+digest. Here `b` is an arbitrary nonnegative integer; `b` may be zero, it need not be a multiple of
+eight, and it may be arbitrarily large. We imagine the bits of the message written down as follows:
 
 ```example
 m_0 m_1 ... m_{b-1}
@@ -54,9 +68,14 @@ The following five steps are performed to compute the message digest of the mess
 
 ### 3.1 Step 1. Append Padding Bits
 
-The message is "padded" (extended) so that its length (in bits) is congruent to 448 modulo 512. That is, the message is extended so that it is just 64 bits shy of being a multiple of 512 bits long. Padding is always performed, even if the length of the message is already congruent to 448 modulo 512.
+The message is "padded" (extended) so that its length (in bits) is congruent to 448 modulo 512.
+That is, the message is extended so that it is just 64 bits shy of being a multiple of 512 bits
+long. Padding is always performed, even if the length of the message is already congruent to 448
+modulo 512.
 
-Padding is performed as follows: a single "1" bit is appended to the message, and then "0" bits are appended so that the length in bits of the padded message becomes congruent to 448 modulo 512. In all, at least one bit and at most 512 bits are appended.
+Padding is performed as follows: a single "1" bit is appended to the message, and then "0" bits are
+appended so that the length in bits of the padded message becomes congruent to 448 modulo 512. In
+all, at least one bit and at most 512 bits are appended.
 
 ```cryptol
 pad : {b, p} (fin p, p >= 0, 64 >= width b) => [b] -> [b + p + 1]
@@ -65,7 +84,10 @@ pad msg = msg # [1] # zero
 
 ### 3.2 Step 2. Append Length
 
-A 64-bit representation of b (the length of the message before padding bits were added) is appended to the result of the previous step. In the unlikely event that b is greater than 2^64, then only the low-order 64 bits of b are used. (These bits are appended as two 32-bit words and appended low-order word first in accordance with the previous conventions.)
+A 64-bit representation of b (the length of the message before padding bits were added) is appended
+to the result of the previous step. In the unlikely event that b is greater than 2^64, then only the
+low-order 64 bits of b are used. (These bits are appended as two 32-bit words and appended low-order
+word first in accordance with the previous conventions.)
 
 ```cryptol
 appendLength : {b, p} (fin p, p >= 0, 64 >= width b)
@@ -83,11 +105,16 @@ prepMsg msg = groupBy`{16} (groupBy`{32} msgL)
         msgL   = appendLength`{b, p} msgP
 ```
 
-At this point the resulting message (after padding with bits and with b) has a length that is an exact multiple of 512 bits. Equivalently, this message has a length that is an exact multiple of 16 (32-bit) words. Let `M[0...N-1]` denote the words of the resulting message, where N is a multiple of 16.
+At this point the resulting message (after padding with bits and with b) has a length that is an
+exact multiple of 512 bits. Equivalently, this message has a length that is an exact multiple of
+16 (32-bit) words. Let `M[0...N-1]` denote the words of the resulting message, where N is a multiple
+of 16.
 
 ### 3.3 Step 3. Initialize MD Buffer
 
-A four-word buffer (A,B,C,D) is used to compute the message digest. Here each of A, B, C, D is a 32-bit register. There registers are initialized to the following values in hexadecimal, low-order bytes first:
+A four-word buffer (A,B,C,D) is used to compute the message digest. Here each of A, B, C, D is a
+32-bit register. There registers are initialized to the following values in hexadecimal, low-order
+bytes first:
 
 ```cryptol
 type Buffer = [4][32]
@@ -107,7 +134,8 @@ initialize = [A', B', C', D']
 
 ### 3.4 Step 4. Process Message in 16-Word Blocks
 
-We first define four auxiliary functions that each take as input three 32-bit words and produce as output one 32-bit word.
+We first define four auxiliary functions that each take as input three 32-bit words and produce as
+output one 32-bit word.
 
 ```cryptol
 F : [32] -> [32] -> [32] -> [32]
@@ -123,7 +151,10 @@ I : [32] -> [32] -> [32] -> [32]
 I X Y Z = Y ^ (X || ~Z) // Y xor (X v not(Z))
 ```
 
-In each bit position F acts as a conditional: if X then Y else Z. The function F could have been defined using + instead of v since XY and not(X)Z will necer have 1's in the same bit position. It is interesting to not that if the bits of X, Y and Z are independent and unbiased, then each bit of F(X, Y, Z) will be independent and unbiased.
+In each bit position F acts as a conditional: if X then Y else Z. The function F could have been
+defined using + instead of v since XY and not(X)Z will never have 1's in the same bit position. It
+is interesting to not that if the bits of X, Y and Z are independent and unbiased, then each bit of
+F(X, Y, Z) will be independent and unbiased.
 
 ```cryptol
 F_add : [32] -> [32] -> [32] -> [32]
@@ -132,9 +163,15 @@ F_add X Y Z = (X && Y) + (~X && Z)  // XY + not(X) Z
 property f_equiv x y z = F x y z == F_add x y z
 ```
 
-The functions G, H and I are similar to the function F, in that they act in "bitwise parallel" to produce their output from the bits of X, Y, and Z, in such a manner that if the corresponding bits of X, Y, and Z are independent and unbiased, then each bit of G(X,Y,Z), H(X,Y,Z), and I(X,Y,Z) will be independent and unbiased. Note that the function H is the bit-wise "xor" or "parity" function of its inputs.
+The functions G, H and I are similar to the function F, in that they act in "bitwise parallel" to
+produce their output from the bits of X, Y, and Z, in such a manner that if the corresponding bits
+of X, Y, and Z are independent and unbiased, then each bit of G(X,Y,Z), H(X,Y,Z), and I(X,Y,Z) will
+be independent and unbiased. Note that the function H is the bit-wise "xor" or "parity" function of
+its inputs.
 
-This step uses a 64-element table T[1...64] constructed from the sine function. Let T[i] denote the i-th element of the table, which is equal to the integer part of `4294967296 times abs(sin(i))`, where `i` is in radians. The elements of the table are given in the appendix.
+This step uses a 64-element table T[1...64] constructed from the sine function. Let T[i] denote the
+i-th element of the table, which is equal to the integer part of `4294967296 times abs(sin(i))`,
+where `i` is in radians. The elements of the table are given in the appendix.
 
 ```cryptol
 T : [64][32]
@@ -256,13 +293,14 @@ processMsg M = last abcd'
 
 ### 3.5 Step 5. Output
 
-The message digest produced as output is A, B, C, D. That is, we begin with the low-order byte of A, and end with the high-order byte of D.
+The message digest produced as output is A, B, C, D. That is, we begin with the low-order byte of A,
+and end with the high-order byte of D.
 
 ```cryptol
-md5 : {a} (64 >= width (a*8)) => [a][8] -> [128]
+md5 : {a} (64 >= width (a)) => [a] -> [128]
 md5 msg = convert (join abcd)
     where
-        msg' = prepMsg (join msg)
+        msg' = prepMsg msg
         abcd = processMsg msg'
 ```
 
@@ -273,14 +311,33 @@ This completes the description of MD5. A reference implementation in C is given 
 ### A.5 Test suite
 
 ```cryptol
-test1 = md5 "" == 0xd41d8cd98f00b204e9800998ecf8427e
-test2 = md5 "a" == 0x0cc175b9c0f1b6a831c399e269772661
-test3 = md5 "abc" == 0x900150983cd24fb0d6963f7d28e17f72
-test4 = md5 "message digest" == 0xf96b697d7cb7938d525a2f31aaf161d0
-test5 = md5 "abcdefghijklmnopqrstuvwxyz" == 0xc3fcd3d76192e4007dfb496cca67e13b
-test6 = md5 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789" == 0xd174ab98d277d9f5a5611c2c9f419d9f
-test7 = md5 "12345678901234567890123456789012345678901234567890123456789012345678901234567890" == 0x57edf4a22be3c955ac49da2e2107b67a
+test1 = md5 (join "") == 0xd41d8cd98f00b204e9800998ecf8427e
+test2 = md5 (join "a") == 0x0cc175b9c0f1b6a831c399e269772661
+test3 = md5 (join "abc") == 0x900150983cd24fb0d6963f7d28e17f72
+test4 = md5 (join "message digest") == 0xf96b697d7cb7938d525a2f31aaf161d0
+test5 = md5 (join "abcdefghijklmnopqrstuvwxyz") == 0xc3fcd3d76192e4007dfb496cca67e13b
+test6 = md5 (join "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789") == 0xd174ab98d277d9f5a5611c2c9f419d9f
+test7 = md5 (join "12345678901234567890123456789012345678901234567890123456789012345678901234567890") == 0x57edf4a22be3c955ac49da2e2107b67a
 
 property tests_pass = test1 /\ test2 /\ test3 /\ test4
                    /\ test5 /\ test6 /\ test7
+```
+
+## Backwards Compatibility
+
+The functions defined below maintain backwards compatibility with previous versions of the `MD5`
+cryptol module.
+
+```cryptol
+// Test driver. Given a sequence of bytes, calculate the MD5 sum.
+test s = md5 (join s)
+
+// Reference implementation of MD5 on exactly 16 bytes
+md5_ref : [16][8] -> [16][8]
+md5_ref msg = map reverse (groupBy`{8} (md5 (join (map reverse msg))))
+
+md5_ref' : [128] -> [128]
+md5_ref' msg = join (md5_ref msg')
+    where
+        msg' = groupBy`{8} msg
 ```
