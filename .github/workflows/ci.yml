@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  check:
+  load:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/galoisinc/cryptol:nightly
@@ -27,3 +27,40 @@ jobs:
       run: cryptol --version
     - name: Check Cryptol Files
       run: bash scripts/load_all_cry_files.sh
+
+  check:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/galoisinc/cryptol:nightly
+      options: --user root
+    steps:
+    - name: Installing dependencies..
+      run: |
+        apt update
+        apt install -y git
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Check Cryptol Properties
+      run: bash scripts/test_all_properties.sh
+
+  prove:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/galoisinc/cryptol:nightly
+      options: --user root
+    steps:
+    - name: Installing dependencies..
+      run: |
+        apt update
+        apt install -y git
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Prove Cryptol Properties
+      run: bash scripts/prove_all_properties.sh
+    - name: Upload Proof Artifacts..
+      uses: actions/upload-artifact@v4
+      with:
+        name: prove-artifact
+        path: |
+          manual_proves.txt
+          fast_proves.txt
