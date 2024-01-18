@@ -11,24 +11,11 @@ NUM_WARNS=0
 WITH_WARNS=()
 SCRIPT=$(mktemp)
 
-# These files hang while loading due to the type complexity
-SKIP=("Primitive/Asymmetric/Signature/SphincsPlus/3.1/specification.tex"
-      "Primitive/Asymmetric/Signature/SphincsPlus/3.1/sphincs.tex"
-      "Primitive/Asymmetric/Signature/SphincsPlus/3.1/sphincsplus128f.cry"
-      "Primitive/Asymmetric/Signature/SphincsPlus/3.1/sphincsplus128s.cry"
-      "Primitive/Asymmetric/Signature/SphincsPlus/3.1/sphincsplus192f.cry"
-      "Primitive/Asymmetric/Signature/SphincsPlus/3.1/sphincsplus192s.cry"
-      "Primitive/Asymmetric/Signature/SphincsPlus/3.1/sphincsplus256f.cry"
-      "Primitive/Asymmetric/Signature/SphincsPlus/3.1/sphincsplus256s.cry"
-      "Primitive/Asymmetric/Signature/SphincsPlus/1.0/SphincsPlus.md")
-
 load_cry_files() {
     for FILE in "$1"/*; do
         if [ -d "$FILE" ]; then
           load_cry_files "$FILE"
-        elif [[ ${SKIP[@]} =~ $FILE ]]; then
-          echo "Skipping $FILE."
-        elif [[ -f "$FILE" && ("$FILE" == *.cry && "$FILE" == *.tex || ("$FILE" == *.md && "$FILE" != *README.md)) ]]; then
+        elif [[ -f "$FILE" && ("$FILE" == *.cry || "$FILE" == *.tex || ("$FILE" == *.md && "$FILE" != *README.md)) ]]; then
           NUM_FILES=$(($NUM_FILES+1))
           echo ":load $FILE" > $SCRIPT
           result=$(cryptol -e --batch $SCRIPT)
@@ -53,11 +40,6 @@ rm $SCRIPT
 
 echo ""
 echo "=== Done checking $NUM_FILES Cryptol files ==="
-
-echo "The following files were skipped: "
-for FILE in "${SKIP[@]}"; do
-  echo " $FILE"
-done
 
 if (( $NUM_WARNS != 0 )); then
   echo "$NUM_WARNS files loaded with warnings:"

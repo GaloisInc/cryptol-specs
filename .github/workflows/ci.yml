@@ -22,7 +22,7 @@ jobs:
         apt update
         apt install -y git
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Cryptol Version
       run: cryptol --version
     - name: Check Cryptol Files
@@ -33,13 +33,14 @@ jobs:
     container:
       image: ghcr.io/galoisinc/cryptol:nightly
       options: --user root
+    needs: load
     steps:
     - name: Installing dependencies..
       run: |
         apt update
         apt install -y git
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Check Cryptol Properties
       run: bash scripts/test_all_properties.sh
 
@@ -48,13 +49,14 @@ jobs:
     container:
       image: ghcr.io/galoisinc/cryptol:nightly
       options: --user root
+    needs: check
     steps:
     - name: Installing dependencies..
       run: |
         apt update
         apt install -y git
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Prove Cryptol Properties
       run: bash scripts/prove_all_properties.sh
     - name: Upload Proof Artifacts..

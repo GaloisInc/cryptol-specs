@@ -48,7 +48,7 @@ echo "=== Done checking Cryptol properties ==="
 
 if (( $NUM_FAILS != 0)); then
   echo "$NUM_FAILS cryptol-spec property(ies) failed:"
-  for FILE in "$FAILS[@]"; do
+  for FILE in "${FAILS[@]}"; do
     echo " $FILE"
   done
   exit 1

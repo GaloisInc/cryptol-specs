@@ -23,7 +23,7 @@ prove_properties() {
       prove_properties "$FILE"
     elif [[ -f "$FILE" && ("$FILE" == *.cry || "$FILE" == *.md || "$FILE" == *.tex) ]]; then
       # Find all of the properties in the file
-      props=$(grep -oE "^ *property [a-zA-Z0-9_']+" $FILE | awk '{print 2}')
+      props=$(grep -oE "^ *property [a-zA-Z0-9_']+" $FILE | awk '{print $2}')
       if [ -z "$props" ]; then
         echo "$FILE has no properties to prove."
       else
@@ -31,11 +31,12 @@ prove_properties() {
           echo "Proving $prop in $FILE..."
           echo ":l $FILE" > $SCRIPT
           echo ":prove $prop" >> $SCRIPT
-          (cryptol -e --batch $SCRIPT) & pid=$!
-          (sleep 15 && kill -HIP $pid) 2>/dev/null & watcher=$!
+          ( cryptol -e --batch $SCRIPT ) & pid=$!
+          ( sleep 15 && kill -HUP $pid ) 2>/dev/null & watcher=$!
           if wait $pid 2>/dev/null; then
             echo "  $prop finished!"
             pkill -HUP -P $watcher
+            wait $watcher
             RUN_AGAIN+=("$FILE $prop")
           else
             echo "  $prop did not prove in time."
@@ -52,15 +53,15 @@ rerun_proofs() {
   echo "--------------------------------"
   for property in "${RUN_AGAIN[@]}"; do
     echo "$property..."
-    file="$(echo $property | awk '{print 1;}')"
-    prop="$(echo $property | awk '{print 2;}')"
+    file="$(echo $property | awk '{print $1;}')"
+    prop="$(echo $property | awk '{print $2;}')"
     echo ":l $file" > $SCRIPT
     echo ":prove $prop" >> $SCRIPT
     result=$(cryptol -e --batch $SCRIPT)
     echo "$result"
     if grep -q "Not a monomorphic type" <<< "$result"; then
       echo "  $property is not monomorphic"
-      NUM_NOT_MONOMORPHIC=$(($NUM_NOT_MONOMORPHIC))
+      NUM_NOT_MONOMORPHIC=$(($NUM_NOT_MONOMORPHIC+1))
       NOT_MONOMORPHIC+=("$property")
     elif grep -q "Not a valid predicate type" <<< "$result"; then
       echo "  $property is not of a testable type."
@@ -86,3 +87,41 @@ prove_properties "Primitive"
 rerun_proofs
 
 rm $SCRIPT
+
+echo ""
+echo "=== Done proving Cryptol properties ==="
+
+if (( $NUM_MORE_TIME != 0 )); then
+  echo "$NUM_MORE_TIME properties need more time to prove. You can run them manually."
+  for prop in "${MORE_TIME[@]}"; do
+    echo "  $prop"
+    echo "$prop" >> $MANUAL_PROVE_FILENAME
+  done
+fi
+
+if (( $NUM_NOT_MONOMORPHIC != 0 )); then
+  echo "$NUM_NOT_MONOMORPHIC properties are not monomorphic types and cannot be proven."
+  for prop in "${NOT_MONOMORPHIC[@]}"; do
+    echo "  $prop"
+  done
+fi
+
+if (( $NUM_NOT_TESTABLE != 0 )); then
+  echo "$NUM_NOT_TESTABLE properties are not valid predicate types and cannot be proven."
+  for prop in "${NOT_TESTABLE[@]}"; do
+    echo "  $prop"
+  done
+fi
+
+if (( $NUM_FAILS != 0 )); then
+  echo "$NUM_FAILS property(ies) failed to prove: "
+  for prop in "${FAILS[@]}"; do
+    echo "  $prop"
+  done
+  exit 1
+else
+  echo "All cryptol properties prove."
+  exit 0
+fi
+
+popd > /dev/null
