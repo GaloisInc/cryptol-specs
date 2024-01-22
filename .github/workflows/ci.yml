@@ -44,12 +44,30 @@ jobs:
     - name: Check Cryptol Properties
       run: bash scripts/test_all_properties.sh
 
+  batch-check:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/galoisinc/cryptol:nightly
+      options: --user root
+    needs: load
+    env:
+      STAGE: check
+    steps:
+    - name: Installing dependencies..
+      run: |
+        apt update
+        apt install -y git
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Run check batch files..
+      run: bash scripts/run_batch_files.sh
+
   prove:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/galoisinc/cryptol:nightly
       options: --user root
-    needs: check
+    needs: [check, batch-check]
     steps:
     - name: Installing dependencies..
       run: |
@@ -66,3 +84,21 @@ jobs:
         path: |
           manual_proves.txt
           fast_proves.txt
+
+  batch-prove:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/galoisinc/cryptol:nightly
+      options: --user root
+    needs: [check, batch-check]
+    env:
+      STAGE: prove
+    steps:
+    - name: Installing dependencies..
+      run: |
+        apt update
+        apt install -y git
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Run prove batch files..
+      run: bash scripts/run_batch_files.sh

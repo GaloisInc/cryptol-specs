@@ -23,7 +23,7 @@ prove_properties() {
       prove_properties "$FILE"
     elif [[ -f "$FILE" && ("$FILE" == *.cry || "$FILE" == *.md || "$FILE" == *.tex) ]]; then
       # Find all of the properties in the file
-      props=$(grep -oE "^ *property [a-zA-Z0-9_']+" $FILE | awk '{print $2}')
+      props=$(grep -oE "^property [a-zA-Z0-9_']+" $FILE | awk '{print $2}')
       if [ -z "$props" ]; then
         echo "$FILE has no properties to prove."
       else
