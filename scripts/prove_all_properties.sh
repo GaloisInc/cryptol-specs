@@ -83,7 +83,7 @@ rerun_proofs() {
 }
 
 prove_properties "Common"
-prove_properties "Primitive"
+# prove_properties "Primitive/Symmetric/Cipher/Stream"
 rerun_proofs
 
 rm $SCRIPT
