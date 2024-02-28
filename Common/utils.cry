@@ -19,6 +19,15 @@ BVtoZ x = (fromInteger (toInteger x))
 ZtoZ : {p, q} (fin p, fin q, p >= 1, q >= 1) => Z p -> Z q
 ZtoZ x = (fromInteger (fromZ x))
 
+integerToBV : {m} (fin m) => Integer -> [m]
+integerToBV x = fromInteger x
+
+integerFromBV : {m} (fin m) => [m] -> Integer
+integerFromBV x = toInteger x
+
+integerModulusFromBV : {m} (fin m) => [m] -> Integer
+integerModulusFromBV x = if (integerFromBV x) < 3 then 3 else (integerFromBV x)
+
 isEven : Integer -> Bit
 isEven x = ~((fromInteger x) : [1]) ! 0
 

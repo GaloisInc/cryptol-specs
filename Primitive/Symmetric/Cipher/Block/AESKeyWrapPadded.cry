@@ -1,0 +1,87 @@
+// Cryptol AES Key Wrap Padded Implementation
+// Copyright (c) 2020, Galois Inc.
+// www.cryptol.net
+
+// This is a close implementation of RFC 5649:
+// https://tools.ietf.org/html/rfc5649
+
+module Primitive::Symmetric::Cipher::Block::AESKeyWrapPadded where
+import Primitive::Symmetric::Cipher::Block::AES
+import Primitive::Symmetric::Cipher::Block::AESKeyWrap
+
+// Most significant bits of alternate initial value (Section 3)
+AlternativeIV : [4][8]
+AlternativeIV = [0xA6, 0x59, 0x59, 0xA6]
+
+// Pad a plaintext out to the nearest 8 bytes
+padPlaintext : {n, m} (fin n, (n+m) % 8 == 0, m <= 7) => [n][8] -> [n + m][8]
+padPlaintext p = p # zero
+
+// Wrap `plaintext` using `key` as the encryption key.  `iv` is the most
+// significant 4 bytes of the alternative initial value (see Section 3 of
+// RFC 5649).  This function implements the algorithm from Section 4.1.
+aesWrapKeyPadded : {n, m} (n >= 1 , n < 2^^32 , (n+m) % 8 == 0 , m <= 7) =>
+                   [AESKeySize] -> [4][8] -> [n][8] -> [n+m+8][8]
+aesWrapKeyPadded key iv plaintext =
+  if `n <= 8
+  // If padded plaintext is 8 bytes, encrypt in AEC ECB mode.  The `drop` and
+  // append of `zero` have no effect at runtime and exist to make the types
+  // work out, as the type checker cannot deduce that `n <= 8` in this branch.
+  then (split (aesEncrypt (drop (join (AIV # P)), key))) # zero
+  // Otherwise perform standard key wrap algorithm on padded plaintext.  The
+  // `drop` and append of `zero` have runtime effect and exist to make the
+  // types work out, as the type checker cannot deduce that `n >= 16` in this
+  // branch.
+  else drop (aesWrapKey key AIV ((P # zero) : [max 16 (n+m)][8]))
+  where
+    // Append padding
+    P = padPlaintext`{n, m} plaintext
+    // Compute alternative initial value
+    AIV = iv # (split`{4,8} (`n : [32]))
+
+// Unwrap `ciphertext` using `key` as the key encryption key.  `iv` is most
+// significant 4 bytes of the expected initial value.  This function implements
+// the algorithm from Section 4.2.  It also performs the integrity check from
+// Section 3.  This function returns a tuple where the first element indicates
+// whether or not the integrity check passed (`True` indicates the check
+// passed), the second element is the size of the plaintext, and the final
+// element is the decrypted plaintext with the added padding.  The caller of
+// the function must remove this padding themselves.  If the integrity check
+// fails, the second and third elements will be zeros.
+aesUnwrapKeyPadded : {n} (fin n, n >= 16, n % 8 == 0, width n <= 32) =>
+                     [AESKeySize] -> [4][8] -> [n][8] -> (Bit, [4][8], [n-8][8])
+aesUnwrapKeyPadded key iv ciphertext = if valid
+                                       then (True, size, P)
+                                       else (False, zero, zero)
+  where
+    S : [n][8]
+    S = if `n == 16
+        // If the cipher text is 16 bytes, decrypt in AES ECB mode.  The `drop`
+        // and append of `zero` have no effect at runtime and exist to make the
+        // types work out, as the type checker cannot deduce that `n == 16` in
+        // this branch.
+        then (split (aesDecrypt (drop (join ciphertext), key))) # zero
+        // Otherwise perform the standard key unwrap algorithm.  The `drop`
+        // and append of `zero` have no effect at runtime and exist to make the
+        // types work out, as the type checker cannot deduce that `n >= 24` in
+        // this branch.
+        else drop (split`{each=8} (join (([A'] # R'))))
+          where
+            (A', R') = aesUnwrapKeyUnchecked key ((ciphertext # zero) : [max 24 n][8])
+    // Break decrypted ciphertext into the most significant 4 bytes of the IV,
+    // the size of the plaintext without padding, and the plaintext with
+    // padding
+    iv' : [4][8]
+    size : [4][8]
+    P : [n-8][8]
+    iv' # size # P = S
+    // Validation check
+    valid =
+      // Most significant bytes of IV should match `iv`
+      (iv' == iv) &&
+      // n - 16 < size <= n - 8
+      (((`n : [32]) - 16) < (join size)) &&
+      ((join size) <= ((`n : [32]) - 8)) &&
+      // All bytes of the padding must be zeros
+      and [(i < (join size)) || (x == zero) | x <- P | i <- [0...]]
+

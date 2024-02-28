@@ -1,0 +1,85 @@
+module Primitive::Symmetric::Cipher::Block::Tests::TestAESKeyWrap where
+
+import Primitive::Symmetric::Cipher::Block::AES
+import Primitive::Symmetric::Cipher::Block::AESKeyWrap
+
+// This section contains tests of the Key Wrap specifications using test
+// vectors from Section 4 of RFC 3394.
+
+// 256-bit key encryption key (KEK) used to encrypt the key data
+KEK256 : [AESKeySize]
+KEK256 = 0x000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F
+
+// 128-bit key data to encrypt
+KeyData128 : [16][8]
+KeyData128 = split 0x00112233445566778899AABBCCDDEEFF
+
+// Expected ciphertext from encrypting KeyData128 with KEK256
+Ciphertext128_256 : [24][8]
+Ciphertext128_256 = split 0x64E8C3F9CE0F5BA263E9777905818A2A93C8191E7D6E8AE7
+
+// Test wrapping and unwrapping of KeyData128 with KEK256 (Section 4.3)
+property testWrap128_256 = (aesWrapKey KEK256 DefaultIV KeyData128) == Ciphertext128_256
+property testUnwrap128_256 = (aesUnwrapKey KEK256 DefaultIV Ciphertext128_256) == (True, KeyData128)
+
+// 192-bit key data to encrypt
+KeyData192 : [24][8]
+KeyData192 = split 0x00112233445566778899AABBCCDDEEFF0001020304050607
+
+// Expected ciphertext from encrypting KeyData192 with KEK256
+Ciphertext192_256 : [32][8]
+Ciphertext192_256 = split 0xA8F9BC1612C68B3FF6E6F4FBE30E71E4769C8B80A32CB8958CD5D17D6B254DA1
+
+// Test wrapping and unwrapping of KeyData192 with KEK256 (Section 4.5)
+property testWrap192_256 = (aesWrapKey KEK256 DefaultIV KeyData192) == Ciphertext192_256
+property testUnwrap192_256 = (aesUnwrapKey KEK256 DefaultIV Ciphertext192_256) == (True, KeyData192)
+
+// 256-bit key data to encrypt
+KeyData256 : [32][8]
+KeyData256 = split 0x00112233445566778899AABBCCDDEEFF000102030405060708090A0B0C0D0E0F
+
+// Expected ciphertext from encrypting KeyData256 with KEK256
+Ciphertext256_256 : [40][8]
+Ciphertext256_256 = split 0x28C9F404C4B810F4CBCCB35CFB87F8263F5786E2D80ED326CBC7F0E71A99F43BFB988B9B7A02DD21
+
+// Test wrapping and unwrapping of KeyData256 with KEK256 (Section 4.6)
+property testWrap256_256 = (aesWrapKey KEK256 DefaultIV KeyData256) == Ciphertext256_256
+property testUnwrap256_256 = (aesUnwrapKey KEK256 DefaultIV Ciphertext256_256) == (True, KeyData256)
+
+/*
+ * The following tests come from the NIST Key Wrap Validation System (KWVS)
+ * KW-AD-AES256 test vectors.
+ */
+
+//COUNT = 0
+KCount0 = 0x80aa997327a4806b6a7a41a52b86c3710386f932786ef79676fafb90b8263c5f
+PCount0 = split`{each=8} 0x0a256ba75cfa03aaa02ba94203f15baa
+CCount0 = split`{each=8} 0x423c960d8a2ac4c1d33d3d977bf0a91559f99c8acd293d43
+property Count0Wrap = (aesWrapKey KCount0 DefaultIV PCount0) == CCount0
+property Count0Unwrap = (aesUnwrapKey KCount0 DefaultIV CCount0) == (True, PCount0)
+
+//COUNT = 1
+KCount1 = 0x2d104bc65c5f78e92993bd78b27d8e59a8a1f7c64b55b05be5df30f96ff04767
+CCount1 = split`{each=8} 0xe69fc01ea73e11bb4bc7485044145f824cfd535528b76517
+PCount1 = split`{each=8} 0xf8d46471445228d2ef399755360bdd6e
+property Count1Wrap = (aesWrapKey KCount1 DefaultIV PCount1) == CCount1
+property Count1Unwrap = (aesUnwrapKey KCount1 DefaultIV CCount1) == (True, PCount1)
+
+//COUNT = 2
+KCount2 = 0xd963c8f1d3d2392629823fd1df3f644c8690f602c94e5d5818309d7c05e5427f
+CCount2 = split`{each=8} 0x177c6217f7fd6c94cbd4a9f512b1416c869328e3084e09ea
+PCount2 = split`{each=8} 0x451d0222ec29755d9c69165a5d109727
+property Count2Wrap = (aesWrapKey KCount2 DefaultIV PCount2) == CCount2
+property Count2Unwrap = (aesUnwrapKey KCount2 DefaultIV CCount2) == (True, PCount2)
+
+//COUNT = 3
+KCount3 = 0xe594f0067cedb74e883e7746d29ba725c884c25375323f367cf49d17ad0f567b
+CCount3 = split`{each=8} 0x3b51ae2b0e3ddeed94efd7bfdc22630187e1f7624d15ed78
+PCount3 = split`{each=8} 0x587e3f6c75644bb5c3db9c74714f5556
+property Count3Wrap = (aesWrapKey KCount3 DefaultIV PCount3) == CCount3
+property Count3Unwrap = (aesUnwrapKey KCount3 DefaultIV CCount3) == (True, PCount3)
+
+//COUNT = 4 (validation failure)
+KCount4 = 0x08c936b25b567a0aa679c29f201bf8b190327df0c2563e39cee061f149f4d91b
+CCount4 = split`{each=8} 0xe227eb8ae9d239ccd8928adec39c28810ca9b3dc1f366444
+property Count4Unwrap = (aesUnwrapKey KCount4 DefaultIV CCount4) == (False, zero)
