@@ -1,0 +1,53 @@
+/*
+   Copyright (c) 2020, Galois Inc.
+   www.cryptol.net
+*/
+
+/*
+ * This is a simple implementation of HMAC with SHA-384
+ */
+
+module Primitive::Keyless::Hash::HMAC where
+
+import Primitive::Keyless::Hash::SHA2::SHA384
+
+// Pad or hash `key`, depending on its length, until it is 128 bytes long
+key_init : {key_size} (fin key_size) => [key_size][8] -> [128][8]
+key_init key =
+  take`{128} (if `key_size <= 128
+              then key # (zero : [inf][8])
+              else (split`{48} (SHAImp key)) # (zero : [inf][8]))
+
+type HMACState = { i_ctx  : SHAState
+                 , o_ctx  : SHAState
+                 , md_ctx : SHAState
+                 }
+
+// HMAC-SHA384 init function
+HMACInit : {key_size} (fin key_size) => [key_size][8] -> HMACState
+HMACInit key =
+  { i_ctx  = i_state
+  , o_ctx  = SHAUpdate SHAInit opad
+  , md_ctx = i_state
+  }
+  where key'    = key_init key
+        ipad    = [ k ^ 0x36 | k <- key' ]
+        opad    = [ k ^ 0x5c | k <- key' ]
+        i_state = SHAUpdate SHAInit ipad
+
+// HMAC-SHA384 update function
+HMACUpdate : {n} (fin n) => HMACState -> [n][8] -> HMACState
+HMACUpdate state data = { i_ctx = state.i_ctx
+                        , o_ctx = state.o_ctx
+                        , md_ctx = SHAUpdate state.md_ctx data
+                        }
+
+// HMAC-SHA384 final function
+HMACFinal : HMACState -> [48][8]
+HMACFinal state = split`{48} (SHAFinal o_ctx')
+  where o_ctx' = SHAUpdate state.o_ctx buf
+        buf = split`{48} (SHAFinal state.md_ctx)
+
+// HMAC-SHA384 implementation
+HMAC : {n, m} (fin n, fin m) => [n][8] -> [m][8] -> [48][8]
+HMAC key data = HMACFinal (HMACUpdate (HMACInit key) data)

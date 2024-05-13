@@ -1,0 +1,11 @@
+/*
+   Copyright (c) 2021, Galois Inc.
+   www.cryptol.net
+*/
+
+module Common::ByteArray where
+
+import Array
+
+type ByteArray = Array[64][8]
+
