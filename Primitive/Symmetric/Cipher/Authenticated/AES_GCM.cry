@@ -1,37 +1,100 @@
 
 // Cryptol AES GCM test vectors
-// Copyright (c) 2010-2018, Galois Inc.
+// Copyright (c) 2010-2024, Galois Inc.
 // www.cryptol.net
 // Author: Ajay Kumar Eeralla
 
-//Test vectors from http://luca-giuzzi.unibs.it/corsi/Support/papers-cryptography/gcm-spec.pdf
+// Test vectors from http://luca-giuzzi.unibs.it/corsi/Support/papers-cryptography/gcm-spec.pdf
 
 module Primitive::Symmetric::Cipher::Authenticated::AES_GCM where
 import `Primitive::Symmetric::Cipher::Authenticated::GCM
-import Primitive::Symmetric::Cipher::Block::AES_parameterized
+import Primitive::Symmetric::Cipher::Block::AES_parameterized as AES
 
 
-property testPass0 = gcmEnc `{K=128, IV=96, AAD=0, T=128} {E=encrypt} {key=zero, iv=zero, pt=[], aad=[]} ==
-                              {ct = [], tag = 0x58e2fccefa7e3061367f1d57a4e7455a}
+property GCM_AE_test_vector_0 = ct == expected_ct /\ tag == expected_tag /\ valid_dec
+    where
+        pt = []
+        (ct, tag) = GCM_AE `{K=128, IV=96, AAD=0, T=128} {E=AES::encrypt} zero zero pt []
+        dec = GCM_AD `{K=128, IV=96, AAD=0, T=128} {E=AES::encrypt} zero zero ct [] tag
+        expected_ct = []
+        expected_tag = 0x58e2fccefa7e3061367f1d57a4e7455a
+        valid_dec = case dec of
+            Some actual_pt -> pt == actual_pt
+            None -> False
 
-property testPass1 = gcmEnc `{K=128, IV=96, AAD=0, T=128} {E=encrypt} {key=zero, iv=zero, pt=zero, aad=[]} ==
-                              {ct = 0x0388dace60b6a392f328c2b971b2fe78, tag = 0xab6e47d42cec13bdf53a67b21257bddf}
+property GCM_AE_test_vector_1 =
+    ct == expected_ct /\ tag == expected_tag /\ valid_dec
+    where
+        key = zero
+        iv = zero
+        pt = zero
+        aad = []
+        expected_ct = 0x0388dace60b6a392f328c2b971b2fe78
+        expected_tag = 0xab6e47d42cec13bdf53a67b21257bddf : [128]
+        (ct, tag) = GCM_AE `{K=128, IV=96} {E=AES::encrypt} key iv pt aad
+        dec = GCM_AD `{K=128, IV=96} {E=AES::encrypt} key iv ct aad tag
+        valid_dec = case dec of
+            Some actual_pt -> pt == actual_pt
+            None -> False
 
-property testPass2 = gcmEnc `{K=128, IV=96, AAD=0, T=128} {E=encrypt} {key=0xfeffe9928665731c6d6a8f9467308308, iv=0xcafebabefacedbaddecaf888,         pt=0xd9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255, aad=[]} ==
-    {ct = 0x42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091473f5985,
-    tag = 0x4d5c2af327cd64a62cf35abd2ba6fab4}
+property GCM_AE_test_vector_2 =
+    ct == expected_ct /\ tag == expected_tag /\ valid_dec
+    where
+        key = 0xfeffe9928665731c6d6a8f9467308308 : [128]
+        iv = 0xcafebabefacedbaddecaf888 : [96]
+        pt = 0xd9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255
+        aad = []
+        expected_ct = 0x42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091473f5985
+        expected_tag = 0x4d5c2af327cd64a62cf35abd2ba6fab4 : [128]
+        (ct, tag) = GCM_AE {E=AES::encrypt} key iv pt aad
+        dec = GCM_AD {E=AES::encrypt} key iv ct aad tag
+        valid_dec = case dec of
+            Some actual_pt -> pt == actual_pt
+            None -> False
 
-property testPass3 = gcmEnc `{K=128, IV=96, AAD=160, T=128} {E=encrypt} {key=0xfeffe9928665731c6d6a8f9467308308,                                            iv=0xcafebabefacedbaddecaf888,
-    pt=0xd9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39,
-    aad=0xfeedfacedeadbeeffeedfacedeadbeefabaddad2} ==
-    {ct=0x42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091,
-    tag=0x5bc94fbc3221a5db94fae95ae7121a47}
+property GCM_AE_test_vector_3 =
+    ct == expected_ct /\ tag == expected_tag /\ valid_dec
+    where
+        key = 0xfeffe9928665731c6d6a8f9467308308
+        pt  = 0xd9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39
+        iv  = 0xcafebabefacedbaddecaf888
+        aad = 0xfeedfacedeadbeeffeedfacedeadbeefabaddad2
+        expected_ct  = 0x42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091
+        expected_tag = 0x5bc94fbc3221a5db94fae95ae7121a47
+        (ct, tag) = GCM_AE {E=AES::encrypt} key iv pt aad
+        dec = GCM_AD {E=AES::encrypt} key iv ct aad tag
+        valid_dec = case dec of
+            Some actual_pt -> pt == actual_pt
+            None -> False
 
 // A test case from aesgcmtest.c
-// Test passes
-property testPass4 = gcmEnc `{K=256, IV=96, AAD=128, T=128} {E=encrypt} {key=0xeebc1f57487f51921c0465665f8ae6d1658bb26de6f8a069a3520293a572078f,
-    iv=0x99aa3e68ed8173a0eed06684, pt=0xf56e87055bc32d0eeb31b2eacc2bf2a5, aad=0x4d23c3cec334b49bdb370c437fec78de} ==
-   {ct=0xf7264413a84c0e7cd536867eb9f21736, tag=0x67ba0510262ae487d737ee6298f77e0c}
+property GCM_AE_test_vector_4 =
+    ct == expected_ct /\ tag == expected_tag /\ valid_dec
+    where
+        key   = 0xeebc1f57487f51921c0465665f8ae6d1658bb26de6f8a069a3520293a572078f : [256]
+        iv    = 0x99aa3e68ed8173a0eed06684 : [96]
+        pt    = 0xf56e87055bc32d0eeb31b2eacc2bf2a5 : [128]
+        aad   = 0x4d23c3cec334b49bdb370c437fec78de : [128]
+        expected_ct   = 0xf7264413a84c0e7cd536867eb9f21736
+        expected_tag  = 0x67ba0510262ae487d737ee6298f77e0c
+        (ct, tag) = GCM_AE {E=AES::encrypt} key iv pt aad
+        dec = GCM_AD {E=AES::encrypt} key iv ct aad tag
+        valid_dec = case dec of
+            Some actual_pt -> pt == actual_pt
+            None -> False
 
-
-
+property GCM_AE_invalid_test_vector =
+    ct == expected_ct /\ tag == expected_tag /\ ~valid_dec
+    where
+        key   = 0xeebc1f57487f51921c0465665f8ae6d1658bb26de6f8a069a3520293a572078f : [256]
+        iv    = 0x99aa3e68ed8173a0eed06684 : [96]
+        pt    = 0xf56e87055bc32d0eeb31b2eacc2bf2a5 : [128]
+        aad   = 0x4d23c3cec334b49bdb370c437fec78de : [128]
+        expected_ct   = 0xf7264413a84c0e7cd536867eb9f21736
+        expected_tag  = 0x67ba0510262ae487d737ee6298f77e0c
+        invalid_tag  = 0x67ba0510262ae487d737ee6298f77888
+        (ct, tag) = GCM_AE {E=AES::encrypt} key iv pt aad
+        dec = GCM_AD {E=AES::encrypt} key iv ct aad invalid_tag
+        valid_dec = case dec of
+            Some actual_pt -> pt == actual_pt
+            None -> False
