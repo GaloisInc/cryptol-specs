@@ -53,20 +53,17 @@ GCM_AE k iv p a = (C, T)
   where
     // Set names to match the spec
     CIPHk = E k
-    len_IV = `IV
-    len_A = `AAD
-    len_P = `P
+    type len_A = AAD
+    // Ciphertext length is the same as the input plaintext length
+    type len_C = P
 
     H = CIPHk 0
-    type s = IV %^ 128  // Equivalently: 128 * IV /^ 128 - IV
-    J0 = if len_IV == 96 then coerceSize iv # (0 : [31]) # (1 : [1])
-         else GHASH`{IV /^ 128 + 1} H (iv # (0 : [s + 64]) # (len_IV: [64]))
+    J0 = define_J0 k iv H
     C = GCTR CIPHk (inc`{32} J0) p
-    // Why is this on the value P and not the type / length `P? Ditto for A.
-    type u = P %^ 128 // Equivalently: 128 * P /^ 128 - O
-    type v = AAD %^ 128 // Equivalently: 128 * A /^ 128 - A
-    S = GHASH`{AAD/^ 128 + P /^ 128 + 1}
-            H (a # (0 : [v]) # C # (0 : [u]) # (len_A : [64]) # (len_P : [64]))
+    type u = len_C %^ 128 // Equivalently: 128 * len_C /^ 128 - len_C
+    type v = len_A %^ 128 // Equivalently: 128 * len_A /^ 128 - len_A
+    S = GHASH`{len_A/^ 128 + P /^ 128 + 1}
+            H (a # (0 : [v]) # C # (0 : [u]) # (`len_A : [64]) # (`len_C : [64]))
     T = MSB`{T} (GCTR CIPHk J0 S)
 
 /**
@@ -87,9 +84,7 @@ gcmDec :
   {n} (2^^39 - 256 >= n) =>
   { key : [K], iv  : [IV], aad : [AAD], ct  : [n], tag : [T] } ->
   { valid : Bool, pt : [n] }
-gcmDec input = case (GCM_AD input.key input.iv input.ct input.aad input.tag) of
-    Some pt -> {valid = True, pt = pt}
-    None    -> {valid = False, pt = 0}
+gcmDec input = GCM_AD input.key input.iv input.ct input.aad input.tag
 
 
 /**
@@ -99,37 +94,47 @@ gcmDec input = case (GCM_AD input.key input.iv input.ct input.aad input.tag) of
 
 GCM_AD : { C }
     ( fin C, C <= 2^^39 - 256 )  // This constraint comes from [NISTSP800-38D]
- => [K] -> [IV] -> [C] -> [AAD] -> [T] -> Option [C]
+ => [K] -> [IV] -> [C] -> [AAD] -> [T] -> { valid : Bool, pt : [C] }
 GCM_AD key iv ct aad tag =
   if tag == T'
-  then Some P
-  else None
+  then { valid = True, pt = P }
+  else { valid = False, pt = 0 }
   where
     CIPHk = E key
     len_IV = `IV
-    len_A = `AAD
-    len_C = `C
+    type len_A = AAD
+    type len_C = C
 
     H = CIPHk 0
-    type s = IV %^ 128  // Equivalently: 128 * IV /^ 128 - IV
-    J0 = if len_IV == 96 then coerceSize iv # (0 : [31]) # (1 : [1])
-         else GHASH`{IV /^ 128 + 1} H (iv # (0 : [s + 64]) # (len_IV : [64]))
+    J0 = define_J0 key iv H
     P = GCTR CIPHk (inc`{32} J0) ct
-    type u = C %^ 128 // Equivalently: 128 * C /^ 128 - C
-    type v = AAD %^ 128 // Equivalently: 128 * A /^ 128 - A
-    S = GHASH`{AAD /^ 128 + C /^ 128 + 1}
-            H (aad # (0 : [v]) # ct # (0 : [u]) # (len_A : [64]) # (len_C : [64]))
+    type u = len_C %^ 128 // Equivalently: 128 * len_C /^ 128 - len_C
+    type v = len_A %^ 128 // Equivalently: 128 * len_A /^ 128 - len_A
+    S = GHASH`{len_A /^ 128 + len_C /^ 128 + 1}
+            H (aad # (0 : [v]) # ct # (0 : [u]) # (`len_A : [64]) # (`len_C : [64]))
     T' = MSB`{T} (GCTR CIPHk J0 S)
+
+/**
+ * A helper function used in GCM_AE and GCM_AD. We must define this at the top
+ * level due to its use of Cryptol's numeric constraint guards feature, which
+ * currently only works in top-level definitions.
+ *
+ * This renames the IV type to `len_IV` to better match [NISTSP800-38D].
+ */
+define_J0 : { len_IV } ( len_IV == IV) => [K] -> [len_IV] -> [128] -> [128]
+define_J0 k iv H
+  | len_IV == 96 => iv # (0 : [31]) # (1 : [1])
+  | len_IV != 96 => GHASH`{len_IV /^ 128 + 1} H (iv # (0 : [s + 64]) # (`len_IV: [64]))
+  where
+    // Set names to match the spec
+    type s = len_IV %^ 128  // Equivalently: 128 * len_IV /^ 128 - len_IV
 
 /**
  * Property demonstrating equivalence between `gcmDec` and `GCM_AD`.
  */
- property decryptionApiEquivProperty key iv ct aad tag = success
-    where
-      output = gcmDec { key=key, iv=iv, ct=ct, aad=aad, tag=tag}
-      success = case GCM_AD key iv ct aad tag of
-        Some ae_pt -> output.valid && (ae_pt == output.pt)
-        None       -> ~output.valid
+ property decryptionApiEquivProperty key iv ct aad tag =
+      gcmDec { key=key, iv=iv, ct=ct, aad=aad, tag=tag}
+      == GCM_AD key iv ct aad tag
 
 /**
  * Multiplication Operation on Blocks, [NISTSP800-38D] Section
@@ -206,6 +211,3 @@ GCTR CIPHk ICB X = Y
   where
     Y = X ^ take`{a} (join (map CIPHk CB))
     CB = iterate inc`{32} ICB
-
-coerceSize :  {m,n,a} (fin m, fin n) => [m]a -> [n]a
-coerceSize xs = assert (`m == `n) "coerceSize: size mismatch" [xs@i | i <- [0..<n] ]

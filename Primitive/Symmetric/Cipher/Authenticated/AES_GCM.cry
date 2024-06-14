@@ -18,9 +18,7 @@ property GCM_AE_test_vector_0 = ct == expected_ct /\ tag == expected_tag /\ vali
         dec = GCM_AD `{K=128, IV=96, AAD=0, T=128} {E=AES::encrypt} zero zero ct [] tag
         expected_ct = []
         expected_tag = 0x58e2fccefa7e3061367f1d57a4e7455a
-        valid_dec = case dec of
-            Some actual_pt -> pt == actual_pt
-            None -> False
+        valid_dec = dec.valid && (dec.pt == pt)
 
 property GCM_AE_test_vector_1 =
     ct == expected_ct /\ tag == expected_tag /\ valid_dec
@@ -33,9 +31,7 @@ property GCM_AE_test_vector_1 =
         expected_tag = 0xab6e47d42cec13bdf53a67b21257bddf : [128]
         (ct, tag) = GCM_AE `{K=128, IV=96} {E=AES::encrypt} key iv pt aad
         dec = GCM_AD `{K=128, IV=96} {E=AES::encrypt} key iv ct aad tag
-        valid_dec = case dec of
-            Some actual_pt -> pt == actual_pt
-            None -> False
+        valid_dec = dec.valid && (dec.pt == pt)
 
 property GCM_AE_test_vector_2 =
     ct == expected_ct /\ tag == expected_tag /\ valid_dec
@@ -48,9 +44,7 @@ property GCM_AE_test_vector_2 =
         expected_tag = 0x4d5c2af327cd64a62cf35abd2ba6fab4 : [128]
         (ct, tag) = GCM_AE {E=AES::encrypt} key iv pt aad
         dec = GCM_AD {E=AES::encrypt} key iv ct aad tag
-        valid_dec = case dec of
-            Some actual_pt -> pt == actual_pt
-            None -> False
+        valid_dec = dec.valid && (dec.pt == pt)
 
 property GCM_AE_test_vector_3 =
     ct == expected_ct /\ tag == expected_tag /\ valid_dec
@@ -63,9 +57,7 @@ property GCM_AE_test_vector_3 =
         expected_tag = 0x5bc94fbc3221a5db94fae95ae7121a47
         (ct, tag) = GCM_AE {E=AES::encrypt} key iv pt aad
         dec = GCM_AD {E=AES::encrypt} key iv ct aad tag
-        valid_dec = case dec of
-            Some actual_pt -> pt == actual_pt
-            None -> False
+        valid_dec = dec.valid && (dec.pt == pt)
 
 // A test case from aesgcmtest.c
 property GCM_AE_test_vector_4 =
@@ -79,12 +71,10 @@ property GCM_AE_test_vector_4 =
         expected_tag  = 0x67ba0510262ae487d737ee6298f77e0c
         (ct, tag) = GCM_AE {E=AES::encrypt} key iv pt aad
         dec = GCM_AD {E=AES::encrypt} key iv ct aad tag
-        valid_dec = case dec of
-            Some actual_pt -> pt == actual_pt
-            None -> False
+        valid_dec = dec.valid && (dec.pt == pt)
 
 property GCM_AE_invalid_test_vector =
-    ct == expected_ct /\ tag == expected_tag /\ ~valid_dec
+    ct == expected_ct /\ tag == expected_tag /\ ~dec.valid
     where
         key   = 0xeebc1f57487f51921c0465665f8ae6d1658bb26de6f8a069a3520293a572078f : [256]
         iv    = 0x99aa3e68ed8173a0eed06684 : [96]
@@ -95,6 +85,3 @@ property GCM_AE_invalid_test_vector =
         invalid_tag  = 0x67ba0510262ae487d737ee6298f77888
         (ct, tag) = GCM_AE {E=AES::encrypt} key iv pt aad
         dec = GCM_AD {E=AES::encrypt} key iv ct aad invalid_tag
-        valid_dec = case dec of
-            Some actual_pt -> pt == actual_pt
-            None -> False
