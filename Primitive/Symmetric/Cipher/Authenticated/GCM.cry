@@ -2,7 +2,7 @@
 Galois Counter Mode in Cryptol
 Copyright (c) 2017-2018, Galois, Inc.
 
-This implementation follows NIST special publickation 800-38D:
+This implementation follows NIST special publication 800-38D:
 [NISTSP800-38D] Morris Dworkin. Recommendation for Block Cipher Modes
 of Operation: Galois/Counter Mode (GCM) and GMAC. NIST Special
 Publication 800-38D. November 2007.
@@ -67,14 +67,6 @@ GCM_AE k iv p a = (C, T)
     T = MSB`{T} (GCTR CIPHk J0 S)
 
 /**
- * Property demonstrating equivalence between `gcmEnc` and `GCM_AE`.
- */
- property encryptionApiEquivProperty key iv pt aad = GCM_AE key iv pt aad == (output.ct, output.tag)
-    where
-      input = { key=key, iv=iv, pt=pt, aad=aad }
-      output = gcmEnc input
-
-/**
  * GCM decryption function.
  *
  * Maintaining this API for backwards compatibility, but `GCM-AD` is recommended
@@ -115,99 +107,127 @@ GCM_AD key iv ct aad tag =
     T' = MSB`{T} (GCTR CIPHk J0 S)
 
 /**
- * A helper function used in GCM_AE and GCM_AD. We must define this at the top
- * level due to its use of Cryptol's numeric constraint guards feature, which
- * currently only works in top-level definitions.
- *
- * This renames the IV type to `len_IV` to better match [NISTSP800-38D].
- */
-define_J0 : { len_IV } ( len_IV == IV) => [K] -> [len_IV] -> [128] -> [128]
-define_J0 k iv H
-  | len_IV == 96 => iv # (0 : [31]) # (1 : [1])
-  | len_IV != 96 => GHASH`{len_IV /^ 128 + 1} H (iv # (0 : [s + 64]) # (`len_IV: [64]))
-  where
-    // Set names to match the spec
-    type s = len_IV %^ 128  // Equivalently: 128 * len_IV /^ 128 - len_IV
+* Property demonstrating equivalence between `mult` and `•`.
+*/
+
+property dotAndMultAreEquivalent X Y = mult X Y == X • Y
 
 /**
- * Property demonstrating equivalence between `gcmDec` and `GCM_AD`.
- */
- property decryptionApiEquivProperty key iv ct aad tag =
+* Property demonstrating equivalence between `gcmDec` and `GCM_AD`.
+*/
+decryptionApisAreEquivalent : {P} ( fin P, P <= 2^^39 - 256 )
+  => [K] -> [IV] -> [P] -> [AAD] -> [T] -> Bool
+property decryptionApisAreEquivalent key iv ct aad tag =
       gcmDec { key=key, iv=iv, ct=ct, aad=aad, tag=tag}
       == GCM_AD key iv ct aad tag
 
 /**
- * Multiplication Operation on Blocks, [NISTSP800-38D] Section
- * 6.3, Algorithm 1. This is optimized to use Cryptol's built-in `pmult` and
- * `pmod` functions. This operation is described using little-endian
- * notation, hence the `reverse`s.
+ * Property demonstrating equivalence between `gcmEnc` and `GCM_AE`.
  */
-
-(•) : [128] -> [128] -> [128]
-(•) X Y = reverse (pmod (pmult (reverse X) (reverse Y))
-                        <| 1 + x + x^^2 + x^^7 + x^^128|>)
+encryptionApisAreEquivalent : {P} ( fin P, P <= 2^^39 - 256 )
+  => [K] -> [IV] -> [P] -> [AAD] -> Bool
+property encryptionApisAreEquivalent key iv pt aad = gcm_ae_output == (gcmEnc_output.ct, gcmEnc_output.tag)
+    where
+      input = { key=key, iv=iv, pt=pt, aad=aad }
+      gcmEnc_output = gcmEnc input
+      gcm_ae_output = GCM_AE key iv pt aad
 
 /**
- * Multiplication Operation on Blocks, [NISTSP800-38D] Section
- * 6.3. This matches the spec very closely.
+ * Property demonstrating that decryption is the inverse of encryption.
+ *
+ * This should be instantiated for each block cipher `E` that uses GCM mode.
  */
+gcmIsSymmetric : {P} ( fin P, P < 2^^39 - 256 )
+  => [K] -> [IV] -> [P] -> [AAD] -> Bool
+property gcmIsSymmetric key iv pt aad = dec.valid && (dec.pt == pt)
+    where
+        (ct, tag) = GCM_AE key iv pt aad
+        dec = GCM_AD key iv ct aad tag
 
-mult : [128] -> [128] -> [128]
-mult X Y = last Z
-  where
-    R = 0b11100001 # (0 : [120])
-    Z = [0] # [ if [xi] == 0 then Zi else Zi ^ Vi
-              | Zi <- Z
-              | xi <- X
-              | Vi <- V ]
-    V = [Y] # [ if LSB`{1} Vi == 0 then Vi >> 1 else (Vi >> 1) ^ R
-              | Vi <- V ]
-/**
- * Property demonstrating equivalence between `mult` and `•`.
- */
-property multEquivProperty X Y = mult X Y == X • Y
+private
+  /**
+  * A helper function used in GCM_AE and GCM_AD. We must define this at the top
+  * level due to its use of Cryptol's numeric constraint guards feature, which
+  * currently only works in top-level definitions.
+  *
+  * This renames the IV type to `len_IV` to better match [NISTSP800-38D].
+  */
+  define_J0 : { len_IV } ( len_IV == IV) => [K] -> [len_IV] -> [128] -> [128]
+  define_J0 k iv H
+    | len_IV == 96 => iv # (0 : [31]) # (1 : [1])
+    | len_IV != 96 => GHASH`{len_IV /^ 128 + 1} H (iv # (0 : [s + 64]) # (`len_IV: [64]))
+    where
+      // Set names to match the spec
+      type s = len_IV %^ 128  // Equivalently: 128 * len_IV /^ 128 - len_IV
 
-/**
- * GHASH Function, [NISTSP800-38D] Section 6.4, Algorithm 2.
- */
+  /**
+  * Multiplication Operation on Blocks, [NISTSP800-38D] Section
+  * 6.3, Algorithm 1. This is optimized to use Cryptol's built-in `pmult` and
+  * `pmod` functions. This operation is described using little-endian
+  * notation, hence the `reverse`s.
+  */
 
-GHASH : {m} (fin m) => [128] -> [m * 128] -> [128]
-GHASH H X = last Y
-  where Y = [0] # [ (Yi ^ Xi) • H | Yi <- Y | Xi <- groupBy`{128} X ]
+  (•) : [128] -> [128] -> [128]
+  (•) X Y = reverse (pmod (pmult (reverse X) (reverse Y))
+                          <| 1 + x + x^^2 + x^^7 + x^^128|>)
 
-/**
- * The output of incrementing the right-most s bits of the bit
- * string X, regarded as the binary representation of an integer, by
- * 1 modulo 2s, [NISTSP800-38D] Sections 4.2.2 and 6.2. Care was
- * taken here to ensure `s` could be zero.
- */
+  /**
+  * Multiplication Operation on Blocks, [NISTSP800-38D] Section
+  * 6.3. This matches the spec very closely.
+  */
 
-inc : {s, a} (fin s, fin a, a >= s) => [a] -> [a]
-inc X = MSB`{a-s} X # (LSB`{s} X + take (1 : [max s 1]))
+  mult : [128] -> [128] -> [128]
+  mult X Y = last Z
+    where
+      R = 0b11100001 # (0 : [120])
+      Z = [0] # [ if [xi] == 0 then Zi else Zi ^ Vi
+                | Zi <- Z
+                | xi <- X
+                | Vi <- V ]
+      V = [Y] # [ if LSB`{1} Vi == 0 then Vi >> 1 else (Vi >> 1) ^ R
+                | Vi <- V ]
+
+  /**
+  * GHASH Function, [NISTSP800-38D] Section 6.4, Algorithm 2.
+  */
+
+  GHASH : {m} (fin m) => [128] -> [m * 128] -> [128]
+  GHASH H X = last Y
+    where Y = [0] # [ (Yi ^ Xi) • H | Yi <- Y | Xi <- groupBy`{128} X ]
+
+  /**
+  * The output of incrementing the right-most s bits of the bit
+  * string X, regarded as the binary representation of an integer, by
+  * 1 modulo 2s, [NISTSP800-38D] Sections 4.2.2 and 6.2. Care was
+  * taken here to ensure `s` could be zero.
+  */
+
+  inc : {s, a} (fin s, fin a, a >= s) => [a] -> [a]
+  inc X = MSB`{a-s} X # (LSB`{s} X + take (1 : [max s 1]))
 
 
-/**
- * The bit string consisting of the s right-most bits
- * of the bit string X, [NISTSP800-38D] Section 4.2.2.
- */
+  /**
+  * The bit string consisting of the s right-most bits
+  * of the bit string X, [NISTSP800-38D] Section 4.2.2.
+  */
 
-LSB : {s, a} (fin s, fin a, a >= s) => [a] -> [s]
-LSB X = drop X
+  LSB : {s, a} (fin s, fin a, a >= s) => [a] -> [s]
+  LSB X = drop X
 
-/**
- * The bit string consisting of the s left-most bits of
- * the bit string X, [NISTSP800-38D] Section 4.2.2.
- */
+  /**
+  * The bit string consisting of the s left-most bits of
+  * the bit string X, [NISTSP800-38D] Section 4.2.2.
+  */
 
-MSB : {s, a} (fin s, a >= s) => [a] -> [s]
-MSB X = take X
+  MSB : {s, a} (fin s, a >= s) => [a] -> [s]
+  MSB X = take X
 
-/**
- * GCTR Function, [NISTSP800-38D] Section 6.5, Algorithm 3.
- */
+  /**
+  * GCTR Function, [NISTSP800-38D] Section 6.5, Algorithm 3.
+  */
 
-GCTR : {a} (fin a) => ([128] -> [128]) -> [128] -> [a] -> [a]
-GCTR CIPHk ICB X = Y
-  where
-    Y = X ^ take`{a} (join (map CIPHk CB))
-    CB = iterate inc`{32} ICB
+  GCTR : {a} (fin a) => ([128] -> [128]) -> [128] -> [a] -> [a]
+  GCTR CIPHk ICB X = Y
+    where
+      Y = X ^ take`{a} (join (map CIPHk CB))
+      CB = iterate inc`{32} ICB

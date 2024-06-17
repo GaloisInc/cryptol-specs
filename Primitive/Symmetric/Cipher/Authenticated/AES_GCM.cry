@@ -10,8 +10,10 @@ module Primitive::Symmetric::Cipher::Authenticated::AES_GCM where
 import `Primitive::Symmetric::Cipher::Authenticated::GCM
 import Primitive::Symmetric::Cipher::Block::AES_parameterized as AES
 
+aesGcmIsSymmetric : [128] -> [96] -> [256] -> [0] -> Bool
+property aesGcmIsSymmetric key iv pt aad = gcmIsSymmetric `{T=128} { E=AES::encrypt } key iv pt aad
 
-property GCM_AE_test_vector_0 = ct == expected_ct /\ tag == expected_tag /\ valid_dec
+property AES_GCM_test_vector_0 = ct == expected_ct /\ tag == expected_tag /\ valid_dec
     where
         pt = []
         (ct, tag) = GCM_AE `{K=128, IV=96, AAD=0, T=128} {E=AES::encrypt} zero zero pt []
@@ -20,7 +22,7 @@ property GCM_AE_test_vector_0 = ct == expected_ct /\ tag == expected_tag /\ vali
         expected_tag = 0x58e2fccefa7e3061367f1d57a4e7455a
         valid_dec = dec.valid && (dec.pt == pt)
 
-property GCM_AE_test_vector_1 =
+property AES_GCM_test_vector_1 =
     ct == expected_ct /\ tag == expected_tag /\ valid_dec
     where
         key = zero
@@ -33,7 +35,7 @@ property GCM_AE_test_vector_1 =
         dec = GCM_AD `{K=128, IV=96} {E=AES::encrypt} key iv ct aad tag
         valid_dec = dec.valid && (dec.pt == pt)
 
-property GCM_AE_test_vector_2 =
+property AES_GCM_test_vector_2 =
     ct == expected_ct /\ tag == expected_tag /\ valid_dec
     where
         key = 0xfeffe9928665731c6d6a8f9467308308 : [128]
@@ -46,7 +48,7 @@ property GCM_AE_test_vector_2 =
         dec = GCM_AD {E=AES::encrypt} key iv ct aad tag
         valid_dec = dec.valid && (dec.pt == pt)
 
-property GCM_AE_test_vector_3 =
+property AES_GCM_test_vector_3 =
     ct == expected_ct /\ tag == expected_tag /\ valid_dec
     where
         key = 0xfeffe9928665731c6d6a8f9467308308
@@ -60,7 +62,7 @@ property GCM_AE_test_vector_3 =
         valid_dec = dec.valid && (dec.pt == pt)
 
 // A test case from aesgcmtest.c
-property GCM_AE_test_vector_4 =
+property AES_GCM_test_vector_4 =
     ct == expected_ct /\ tag == expected_tag /\ valid_dec
     where
         key   = 0xeebc1f57487f51921c0465665f8ae6d1658bb26de6f8a069a3520293a572078f : [256]
@@ -73,7 +75,7 @@ property GCM_AE_test_vector_4 =
         dec = GCM_AD {E=AES::encrypt} key iv ct aad tag
         valid_dec = dec.valid && (dec.pt == pt)
 
-property GCM_AE_invalid_test_vector =
+property AES_GCM_invalid_test_vector =
     ct == expected_ct /\ tag == expected_tag /\ ~dec.valid
     where
         key   = 0xeebc1f57487f51921c0465665f8ae6d1658bb26de6f8a069a3520293a572078f : [256]
