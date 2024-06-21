@@ -1,6 +1,7 @@
 /*
 Galois Counter Mode in Cryptol
 Copyright (c) 2017-2018, Galois, Inc.
+Author: Sean Weaver, Marcella Hastings
 
 This implementation follows NIST special publication 800-38D:
 [NISTSP800-38D] Morris Dworkin. Recommendation for Block Cipher Modes

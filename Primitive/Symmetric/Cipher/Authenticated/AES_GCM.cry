@@ -10,8 +10,20 @@ module Primitive::Symmetric::Cipher::Authenticated::AES_GCM where
 import `Primitive::Symmetric::Cipher::Authenticated::GCM
 import Primitive::Symmetric::Cipher::Block::AES_parameterized as AES
 
-aesGcmIsSymmetric : [128] -> [96] -> [256] -> [0] -> Bool
+// GCM's symmetry property must hold for AES.
+// The other type parameter sizes are chosen arbitrarily.
+aesGcmIsSymmetric: [128] -> [96] -> [256] -> [0] -> Bool
 property aesGcmIsSymmetric key iv pt aad = gcmIsSymmetric `{T=128} { E=AES::encrypt } key iv pt aad
+
+// GCM's decryption API equivalence must hold for AES.
+// The other type parameter sizes are chosen arbitrarily.
+aesGcmDecryptionApisAreEquivalent: [128] -> [96] -> [256] -> [128] -> Bool
+property aesGcmDecryptionApisAreEquivalent key iv ct tag = decryptionApisAreEquivalent {E=AES::encrypt} key iv ct [] tag
+
+// GCM's encryption API equivalence must hold for AES.
+// The other type parameter sizes are chosen arbitrarily.
+aesGcmEncryptionApisAreEquivalent: [128] -> [96] -> [256] -> [128] -> Bool
+property aesGcmEncryptionApisAreEquivalent key iv pt = decryptionApisAreEquivalent {E=AES::encrypt} key iv pt []
 
 property AES_GCM_test_vector_0 = ct == expected_ct /\ tag == expected_tag /\ valid_dec
     where
