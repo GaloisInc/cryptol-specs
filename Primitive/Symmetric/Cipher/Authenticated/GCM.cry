@@ -1,10 +1,12 @@
 /*
 Galois Counter Mode in Cryptol
 Copyright (c) 2017-2018, Galois, Inc.
+Author: Sean Weaver, Marcella Hastings
 
-This implementation follows:
-"The Galois/Counter Mode of Operation (GCM)"
-paper by McGrew and Viega.
+This implementation follows NIST special publication 800-38D:
+[NISTSP800-38D] Morris Dworkin. Recommendation for Block Cipher Modes
+of Operation: Galois/Counter Mode (GCM) and GMAC. NIST Special
+Publication 800-38D. November 2007.
 */
 
 module Primitive::Symmetric::Cipher::Authenticated::GCM where
@@ -29,82 +31,204 @@ parameter
   /** Block encryption function */
   E : [K] -> [128] -> [128]
 
+/**
+ * GCM encryption function
+ *
+ * Maintaining this API for backwards compatability, but `GCM-AE` is recommended for
+ * more precise spec adherence.
+ */
 gcmEnc :
   {n} (2^^39 - 256 >= n) =>
       { key : [K], iv : [IV], aad : [AAD], pt : [n] } -> { ct : [n], tag : [T] }
 gcmEnc input = { ct = C, tag = T }
-  where (C,T) = enc_dec input.key input.iv input.aad input.pt
+  where (C,T) = GCM_AE input.key input.iv input.pt input.aad
 
+/**
+ * GCM-AE Function, [NISTSP800-38D] Section 7.1, Algorithm 4. This provides
+ * authenticated encryption.
+ */
+
+GCM_AE : { P } (fin P, P <= 2^^39 - 256 ) // This constraint comes from [NISTSP800-38D]
+ => [K] -> [IV] -> [P] -> [AAD] -> ([P], [T])
+GCM_AE k iv p a = (C, T)
+  where
+    // Set names to match the spec
+    CIPHk = E k
+    type len_A = AAD
+    // Ciphertext length is the same as the input plaintext length
+    type len_C = P
+
+    H = CIPHk 0
+    J0 = define_J0 k iv H
+    C = GCTR CIPHk (inc`{32} J0) p
+    type u = len_C %^ 128 // Equivalently: 128 * len_C /^ 128 - len_C
+    type v = len_A %^ 128 // Equivalently: 128 * len_A /^ 128 - len_A
+    S = GHASH`{len_A/^ 128 + P /^ 128 + 1}
+            H (a # (0 : [v]) # C # (0 : [u]) # (`len_A : [64]) # (`len_C : [64]))
+    T = MSB`{T} (GCTR CIPHk J0 S)
+
+/**
+ * GCM decryption function.
+ *
+ * Maintaining this API for backwards compatibility, but `GCM-AD` is recommended
+ * for more precise spec adherence.
+ */
 gcmDec :
   {n} (2^^39 - 256 >= n) =>
   { key : [K], iv  : [IV], aad : [AAD], ct  : [n], tag : [T] } ->
   { valid : Bool, pt : [n] }
-gcmDec input = if input.tag == T then { valid = True, pt = P }
-                                  else { valid = False, pt = 0 }
-  where (P,T) = enc_dec input.key input.iv input.aad input.ct
-
+gcmDec input = GCM_AD input.key input.iv input.ct input.aad input.tag
 
 
 /**
-The basic functionality between encryption and decryption.
-In the case of decryption, the plain text is only valid if the tags match.
-*/
-enc_dec :
-  {n} ((2^^39 - 256) >= n) => [K] -> [IV] -> [AAD] -> [n] -> ([n], [T])
-enc_dec K IV A P = (C,T)
+ * GCM-AD Function, [NISTSP800-38D] Section 7.2, Algorithm 5. This provides
+ * authenticated decryption.
+ */
+
+GCM_AD : { C }
+    ( fin C, C <= 2^^39 - 256 )  // This constraint comes from [NISTSP800-38D]
+ => [K] -> [IV] -> [C] -> [AAD] -> [T] -> { valid : Bool, pt : [C] }
+GCM_AD key iv ct aad tag =
+  if tag == T'
+  then { valid = True, pt = P }
+  else { valid = False, pt = 0 }
   where
-  H  = (E K 0)
+    CIPHk = E key
+    len_IV = `IV
+    type len_A = AAD
+    type len_C = C
 
-  Y0 = ifWidth`{96} IV (\IV96 -> IV96 # 1)
-                       (GHASH H [] IV)
+    H = CIPHk 0
+    J0 = define_J0 key iv H
+    P = GCTR CIPHk (inc`{32} J0) ct
+    type u = len_C %^ 128 // Equivalently: 128 * len_C /^ 128 - len_C
+    type v = len_A %^ 128 // Equivalently: 128 * len_A /^ 128 - len_A
+    S = GHASH`{len_A /^ 128 + len_C /^ 128 + 1}
+            H (aad # (0 : [v]) # ct # (0 : [u]) # (`len_A : [64]) # (`len_C : [64]))
+    T' = MSB`{T} (GCTR CIPHk J0 S)
 
-  Ys = [Y0] # [ y+1 | y <- Ys ]
-
-  Cs = [ p ^ (E K y) | p <- blockify P | y <- drop`{1} Ys ]
-  C  = unblockify Cs
-
-  T = take (GHASH H A C ^ (E K Y0))
-
-
-/** Section 2.3, equation (2) */
-GHASH : {C,A} (64 >= width C, 64 >= width A) => [128] -> [A] -> [C] -> [128]
-GHASH H A C = step (XS ! 0) (wa # wc)
-  where
-  wa = `A : [64]
-  wc = `C : [64]
-
-  XS = [0] # [ step X' B | X' <- XS | B <- blockify A # blockify C ]
-
-  step x b = mult (x ^ b) H
-
-
-
-/** Section 2.5, multiplication in GF(2^^128)
-
-This is simple polynomial multipliation and reduction in Cryptol.
-Somewhat oddly, when thinking of the 128-bits as polynomials,
-the spec treats the most significant bit as the 0 power,
-which is the reason for the `reverse` operations.
+/**
+* Property demonstrating equivalence between `mult` and `•`.
 */
-mult : [128] -> [128] -> [128]
-mult X Y = reverse (pmod (pmult (reverse X) (reverse Y)) irred)
-  where irred = <| 1 + x + x^^2 + x^^7 + x^^128 |>
+
+property dotAndMultAreEquivalent X Y = mult X Y == X • Y
+
+/**
+* Property demonstrating equivalence between `gcmDec` and `GCM_AD`.
+*/
+decryptionApisAreEquivalent : {P} ( fin P, P <= 2^^39 - 256 )
+  => [K] -> [IV] -> [P] -> [AAD] -> [T] -> Bool
+property decryptionApisAreEquivalent key iv ct aad tag =
+      gcmDec { key=key, iv=iv, ct=ct, aad=aad, tag=tag}
+      == GCM_AD key iv ct aad tag
+
+/**
+ * Property demonstrating equivalence between `gcmEnc` and `GCM_AE`.
+ */
+encryptionApisAreEquivalent : {P} ( fin P, P <= 2^^39 - 256 )
+  => [K] -> [IV] -> [P] -> [AAD] -> Bool
+property encryptionApisAreEquivalent key iv pt aad = gcm_ae_output == (gcmEnc_output.ct, gcmEnc_output.tag)
+    where
+      input = { key=key, iv=iv, pt=pt, aad=aad }
+      gcmEnc_output = gcmEnc input
+      gcm_ae_output = GCM_AE key iv pt aad
+
+/**
+ * Property demonstrating that decryption is the inverse of encryption.
+ *
+ * This should be instantiated for each block cipher `E` that uses GCM mode.
+ */
+gcmIsSymmetric : {P} ( fin P, P < 2^^39 - 256 )
+  => [K] -> [IV] -> [P] -> [AAD] -> Bool
+property gcmIsSymmetric key iv pt aad = dec.valid && (dec.pt == pt)
+    where
+        (ct, tag) = GCM_AE key iv pt aad
+        dec = GCM_AD key iv ct aad tag
+
+private
+  /**
+  * A helper function used in GCM_AE and GCM_AD. We must define this at the top
+  * level due to its use of Cryptol's numeric constraint guards feature, which
+  * currently only works in top-level definitions.
+  *
+  * This renames the IV type to `len_IV` to better match [NISTSP800-38D].
+  */
+  define_J0 : { len_IV } ( len_IV == IV) => [K] -> [len_IV] -> [128] -> [128]
+  define_J0 k iv H
+    | len_IV == 96 => iv # (0 : [31]) # (1 : [1])
+    | len_IV != 96 => GHASH`{len_IV /^ 128 + 1} H (iv # (0 : [s + 64]) # (`len_IV: [64]))
+    where
+      // Set names to match the spec
+      type s = len_IV %^ 128  // Equivalently: 128 * len_IV /^ 128 - len_IV
+
+  /**
+  * Multiplication Operation on Blocks, [NISTSP800-38D] Section
+  * 6.3, Algorithm 1. This is optimized to use Cryptol's built-in `pmult` and
+  * `pmod` functions. This operation is described using little-endian
+  * notation, hence the `reverse`s.
+  */
+
+  (•) : [128] -> [128] -> [128]
+  (•) X Y = reverse (pmod (pmult (reverse X) (reverse Y))
+                          <| 1 + x + x^^2 + x^^7 + x^^128|>)
+
+  /**
+  * Multiplication Operation on Blocks, [NISTSP800-38D] Section
+  * 6.3. This matches the spec very closely.
+  */
+
+  mult : [128] -> [128] -> [128]
+  mult X Y = last Z
+    where
+      R = 0b11100001 # (0 : [120])
+      Z = [0] # [ if [xi] == 0 then Zi else Zi ^ Vi
+                | Zi <- Z
+                | xi <- X
+                | Vi <- V ]
+      V = [Y] # [ if LSB`{1} Vi == 0 then Vi >> 1 else (Vi >> 1) ^ R
+                | Vi <- V ]
+
+  /**
+  * GHASH Function, [NISTSP800-38D] Section 6.4, Algorithm 2.
+  */
+
+  GHASH : {m} (fin m) => [128] -> [m * 128] -> [128]
+  GHASH H X = last Y
+    where Y = [0] # [ (Yi ^ Xi) • H | Yi <- Y | Xi <- groupBy`{128} X ]
+
+  /**
+  * The output of incrementing the right-most s bits of the bit
+  * string X, regarded as the binary representation of an integer, by
+  * 1 modulo 2s, [NISTSP800-38D] Sections 4.2.2 and 6.2. Care was
+  * taken here to ensure `s` could be zero.
+  */
+
+  inc : {s, a} (fin s, fin a, a >= s) => [a] -> [a]
+  inc X = MSB`{a-s} X # (LSB`{s} X + take (1 : [max s 1]))
 
 
-/** Create blocks as described in the spec, first paragraph of Section 2.3.
-Basically we split into 128-bit chunk and pad the last one with 0. */
-blockify : {n} (fin n) => [n] -> [n /^ 128][128]
-blockify msg = split (msg # 0)
+  /**
+  * The bit string consisting of the s right-most bits
+  * of the bit string X, [NISTSP800-38D] Section 4.2.2.
+  */
 
-/** Join back the blocks, dropping any additional padding. */
-unblockify : {n} (fin n) => [n /^ 128][128] -> [n]
-unblockify ms = take (join ms)
+  LSB : {s, a} (fin s, fin a, a >= s) => [a] -> [s]
+  LSB X = drop X
 
+  /**
+  * The bit string consisting of the s left-most bits of
+  * the bit string X, [NISTSP800-38D] Section 4.2.2.
+  */
 
-ifWidth : {w,n,a} (fin n, fin w) => [n] -> ([w] -> a) -> a -> a
-ifWidth thing yep nope = if `w == (`n : [max (width w) (width n)])
-                            then yep (take (thing # (zero : [inf])))
-                            else nope
+  MSB : {s, a} (fin s, a >= s) => [a] -> [s]
+  MSB X = take X
 
+  /**
+  * GCTR Function, [NISTSP800-38D] Section 6.5, Algorithm 3.
+  */
 
-
+  GCTR : {a} (fin a) => ([128] -> [128]) -> [128] -> [a] -> [a]
+  GCTR CIPHk ICB X = Y
+    where
+      Y = X ^ take`{a} (join (map CIPHk CB))
+      CB = iterate inc`{32} ICB
