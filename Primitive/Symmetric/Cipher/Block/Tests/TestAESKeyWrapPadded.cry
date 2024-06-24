@@ -1,6 +1,5 @@
 module Primitive::Symmetric::Cipher::Block::Tests::TestAESKeyWrapPadded where
 
-import Primitive::Symmetric::Cipher::Block::AES
 import Primitive::Symmetric::Cipher::Block::AESKeyWrapPadded
 
 testUnwrap : {a, b} ( fin a

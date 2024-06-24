@@ -5,9 +5,9 @@
 
 module Primitive::Keyless::Generator::DRBG where
 
-import Primitive::Symmetric::Cipher::Block::AES
+import Primitive::Symmetric::Cipher::Block::AES256 as AES256
 
-type keylen   = AESKeySize // bits
+type keylen   = AES256::AesKeySize // bits
 type blocklen = 128 // bits
 type seedlen  = 384 // bits, 384 bits fixed by table 3 for AES-256
 type reseed_limit = 2 ^^ 35 // max number of bytes to generate before reseeding
@@ -19,7 +19,7 @@ type seedsize = 48
 type cipher_ctx = { key : [keylen] }
 
 block_encrypt : [keylen] -> [blocklen] -> [blocklen]
-block_encrypt key data = aesEncrypt(data, key)
+block_encrypt key data = AES256::encrypt key data
 
 type s2n_drbg =
   { bytes_used : [64]

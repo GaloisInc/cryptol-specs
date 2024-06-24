@@ -1,6 +1,5 @@
 module Primitive::Symmetric::Cipher::Block::Tests::TestAESKeyWrap where
 
-import Primitive::Symmetric::Cipher::Block::AES
 import Primitive::Symmetric::Cipher::Block::AESKeyWrap
 
 // This section contains tests of the Key Wrap specifications using test

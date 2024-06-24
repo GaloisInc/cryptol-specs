@@ -4,10 +4,15 @@
 
 // This is a close implementation of RFC 5649:
 // https://tools.ietf.org/html/rfc5649
+//
+// One important deviation: this is currently instantiated only for AES256;
+// the RFC supports all three standardized AES key sizes.
 
 module Primitive::Symmetric::Cipher::Block::AESKeyWrapPadded where
-import Primitive::Symmetric::Cipher::Block::AES
+import Primitive::Symmetric::Cipher::Block::AES256 as AES256
 import Primitive::Symmetric::Cipher::Block::AESKeyWrap
+
+type AESKeySize = AES256::AesKeySize
 
 // Most significant bits of alternate initial value (Section 3)
 AlternativeIV : [4][8]
@@ -27,7 +32,7 @@ aesWrapKeyPadded key iv plaintext =
   // If padded plaintext is 8 bytes, encrypt in AEC ECB mode.  The `drop` and
   // append of `zero` have no effect at runtime and exist to make the types
   // work out, as the type checker cannot deduce that `n <= 8` in this branch.
-  then (split (aesEncrypt (drop (join (AIV # P)), key))) # zero
+  then (split (AES256::encrypt key (drop (join (AIV # P))))) # zero
   // Otherwise perform standard key wrap algorithm on padded plaintext.  The
   // `drop` and append of `zero` have runtime effect and exist to make the
   // types work out, as the type checker cannot deduce that `n >= 16` in this
@@ -60,7 +65,7 @@ aesUnwrapKeyPadded key iv ciphertext = if valid
         // and append of `zero` have no effect at runtime and exist to make the
         // types work out, as the type checker cannot deduce that `n == 16` in
         // this branch.
-        then (split (aesDecrypt (drop (join ciphertext), key))) # zero
+        then (split (AES256::decrypt key (drop (join ciphertext)))) # zero
         // Otherwise perform the standard key unwrap algorithm.  The `drop`
         // and append of `zero` have no effect at runtime and exist to make the
         // types work out, as the type checker cannot deduce that `n >= 24` in
