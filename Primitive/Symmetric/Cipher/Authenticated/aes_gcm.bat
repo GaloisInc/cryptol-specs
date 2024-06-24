@@ -20,7 +20,7 @@
 // This property is independent of the type parameters but we have to specify
 // them anyway.
 // It takes more than 25 minutes to `:prove`.
-:check dotAndMultAreEquivalent `{K=128, IV=96, AAD=0, T=128} {E=AES::encrypt}
+:check dotAndMultAreEquivalent `{K=128, IV=96, AAD=0, T=128} {E=AES128::encrypt}
 
 // Make sure that decryption is the inverse of encryption
 // This property takes more than 20 minutes to `:prove`.

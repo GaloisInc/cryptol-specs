@@ -1,5 +1,5 @@
 
-// Cryptol AES GCM test vectors
+// Cryptol instatiation of AES128-GCM and AES256-GCM, and test vectors for each.
 // Copyright (c) 2010-2024, Galois Inc.
 // www.cryptol.net
 // Author: Ajay Kumar Eeralla
@@ -8,43 +8,52 @@
 
 module Primitive::Symmetric::Cipher::Authenticated::AES_GCM where
 import `Primitive::Symmetric::Cipher::Authenticated::GCM
-import Primitive::Symmetric::Cipher::Block::AES_parameterized as AES
+import Primitive::Symmetric::Cipher::Block::AES128 as AES128
+import Primitive::Symmetric::Cipher::Block::AES256 as AES256
+
+AES128_GCM_encrypt = GCM_AE `{K=128} {E=AES128::encrypt}
+AES128_GCM_decrypt = GCM_AD `{K=128} {E=AES128::encrypt}
+
+AES256_GCM_encrypt = GCM_AE `{K=256} {E=AES256::encrypt}
+AES256_GCM_decrypt = GCM_AD `{K=256} {E=AES256::encrypt}
 
 // GCM's symmetry property must hold for AES.
 // The other type parameter sizes are chosen arbitrarily.
 aesGcmIsSymmetric: [128] -> [96] -> [256] -> [0] -> Bool
-property aesGcmIsSymmetric key iv pt aad = gcmIsSymmetric `{T=128} { E=AES::encrypt } key iv pt aad
+property aesGcmIsSymmetric key iv pt aad = gcmIsSymmetric `{T=128} { E=AES128::encrypt } key iv pt aad
 
 // GCM's decryption API equivalence must hold for AES.
 // The other type parameter sizes are chosen arbitrarily.
 aesGcmDecryptionApisAreEquivalent: [128] -> [96] -> [256] -> [128] -> Bool
-property aesGcmDecryptionApisAreEquivalent key iv ct tag = decryptionApisAreEquivalent {E=AES::encrypt} key iv ct [] tag
+property aesGcmDecryptionApisAreEquivalent key iv ct tag = decryptionApisAreEquivalent {E=AES128::encrypt} key iv ct [] tag
 
 // GCM's encryption API equivalence must hold for AES.
 // The other type parameter sizes are chosen arbitrarily.
 aesGcmEncryptionApisAreEquivalent: [128] -> [96] -> [256] -> [128] -> Bool
-property aesGcmEncryptionApisAreEquivalent key iv pt = decryptionApisAreEquivalent {E=AES::encrypt} key iv pt []
+property aesGcmEncryptionApisAreEquivalent key iv pt = decryptionApisAreEquivalent {E=AES128::encrypt} key iv pt []
 
 property AES_GCM_test_vector_0 = ct == expected_ct /\ tag == expected_tag /\ valid_dec
     where
         pt = []
-        (ct, tag) = GCM_AE `{K=128, IV=96, AAD=0, T=128} {E=AES::encrypt} zero zero pt []
-        dec = GCM_AD `{K=128, IV=96, AAD=0, T=128} {E=AES::encrypt} zero zero ct [] tag
-        expected_ct = []
-        expected_tag = 0x58e2fccefa7e3061367f1d57a4e7455a
+        key = zero : [128]
+        iv = zero : [96]
+        (ct, tag) = AES128_GCM_encrypt key iv pt []
+        dec = AES128_GCM_decrypt key iv ct [] tag
+        expected_ct = [] : [0]
+        expected_tag = 0x58e2fccefa7e3061367f1d57a4e7455a : [128]
         valid_dec = dec.valid && (dec.pt == pt)
 
 property AES_GCM_test_vector_1 =
     ct == expected_ct /\ tag == expected_tag /\ valid_dec
     where
         key = zero
-        iv = zero
+        iv = zero : [96]
         pt = zero
         aad = []
-        expected_ct = 0x0388dace60b6a392f328c2b971b2fe78
+        expected_ct = 0x0388dace60b6a392f328c2b971b2fe78 : [128]
         expected_tag = 0xab6e47d42cec13bdf53a67b21257bddf : [128]
-        (ct, tag) = GCM_AE `{K=128, IV=96} {E=AES::encrypt} key iv pt aad
-        dec = GCM_AD `{K=128, IV=96} {E=AES::encrypt} key iv ct aad tag
+        (ct, tag) = AES128_GCM_encrypt key iv pt aad
+        dec = AES128_GCM_decrypt key iv ct aad tag
         valid_dec = dec.valid && (dec.pt == pt)
 
 property AES_GCM_test_vector_2 =
@@ -56,8 +65,8 @@ property AES_GCM_test_vector_2 =
         aad = []
         expected_ct = 0x42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091473f5985
         expected_tag = 0x4d5c2af327cd64a62cf35abd2ba6fab4 : [128]
-        (ct, tag) = GCM_AE {E=AES::encrypt} key iv pt aad
-        dec = GCM_AD {E=AES::encrypt} key iv ct aad tag
+        (ct, tag) = AES128_GCM_encrypt key iv pt aad
+        dec = AES128_GCM_decrypt key iv ct aad tag
         valid_dec = dec.valid && (dec.pt == pt)
 
 property AES_GCM_test_vector_3 =
@@ -69,8 +78,8 @@ property AES_GCM_test_vector_3 =
         aad = 0xfeedfacedeadbeeffeedfacedeadbeefabaddad2
         expected_ct  = 0x42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091
         expected_tag = 0x5bc94fbc3221a5db94fae95ae7121a47
-        (ct, tag) = GCM_AE {E=AES::encrypt} key iv pt aad
-        dec = GCM_AD {E=AES::encrypt} key iv ct aad tag
+        (ct, tag) = AES128_GCM_encrypt key iv pt aad
+        dec = AES128_GCM_decrypt key iv ct aad tag
         valid_dec = dec.valid && (dec.pt == pt)
 
 // A test case from aesgcmtest.c
@@ -83,8 +92,8 @@ property AES_GCM_test_vector_4 =
         aad   = 0x4d23c3cec334b49bdb370c437fec78de : [128]
         expected_ct   = 0xf7264413a84c0e7cd536867eb9f21736
         expected_tag  = 0x67ba0510262ae487d737ee6298f77e0c
-        (ct, tag) = GCM_AE {E=AES::encrypt} key iv pt aad
-        dec = GCM_AD {E=AES::encrypt} key iv ct aad tag
+        (ct, tag) = AES256_GCM_encrypt key iv pt aad
+        dec = AES256_GCM_decrypt key iv ct aad tag
         valid_dec = dec.valid && (dec.pt == pt)
 
 property AES_GCM_invalid_test_vector =
@@ -97,5 +106,5 @@ property AES_GCM_invalid_test_vector =
         expected_ct   = 0xf7264413a84c0e7cd536867eb9f21736
         expected_tag  = 0x67ba0510262ae487d737ee6298f77e0c
         invalid_tag  = 0x67ba0510262ae487d737ee6298f77888
-        (ct, tag) = GCM_AE {E=AES::encrypt} key iv pt aad
-        dec = GCM_AD {E=AES::encrypt} key iv ct aad invalid_tag
+        (ct, tag) = AES256_GCM_encrypt key iv pt aad
+        dec = AES256_GCM_decrypt key iv ct aad invalid_tag
