@@ -18,4 +18,6 @@ cfbEnc enc k iv ps = cs
 cfbDec : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> iv -> [n]block -> [n]block
 cfbDec enc k iv cs = [ (enc k c')^c | c <- cs | c' <- [iv] # cs ]
 
+// This will need to be parameterized with a specific encryption function before it can be proved
+property cfbEncCorrect encrypt k c ps = (cfbDec encrypt k c (cfbEnc encrypt k c ps)) == ps
 
