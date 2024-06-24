@@ -50,5 +50,7 @@ decryptWithSchedule = AES::decrypt params
 
 params = { encRound = AESRound, decRound = AESInvRound }
 
-property test k pt = decrypt k (encrypt k pt) == pt
+// This property should be true; it's not provable as-is because it's not monomorphic.
+// It should be instantiated separately for each key size.
+property aesIsCorrect k pt = decrypt k (encrypt k pt) == pt
 
