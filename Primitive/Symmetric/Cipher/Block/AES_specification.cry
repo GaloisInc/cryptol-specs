@@ -1,0 +1,54 @@
+/*
+   Copyright (c) 2018 Galois, Inc.
+   www.cryptol.net
+
+   This provides the basic AES block cipher, abstracted over the key length.
+
+   It operates over 128-bit blocks. To use AES with any practical application,
+   use it with a mode of operation, like CTR or GCM-SIV.
+*/
+
+module Primitive::Symmetric::Cipher::Block::AES_specification where
+
+import `Primitive::Symmetric::Cipher::Block::AES::Algorithm as AES
+import `Primitive::Symmetric::Cipher::Block::AES::ExpandKey
+import Primitive::Symmetric::Cipher::Block::AES::TBox
+import Primitive::Symmetric::Cipher::Block::Cipher(Cipher)
+
+parameter
+   type m : #
+   type constraint (fin m, m <= 2)
+
+type AesKeySize = 64 * (m + 2)
+
+type EncKey n = AES::KeySchedule n
+type DecKey n = AES::KeySchedule n
+
+AES: Cipher AesKeySize 128
+AES = { encrypt key pt = encrypt key pt
+      , decrypt key ct = decrypt key ct
+      }
+
+encrypt : [AesKeySize] -> [128] -> [128]
+encrypt k = encryptWithSchedule (expandKeyEnc k)
+
+decrypt : [AesKeySize] -> [128] -> [128]
+decrypt k = decryptWithSchedule (expandKeyDec k)
+
+expandKeyEnc : [AesKeySize] -> EncKey m
+expandKeyEnc = expandKey`{Nk = AES::Nk m, Nr = AES::Nr m}
+
+encryptWithSchedule : EncKey m -> [128] -> [128]
+encryptWithSchedule = AES::encrypt params
+
+expandKeyDec : [AesKeySize] -> EncKey m
+expandKeyDec k = makeDecKey (expandKey`{Nk = AES::Nk m, Nr = AES::Nr m} k)
+
+// AES decryption with a specified KeySchedule
+decryptWithSchedule : DecKey m -> [128] -> [128]
+decryptWithSchedule = AES::decrypt params
+
+params = { encRound = AESRound, decRound = AESInvRound }
+
+property test k pt = decrypt k (encrypt k pt) == pt
+

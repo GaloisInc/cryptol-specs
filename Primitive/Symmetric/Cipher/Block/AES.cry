@@ -151,6 +151,7 @@ stateToMsg st = join (join (transpose st))
 aesEncrypt : ([128], [AESKeySize]) -> [128]
 aesEncrypt (pt, key) = aesEncryptWithKeySchedule pt (ExpandKey key)
 
+// AES encryption with a specified KeySchedule
 aesEncryptWithKeySchedule : [128] -> KeySchedule -> [128]
 aesEncryptWithKeySchedule pt (kInit, ks, kFinal) = stateToMsg (AESFinalRound (kFinal, rounds ! 0))
   where
