@@ -8,10 +8,10 @@ module Primitive::Symmetric::Cipher::Block::Modes::AES128_CTR where
 import Primitive::Symmetric::Cipher::Block::Modes::CTR
 import Primitive::Symmetric::Cipher::Block::AES128 as AES128
 
-AES128_CTR_encrypt: {n} (fin n) => [AES128::AesKeySize] -> ic -> [n]block -> [n]block
+AES128_CTR_encrypt: {n} (fin n) => [AES128::KeySize] -> ic -> [n]block -> [n]block
 AES128_CTR_encrypt = ctrEnc AES128::encrypt
 
-AES128_CTR_decrypt: {n} (fin n) => [AES128::AesKeySize] -> ic -> [n]block -> [n]block
+AES128_CTR_decrypt: {n} (fin n) => [AES128::KeySize] -> ic -> [n]block -> [n]block
 AES128_CTR_decrypt = ctrDec AES128::decrypt
 
 // This `:prove`s quickly!

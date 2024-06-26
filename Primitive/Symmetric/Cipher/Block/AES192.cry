@@ -1,4 +1,4 @@
 module Primitive::Symmetric::Cipher::Block::AES192 =
     Primitive::Symmetric::Cipher::Block::AES_specification where
     // This produces a key size of 192
-    type m = 1
+    type KeySize' = 192

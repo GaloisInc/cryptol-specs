@@ -14,25 +14,33 @@
 
 module Primitive::Symmetric::Cipher::Authenticated::AES_GCM_SIV where
 
-import Primitive::Symmetric::Cipher::Block::AES256 as AES
-
 parameter
-  /** 0: use AES128, 1: use AES256 */
-  type Mode : #
-  type constraint (1 == Mode)
+  // This constraint enforces the standard key sizes of 128 and
+  // 256-bits recommended in the draft RFC.
+  type KeySize : #
+  type constraint (fin KeySize, KeySize % 128 == 0, KeySize / 128 >= 1, KeySize / 128 <= 2)
 
   type AAD : #
   type constraint ( (36 + 8) >= width AAD )
 
+
+/** This bit of algebra is here to satisfy the constraint solver.
+ * `K` should be the same as `KeySize`, but the type inference doesn't work
+ * if you set it directly equal.
+ * `Mode` is 0 for AES-128 and 1 for AES-256.
+ */
+type Mode = KeySize / 128 - 1
 type K  = 128 + 128 * Mode
-type KS = AES::EncKey (2 * Mode)
+import Primitive::Symmetric::Cipher::Block::AES_specification as AES where
+  type KeySize' = KeySize
+type KS = AES::EncryptionKey
 
 
 /** Note the weird byte-swapping business (also in `blockify` and `unblockify`)
-It is not quite clear in what format we want the inputs/outputs, but we
-do the swapping so that inputs/ouputs match the test vectors at
-https://tools.ietf.org/html/draft-irtf-cfrg-gcmsiv-06
-*/
+ * It is not quite clear in what format we want the inputs/outputs, but we
+ * do the swapping so that inputs/ouputs match the test vectors at
+ * https://tools.ietf.org/html/draft-irtf-cfrg-gcmsiv-06
+ */
 aes_gcm_siv :
   {n} ((36 + 8) >= width n) =>
       { key   : [K]

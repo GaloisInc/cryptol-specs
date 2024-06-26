@@ -16,7 +16,7 @@
 module Primitive::Symmetric::Cipher::Block::AESKeyWrap where
 import Primitive::Symmetric::Cipher::Block::AES256 as AES256
 
-type AESKeySize = AES256::AesKeySize
+type AESKeySize = AES256::KeySize
 
 // Default intial value (Section 2.2.3)
 DefaultIV : [8][8]

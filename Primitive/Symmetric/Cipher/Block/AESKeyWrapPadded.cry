@@ -12,7 +12,7 @@ module Primitive::Symmetric::Cipher::Block::AESKeyWrapPadded where
 import Primitive::Symmetric::Cipher::Block::AES256 as AES256
 import Primitive::Symmetric::Cipher::Block::AESKeyWrap
 
-type AESKeySize = AES256::AesKeySize
+type AESKeySize = AES256::KeySize
 
 // Most significant bits of alternate initial value (Section 3)
 AlternativeIV : [4][8]

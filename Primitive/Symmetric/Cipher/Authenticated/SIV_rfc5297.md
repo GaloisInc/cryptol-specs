@@ -3,7 +3,7 @@ module Primitive::Symmetric::Cipher::Authenticated::SIV_rfc5297 where
 
 import Primitive::Symmetric::Cipher::Block::AES128 as AES128
 
-type Key = [AES128::AesKeySize]
+type Key = [AES128::KeySize]
 ```
 
 Network Working Group                                         D. Harkins

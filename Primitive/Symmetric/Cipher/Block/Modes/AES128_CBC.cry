@@ -7,10 +7,10 @@ module Primitive::Symmetric::Cipher::Block::Modes::AES128_CBC where
 import Primitive::Symmetric::Cipher::Block::Modes::CBC
 import Primitive::Symmetric::Cipher::Block::AES128 as AES128
 
-AES128_CBC_encrypt: {n} (fin n) => [AES128::AesKeySize] -> iv -> [n]block -> [n]block
+AES128_CBC_encrypt: {n} (fin n) => [AES128::KeySize] -> iv -> [n]block -> [n]block
 AES128_CBC_encrypt = cbcEnc AES128::encrypt
 
-AES128_CBC_decrypt: {n} (fin n) => [AES128::AesKeySize] -> iv -> [n]block -> [n]block
+AES128_CBC_decrypt: {n} (fin n) => [AES128::KeySize] -> iv -> [n]block -> [n]block
 AES128_CBC_decrypt = cbcDec AES128::decrypt
 // Test vectors from https://tools.ietf.org/html/rfc3602
 
