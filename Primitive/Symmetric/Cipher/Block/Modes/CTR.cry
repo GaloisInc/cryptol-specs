@@ -20,6 +20,7 @@ ctrDec enc k c cs = ps
     where ps = [(enc k c')^ct | ct <- cs | c' <- ctrs]
           ctrs = [c+i | i<- [0...]]
 
-
+// This will need to be parameterized with a specific encryption function before it can be proved
+property ctrEncCorrect enc k c ps = (ctrDec enc k c (ctrEnc enc k c ps)) == ps
 
 

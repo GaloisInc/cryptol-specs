@@ -17,4 +17,5 @@ cbcEnc enc k iv ps = cs
 cbcDec : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> iv -> [n]block -> [n]block
 cbcDec dec k iv cs = [ (dec k c) ^ c' | c <- cs | c' <- [iv] # cs ]
 
-
+// This will need to be parameterized with a specific encryption function before it can be proved
+property cbcEncCorrect encrypt k c ps = (cbcDec encrypt k c (cbcEnc encrypt k c ps)) == ps

@@ -8,9 +8,15 @@
 // shifting and the other using indexing.  This specification closely matches
 // the index-based algorithm description as that description is more similar
 // to the BoringSSL AES Key Wrap implementation.
+//
+// One important deviation: this is currently instantiated only for AES256;
+// the RFC supports all three standardized AES key sizes.
+//
 
 module Primitive::Symmetric::Cipher::Block::AESKeyWrap where
-import Primitive::Symmetric::Cipher::Block::AES
+import Primitive::Symmetric::Cipher::Block::AES256 as AES256
+
+type AESKeySize = AES256::KeySize
 
 // Default intial value (Section 2.2.3)
 DefaultIV : [8][8]
@@ -77,7 +83,7 @@ private
   wrapBlock : {n} (fin n, width n <= 64) =>
               [AESKeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
   wrapBlock key (A, R) j i = (A', R')
-    where B  = aesEncrypt (A # (R @ (i-1)), key)
+    where B  = AES256::encrypt key (A # (R @ (i-1)))
           A' = (take`{64} B) ^ (((`n : [64]) * j) + i)
           R' = update R (i-1) (drop`{64} B)
 
@@ -85,7 +91,7 @@ private
   unwrapBlock : {n} (fin n, width n <= 64) =>
                 [AESKeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
   unwrapBlock key (A, R) j i = (A', R')
-    where B  = aesDecrypt ((A ^ (((`n : [64]) * j) + i)) # (R @ (i-1)), key)
+    where B  = AES256::decrypt key ((A ^ (((`n : [64]) * j) + i)) # (R @ (i-1)))
           A' = take`{64} B
           R' = update R (i-1) (drop`{64} B)
 

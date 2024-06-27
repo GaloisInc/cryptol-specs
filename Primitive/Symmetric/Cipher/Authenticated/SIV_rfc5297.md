@@ -1,9 +1,9 @@
 ```
 module Primitive::Symmetric::Cipher::Authenticated::SIV_rfc5297 where
 
-import Primitive::Symmetric::Cipher::Block::AES
+import Primitive::Symmetric::Cipher::Block::AES128 as AES128
 
-type Key = [AESKeySize]
+type Key = [AES128::KeySize]
 ```
 
 Network Working Group                                         D. Harkins
@@ -307,7 +307,7 @@ bitand a b = a && b
 
 ```
 E : (Key,[128]) -> [128]
-E(K,X) = aesEncrypt (X,K)
+E(K,X) = AES128::encrypt K X
 
 // 1. Apply the subkey generation process in Sec. 6.1 to K to produce K1 and K2.
 // 2. If Mlen = 0, let n = 1; else, let n = ⎡Mlen/b⎤.
