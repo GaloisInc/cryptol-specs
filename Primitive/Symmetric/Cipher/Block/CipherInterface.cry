@@ -1,0 +1,12 @@
+/*
+ * This is a basic interface for block ciphers that can be used with most
+ * modes of operation.
+ *
+ */
+
+interface module Primitive::Symmetric::Cipher::Block::CipherInterface where
+  type KeySize : #
+  type BlockSize : #
+  type constraint (fin BlockSize, fin KeySize)
+  encrypt : [KeySize] -> [BlockSize] -> [BlockSize]
+  decrypt : [KeySize] -> [BlockSize] -> [BlockSize]
