@@ -1,0 +1,6 @@
+// Instantiate CTR mode with AES 256
+module Primitive::Symmetric::Cipher::Block::Instantiations::AES256_CTR =
+    Primitive::Symmetric::Cipher::Block::Modes::CTR {
+        Primitive::Symmetric::Cipher::Block::AES256
+    }
+
