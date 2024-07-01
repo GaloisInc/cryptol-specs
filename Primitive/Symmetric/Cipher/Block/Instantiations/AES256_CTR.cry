@@ -1,4 +1,9 @@
-// Instantiate CTR mode with AES 256
+/*
+ * Instantiate CTR mode for AES 256.
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
 module Primitive::Symmetric::Cipher::Block::Instantiations::AES256_CTR =
     Primitive::Symmetric::Cipher::Block::Modes::CTR {
         Primitive::Symmetric::Cipher::Block::AES256

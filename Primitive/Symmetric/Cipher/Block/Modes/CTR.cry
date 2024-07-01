@@ -16,9 +16,16 @@
  *   incrementing function: [x]_m -> [x + 1 mod 2^m]_m for m = C::BlockSize.
  *   See Appendix B of [NIST-SP-800-38A] for discussion.
  *
- *  Copyright (c) 2010-2024, Galois Inc.
+ * @copyright Galois, Inc.
+ * @author Ajay Kumar Eeralla
+ * @author Marcella Hastings <marcella@galois.com>
  *  www.cryptol.net
- *  Author: Ajay Kumar Eeralla, Marcella Hastings
+ *
+ * References:
+ * [NIST-SP-800-38A]: Morris Dworkin. Recommendation for Block Cipher
+ * Modes of Operation: Methods and Techniques. NIST Special Publication
+ * 800-38A. December 2001.
+ *
  */
 
 module Primitive::Symmetric::Cipher::Block::Modes::CTR where

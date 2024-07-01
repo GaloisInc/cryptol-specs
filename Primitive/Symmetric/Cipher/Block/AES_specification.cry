@@ -1,11 +1,13 @@
 /*
-   Copyright (c) 2018 Galois, Inc.
+   @copyright Galois, Inc.
+   @author Marcella Hastings <marcella@galois.com>
    www.cryptol.net
 
    This provides the basic AES block cipher, abstracted over the key length.
 
    It operates over 128-bit blocks. To use AES with any practical application,
    use it with a mode of operation, like CTR or GCM-SIV.
+
 */
 
 module Primitive::Symmetric::Cipher::Block::AES_specification where
