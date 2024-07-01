@@ -1,11 +1,13 @@
 /*
-   Copyright (c) 2018 Galois, Inc.
+   @copyright Galois, Inc.
+   @author Marcella Hastings <marcella@galois.com>
    www.cryptol.net
 
    This provides the basic AES block cipher, abstracted over the key length.
 
    It operates over 128-bit blocks. To use AES with any practical application,
    use it with a mode of operation, like CTR or GCM-SIV.
+
 */
 
 module Primitive::Symmetric::Cipher::Block::AES_specification where
@@ -13,7 +15,6 @@ module Primitive::Symmetric::Cipher::Block::AES_specification where
 import `Primitive::Symmetric::Cipher::Block::AES::Algorithm as AES
 import `Primitive::Symmetric::Cipher::Block::AES::ExpandKey
 import Primitive::Symmetric::Cipher::Block::AES::TBox
-import Primitive::Symmetric::Cipher::Block::Cipher(Cipher)
 
 parameter
    // This constraint enforces the standard key sizes of 128, 192, and
@@ -26,39 +27,37 @@ parameter
 // Mode 0 = 128 bits; Mode 1 = 192 bits; Mode 2 = 256 bits
 type Mode = (KeySize / 64) - 2
 
-// Make KeySize accessible outside the module.
+// Make `KeySize` and `BlockSize` accessible outside the module.
+// This also lets us use AES as an instantiation of `CipherInterface`
 type KeySize = KeySize'
+type BlockSize = 128
+
+encrypt : [KeySize] -> [BlockSize] -> [BlockSize]
+encrypt k = encryptWithSchedule (expandKeyEnc k)
+
+decrypt : [KeySize] -> [BlockSize] -> [BlockSize]
+decrypt k = decryptWithSchedule (expandKeyDec k)
 
 type EncryptionKey = AES::KeySchedule Mode
 type DecryptionKey = AES::KeySchedule Mode
 
-AES: Cipher KeySize 128
-AES = { encrypt key pt = encrypt key pt
-      , decrypt key ct = decrypt key ct
-      }
-
-encrypt : [KeySize] -> [128] -> [128]
-encrypt k = encryptWithSchedule (expandKeyEnc k)
-
-decrypt : [KeySize] -> [128] -> [128]
-decrypt k = decryptWithSchedule (expandKeyDec k)
-
 expandKeyEnc : [KeySize] -> EncryptionKey
 expandKeyEnc = expandKey`{Nk = AES::Nk Mode, Nr = AES::Nr Mode}
 
-encryptWithSchedule : EncryptionKey -> [128] -> [128]
+encryptWithSchedule : EncryptionKey -> [BlockSize] -> [BlockSize]
 encryptWithSchedule = AES::encrypt params
 
 expandKeyDec : [KeySize] -> EncryptionKey
 expandKeyDec k = makeDecKey (expandKey`{Nk = AES::Nk Mode, Nr = AES::Nr Mode} k)
 
 // AES decryption with a specified KeySchedule
-decryptWithSchedule : DecryptionKey -> [128] -> [128]
+decryptWithSchedule : DecryptionKey -> [BlockSize] -> [BlockSize]
 decryptWithSchedule = AES::decrypt params
 
 params = { encRound = AESRound, decRound = AESInvRound }
 
-// This property should be true; it's not provable as-is because it's not monomorphic.
+// This property must be true; it's not provable as-is because it's not monomorphic.
 // It should be instantiated separately for each key size.
+// With high probability, it will be extremely slow to prove and should be `:check`ed.
 property aesIsCorrect k pt = decrypt k (encrypt k pt) == pt
 

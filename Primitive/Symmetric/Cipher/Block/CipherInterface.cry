@@ -1,0 +1,15 @@
+/*
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ *
+ * This is a basic interface for block ciphers. This interface should allow
+ * implementation of most modes of operation.
+ *
+ */
+
+interface module Primitive::Symmetric::Cipher::Block::CipherInterface where
+  type KeySize : #
+  type BlockSize : #
+  type constraint (fin BlockSize, fin KeySize)
+  encrypt : [KeySize] -> [BlockSize] -> [BlockSize]
+  decrypt : [KeySize] -> [BlockSize] -> [BlockSize]
