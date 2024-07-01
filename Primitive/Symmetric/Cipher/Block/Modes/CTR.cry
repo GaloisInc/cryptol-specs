@@ -13,13 +13,13 @@
  *   of `m` bits in succession, where `n` is the plaintext length and `m` is the
  *   number of bits to be updated in the counter block (n <= C::BlockSize).
  *   This implementation fixes the incrementing function to be the standard
- *   incrementing function: [x]_m -> [x + 1 mod 2^m]_m for m = C::BlockSize.
+ *   incrementing function: `[x]_m -> [x + 1 mod 2^m]_m` for `m = C::BlockSize`.
  *   See Appendix B of [NIST-SP-800-38A] for discussion.
  *
  * @copyright Galois, Inc.
  * @author Ajay Kumar Eeralla
  * @author Marcella Hastings <marcella@galois.com>
- *  www.cryptol.net
+ * www.cryptol.net
  *
  * References:
  * [NIST-SP-800-38A]: Morris Dworkin. Recommendation for Block Cipher
@@ -38,14 +38,17 @@ import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
  *
  * ⚠️ Warning ⚠️: CTR mode will fail catastrophically if a (key, counter) pair is ever reused.
  * Cryptol cannot detect such failures!
+ * The type constraint on `n` prevents counter reuse within a single encryption, but
+ * implementors must manually verify that counter reuse will not happen across multiple
+ * calls to `encrypt`.
  */
-encrypt : {n} (fin n) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> [n][C::BlockSize]
+encrypt : {n} (fin n, n < 2^^C::BlockSize) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> [n][C::BlockSize]
 encrypt k t_1 ps = cs
     where
         ciph_k = C::encrypt k
-        // (ciph_k t_j) is called O_j in the original spec
+        // `ciph_k t_j` is called `O_j` in the original spec
         cs = [p_j ^ (ciph_k t_j) | p_j <- ps | t_j <- ctrs]
-        // Counters are called T_1, ..., T_n in the original spec
+        // Counters are called `T_1, ..., T_n` in the original spec
         ctrs = [t_1 + i | i<- [0...]]
 
 /**
@@ -56,7 +59,7 @@ encrypt k t_1 ps = cs
  * ⚠️ Warning ⚠️: CTR mode will fail catastrophically if a (key, counter) pair is ever reused.
  * Cryptol cannot detect such failures!
  */
-decrypt : {n} (fin n) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> [n][C::BlockSize]
+decrypt : {n} (fin n, n < 2^^C::BlockSize) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> [n][C::BlockSize]
 decrypt k t_1 cs = ps
     where
         ciph_k = C::encrypt k
