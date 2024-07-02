@@ -24,12 +24,12 @@
 // - P = 256 because we want to test the block chaining, so we need at least 2
 // - IV = 96 because it's the shortest allowable value
 // - AAD = 5 because we want to make sure it's incorporated
-:check gcmIsSymmetric `{AAD=5, P=256, IV=96}
+:check gcmIsSymmetric `{AAD=8, P=256, IV=96}
 
 // This takes more than 25 minutes to `:prove`.
 :check dotAndMultAreEquivalent
 
 // Repeat the above checks for AES256
 :l Instantiations/AES256_GCM.cry
-:check gcmIsSymmetric `{AAD=5, P=256, IV=96}
+:check gcmIsSymmetric `{AAD=8, P=256, IV=96}
 :check dotAndMultAreEquivalent

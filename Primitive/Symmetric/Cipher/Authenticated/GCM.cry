@@ -7,45 +7,78 @@ This implementation follows NIST special publication 800-38D:
 [NIST-SP-800-38D] Morris Dworkin. Recommendation for Block Cipher Modes
 of Operation: Galois/Counter Mode (GCM) and GMAC. NIST Special
 Publication 800-38D. November 2007.
+
+This implementation deviates from the original spec in the following ways:
+- The original spec allows tag lengths 96, 104, 112, 120, and 128 in all
+  settings, and allows length 64 or 32 in certain applications. This
+  implementation does not allow short tags (32 or 64) at all.
+
+⚠️ Warning ⚠️: There are several properties of GCM mode that Cryptol cannot
+enforce! These include:
+- GCM mode will fail catastrophically if a (key, IV) pair is ever reused.
+  Implementors must manually verify that keys and IVs are chosen in such
+  a way that they will not be reused.
+- The original spec requires an implementation with `GCM_AE` and `GCM_AD`
+  must support the same ciphertext, associated data, and IV lengths for
+  both algorithms.
 */
 
 module Primitive::Symmetric::Cipher::Authenticated::GCM where
 import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
-
-// GCM mode is only defined for ciphers that operate over 128-bit blocks.
+/**
+ * GCM mode is only defined for ciphers that operate over 128-bit blocks.
+ * [NIST-SP-800-38D] Section 5.1
+ */
 interface constraint (C::BlockSize == 128)
+/**
+ * GCM mode is only defined for ciphers with a key size of at least 128 bits.
+ * [NIST-SP-800-38D] Section 5.1
+ *
+ * ⚠️ Warning ⚠️: GCM mode has other requirements on the key that cannot be
+ * enforced by Cryptol (for example, that it is generated uniformly at random).
+ * See Section 8.1 of [NIST-SP-800-38D].
+ */
+ interface constraint (128 <= C::KeySize)
 
-type constraint ValidIV IV = (64 >= width IV, IV >= 1)
-type constraint ValidAAD AAD = (64 >= width AAD)
-type constraint ValidTag T = (128 >= T, T >= 64)
+/**
+ * The IV has bit length `1 ≤ IV ≤ 2^64 - 1` and is a multiple of 8.
+ * [NIST-SP-800-38D] Section 5.2.1.1
+ */
+type constraint ValidIV IV = (width IV <= 64, IV >= 1, IV % 8 == 0)
+/**
+ * The associated data has bit length `AAD ≤ 2^64 - 1` and is a multiple of 8.
+ * [NIST-SP-800-38D] Section 5.2.1.1
+ */
+type constraint ValidAAD AAD = (width AAD <= 64, AAD % 8 == 0)
+/**
+ * The tag T can be of length 96, 104, 112, 120, or 128.
+ * [NIST-SP-800-38D] Section 5.2.1.2
+ */
+type constraint ValidTag T = (fin T, T % 8 == 0, T / 8 >= 12, T / 8 <= 16)
 /**
  * The plaintext (for encryption) and ciphertext (for decryption) must not
- * be too large.
- * This constraint comes from [NIST-SP-800-38D].
+ * be too large and is a multiple of 8.
+ * [NIST-SP-800-38D] Section 5.2.1.1 (for plaintexts) and Section 5.2.2
+ * (for ciphertexts).
  */
-type constraint ValidText P = (fin P, P <= 2^^39 - 256 )
+type constraint ValidText P = (fin P, P <= 2^^39 - 256, P % 8 == 0)
 
 /**
  * GCM-AE Function, [NIST-SP-800-38D] Section 7.1, Algorithm 4. This provides
  * authenticated encryption.
  */
-
-GCM_AE : { P, IV, AAD, T } (ValidText P, ValidIV IV, ValidAAD AAD, ValidTag T)
- => [C::KeySize] -> [IV] -> [P] -> [AAD] -> ([P], [T])
+GCM_AE : { len_C, len_IV, len_A, T } (ValidText len_C, ValidIV len_IV, ValidAAD len_A, ValidTag T)
+ => [C::KeySize] -> [len_IV] -> [len_C] -> [len_A] -> ([len_C], [T])
 GCM_AE k iv p a = (C, T)
   where
-    // Set names to match the spec
     CIPHk = C::encrypt k
-    type len_A = AAD
-    // Ciphertext length is the same as the input plaintext length
-    type len_C = P
 
     H = CIPHk 0
     J0 = define_J0 k iv H
     C = GCTR CIPHk (inc`{32} J0) p
     type u = len_C %^ 128 // Equivalently: 128 * len_C /^ 128 - len_C
     type v = len_A %^ 128 // Equivalently: 128 * len_A /^ 128 - len_A
-    S = GHASH`{len_A/^ 128 + P /^ 128 + 1}
+    S = GHASH`{len_A/^ 128 + len_C /^ 128 + 1}
             H (a # (0 : [v]) # C # (0 : [u]) # (`len_A : [64]) # (`len_C : [64]))
     T = MSB`{T} (GCTR CIPHk J0 S)
 
@@ -54,17 +87,14 @@ GCM_AE k iv p a = (C, T)
  * authenticated decryption.
  */
 
-GCM_AD : { C, IV, AAD, T } (ValidText C, ValidIV IV, ValidAAD AAD, ValidTag T)
- => [C::KeySize] -> [IV] -> [C] -> [AAD] -> [T] -> { valid : Bool, pt : [C] }
+GCM_AD : { len_C, len_IV, len_A, T } (ValidText len_C, ValidIV len_IV, ValidAAD len_A, ValidTag T)
+ => [C::KeySize] -> [len_IV] -> [len_C] -> [len_A] -> [T] -> { valid : Bool, pt : [len_C] }
 GCM_AD key iv ct aad tag =
   if tag == T'
   then { valid = True, pt = P }
   else { valid = False, pt = 0 }
   where
     CIPHk = C::encrypt key
-    len_IV = `IV
-    type len_A = AAD
-    type len_C = C
 
     H = CIPHk 0
     J0 = define_J0 key iv H
@@ -98,14 +128,13 @@ private
   * level due to its use of Cryptol's numeric constraint guards feature, which
   * currently only works in top-level definitions.
   *
-  * This renames the IV type to `len_IV` to better match [NIST-SP-800-38D].
+  * See [NIST-SP-800-38D] Algorithm 4, Step 2 and Algorithm 5, Step 3.
   */
   define_J0 : { len_IV } ( ValidIV len_IV ) => [C::KeySize] -> [len_IV] -> [128] -> [128]
   define_J0 k iv H
     | len_IV == 96 => iv # (0 : [31]) # (1 : [1])
     | len_IV != 96 => GHASH`{len_IV /^ 128 + 1} H (iv # (0 : [s + 64]) # (`len_IV: [64]))
     where
-      // Set names to match the spec
       type s = len_IV %^ 128  // Equivalently: 128 * len_IV /^ 128 - len_IV
 
   /**
