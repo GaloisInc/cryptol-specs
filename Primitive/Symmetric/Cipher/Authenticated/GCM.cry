@@ -31,17 +31,6 @@ parameter
   /** Block encryption function */
   E : [K] -> [128] -> [128]
 
-/**
- * GCM encryption function
- *
- * Maintaining this API for backwards compatability, but `GCM-AE` is recommended for
- * more precise spec adherence.
- */
-gcmEnc :
-  {n} (2^^39 - 256 >= n) =>
-      { key : [K], iv : [IV], aad : [AAD], pt : [n] } -> { ct : [n], tag : [T] }
-gcmEnc input = { ct = C, tag = T }
-  where (C,T) = GCM_AE input.key input.iv input.pt input.aad
 
 /**
  * GCM-AE Function, [NISTSP800-38D] Section 7.1, Algorithm 4. This provides
@@ -66,19 +55,6 @@ GCM_AE k iv p a = (C, T)
     S = GHASH`{len_A/^ 128 + P /^ 128 + 1}
             H (a # (0 : [v]) # C # (0 : [u]) # (`len_A : [64]) # (`len_C : [64]))
     T = MSB`{T} (GCTR CIPHk J0 S)
-
-/**
- * GCM decryption function.
- *
- * Maintaining this API for backwards compatibility, but `GCM-AD` is recommended
- * for more precise spec adherence.
- */
-gcmDec :
-  {n} (2^^39 - 256 >= n) =>
-  { key : [K], iv  : [IV], aad : [AAD], ct  : [n], tag : [T] } ->
-  { valid : Bool, pt : [n] }
-gcmDec input = GCM_AD input.key input.iv input.ct input.aad input.tag
-
 
 /**
  * GCM-AD Function, [NISTSP800-38D] Section 7.2, Algorithm 5. This provides
@@ -110,28 +86,7 @@ GCM_AD key iv ct aad tag =
 /**
 * Property demonstrating equivalence between `mult` and `•`.
 */
-
 property dotAndMultAreEquivalent X Y = mult X Y == X • Y
-
-/**
-* Property demonstrating equivalence between `gcmDec` and `GCM_AD`.
-*/
-decryptionApisAreEquivalent : {P} ( fin P, P <= 2^^39 - 256 )
-  => [K] -> [IV] -> [P] -> [AAD] -> [T] -> Bool
-property decryptionApisAreEquivalent key iv ct aad tag =
-      gcmDec { key=key, iv=iv, ct=ct, aad=aad, tag=tag}
-      == GCM_AD key iv ct aad tag
-
-/**
- * Property demonstrating equivalence between `gcmEnc` and `GCM_AE`.
- */
-encryptionApisAreEquivalent : {P} ( fin P, P <= 2^^39 - 256 )
-  => [K] -> [IV] -> [P] -> [AAD] -> Bool
-property encryptionApisAreEquivalent key iv pt aad = gcm_ae_output == (gcmEnc_output.ct, gcmEnc_output.tag)
-    where
-      input = { key=key, iv=iv, pt=pt, aad=aad }
-      gcmEnc_output = gcmEnc input
-      gcm_ae_output = GCM_AE key iv pt aad
 
 /**
  * Property demonstrating that decryption is the inverse of encryption.

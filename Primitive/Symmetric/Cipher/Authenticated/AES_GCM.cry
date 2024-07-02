@@ -22,16 +22,6 @@ AES256_GCM_decrypt = GCM_AD `{K=256} {E=AES256::encrypt}
 aesGcmIsSymmetric: [128] -> [96] -> [256] -> [0] -> Bool
 property aesGcmIsSymmetric key iv pt aad = gcmIsSymmetric `{T=128} { E=AES128::encrypt } key iv pt aad
 
-// GCM's decryption API equivalence must hold for AES.
-// The other type parameter sizes are chosen arbitrarily.
-aesGcmDecryptionApisAreEquivalent: [128] -> [96] -> [256] -> [128] -> Bool
-property aesGcmDecryptionApisAreEquivalent key iv ct tag = decryptionApisAreEquivalent {E=AES128::encrypt} key iv ct [] tag
-
-// GCM's encryption API equivalence must hold for AES.
-// The other type parameter sizes are chosen arbitrarily.
-aesGcmEncryptionApisAreEquivalent: [128] -> [96] -> [256] -> [128] -> Bool
-property aesGcmEncryptionApisAreEquivalent key iv pt = decryptionApisAreEquivalent {E=AES128::encrypt} key iv pt []
-
 property AES_GCM_test_vector_0 = ct == expected_ct /\ tag == expected_tag /\ valid_dec
     where
         pt = []
