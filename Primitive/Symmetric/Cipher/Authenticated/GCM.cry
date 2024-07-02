@@ -4,45 +4,38 @@ Copyright (c) 2017-2018, Galois, Inc.
 Author: Sean Weaver, Marcella Hastings
 
 This implementation follows NIST special publication 800-38D:
-[NISTSP800-38D] Morris Dworkin. Recommendation for Block Cipher Modes
+[NIST-SP-800-38D] Morris Dworkin. Recommendation for Block Cipher Modes
 of Operation: Galois/Counter Mode (GCM) and GMAC. NIST Special
 Publication 800-38D. November 2007.
 */
 
 module Primitive::Symmetric::Cipher::Authenticated::GCM where
+import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
 
-parameter
-  /** Key size */
-  type K : #
-  type constraint (fin K)
+// GCM mode is only defined for ciphers that operate over 128-bit blocks.
+interface constraint (C::BlockSize == 128)
 
-  /** Size of initialization vector */
-  type IV : #
-  type constraint (64 >= width IV, IV >= 1)
-
-  /** Size of additional authenticated data */
-  type AAD  : #
-  type constraint (64 >= width AAD)
-
-  /** Size of authentication tag */
-  type T : #
-  type constraint (128 >= T, T >= 64)
-
-  /** Block encryption function */
-  E : [K] -> [128] -> [128]
-
+type constraint ValidIV IV = (64 >= width IV, IV >= 1)
+type constraint ValidAAD AAD = (64 >= width AAD)
+type constraint ValidTag T = (128 >= T, T >= 64)
+/**
+ * The plaintext (for encryption) and ciphertext (for decryption) must not
+ * be too large.
+ * This constraint comes from [NIST-SP-800-38D].
+ */
+type constraint ValidText P = (fin P, P <= 2^^39 - 256 )
 
 /**
- * GCM-AE Function, [NISTSP800-38D] Section 7.1, Algorithm 4. This provides
+ * GCM-AE Function, [NIST-SP-800-38D] Section 7.1, Algorithm 4. This provides
  * authenticated encryption.
  */
 
-GCM_AE : { P } (fin P, P <= 2^^39 - 256 ) // This constraint comes from [NISTSP800-38D]
- => [K] -> [IV] -> [P] -> [AAD] -> ([P], [T])
+GCM_AE : { P, IV, AAD, T } (ValidText P, ValidIV IV, ValidAAD AAD, ValidTag T)
+ => [C::KeySize] -> [IV] -> [P] -> [AAD] -> ([P], [T])
 GCM_AE k iv p a = (C, T)
   where
     // Set names to match the spec
-    CIPHk = E k
+    CIPHk = C::encrypt k
     type len_A = AAD
     // Ciphertext length is the same as the input plaintext length
     type len_C = P
@@ -57,19 +50,18 @@ GCM_AE k iv p a = (C, T)
     T = MSB`{T} (GCTR CIPHk J0 S)
 
 /**
- * GCM-AD Function, [NISTSP800-38D] Section 7.2, Algorithm 5. This provides
+ * GCM-AD Function, [NIST-SP-800-38D] Section 7.2, Algorithm 5. This provides
  * authenticated decryption.
  */
 
-GCM_AD : { C }
-    ( fin C, C <= 2^^39 - 256 )  // This constraint comes from [NISTSP800-38D]
- => [K] -> [IV] -> [C] -> [AAD] -> [T] -> { valid : Bool, pt : [C] }
+GCM_AD : { C, IV, AAD, T } (ValidText C, ValidIV IV, ValidAAD AAD, ValidTag T)
+ => [C::KeySize] -> [IV] -> [C] -> [AAD] -> [T] -> { valid : Bool, pt : [C] }
 GCM_AD key iv ct aad tag =
   if tag == T'
   then { valid = True, pt = P }
   else { valid = False, pt = 0 }
   where
-    CIPHk = E key
+    CIPHk = C::encrypt key
     len_IV = `IV
     type len_A = AAD
     type len_C = C
@@ -91,13 +83,13 @@ property dotAndMultAreEquivalent X Y = mult X Y == X • Y
 /**
  * Property demonstrating that decryption is the inverse of encryption.
  *
- * This should be instantiated for each block cipher `E` that uses GCM mode.
+ * This should be instantiated for each block cipher `C::encrypt` that uses GCM mode.
  */
-gcmIsSymmetric : {P} ( fin P, P < 2^^39 - 256 )
-  => [K] -> [IV] -> [P] -> [AAD] -> Bool
+gcmIsSymmetric : { P, IV, AAD } ( ValidText P, ValidIV IV, ValidAAD AAD )
+  => [C::KeySize] -> [IV] -> [P] -> [AAD] -> Bool
 property gcmIsSymmetric key iv pt aad = dec.valid && (dec.pt == pt)
     where
-        (ct, tag) = GCM_AE key iv pt aad
+        (ct, tag : [96]) = GCM_AE key iv pt aad
         dec = GCM_AD key iv ct aad tag
 
 private
@@ -106,9 +98,9 @@ private
   * level due to its use of Cryptol's numeric constraint guards feature, which
   * currently only works in top-level definitions.
   *
-  * This renames the IV type to `len_IV` to better match [NISTSP800-38D].
+  * This renames the IV type to `len_IV` to better match [NIST-SP-800-38D].
   */
-  define_J0 : { len_IV } ( len_IV == IV) => [K] -> [len_IV] -> [128] -> [128]
+  define_J0 : { len_IV } ( ValidIV len_IV ) => [C::KeySize] -> [len_IV] -> [128] -> [128]
   define_J0 k iv H
     | len_IV == 96 => iv # (0 : [31]) # (1 : [1])
     | len_IV != 96 => GHASH`{len_IV /^ 128 + 1} H (iv # (0 : [s + 64]) # (`len_IV: [64]))
@@ -117,7 +109,7 @@ private
       type s = len_IV %^ 128  // Equivalently: 128 * len_IV /^ 128 - len_IV
 
   /**
-  * Multiplication Operation on Blocks, [NISTSP800-38D] Section
+  * Multiplication Operation on Blocks, [NIST-SP-800-38D] Section
   * 6.3, Algorithm 1. This is optimized to use Cryptol's built-in `pmult` and
   * `pmod` functions. This operation is described using little-endian
   * notation, hence the `reverse`s.
@@ -128,7 +120,7 @@ private
                           <| 1 + x + x^^2 + x^^7 + x^^128|>)
 
   /**
-  * Multiplication Operation on Blocks, [NISTSP800-38D] Section
+  * Multiplication Operation on Blocks, [NIST-SP-800-38D] Section
   * 6.3. This matches the spec very closely.
   */
 
@@ -144,7 +136,7 @@ private
                 | Vi <- V ]
 
   /**
-  * GHASH Function, [NISTSP800-38D] Section 6.4, Algorithm 2.
+  * GHASH Function, [NIST-SP-800-38D] Section 6.4, Algorithm 2.
   */
 
   GHASH : {m} (fin m) => [128] -> [m * 128] -> [128]
@@ -154,7 +146,7 @@ private
   /**
   * The output of incrementing the right-most s bits of the bit
   * string X, regarded as the binary representation of an integer, by
-  * 1 modulo 2s, [NISTSP800-38D] Sections 4.2.2 and 6.2. Care was
+  * 1 modulo 2s, [NIST-SP-800-38D] Sections 4.2.2 and 6.2. Care was
   * taken here to ensure `s` could be zero.
   */
 
@@ -164,7 +156,7 @@ private
 
   /**
   * The bit string consisting of the s right-most bits
-  * of the bit string X, [NISTSP800-38D] Section 4.2.2.
+  * of the bit string X, [NIST-SP-800-38D] Section 4.2.2.
   */
 
   LSB : {s, a} (fin s, fin a, a >= s) => [a] -> [s]
@@ -172,14 +164,14 @@ private
 
   /**
   * The bit string consisting of the s left-most bits of
-  * the bit string X, [NISTSP800-38D] Section 4.2.2.
+  * the bit string X, [NIST-SP-800-38D] Section 4.2.2.
   */
 
   MSB : {s, a} (fin s, a >= s) => [a] -> [s]
   MSB X = take X
 
   /**
-  * GCTR Function, [NISTSP800-38D] Section 6.5, Algorithm 3.
+  * GCTR Function, [NIST-SP-800-38D] Section 6.5, Algorithm 3.
   */
 
   GCTR : {a} (fin a) => ([128] -> [128]) -> [128] -> [a] -> [a]

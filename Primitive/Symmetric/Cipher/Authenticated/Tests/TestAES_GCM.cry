@@ -1,39 +1,33 @@
+import Primitive::Symmetric::Cipher::Authenticated::Instantiations::AES128_GCM as AES128_GCM
+import Primitive::Symmetric::Cipher::Authenticated::Instantiations::AES256_GCM as AES256_GCM
 
-// Cryptol instatiation of AES128-GCM and AES256-GCM, and test vectors for each.
-// Copyright (c) 2010-2024, Galois Inc.
-// www.cryptol.net
-// Author: Ajay Kumar Eeralla
+/*
+ Sources for test vectors:
 
-// Test vectors from http://luca-giuzzi.unibs.it/corsi/Support/papers-cryptography/gcm-spec.pdf
+ [GCM Submission]: David A. McGrew and John Viega. The Galois/Counter Mode of
+ Operation (GCM). Submission to NIST Modes of Operation Process. 2004.
+ Accessed from http://luca-giuzzi.unibs.it/corsi/Support/papers-cryptography/gcm-spec.pdf
 
-module Primitive::Symmetric::Cipher::Authenticated::AES_GCM where
-import `Primitive::Symmetric::Cipher::Authenticated::GCM
-import Primitive::Symmetric::Cipher::Block::AES128 as AES128
-import Primitive::Symmetric::Cipher::Block::AES256 as AES256
+ [OPENSSL]: The OpenSSL Project Authors. aesgcmtest.c. 2022.
+ Accessed from https://github.com/openssl/openssl/blob/master/test/aesgcmtest.c
+ */
 
-AES128_GCM_encrypt = GCM_AE `{K=128} {E=AES128::encrypt}
-AES128_GCM_decrypt = GCM_AD `{K=128} {E=AES128::encrypt}
-
-AES256_GCM_encrypt = GCM_AE `{K=256} {E=AES256::encrypt}
-AES256_GCM_decrypt = GCM_AD `{K=256} {E=AES256::encrypt}
-
-// GCM's symmetry property must hold for AES.
-// The other type parameter sizes are chosen arbitrarily.
-aesGcmIsSymmetric: [128] -> [96] -> [256] -> [0] -> Bool
-property aesGcmIsSymmetric key iv pt aad = gcmIsSymmetric `{T=128} { E=AES128::encrypt } key iv pt aad
-
-property AES_GCM_test_vector_0 = ct == expected_ct /\ tag == expected_tag /\ valid_dec
+// This can be `:prove`n quickly.
+// Source: [GCM Submission]
+property aes128_vector_0 = ct == expected_ct /\ tag == expected_tag /\ valid_dec
     where
         pt = []
         key = zero : [128]
         iv = zero : [96]
-        (ct, tag) = AES128_GCM_encrypt key iv pt []
-        dec = AES128_GCM_decrypt key iv ct [] tag
+        (ct, tag) = AES128_GCM::GCM_AE key iv pt []
+        dec = AES128_GCM::GCM_AD key iv ct [] tag
         expected_ct = [] : [0]
         expected_tag = 0x58e2fccefa7e3061367f1d57a4e7455a : [128]
         valid_dec = dec.valid && (dec.pt == pt)
 
-property AES_GCM_test_vector_1 =
+// This can be `:prove`n quickly.
+// Source: [GCM Submission]
+property aes128_vector_1 =
     ct == expected_ct /\ tag == expected_tag /\ valid_dec
     where
         key = zero
@@ -42,24 +36,28 @@ property AES_GCM_test_vector_1 =
         aad = []
         expected_ct = 0x0388dace60b6a392f328c2b971b2fe78 : [128]
         expected_tag = 0xab6e47d42cec13bdf53a67b21257bddf : [128]
-        (ct, tag) = AES128_GCM_encrypt key iv pt aad
-        dec = AES128_GCM_decrypt key iv ct aad tag
+        (ct, tag) = AES128_GCM::GCM_AE key iv pt aad
+        dec = AES128_GCM::GCM_AD key iv ct aad tag
         valid_dec = dec.valid && (dec.pt == pt)
 
-property AES_GCM_test_vector_2 =
+// This can be `:prove`n quickly.
+// Source: [GCM Submission]
+property aes128_vector_2 =
     ct == expected_ct /\ tag == expected_tag /\ valid_dec
     where
-        key = 0xfeffe9928665731c6d6a8f9467308308 : [128]
+        key = 0xfeffe9928665731c6d6a8f9467308308
         iv = 0xcafebabefacedbaddecaf888 : [96]
         pt = 0xd9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255
         aad = []
         expected_ct = 0x42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091473f5985
         expected_tag = 0x4d5c2af327cd64a62cf35abd2ba6fab4 : [128]
-        (ct, tag) = AES128_GCM_encrypt key iv pt aad
-        dec = AES128_GCM_decrypt key iv ct aad tag
+        (ct, tag) = AES128_GCM::GCM_AE key iv pt aad
+        dec = AES128_GCM::GCM_AD key iv ct aad tag
         valid_dec = dec.valid && (dec.pt == pt)
 
-property AES_GCM_test_vector_3 =
+// This can be `:prove`n quickly.
+// Source: [GCM Submission]
+property aes128_vector_3 =
     ct == expected_ct /\ tag == expected_tag /\ valid_dec
     where
         key = 0xfeffe9928665731c6d6a8f9467308308
@@ -68,12 +66,13 @@ property AES_GCM_test_vector_3 =
         aad = 0xfeedfacedeadbeeffeedfacedeadbeefabaddad2
         expected_ct  = 0x42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091
         expected_tag = 0x5bc94fbc3221a5db94fae95ae7121a47
-        (ct, tag) = AES128_GCM_encrypt key iv pt aad
-        dec = AES128_GCM_decrypt key iv ct aad tag
+        (ct, tag) = AES128_GCM::GCM_AE key iv pt aad
+        dec = AES128_GCM::GCM_AD key iv ct aad tag
         valid_dec = dec.valid && (dec.pt == pt)
 
-// A test case from aesgcmtest.c
-property AES_GCM_test_vector_4 =
+// This can be `:prove`n quickly.
+// Source: [OPENSSL]
+property aes256_vector_0 =
     ct == expected_ct /\ tag == expected_tag /\ valid_dec
     where
         key   = 0xeebc1f57487f51921c0465665f8ae6d1658bb26de6f8a069a3520293a572078f : [256]
@@ -82,11 +81,14 @@ property AES_GCM_test_vector_4 =
         aad   = 0x4d23c3cec334b49bdb370c437fec78de : [128]
         expected_ct   = 0xf7264413a84c0e7cd536867eb9f21736
         expected_tag  = 0x67ba0510262ae487d737ee6298f77e0c
-        (ct, tag) = AES256_GCM_encrypt key iv pt aad
-        dec = AES256_GCM_decrypt key iv ct aad tag
+        (ct, tag) = AES256_GCM::GCM_AE key iv pt aad
+        dec = AES256_GCM::GCM_AD key iv ct aad tag
         valid_dec = dec.valid && (dec.pt == pt)
 
-property AES_GCM_invalid_test_vector =
+// This can be `:prove`n quickly.
+// Source: Modified from [OPENSSL]. I just borked the tag to make sure decryption fails if
+// the tag is wrong.
+property aes256_invalid_vector_1 =
     ct == expected_ct /\ tag == expected_tag /\ ~dec.valid
     where
         key   = 0xeebc1f57487f51921c0465665f8ae6d1658bb26de6f8a069a3520293a572078f : [256]
@@ -96,5 +98,5 @@ property AES_GCM_invalid_test_vector =
         expected_ct   = 0xf7264413a84c0e7cd536867eb9f21736
         expected_tag  = 0x67ba0510262ae487d737ee6298f77e0c
         invalid_tag  = 0x67ba0510262ae487d737ee6298f77888
-        (ct, tag) = AES256_GCM_encrypt key iv pt aad
-        dec = AES256_GCM_decrypt key iv ct aad invalid_tag
+        (ct, tag) = AES256_GCM::GCM_AE key iv pt aad
+        dec = AES256_GCM::GCM_AD key iv ct aad invalid_tag
