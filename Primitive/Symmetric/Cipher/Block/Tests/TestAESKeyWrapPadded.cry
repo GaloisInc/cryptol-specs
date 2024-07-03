@@ -1,6 +1,6 @@
 module Primitive::Symmetric::Cipher::Block::Tests::TestAESKeyWrapPadded where
 
-import Primitive::Symmetric::Cipher::Block::AESKeyWrapPadded
+import Primitive::Symmetric::Cipher::Block::Instantiations::AES256_KeyWrapPadded
 
 testUnwrap : {a, b} ( fin a
                     , b <= a - 8
