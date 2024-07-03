@@ -28,8 +28,11 @@
 
 // This takes more than 25 minutes to `:prove`.
 :check dotAndMultAreEquivalent
+// This is a property of one of the internal methods for GCM
+:prove emptyInputProducesEmptyOutputGCTR
 
 // Repeat the above checks for AES256
 :l Instantiations/AES256_GCM.cry
 :check gcmIsSymmetric `{AAD=8, P=256, IV=96}
 :check dotAndMultAreEquivalent
+:prove emptyInputProducesEmptyOutputGCTR

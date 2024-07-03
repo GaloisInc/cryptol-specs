@@ -15,9 +15,15 @@ This implementation deviates from the original spec in the following ways:
 
 ⚠️ Warning ⚠️: There are several properties of GCM mode that Cryptol cannot
 enforce! These include:
-- GCM mode will fail catastrophically if a (key, IV) pair is ever reused.
+- GCM mode will fail catastrophically if a (key, IV) pair is ever reused
+  to encrypt different pieces of data.
   Implementors must manually verify that keys and IVs are chosen in such
-  a way that they will not be reused.
+  a way that they will not be reused. See [NIST-SP-800-38D] Section 8.
+- The total number of invocations of `GCM_AE` with a given key must not
+  exceed 2^{32}. This is to prevent the catastrophic failure in the previous
+  point. Cryptol cannot evaluate the "global" use of the encryption function.
+- The intermediate values used in the execution of GCM functions must be
+  secret, and not reused or recomputed for any other purpose.
 - The original spec requires an implementation with `GCM_AE` and `GCM_AD`
   must support the same ciphertext, associated data, and IV lengths for
   both algorithms.
@@ -210,3 +216,14 @@ private
     where
       Y = X ^ take`{a} (join (map CIPHk CB))
       CB = iterate inc`{32} ICB
+
+  /**
+   * GCTR should return an empty output when given an empty input.
+   * This property is described in [NIST-SP-800-38D], Algorithm 3.
+   * It can be `:prove`n.
+   */
+  emptyInputProducesEmptyOutputGCTR : [C::KeySize] -> [128] -> Bool
+  property emptyInputProducesEmptyOutputGCTR key icb =
+   zero == (GCTR CIPHk icb (zero : [0]))
+    where
+      CIPHk = C::encrypt key
