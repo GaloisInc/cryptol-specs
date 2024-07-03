@@ -1,6 +1,6 @@
 module Primitive::Symmetric::Cipher::Block::Tests::TestAESKeyWrap where
 
-import Primitive::Symmetric::Cipher::Block::AESKeyWrap
+import Primitive::Symmetric::Cipher::Block::Instantiations::AES256_KeyWrap
 
 // This section contains tests of the Key Wrap specifications using test
 // vectors from Section 4 of RFC 3394.

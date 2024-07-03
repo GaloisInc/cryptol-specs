@@ -1,7 +1,11 @@
 // Cryptol AES Key Wrap Implementation
-// Copyright (c) 2020, Galois Inc.
+//
+// @copyright Galois Inc.
+// @author Brett Boston
+// @author Ryan Scott <rscott@galois.com>
+// @author Marcella Hastings <marcella@galois.com>
 // www.cryptol.net
-
+//
 // This is a close implementation of RFC 3394:
 // https://tools.ietf.org/html/rfc3394
 // RFC 3394 provides two equivalent descriptions of AES Key Wrap, one using
@@ -9,14 +13,20 @@
 // the index-based algorithm description as that description is more similar
 // to the BoringSSL AES Key Wrap implementation.
 //
-// One important deviation: this is currently instantiated only for AES256;
-// the RFC supports all three standardized AES key sizes.
-//
 
-module Primitive::Symmetric::Cipher::Block::AESKeyWrap where
-import Primitive::Symmetric::Cipher::Block::AES256 as AES256
+module Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap where
 
-type AESKeySize = AES256::KeySize
+parameter
+  // This constraint enforces the standard key sizes of 128, 192, and
+  // 256 bits.
+  type AESKeySize' : #
+  type constraint (fin AESKeySize', AESKeySize' % 64 == 0, AESKeySize' / 64 >= 2, AESKeySize' / 64 <= 4)
+
+import Primitive::Symmetric::Cipher::Block::AES_specification as AES where
+  type KeySize' = AESKeySize'
+
+// Make the key size parameter available outside the module
+type AESKeySize = AESKeySize'
 
 // Default intial value (Section 2.2.3)
 DefaultIV : [8][8]
@@ -83,7 +93,7 @@ private
   wrapBlock : {n} (fin n, width n <= 64) =>
               [AESKeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
   wrapBlock key (A, R) j i = (A', R')
-    where B  = AES256::encrypt key (A # (R @ (i-1)))
+    where B  = AES::encrypt key (A # (R @ (i-1)))
           A' = (take`{64} B) ^ (((`n : [64]) * j) + i)
           R' = update R (i-1) (drop`{64} B)
 
@@ -91,7 +101,7 @@ private
   unwrapBlock : {n} (fin n, width n <= 64) =>
                 [AESKeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
   unwrapBlock key (A, R) j i = (A', R')
-    where B  = AES256::decrypt key ((A ^ (((`n : [64]) * j) + i)) # (R @ (i-1)))
+    where B  = AES::decrypt key ((A ^ (((`n : [64]) * j) + i)) # (R @ (i-1)))
           A' = take`{64} B
           R' = update R (i-1) (drop`{64} B)
 
