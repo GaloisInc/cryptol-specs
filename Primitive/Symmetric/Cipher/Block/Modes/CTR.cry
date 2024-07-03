@@ -1,26 +1,76 @@
-// Cryptol CBC Implementation
-// Copyright (c) 2010-2018, Galois Inc.
-// www.cryptol.net
-// Author: Ajay Kumar Eeralla
+/*
+ * Counter mode of operation, as defined in [NIST-SP-800-38A], Section 6.5.
+ *
+ * ⚠️ Warning ⚠️: CTR mode will fail catastrophically if a (key, counter) pair is ever reused.
+ * Cryptol cannot detect such failures! Please audit your implementations separately for
+ * this issue.
+ *
+ *
+ * This deviates from the original NIST spec in several ways:
+ * - The spec allows arbitrary length plaintexts. This implementation fixes
+ *   the plaintext to be an exact multiple of the block length.
+ * - The spec allows any incrementing function that generates `n` unique strings
+ *   of `m` bits in succession, where `n` is the plaintext length and `m` is the
+ *   number of bits to be updated in the counter block (n <= C::BlockSize).
+ *   This implementation fixes the incrementing function to be the standard
+ *   incrementing function: `[x]_m -> [x + 1 mod 2^m]_m` for `m = C::BlockSize`.
+ *   See Appendix B of [NIST-SP-800-38A] for discussion.
+ *
+ * @copyright Galois, Inc.
+ * @author Ajay Kumar Eeralla
+ * @author Marcella Hastings <marcella@galois.com>
+ * www.cryptol.net
+ *
+ * References:
+ * [NIST-SP-800-38A]: Morris Dworkin. Recommendation for Block Cipher
+ * Modes of Operation: Methods and Techniques. NIST Special Publication
+ * 800-38A. December 2001.
+ *
+ */
 
 module Primitive::Symmetric::Cipher::Block::Modes::CTR where
+import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
 
-// set the sizes
-type ic = [128]
-type block = [128]
+/**
+ * CTR encryption: [NIST-SP-800-38A] Section 6.5.
+ *
+ * Parameters: key, initial counter, plaintext
+ *
+ * ⚠️ Warning ⚠️: CTR mode will fail catastrophically if a (key, counter) pair is ever reused.
+ * Cryptol cannot detect such failures!
+ * The type constraint on `n` prevents counter reuse within a single encryption, but
+ * implementors must manually verify that counter reuse will not happen across multiple
+ * calls to `encrypt`.
+ */
+encrypt : {n} (fin n, n < 2^^C::BlockSize) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> [n][C::BlockSize]
+encrypt k t_1 ps = cs
+    where
+        ciph_k = C::encrypt k
+        // `ciph_k t_j` is called `O_j` in the original spec
+        cs = [p_j ^ (ciph_k t_j) | p_j <- ps | t_j <- ctrs]
+        // Counters are called `T_1, ..., T_n` in the original spec
+        ctrs = [t_1 + i | i<- [0...]]
 
+/**
+ * CTR decryption: [NIST-SP-800-38A] Section 6.5.
+ *
+ * Parameters: key, initial counter, ciphertext
+ *
+ * ⚠️ Warning ⚠️: CTR mode will fail catastrophically if a (key, counter) pair is ever reused.
+ * Cryptol cannot detect such failures!
+ */
+decrypt : {n} (fin n, n < 2^^C::BlockSize) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> [n][C::BlockSize]
+decrypt k t_1 cs = ps
+    where
+        ciph_k = C::encrypt k
+        // (ciph_k t_j) is called O_j in the original spec
+        ps = [c_j ^ (ciph_k t_j) | c_j <- cs | t_j <- ctrs]
+        // Counters are called T_1, ..., T_n in the original spec
+        ctrs = [t_1 + i | i<- [0...]]
 
-ctrEnc : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> ic -> [n]block -> [n]block
-ctrEnc enc k c ps = cs
-    where cs = [(enc k c')^p | p <- ps | c' <- ctrs]
-          ctrs = [c+i | i<- [0...]]
-
-ctrDec : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> ic -> [n]block -> [n]block
-ctrDec enc k c cs = ps
-    where ps = [(enc k c')^ct | ct <- cs | c' <- ctrs]
-          ctrs = [c+i | i<- [0...]]
-
-// This will need to be parameterized with a specific encryption function before it can be proved
-property ctrEncCorrect enc k c ps = (ctrDec enc k c (ctrEnc enc k c ps)) == ps
+// Decryption must be the inverse of encryption.
+// With high probability, this will be incredibly slow to prove, and should be
+// `:check`ed instead for each instantiation of this module.
+property encryptCorrect k c ps = (decrypt k c (encrypt k c ps)) == ps
 
 
