@@ -14,7 +14,7 @@ import Primitive::Symmetric::Cipher::Authenticated::Instantiations::AES256_GCM a
 
 // This can be `:prove`n quickly.
 // Source: [GCM Submission]
-property aes128_vector_0 = ct == expected_ct /\ tag == expected_tag /\ valid_dec
+property aes128_vector_0 = ct == expected_ct /\ tag == expected_tag /\ is_symmetric
     where
         pt = []
         key = zero : [128]
@@ -23,12 +23,15 @@ property aes128_vector_0 = ct == expected_ct /\ tag == expected_tag /\ valid_dec
         dec = AES128_GCM::GCM_AD key iv ct [] tag
         expected_ct = [] : [0]
         expected_tag = 0x58e2fccefa7e3061367f1d57a4e7455a : [128]
-        valid_dec = dec.valid && (dec.pt == pt)
+        is_symmetric = case dec of
+          Some actual_pt -> pt == actual_pt
+          None -> False
+
 
 // This can be `:prove`n quickly.
 // Source: [GCM Submission]
 property aes128_vector_1 =
-    ct == expected_ct /\ tag == expected_tag /\ valid_dec
+    ct == expected_ct /\ tag == expected_tag /\ is_symmetric
     where
         key = zero
         iv = zero : [96]
@@ -38,12 +41,15 @@ property aes128_vector_1 =
         expected_tag = 0xab6e47d42cec13bdf53a67b21257bddf : [128]
         (ct, tag) = AES128_GCM::GCM_AE key iv pt aad
         dec = AES128_GCM::GCM_AD key iv ct aad tag
-        valid_dec = dec.valid && (dec.pt == pt)
+        is_symmetric = case dec of
+          Some actual_pt -> pt == actual_pt
+          None -> False
+
 
 // This can be `:prove`n quickly.
 // Source: [GCM Submission]
 property aes128_vector_2 =
-    ct == expected_ct /\ tag == expected_tag /\ valid_dec
+    ct == expected_ct /\ tag == expected_tag /\ is_symmetric
     where
         key = 0xfeffe9928665731c6d6a8f9467308308
         iv = 0xcafebabefacedbaddecaf888 : [96]
@@ -53,12 +59,15 @@ property aes128_vector_2 =
         expected_tag = 0x4d5c2af327cd64a62cf35abd2ba6fab4 : [128]
         (ct, tag) = AES128_GCM::GCM_AE key iv pt aad
         dec = AES128_GCM::GCM_AD key iv ct aad tag
-        valid_dec = dec.valid && (dec.pt == pt)
+        is_symmetric = case dec of
+          Some actual_pt -> pt == actual_pt
+          None -> False
+
 
 // This can be `:prove`n quickly.
 // Source: [GCM Submission]
 property aes128_vector_3 =
-    ct == expected_ct /\ tag == expected_tag /\ valid_dec
+    ct == expected_ct /\ tag == expected_tag /\ is_symmetric
     where
         key = 0xfeffe9928665731c6d6a8f9467308308
         pt  = 0xd9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39
@@ -68,12 +77,15 @@ property aes128_vector_3 =
         expected_tag = 0x5bc94fbc3221a5db94fae95ae7121a47
         (ct, tag) = AES128_GCM::GCM_AE key iv pt aad
         dec = AES128_GCM::GCM_AD key iv ct aad tag
-        valid_dec = dec.valid && (dec.pt == pt)
+        is_symmetric = case dec of
+          Some actual_pt -> pt == actual_pt
+          None -> False
+
 
 // This can be `:prove`n quickly.
 // Source: [OPENSSL]
 property aes256_vector_0 =
-    ct == expected_ct /\ tag == expected_tag /\ valid_dec
+    ct == expected_ct /\ tag == expected_tag /\ is_symmetric
     where
         key   = 0xeebc1f57487f51921c0465665f8ae6d1658bb26de6f8a069a3520293a572078f : [256]
         iv    = 0x99aa3e68ed8173a0eed06684 : [96]
@@ -83,13 +95,15 @@ property aes256_vector_0 =
         expected_tag  = 0x67ba0510262ae487d737ee6298f77e0c
         (ct, tag) = AES256_GCM::GCM_AE key iv pt aad
         dec = AES256_GCM::GCM_AD key iv ct aad tag
-        valid_dec = dec.valid && (dec.pt == pt)
+        is_symmetric = case dec of
+          Some actual_pt -> pt == actual_pt
+          None -> False
 
 // This can be `:prove`n quickly.
 // Source: Modified from [OPENSSL]. I just borked the tag to make sure decryption fails if
 // the tag is wrong.
 property aes256_invalid_vector_1 =
-    ct == expected_ct /\ tag == expected_tag /\ ~dec.valid
+    ct == expected_ct /\ tag == expected_tag /\ requires_symmetry
     where
         key   = 0xeebc1f57487f51921c0465665f8ae6d1658bb26de6f8a069a3520293a572078f : [256]
         iv    = 0x99aa3e68ed8173a0eed06684 : [96]
@@ -99,4 +113,6 @@ property aes256_invalid_vector_1 =
         expected_tag  = 0x67ba0510262ae487d737ee6298f77e0c
         invalid_tag  = 0x67ba0510262ae487d737ee6298f77888
         (ct, tag) = AES256_GCM::GCM_AE key iv pt aad
-        dec = AES256_GCM::GCM_AD key iv ct aad invalid_tag
+        requires_symmetry = case (AES256_GCM::GCM_AD key iv ct aad invalid_tag) of
+            Some _ -> False
+            None -> True

@@ -86,13 +86,12 @@ GCM_AE k iv p a = (C, T)
  * GCM-AD Function, [NIST-SP-800-38D] Section 7.2, Algorithm 5. This provides
  * authenticated decryption.
  */
-
 GCM_AD : { len_C, len_IV, len_A, T } (ValidText len_C, ValidIV len_IV, ValidAAD len_A, ValidTag T)
- => [C::KeySize] -> [len_IV] -> [len_C] -> [len_A] -> [T] -> { valid : Bool, pt : [len_C] }
+ => [C::KeySize] -> [len_IV] -> [len_C] -> [len_A] -> [T] -> Option [len_C]
 GCM_AD key iv ct aad tag =
   if tag == T'
-  then { valid = True, pt = P }
-  else { valid = False, pt = 0 }
+  then Some P
+  else None
   where
     CIPHk = C::encrypt key
 
@@ -117,10 +116,13 @@ property dotAndMultAreEquivalent X Y = mult X Y == X • Y
  */
 gcmIsSymmetric : { P, IV, AAD } ( ValidText P, ValidIV IV, ValidAAD AAD )
   => [C::KeySize] -> [IV] -> [P] -> [AAD] -> Bool
-property gcmIsSymmetric key iv pt aad = dec.valid && (dec.pt == pt)
+property gcmIsSymmetric key iv pt aad = is_symmetric
     where
         (ct, tag : [96]) = GCM_AE key iv pt aad
         dec = GCM_AD key iv ct aad tag
+        is_symmetric = case dec of
+          Some actual_pt -> pt == actual_pt
+          None -> False
 
 private
   /**
