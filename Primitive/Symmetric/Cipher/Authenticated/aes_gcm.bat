@@ -1,3 +1,10 @@
+//
+// Batch file to prove & check properties of AES-GCM, with various key sizes.
+//
+// @copyright Galois, Inc.
+// @author Marcella Hastings <marcella@galois.com>
+//
+
 :l Tests/TestAES_GCM.cry
 
 :prove aes128_vector_0

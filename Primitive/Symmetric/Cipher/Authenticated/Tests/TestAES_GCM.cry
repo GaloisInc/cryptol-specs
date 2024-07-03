@@ -1,3 +1,9 @@
+/*
+ * Test vectors for AES with GCM mode, for multiple key sizes.
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
 import Primitive::Symmetric::Cipher::Authenticated::Instantiations::AES128_GCM as AES128_GCM
 import Primitive::Symmetric::Cipher::Authenticated::Instantiations::AES256_GCM as AES256_GCM
 
