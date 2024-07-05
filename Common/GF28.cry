@@ -1,43 +1,91 @@
+//
+// Implementation of the finite field GF(2^8).
+//
+// @copyright Galois, Inc
+// @author Nichole Shimanski <nls@galois.com>
+// @author Alannah Carr
+// @author Marcella Hastings <marcella@galois.com>
+//
+// This implementation is drawn from the description of the Galois Field
+// GF(2^8) in [FIPS-197u1], Section 4.
+//
+// References
+// [FIPS-197u1]: Morris J. Dworkin, Elaine B. Barker, James R. Nechvatal,
+// James Foti, Lawrence E. Bassham, E. Roback, and James F. Dray Jr.
+// Advanced Encryption Standard (AES). Federal Inf. Process. Stds. (NIST FIPS)
+// 197, update 1. May 2023.
+//
 module Common::GF28 where
 
+/**
+ * The GF28 type represents a byte, where each bit is the coefficient of a
+ * polynomial. [FIPS-197u1] Section 4, Algorithm 4.1.
+ *
+ * Both the spec and this implementation represent GF28 elements in big-endian
+ * format.
+ */
 type GF28 = [8]
 
-/** The irreducable polynomial */
+/**
+ * Add a set of `n` elements in GF28. [FIPS-197u1] Section 4.1.
+ *
+ * Addition is computed by pairwise adding the coefficients modulo 2.
+ */
+add : {n} (fin n) => [n]GF28 -> GF28
+add ps = foldl (^) zero ps
+
+/**
+ * The irreducable polynomial used in multiplication.
+ * [FIPS-197u1] Section 4.2, Algorithm 4.3
+ */
 irreducible = <| x^^8 + x^^4 + x^^3 + x + 1 |>
 
-/** Sum up a bunch of GF28 values */
-gf28Add : {n} (fin n) => [n]GF28 -> GF28
-gf28Add ps = foldl (^) zero ps
-
-/** Multiply two GF28 values */
-gf28Mult : GF28 -> GF28 -> GF28
-gf28Mult x y = pmod (pmult x y) irreducible
+/**
+ * Multiply two elements in GF28. [FIPS-197u1] Section 4.2.
+ */
+mult : GF28 -> GF28 -> GF28
+mult x y = pmod (pmult x y) irreducible
 
 /** A GF28 value to a scalar power */
-gf28Pow : GF28 -> [8] -> GF28
-gf28Pow n k = pow k
-  where   sq x  = gf28Mult x x
-          pow i = if i == 0 then 1
+pow : GF28 -> [8] -> GF28
+pow n k = pow' k
+  where   sq x  = mult x x
+          pow' i = if i == 0 then 1
                   else if i ! 0  // if odd
-                       then gf28Mult n (sq (pow (i >> 1)))
-                       else sq (pow (i >> 1))
-
-/** Compute the inverse of a value */
-gf28Inverse : GF28 -> GF28
-gf28Inverse x = gf28Pow x 254
-
-property gf28InverseCorrect x = gf28Inverse (gf28Inverse x) == x
+                       then mult n (sq (pow' (i >> 1)))
+                       else sq (pow' (i >> 1))
 
 /** Dot product of two vectors */
-gf28DotProduct : {n} (fin n) => [n]GF28 -> [n]GF28 -> GF28
-gf28DotProduct xs ys = gf28Add [ gf28Mult x y | x <- xs | y <- ys ]
+dotProduct : {n} (fin n) => [n]GF28 -> [n]GF28 -> GF28
+dotProduct xs ys = add [ mult x y | x <- xs | y <- ys ]
 
 /** Multiply a matrix by a vector */
-gf28VectorMult : {n, m} (fin n) => [n]GF28 -> [m][n]GF28 -> [m]GF28
-gf28VectorMult v ms = [ gf28DotProduct v m | m <- ms ]
+vectorMult : {n, m} (fin n) => [n]GF28 -> [m][n]GF28 -> [m]GF28
+vectorMult v ms = [ dotProduct v m | m <- ms ]
 
-/** Multiply two matrices */
-gf28MatrixMult : {n, m, k} (fin m)
+/**
+ * Multiply two matrices. [FIPS-197u1] Section 4.3
+ */
+matrixMult : {n, m, k} (fin m)
               => [n][m]GF28 -> [m][k]GF28 -> [n][k]GF28
-gf28MatrixMult xss yss = [ gf28VectorMult xs yss' | xs <- xss ]
+matrixMult xss yss = [ vectorMult xs yss' | xs <- xss ]
    where yss' = transpose yss
+
+/**
+ * [FIPS-197u1] Section 4.4, Algorithm 4.10
+ * This proves quickly!
+ */
+property inverseDefined x =
+  if x == 0 then True
+  else mult x (inverse x) == 1
+
+/**
+ * Compute the inverse of a value. [FIPS-197u1 Section 4.4, Algorithm 4.11
+ */
+inverse : GF28 -> GF28
+inverse x = pow x 254
+
+/**
+ * Correctness property for inverses. This proves quickly!
+ */
+property inverseCorrect x = inverse (inverse x) == x

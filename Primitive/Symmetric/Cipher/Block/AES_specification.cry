@@ -38,6 +38,13 @@ encrypt k = encryptWithSchedule (expandKeyEnc k)
 decrypt : [KeySize] -> [BlockSize] -> [BlockSize]
 decrypt k = decryptWithSchedule (expandKeyDec k)
 
+// This property must be true. It should be proven for each instantiation.
+// With high probability, it will be extremely slow to prove and should be `:check`ed.
+property aesIsCorrect k pt = decrypt k (encrypt k pt) == pt
+
+// The following methods should not be used in general. They are public
+// to support a confusing endianness issue in the implementation of
+// AES-GCM-SIV.
 type EncryptionKey = AES::KeySchedule Mode
 type DecryptionKey = AES::KeySchedule Mode
 
@@ -47,17 +54,14 @@ expandKeyEnc = expandKey`{Nk = AES::Nk Mode, Nr = AES::Nr Mode}
 encryptWithSchedule : EncryptionKey -> [BlockSize] -> [BlockSize]
 encryptWithSchedule = AES::encrypt params
 
-expandKeyDec : [KeySize] -> EncryptionKey
-expandKeyDec k = makeDecKey (expandKey`{Nk = AES::Nk Mode, Nr = AES::Nr Mode} k)
+private
+   expandKeyDec : [KeySize] -> EncryptionKey
+   expandKeyDec k = makeDecKey (expandKey`{Nk = AES::Nk Mode, Nr = AES::Nr Mode} k)
 
-// AES decryption with a specified KeySchedule
-decryptWithSchedule : DecryptionKey -> [BlockSize] -> [BlockSize]
-decryptWithSchedule = AES::decrypt params
+   // AES decryption with a specified KeySchedule
+   decryptWithSchedule : DecryptionKey -> [BlockSize] -> [BlockSize]
+   decryptWithSchedule = AES::decrypt params
 
-params = { encRound = AESRound, decRound = AESInvRound }
+   params = { encRound = AESRound, decRound = AESInvRound }
 
-// This property must be true; it's not provable as-is because it's not monomorphic.
-// It should be instantiated separately for each key size.
-// With high probability, it will be extremely slow to prove and should be `:check`ed.
-property aesIsCorrect k pt = decrypt k (encrypt k pt) == pt
 

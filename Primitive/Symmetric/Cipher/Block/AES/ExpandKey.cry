@@ -1,6 +1,7 @@
 module Primitive::Symmetric::Cipher::Block::AES::ExpandKey where
 
-import Common::GF28
+import Common::GF28 as GF28
+private type GF28 = GF28::GF28
 import Primitive::Symmetric::Cipher::Block::AES::State
 import Primitive::Symmetric::Cipher::Block::AES::SubByteSBox
 
@@ -36,7 +37,7 @@ keyWS seed    = xs
 
 // Key expansion
 Rcon : [8] -> [4]GF28
-Rcon i = [ gf28Pow <| x |> (i-1), 0, 0, 0]
+Rcon i = [ GF28::pow <| x |> (i-1), 0, 0, 0]
 
 SubWord : [4]GF28 -> [4]GF28
 SubWord bs = [ SubByte b | b <- bs ]
