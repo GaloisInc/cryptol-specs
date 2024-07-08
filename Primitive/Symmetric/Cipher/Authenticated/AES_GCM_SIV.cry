@@ -33,7 +33,7 @@ type Mode = KeySize / 128 - 1
 type K  = 128 + 128 * Mode
 import Primitive::Symmetric::Cipher::Block::AES_specification as AES where
   type KeySize' = KeySize
-type KS = AES::EncryptionKey
+type KS = AES::ExpandedKey
 
 
 /** Note the weird byte-swapping business (also in `blockify` and `unblockify`)
@@ -58,7 +58,7 @@ aes : KS -> [128] -> [128]
 aes ks v = byteSwap (AES::encryptWithSchedule ks (byteSwap v))
 
 expandKey : [K] -> KS
-expandKey k = AES::expandKeyEnc (byteSwap k)
+expandKey k = AES::keyExpansion (byteSwap k)
 
 /** See Figure 2 in Section 4 */
 derive_key : [K] -> [96] -> ([128], KS)

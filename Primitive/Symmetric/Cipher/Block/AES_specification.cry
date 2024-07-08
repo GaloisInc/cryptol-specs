@@ -8,6 +8,11 @@
    It operates over 128-bit blocks. To use AES with any practical application,
    use it with a mode of operation, like CTR or GCM-SIV.
 
+   References
+   [FIPS-197u1]: Morris J. Dworkin, Elaine B. Barker, James R. Nechvatal,
+   James Foti, Lawrence E. Bassham, E. Roback, and James F. Dray Jr.
+   Advanced Encryption Standard (AES). Federal Inf. Process. Stds. (NIST FIPS)
+   197, update 1. May 2023.
 */
 
 module Primitive::Symmetric::Cipher::Block::AES_specification where
@@ -33,10 +38,10 @@ type KeySize = KeySize'
 type BlockSize = 128
 
 encrypt : [KeySize] -> [BlockSize] -> [BlockSize]
-encrypt k = encryptWithSchedule (expandKeyEnc k)
+encrypt k = encryptWithSchedule (keyExpansion k)
 
 decrypt : [KeySize] -> [BlockSize] -> [BlockSize]
-decrypt k = decryptWithSchedule (expandKeyDec k)
+decrypt k = decryptWithSchedule (keyExpansion k)
 
 // This property must be true. It should be proven for each instantiation.
 // With high probability, it will be extremely slow to prove and should be `:check`ed.
@@ -45,23 +50,17 @@ property aesIsCorrect k pt = decrypt k (encrypt k pt) == pt
 // The following methods should not be used in general. They are public
 // to support a confusing endianness issue in the implementation of
 // AES-GCM-SIV.
-type EncryptionKey = AES::KeySchedule Mode
-type DecryptionKey = AES::KeySchedule Mode
+type ExpandedKey = AES::KeySchedule Mode
 
-expandKeyEnc : [KeySize] -> EncryptionKey
-expandKeyEnc = expandKey`{Nk = AES::Nk Mode, Nr = AES::Nr Mode}
+keyExpansion: [KeySize] -> ExpandedKey
+keyExpansion = expandKey`{Nk = AES::Nk Mode, Nr = AES::Nr Mode}
 
-encryptWithSchedule : EncryptionKey -> [BlockSize] -> [BlockSize]
-encryptWithSchedule = AES::encrypt params
+encryptWithSchedule :  ExpandedKey -> [BlockSize] -> [BlockSize]
+encryptWithSchedule = AES::cipher
 
 private
-   expandKeyDec : [KeySize] -> EncryptionKey
-   expandKeyDec k = makeDecKey (expandKey`{Nk = AES::Nk Mode, Nr = AES::Nr Mode} k)
+   decryptWithSchedule : ExpandedKey -> [BlockSize] -> [BlockSize]
+   decryptWithSchedule = AES::invCipher
 
-   // AES decryption with a specified KeySchedule
-   decryptWithSchedule : DecryptionKey -> [BlockSize] -> [BlockSize]
-   decryptWithSchedule = AES::decrypt params
-
-   params = { encRound = AESRound, decRound = AESInvRound }
 
 

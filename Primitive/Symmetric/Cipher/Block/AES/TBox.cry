@@ -1,7 +1,7 @@
 module Primitive::Symmetric::Cipher::Block::AES::TBox where
 
-import Common::GF28 as GF28'
-private type GF28 = GF28'::GF28
+import Common::GF28 as GF28
+private type GF28 = GF28::GF28
 import Primitive::Symmetric::Cipher::Block::AES::State
 import Primitive::Symmetric::Cipher::Block::AES::SBox
 import Primitive::Symmetric::Cipher::Block::AES::Round
@@ -10,9 +10,6 @@ import Primitive::Symmetric::Cipher::Block::AES::Round
 AESRound    rk st = genRound ShiftRows    tbox    rk st
 // AESInvRound rk st = genRound InvShiftRows tboxInv (InvMixColumns rk) st
 AESInvRound rk st = genRound InvShiftRows tboxInv rk st
-
-
-makeDecKey (a,xs,b) = (b, [ InvMixColumns rk | rk <- reverse xs ], a)
 
 genRound : (State -> State) -> TBox -> RoundKey -> State -> State
 genRound shift boxes rk st =
@@ -34,4 +31,4 @@ tboxInv = mkTBox [ 0x0e, 0x09, 0x0d, 0x0b ] sboxInv
 mkTBox : [4]GF28 -> SBox -> TBox
 mkTBox seed box = [ [ a >>> i | a <- t0 ] | i <- [0 .. 3] ]
   where
-  t0 = [ [ GF28'::mult c s | c <- seed ] | s <- box ]
+  t0 = [ [ GF28::mult c s | c <- seed ] | s <- box ]
