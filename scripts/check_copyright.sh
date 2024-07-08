@@ -1,9 +1,14 @@
 #!/bin/bash
+# Checks that every file indicated has an appropriate copyright notice.
+#
+# @copyright Galois, Inc
+# @author Marcella Hastings <marcella@galois.com>
+#
 
 COPYRIGHT="@copyright Galois"
 AUTHOR="@author .*@galois.com>"
 
-# The get-changed-files Github Action requires filenames have no spaces in them.
+# I think this will fail if any file names have spaces in them
 FILES=$@
 echo -e "Checking the following files: $FILES"
 

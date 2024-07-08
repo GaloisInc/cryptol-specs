@@ -1,3 +1,9 @@
+# Checks that every updated file has an appropriate copyright notice.
+#
+# @copyright Galois, Inc
+# @author Marcella Hastings <marcella@galois.com>
+#
+
 name: Copyright check
 on:
   pull_request:
