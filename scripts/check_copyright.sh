@@ -8,8 +8,24 @@
 COPYRIGHT="@copyright Galois"
 AUTHOR="@author .*@galois.com>"
 
-# I think this will fail if any file names have spaces in them
-FILES=$@
+# Filters the set of changed files to only those we want copyright
+# notices on -- files that likely have cryptol code in them.
+#
+# Skips images, pdfs, bibliographies, Makefiles, and infrastructure
+# (configs, ymls, dotfiles, etc.).
+interesting_files() {
+    for fname in $@ ; do
+        case $fname in
+            README.md) continue ;;
+
+            *.cry | *.tex | *.md | *.bat | *.awk)
+                echo $fname ;;
+        esac
+    done
+}
+
+# This will fail if any file names have spaces in them
+FILES=$(interesting_files $@)
 echo -e "Checking the following files: $FILES"
 
 missing_copyright=""
