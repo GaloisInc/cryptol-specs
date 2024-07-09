@@ -1,0 +1,27 @@
+# Checks that every updated file has an appropriate copyright notice.
+#
+# @copyright Galois, Inc
+# @author Marcella Hastings <marcella@galois.com>
+#
+
+name: Copyright check
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  copyright-check:
+    runs-on: ubuntu-latest
+    steps:
+      - id: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: "Run copyright script"
+        run: |
+          # The filter excludes files that were removed
+          changed_files=$(git diff --name-only --diff-filter ACMRT ${{ github.event.pull_request.base.sha }} ${{ github.sha }})
+          # NB: this will fail if any files have spaces in the names
+          bash scripts/check_copyright.sh $changed_files
+
