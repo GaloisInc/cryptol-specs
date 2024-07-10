@@ -76,11 +76,16 @@ matrixMult xss yss = [ vectorMult xs yss' | xs <- xss ]
  * This proves quickly!
  */
 property inverseDefined x =
-  if x == 0 then True
+  if x == 0 then inverse x == 0
   else mult x (inverse x) == 1
 
 /**
  * Compute the inverse of a value. [FIPS-197u1 Section 4.4, Algorithm 4.11
+ *
+ * Mathematically speaking, the inverse isnt' defined for `x = 0`, but
+ * we take the same liberties as the reference and use a method that
+ * returns 0 for the inverse of 0. This is useful for computing Algorithm
+ * 5.2 later.
  */
 inverse : GF28 -> GF28
 inverse x = pow x 254
