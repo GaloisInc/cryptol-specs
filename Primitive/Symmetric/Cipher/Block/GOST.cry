@@ -62,7 +62,7 @@ roundKey' key = [ rk@0, rk@1, rk@2, rk@3, rk@4, rk@5, rk@6, rk@7,
                  rk@7, rk@6, rk@5, rk@4, rk@3, rk@2, rk@1, rk@0
                  ]
          where rk = (keySchedule key)
-//Round function 
+//Round function
 
 roundFun : [StdBlockSize]-> [StdBlockSize] -> [StdBlockSize]
 roundFun subpt subkey = roundRes
@@ -75,7 +75,7 @@ roundFun subpt subkey = roundRes
 
 roundEncryption: [StdBlockSize] -> [StdBlockSize] -> [StdBlockSize] -> [BlockSize]
 roundEncryption lpt rpt rkey =  rpt # (lpt ^ (roundFun rpt rkey))
-                       
+
 
 //Encryption
 
@@ -101,7 +101,7 @@ roundDecryption lpt rpt rkey =  (rpt ^ (roundFun lpt rkey)) # lpt
 
 gostDecrypt: ([KeySize], [BlockSize]) ->  [BlockSize]
 gostDecrypt (key, ct) = hs'
-            where hs = [(roundDecryption left right (round_key@0))]  # [ (roundDecryption ((splitPt pT)@0) ((splitPt pT)@1) (round_key@i))
+            where hs = [(roundDecryption left right (round_key@0))]  # [(roundDecryption ((splitPt pT)@0) ((splitPt pT)@1) (round_key@i))
                                                   | i <- [1,2..31]
                                                   | pT <- hs
                                                   ]
@@ -121,13 +121,13 @@ property gostCorrect key m = gostDecrypt(key, gostEncrypt(key, m)) == m
 gostEncrypt64: ([BlockSize],[BlockSize]) -> [BlockSize]
 gostEncrypt64 (pt, key)  = gostEncrypt(key', pt)
              where key' = key # zero
-          
+
 gostDecrypt64 : ([BlockSize], [BlockSize]) -> [BlockSize]
 gostDecrypt64 (ct, key)  = gostDecrypt(key', ct)
              where key' = key #zero
-      
 
-property gostCorrect64 key m = gostDecrypt64( key, gostEncrypt64(key, m)) == m
+
+property gostCorrect64 key m = gostDecrypt64(gostEncrypt64(m, key), key) == m
 
 
 // To analyze the schemes from 5 through 20, we take |mi| = k  where k > n (block size)

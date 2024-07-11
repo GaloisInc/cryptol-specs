@@ -1,10 +1,5 @@
 :l kyber.tex
 
-:set tests=3
-
-:! printf "\nRunning 'check' commands for concatPlusCorrect property\n\n"
-:check concatPlusCorrect`{x=4, y=4}
-
 :! printf "\nRunning 'prove' commands for concatPlusCorrect property\n\n"
 :prove concatPlusCorrect`{x=0, y=0}
 :prove concatPlusCorrect`{x=1, y=1}
@@ -35,15 +30,3 @@
 
 :! printf "\nRunning 'prove' command for CorrectnessEncodeBytes property\n\n"
 :prove CorrectnessEncodeBytes
-
-:! printf "\nRunning 'check' command for CorrectnessEncodeDecode' property\n\n"
-:check CorrectnessEncodeDecode'
-
-:! printf "\nRunning 'check' command for CorrectnessEncodeDecode property\n\n"
-:check CorrectnessEncodeDecode
-
-:! printf "\nRunning 'check' command for CorrectnessPKE property\n\n"
-:check CorrectnessPKE
-
-:! printf "\nRunning 'check' command for CorrectnessKEM property\n\n"
-:check CorrectnessKEM

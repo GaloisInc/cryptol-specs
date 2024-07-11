@@ -7,7 +7,7 @@ and can be loaded like any other Cryptol module.
 Cryptol only sees the contents of triple-backtick code blocks;
 all other text here is strictly for human eyes.
 
-```
+```cryptol
 module Primitive::Asymmetric::Signature::SphincsPlus where
 ```
 
@@ -78,7 +78,7 @@ Cryptol regards the byte strings defined above as
 sequences of *bits* rather than bytes,
 so we define another infix operator to access a whole byte at a particular index.
 
-```
+```cryptol
 (~@) : {n} (fin n) => [n * 8] -> [n] -> [8]
 (~@) bytestring index = (split`{each=8} bytestring) @ index
 ```
@@ -169,7 +169,7 @@ seed, so we make it into an abstract module parameter.
 
 Translating the given function signatures:
 
-```
+```cryptol
 parameter
 
   /** A seed for a tweakable hash function or pseudo-random function. */
@@ -191,7 +191,7 @@ H seed adrs = T`{2} seed adrs
 Specific pseudo-random functions will be defined (or imported?) later.
 Translating their signatures, and guessing at the type constraints:
 
-```
+```cryptol
 parameter
   /** Pseudorandom function for pseudorandom key generation. */
   PRF : Seed -> Address -> NBytes
@@ -206,14 +206,16 @@ To facilitate working with the five different types of address,
 we define member access and update functions for each field,
 including type checks as appropriate.
 
-```
-type Layer       = [32]
-type AddressWord = [32]
-type TreeAddress = [96]
-type TreeHeight  = [32]
-type AddressType = [32]
+```cryptol
+parameter
 
-type Address = (Layer, TreeAddress, AddressType, [32], [32], [32])
+  type Layer       = [32]
+  type AddressWord = [32]
+  type TreeAddress = [96]
+  type TreeHeight  = [32]
+  type AddressType = [32]
+
+  type Address = (Layer, TreeAddress, AddressType, [32], [32], [32])
 
 WOTS_HASH  = 0 : AddressType
 WOTS_PK    = 1 : AddressType
@@ -333,7 +335,7 @@ clear that a message of `n` *bytes* is supposed to be represented in
 by making `len1` a parameter, along with a function `base_w` which
 converts from `NBytes` to an array of `len1` base-`w` digits.
 
-```
+```cryptol
 parameter
 
   /** An array of bytes of length n, where n is the security
@@ -356,19 +358,19 @@ parameter
   // needed for wots_PKgen
   type constraint (32 >= width len)
 
-type Message = NBytes
+  type Message = NBytes
 
-/** "w: the Winternitz parameter; it is an element of the set {4, 16,
-    256}." (Section 3.1) */
-type w = 2 ^^ log_w
+  /** "w: the Winternitz parameter; it is an element of the set {4, 16,
+      256}." (Section 3.1) */
+  type w = 2 ^^ log_w
 
-/** The number of base-w digits necessary to represent the number
-    `len1 * (w - 1)`. */
-type len2 = width (len1 * (w - 1)) /^ log_w
+  /** The number of base-w digits necessary to represent the number
+      `len1 * (w - 1)`. */
+  type len2 = width (len1 * (w - 1)) /^ log_w
 
-/** The number of base-w digits in a WOTS+ private key, public key, or
-    signature. */
-type len = len1 + len2
+  /** The number of base-w digits in a WOTS+ private key, public key, or
+      signature. */
+  type len = len1 + len2
 ```
 
 The formula to compute values `len = len_1 + len2` are given in the spec
@@ -407,7 +409,7 @@ Similarly, public key **PK** is not yet defined.
 Precondition: `i + s` should be less than `w`, i.e. it should not
 overflow on type `[log_w]`.
 
-```
+```cryptol
 chain : NBytes -> [log_w] -> [log_w] -> Seed -> Address -> NBytes
 chain X i s seed adrs = go s
   where
@@ -427,7 +429,7 @@ The spec's pseudocode iterates over an array `sk`,
 but never declares or initializes it.
 We'll assume it initially contains all-zero bytestrings.
 
-```
+```cryptol
 wots_SKgen : Seed -> Address -> [len]NBytes
 wots_SKgen seed adrs =
   [ PRF seed (setChain i adrs) | i <- take`{len} [0...] ]
@@ -442,7 +444,7 @@ instantiated at `len`.
 We infer the type of a public key from the final call to `T_len`,
 as the spec does not define it directly.
 
-```
+```cryptol
 wots_PKgen : Seed -> Seed -> Address -> NBytes
 wots_PKgen sk_seed pk_seed adrs =
     T`{len} pk_seed wotspkADRS tmp
@@ -465,7 +467,7 @@ a single-byte argument (denoted by `sk[i]`) does not type-check.
 ### 3.5 WOTS+ Signature Generation
 
 
-```
+```cryptol
 wots_sign : Message -> Seed -> Seed -> Address -> [len]NBytes
 wots_sign M sk_seed pk_seed adrs = sig
   where
@@ -488,7 +490,7 @@ wots_sign M sk_seed pk_seed adrs = sig
 
 ### 3.6. WOTS+ Compute Public Key from Signature
 
-```
+```cryptol
 wots_pkFromSig : [len]NBytes -> Message -> Seed -> Address -> NBytes
 wots_pkFromSig sig M pk_seed adrs =
     T`{len} pk_seed wotspkADRS tmp
@@ -522,7 +524,7 @@ wots_pkFromSig sig M pk_seed adrs =
 
 #### 4.1.1. XMSS Parameters
 
-```
+```cryptol
 parameter
   /** The height (number of levels - 1) of the tree. There are 2^h'
       leaves in the tree. */
@@ -540,7 +542,7 @@ Function `treehash` has a precondition: `s` should be a multiple of
 `2^^z`. All recursive calls in the Cryptol implementation maintain
 this invariant.
 
-```
+```cryptol
 treehash : Seed -> [32] -> TreeHeight -> Seed -> Address -> NBytes
 treehash sk_seed s z pk_seed adrs =
     if z == 0 then
@@ -559,7 +561,7 @@ treehash sk_seed s z pk_seed adrs =
 
 #### 4.1.4. XMSS Public Key Generation (Function `xmss_PKgen`)
 
-```
+```cryptol
 xmss_PKgen : Seed -> Seed -> Address -> NBytes
 xmss_PKgen sk_seed pk_seed adrs = pk
   where pk = treehash sk_seed 0 `h' pk_seed adrs
@@ -571,7 +573,7 @@ xmss_PKgen sk_seed pk_seed adrs = pk
 the siblings of the nodes in on the path from the used leaf to the
 root. It does not contain the nodes on the path itself."
 
-```
+```cryptol
 AUTH : Seed -> [32] -> Seed -> Address -> [h']NBytes
 AUTH sk_seed idx pk_seed adrs = [ mkAuth j | j <- take`{h'} [0...] ]
   where
@@ -585,13 +587,13 @@ An XMSS signature is a `(len + h') * n`-byte string consisting of
   * the authentication path AUTH for the leaf associated with the used
     WOTS+ key pair taking `h'*n` bytes.
 
-```
+```cryptol
 type SIG_XMSS = ([len]NBytes, [h']NBytes)
 ```
 
 #### 4.1.6. XMSS Signature Generation (Function `xmss_sign`)
 
-```
+```cryptol
 xmss_sign : Message -> Seed -> [32] -> Seed -> Address -> SIG_XMSS
 xmss_sign M sk_seed idx pk_seed adrs = (sig, auth)
   where
@@ -604,7 +606,7 @@ xmss_sign M sk_seed idx pk_seed adrs = (sig, auth)
 
 #### 4.1.7. XMSS Compute Public Key from Signature (Function `xmss_pkFromSig`)
 
-```
+```cryptol
 xmss_pkFromSig : [32] -> SIG_XMSS -> Message -> Seed -> Address -> NBytes
 xmss_pkFromSig idx (sig, auth) M pk_seed adrs = last nodes
   where
@@ -632,7 +634,7 @@ xmss_pkFromSig idx (sig, auth) M pk_seed adrs = last nodes
 
 #### 4.2.1. HT Parameters
 
-```
+```cryptol
 parameter
 
   /** The number or tree layers. */
@@ -640,12 +642,12 @@ parameter
   type constraint (fin d, 32 >= width d, d >= 1)
   type constraint (96 >= h - h')
 
-type h = h' * d
+  type h = h' * d
 ```
 
 #### 4.2.2. HT Key Generation (Function `ht_PKgen`)
 
-```
+```cryptol
 ht_PKgen : Seed -> Seed -> NBytes
 ht_PKgen sk_seed pk_seed = root
   where
@@ -655,7 +657,7 @@ ht_PKgen sk_seed pk_seed = root
 
 #### 4.2.3 HT Signature
 
-```
+```cryptol
 type SIG_HT = [d]SIG_XMSS
 ```
 
@@ -664,7 +666,7 @@ type SIG_HT = [d]SIG_XMSS
 BUG: The pseudocode includes the statement `SIG_HT = SIG_HT ||
 SIG_tmp` at a point where `SIG_HT` has not been initialized.
 
-```
+```cryptol
 tree_leaf_indexes : (TreeAddress, [32]) -> [d](TreeAddress, [32])
 tree_leaf_indexes (t0, l0) = take`{d} (iterate next (t0, l0))
   where
@@ -700,7 +702,7 @@ ht_sign M sk_seed pk_seed idx_tree idx_leaf = sig_ht
 
 #### 4.2.5. HT Signature Verification (Function `ht_verify`)
 
-```
+```cryptol
 ht_verify : Message -> SIG_HT -> Seed -> TreeAddress -> [32] -> NBytes -> Bool
 ht_verify M sig_ht pk_seed idx_tree idx_leaf pk_ht = (last ([M] # node) == pk_ht)
   where
@@ -722,7 +724,7 @@ ht_verify M sig_ht pk_seed idx_tree idx_leaf pk_ht = (last ([M] # node) == pk_ht
 
 ### 5.1. FORS Parameters
 
-```
+```cryptol
 parameter
 
   /** "k: the number of private key sets, trees and indices computed
@@ -742,7 +744,7 @@ type t = 2 ^^ a
 
 ### 5.2. FORS Private Key (Function `fors_SKgen`)
 
-```
+```cryptol
 fors_SKgen : Seed -> Address -> [32] -> NBytes
 fors_SKgen sk_seed adrs idx = sk
   where
@@ -760,7 +762,7 @@ Function `fors_treehash` has a precondition: `s` should be a multiple
 of `2^^z`. All recursive calls in the Cryptol implementation maintain
 this invariant.
 
-```
+```cryptol
 fors_treehash : Seed -> [32] -> TreeHeight -> Seed -> Address -> NBytes
 fors_treehash sk_seed s z pk_seed adrs =
     if z == 0 then
@@ -778,7 +780,7 @@ fors_treehash sk_seed s z pk_seed adrs =
 
 ### 5.4. FORS Public Key (Function `fors_PKgen`)
 
-```
+```cryptol
 fors_PKgen : Seed -> Seed -> Address -> NBytes
 fors_PKgen sk_seed pk_seed adrs = pk
   where
@@ -796,14 +798,14 @@ fors_PKgen sk_seed pk_seed adrs = pk
 
 The data format for a FORS signature, as given in Figure 11 of the spec.
 
-```
+```cryptol
 type SIG_FORS = [k](NBytes, [a]NBytes)
 ```
 
 BUG: The spec for `fors_sign` says `unsigned int idx = bits i*t to
 (i+1)*t - 1 of M`, but `t` should really read `a`.
 
-```
+```cryptol
 fors_sign : [k * a] -> Seed -> Seed -> Address -> SIG_FORS
 fors_sign M sk_seed pk_seed adrs = sig_fors
   where
@@ -828,7 +830,7 @@ fors_sign M sk_seed pk_seed adrs = sig_fors
 BUG: The spec for `fors_pkFromSig` says `unsigned int idx = bits i*t
 to (i+1)*t - 1 of M`, but `t` should really read `a`.
 
-```
+```cryptol
 fors_pkFromSig : SIG_FORS -> [k * a] -> Seed -> Address -> NBytes
 fors_pkFromSig sig_fors M pk_seed adrs = pk
   where
@@ -865,7 +867,7 @@ fors_pkFromSig sig_fors M pk_seed adrs = pk
 
 ### 6.1. SPHINCS+ Parameters
 
-```
+```cryptol
 parameter
 
   type Digest : *
@@ -883,7 +885,7 @@ bytes from function `sec_rand`, which is supposed to connect to a
 secure source of randomness. For the cryptol version, we pass in the
 random values as arguments.
 
-```
+```cryptol
 type SK_SPHINCS = (Seed, NBytes, Seed, NBytes)
 type PK_SPHINCS = (Seed, NBytes)
 
@@ -901,7 +903,7 @@ According to the spec, a SPHINCS+ signature "consists of an n-byte
 randomization string R, a FORS signature SIG_FORS consisting of k(a+1)
 n-byte strings, and a HT signature SIG_HT of (h + dlen)n bytes."
 
-```
+```cryptol
 type SIG_SPHINCS = (NBytes, SIG_FORS, SIG_HT)
 ```
 
@@ -925,7 +927,7 @@ BUG: The spec pseudocode assigns `SIG = SIG || R` at a point where
 `SIG` is uninitialized.
 
 
-```
+```cryptol
 spx_sign : {l} (fin l) => NBytes -> [l][8] -> SK_SPHINCS -> SIG_SPHINCS
 spx_sign opt M (sk_seed, sk_prf, pk_seed, pk_root) = sig
   where
@@ -962,7 +964,7 @@ spx_sign opt M (sk_seed, sk_prf, pk_seed, pk_root) = sig
 
 ### 6.5. SPHINCS+ Signature Verification (Function `spx_verify`)
 
-```
+```cryptol
 spx_verify : {l} (fin l) => [l][8] -> SIG_SPHINCS -> PK_SPHINCS -> Bool
 spx_verify M (R, sig_fors, sig_ht) (pk_seed, pk_root) =
     ht_verify pk_fors sig_ht pk_seed idx_tree idx_leaf pk_root

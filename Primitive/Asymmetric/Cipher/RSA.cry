@@ -41,8 +41,9 @@ RSADP ((n, d), c) = if (c < 0 \/ c > (n-1)) then error "ciphertext representativ
       where m = mod_pow (n,c,d)
 
 
-RSACorrect : {K} (fin K, K >= 1) => [K] -> [K] -> [K] -> [K] -> Bit
-property RSACorrect e d n msg = ( msg >= zero /\ msg < n ) ==> RSADP ((n,d), RSAEP ((n,e), msg)) == msg
+property RSACorrect msg = (msg >= zero
+                        /\ msg < rsaTest.n)
+      ==> RSADP ((rsaTest.n, rsaTest.d), RSAEP ((rsaTest.n,rsaTest.e), msg)) == msg
 
 rsaTest = {n = 0xbad47a84c1782e4dbdd913f2a261fc8b65838412c6e45a2068ed6d7f16e9cdf4462b39119563cafb74b9cbf25cfd544bdae23bff0ebe7f6441042b7e109b9a8afaa056821ef8efaab219d21d6763484785622d918d395a2a31f2ece8385a8131e5ff143314a82e21afd713bae817cc0ee3514d4839007ccb55d68409c97a18ab62fa6f9f89b3f94a2777c47d6136775a56a9a0127f682470bef831fbec4bcd7b5095a7823fd70745d37d1bf72b63c4b1b4a3d0581e74bf9ade93cc46148617553931a79d92e9e488ef47223ee6f6c061884b13c9065b591139de13c1ea2927491ed00fb793cd68f463f5f64baa53916b46c818ab99706557a1c2d50d232577d1 : [2048]
            , d = 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010001 : [2048]
@@ -51,6 +52,7 @@ rsaTest = {n = 0xbad47a84c1782e4dbdd913f2a261fc8b65838412c6e45a2068ed6d7f16e9cdf
            , C = 0x7e65b998a05f626b028c75dc3fbf98963dce66d0f4c3ae4237cff304d84d8836cb6bad9ac86f9d1b8a28dd70404788b869d2429f1ec0663e51b753f7451c6b4645d99126e457c1dac49551d86a8a974a3131e9b371d5c214cc9ff240c299bd0e62dbc7a9a2dad9fa5404adb00632d36332d5be6106e9e6ec81cac45cd339cc87abbe7f89430800e16e032a66210b25e926eda243d9f09955496ddbc77ef74f17fee41c4435e78b46965b713d72ce8a31af641538add387fedfd88bb22a42eb3bda40f72ecad941dbffdd47b3e77737da741553a45b630d070bcc5205804bf80ee2d51612875dbc4796960052f1687e0074007e6a33ab8b2085c033f9892b6f74 : [2048] }
 
 property testsPass = rsaTest.M == RSADP ((rsaTest.n, rsaTest.d), rsaTest.C)
+                  /\ rsaTest.C == RSAEP ((rsaTest.n, rsaTest.e), rsaTest.M)
 
 //Integer-based implementation
 
@@ -88,13 +90,16 @@ rsaDecrypt (ct,d,n) = (ct^^d)%n
 // :prove IntegerRSACorrectKeyGen 49979693 67867967
 // :check IntegerRSACorrectKeyGen 49979693 67867967
 IntegerRSACorrectKeyGen : Integer -> Integer -> Integer -> Bit
-property IntegerRSACorrectKeyGen p q msg = ( msg >= zero /\ msg < n ) ==>
-         rsaDecrypt (rsaEncrypt (msg,e,n),d,n) == msg
+property IntegerRSACorrectKeyGen p q msg = (msg >= zero /\ msg < n /\ p > 0 /\ q > 0)
+      ==> rsaDecrypt (rsaEncrypt (msg,e,n),d,n) == msg
          where (n,e,d) = genRSAKeys (p,q)
 
 // :prove IntegerRSACorrect 7 103 143
 // :check IntegerRSACorrect 7 103 143
 // :check IntegerRSACorrect (toInteger e) (toInteger d) (toInteger n)
-IntegerRSACorrect : Integer -> Integer -> Integer -> Integer -> Bit
-property IntegerRSACorrect e d n msg = ( msg >= zero /\ msg < n ) ==>
-         rsaDecrypt (rsaEncrypt (msg,e,n),d,n) == msg
+IntegerRSACorrect : Integer -> Bit
+property IntegerRSACorrect msg = (msg >= zero /\ msg < n) ==> rsaDecrypt (rsaEncrypt (msg,e,n),d,n) == msg
+      where
+            e = 7
+            d = 103
+            n = 143

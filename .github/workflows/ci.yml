@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  check:
+  load:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/galoisinc/cryptol:nightly
@@ -22,8 +22,83 @@ jobs:
         apt update
         apt install -y git
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Cryptol Version
       run: cryptol --version
     - name: Check Cryptol Files
       run: bash scripts/load_all_cry_files.sh
+
+  check:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/galoisinc/cryptol:nightly
+      options: --user root
+    needs: load
+    steps:
+    - name: Installing dependencies..
+      run: |
+        apt update
+        apt install -y git
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Check Cryptol Properties
+      run: bash scripts/test_all_properties.sh
+
+  batch-check:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/galoisinc/cryptol:nightly
+      options: --user root
+    needs: load
+    env:
+      STAGE: check
+    steps:
+    - name: Installing dependencies..
+      run: |
+        apt update
+        apt install -y git
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Run check batch files..
+      run: bash scripts/run_batch_files.sh
+
+  prove:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/galoisinc/cryptol:nightly
+      options: --user root
+    needs: [check, batch-check]
+    steps:
+    - name: Installing dependencies..
+      run: |
+        apt update
+        apt install -y git
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Prove Cryptol Properties
+      run: bash scripts/prove_all_properties.sh
+    - name: Upload Proof Artifacts..
+      uses: actions/upload-artifact@v4
+      with:
+        name: prove-artifact
+        path: |
+          manual_proves.txt
+          fast_proves.txt
+
+  batch-prove:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/galoisinc/cryptol:nightly
+      options: --user root
+    needs: [check, batch-check]
+    env:
+      STAGE: prove
+    steps:
+    - name: Installing dependencies..
+      run: |
+        apt update
+        apt install -y git
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Run prove batch files..
+      run: bash scripts/run_batch_files.sh
