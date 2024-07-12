@@ -19,7 +19,6 @@ module Primitive::Symmetric::Cipher::Block::AES_specification where
 
 import `Primitive::Symmetric::Cipher::Block::AES::Algorithm as AES
 import `Primitive::Symmetric::Cipher::Block::AES::ExpandKey
-import Primitive::Symmetric::Cipher::Block::AES::TBox
 
 parameter
    // This constraint enforces the standard key sizes of 128, 192, and

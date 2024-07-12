@@ -2,7 +2,7 @@ module Primitive::Symmetric::Cipher::Block::AES::Round where
 
 import Common::GF28 as GF28
 import Primitive::Symmetric::Cipher::Block::AES::State
-import Primitive::Symmetric::Cipher::Block::AES::SubByteSBox
+import Primitive::Symmetric::Cipher::Block::AES::SBox
 
 /**
  * One round of AES.
@@ -14,9 +14,11 @@ AESRound rk s = rk ^ MixColumns (ShiftRows (SubBytes s))
 /**
  * SubBytes applies an invertible, non-linear transformation to the state.
  * [FIPS-197u1] Section 5.1.1.
+ *
+ * It does so by applying the AES S-box independently to each byte in the state.
  */
 SubBytes : State -> State
-SubBytes state = [ [ SubByte b | b <- row ] | row <- state ]
+SubBytes state = [ [ sbox @ b | b <- row ] | row <- state ]
 
 /**
  * ShiftRows transforms the state by cycling the last three rows.
@@ -58,7 +60,7 @@ InvShiftRows state = [ row >>> shiftAmount | row <- state
  * [FIPS-197u1] Section 5.3.3.
  */
 InvSubBytes : State -> State
-InvSubBytes state = [ [ InvSubByte b | b <- row ] | row <- state ]
+InvSubBytes state = [ [ sboxInv @ b | b <- row ] | row <- state ]
 
 /**
  * Inverts the `SubBytes` function.

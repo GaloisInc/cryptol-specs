@@ -1,12 +1,31 @@
 module Primitive::Symmetric::Cipher::Block::AES::SBox where
 
-import Common::GF28
-import Primitive::Symmetric::Cipher::Block::AES::SubBytePlain
+import Common::GF28 as GF28
+private type GF28 = GF28::GF28
 
 type SBox = [256] GF28
 
+/**
+ * SBox: A non-linear substitution table for AES.
+ * [FIPS-197u1] Section 5.1.1.
+ *
+ * `GF28::inverse b` corresponds to Equation 5.2.
+ */
 sbox : SBox
-sbox = [ SubByte x | x <- [0 .. 255] ]
+sbox = [ transform (GF28::inverse b) | b <- [0 .. 255] ] where
+    // Equation 5.3.
+    transform b = GF28::add [b, (b >>> 4), (b >>> 5), (b >>> 6), (b >>> 7), c]
+    // The constant byte {01100011}.
+    c = 0x63
 
+/**
+ * Inverted substitution table for AES.
+ * [FIPS-197u1] Section 5.3.2.
+ */
 sboxInv : SBox
-sboxInv = [ InvSubByte x | x <- [0 .. 255] ]
+sboxInv = [ GF28::inverse (transformInv b) | b <- [0 .. 255] ] where
+    transformInv b = GF28::add [(b >>> 2), (b >>> 5), (b >>> 7), d]
+    d = 0x05
+
+// This `:prove`s efficiently.
+property sBoxInverts b = sboxInv @ ( sbox @ b) == b
