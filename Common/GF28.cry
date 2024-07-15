@@ -2,7 +2,7 @@
 // Implementation of the finite field GF(2^8).
 //
 // @copyright Galois, Inc
-// @author Nichole Shimanski <nls@galois.com>
+// @author Nichole Schimanski <nls@galois.com>
 // @author Alannah Carr
 // @author Marcella Hastings <marcella@galois.com>
 //

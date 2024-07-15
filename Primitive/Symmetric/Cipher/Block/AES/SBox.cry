@@ -1,7 +1,7 @@
 // The substitution table (S-box) for AES.
 //
 // @copyright Galois Inc.
-// @author Nichole Shimanski <nls@galois.com>
+// @author Nichole Schimanski <nls@galois.com>
 // @editor Brian Huffman
 // @author Marcella Hastings <marcella@galois.com>
 // www.cryptol.net
