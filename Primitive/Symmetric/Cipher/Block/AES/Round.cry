@@ -1,3 +1,10 @@
+// Sub-functions that compose a single round of AES.
+//
+// @copyright Galois Inc.
+// @author Nichole Shimanski <nls@galois.com>
+// @editor Brian Huffman
+// @author Marcella Hastings <marcella@galois.com>
+// www.cryptol.net
 module Primitive::Symmetric::Cipher::Block::AES::Round where
 
 import Common::GF28 as GF28
