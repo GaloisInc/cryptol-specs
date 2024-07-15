@@ -22,7 +22,7 @@ import `Primitive::Symmetric::Cipher::Block::AES::ExpandKey
 
 parameter
    // This constraint enforces the standard key sizes of 128, 192, and
-   // 256-bits [FIPS-PUB-197 Sections 1, 5, and 6.1].
+   // 256-bits. [FIPS-197u1] Sections 1, 5, and 6.1.
    type KeySize' : #
    type constraint (fin KeySize', KeySize' % 64 == 0, KeySize' / 64 >= 2, KeySize' / 64 <= 4)
 
