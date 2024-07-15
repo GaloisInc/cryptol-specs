@@ -1,13 +1,9 @@
-name: Cryptol
+name: Cryptol typecheck
 on:
   push:
     branches:
       - master
   pull_request:
-    branches:
-      - master
-  schedule:
-    - cron: "0 10 * * *" # 10am UTC -> 2/3am PST
   workflow_dispatch:
 
 jobs:
@@ -21,9 +17,12 @@ jobs:
       run: |
         apt update
         apt install -y git
+
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
+
     - name: Cryptol Version
       run: cryptol --version
+
     - name: Check Cryptol Files
       run: bash scripts/load_all_cry_files.sh
