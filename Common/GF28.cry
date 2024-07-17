@@ -73,7 +73,9 @@ matrixMult xss yss = [ vectorMult xs yss' | xs <- xss ]
 
 /**
  * [FIPS-197u1] Section 4.4, Algorithm 4.10
- * This proves quickly!
+ * ```cryptol
+ * :prove inverseDefined
+ * ```
  */
 property inverseDefined x =
   if x == 0 then inverse x == 0
@@ -91,6 +93,9 @@ inverse : GF28 -> GF28
 inverse x = pow x 254
 
 /**
- * Correctness property for inverses. This proves quickly!
+ * Correctness property for inverses.
+ * ```cryptol
+ * :prove inverseCorrect
+ * ```
  */
 property inverseCorrect x = inverse (inverse x) == x

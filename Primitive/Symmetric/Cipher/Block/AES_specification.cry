@@ -42,8 +42,14 @@ encrypt k = encryptWithSchedule (keyExpansion k)
 decrypt : [KeySize] -> [BlockSize] -> [BlockSize]
 decrypt k = decryptWithSchedule (keyExpansion k)
 
-// This property must be true. It should be proven for each instantiation.
-// With high probability, it will be extremely slow to prove and should be `:check`ed.
+/*
+ * This property must be true for each instantiation.
+ * With high probability, it will be extremely slow to prove.
+ *
+ * ```cryptol
+ * :check aesIsCorrect
+ * ```
+ */
 property aesIsCorrect k pt = decrypt k (encrypt k pt) == pt
 
 // The following methods should not be used in general. They are public
