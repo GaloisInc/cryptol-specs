@@ -1,55 +1,113 @@
+// Key expansion routines from [FIPS-197u1] Section 5.2.
+//
+// @copyright Galois Inc.
+// @author Nichole Schimanski <nls@galois.com>
+// @author Marcella Hastings <marcella@galois.com>
+// www.cryptol.net
+//
+//
+// References
+// [FIPS-197u1]: Morris J. Dworkin, Elaine B. Barker, James R. Nechvatal,
+// James Foti, Lawrence E. Bassham, E. Roback, and James F. Dray Jr.
+// Advanced Encryption Standard (AES). Federal Inf. Process. Stds. (NIST FIPS)
+// 197, update 1. May 2023.
+//
+
 module Primitive::Symmetric::Cipher::Block::AES::ExpandKey where
 
-import Common::GF28
+import Common::GF28 as GF28
+private type GF28 = GF28::GF28
 import Primitive::Symmetric::Cipher::Block::AES::State
-import Primitive::Symmetric::Cipher::Block::AES::SubByteSBox
+import Primitive::Symmetric::Cipher::Block::AES::SBox as Sbox
 
+/*
+ * The key length `Nk` and number of rounds `Nr` are correlated with each other:
+ * For AES-128, `Nk` = 4 and `Nr` = 10.
+ * For AES-192, `Nk` = 6 and `Nr` = 12.
+ * For AES-256, `Nk` = 8 and `Nr` = 14.
+ *
+ * See [FIPS-197u1] Section 5, Table 3.
+ */
 parameter
-  /** Number of 32 bit words in the key */
+  /** Number of 32 bit words in the key. */
   type Nk : #
-  type constraint (8 >= width Nk, Nk >= 1)
+  type constraint (fin Nk, Nk % 2 == 0, Nk / 2 >= 2, Nk / 2 <= 4)
 
-  /** Number of rounds */
+  /** Number of rounds. */
   type Nr : #
-  type constraint (8 >= width Nr, Nr >= 2)
+  type constraint (Nr == Nk + 6)
 
-expandKey : [32 * Nk] -> (RoundKey, [Nr-1]RoundKey, RoundKey)
-expandKey key = ( keys @ 0
-                , keys @@ ([1 .. (Nr - 1)] : [_][8])
-                , keys @ (`Nr : [8])
-                )
-  where   seed : [Nk][4][8]
-          seed = split (split key)
-          keys = expandKeyForever seed
-
-
-expandKeyForever : [Nk][4][8] -> [inf]RoundKey
-expandKeyForever seed = [ transpose g | g <- split (keyWS seed) ]
-
-keyWS : [Nk][4][8] -> [inf][4][8]
-keyWS seed    = xs
-     where xs = seed # [ NextWord i prev old
-                       | i    <- [ `Nk ... ]
-                       | prev <- drop`{Nk-1} xs
-                       | old  <- xs
-                       ]
-
-// Key expansion
+/**
+ * Key expansion depends on 10 fixed words denoted by `Rcon`.
+ * [FIPS-197u1] Table 5.
+ */
 Rcon : [8] -> [4]GF28
-Rcon i = [ gf28Pow <| x |> (i-1), 0, 0, 0]
+Rcon j = [ GF28::pow <| x |> (j-1), 0, 0, 0]
 
-SubWord : [4]GF28 -> [4]GF28
-SubWord bs = [ SubByte b | b <- bs ]
-
+/**
+ * Transformation on words for key expansion.
+ * [FIPS-197u1] Equation 5.10.
+ */
 RotWord : [4]GF28 -> [4]GF28
 RotWord [a0, a1, a2, a3] = [a1, a2, a3, a0]
 
-NextWord : [8] ->[4][8] -> [4][8] -> [4][8]
-NextWord i prev old = old ^ mask
-   where mask = if i % nk == 0
-                then SubWord (RotWord(prev)) ^ Rcon (i / `Nk)
-                else if (nk > 6) && (i % nk == 4)
-                     then SubWord prev
-                     else prev
+/**
+ * Transformation on words for key expansion.
+ * [FIPS-197u1] Equation 5.11.
+ */
+SubWord : [4]GF28 -> [4]GF28
+SubWord as = [ Sbox::sbox @ a | a <- as ]
 
-         nk = `Nk : [8]
+/**
+ * KeyExpansion() routine.
+ * [FIPS-197u1] Algorithm 2.
+ *
+ * The algorithm in the spec returns the key as a single object `w`. For
+ * convenience at the point of use, we split it into three parts, separating
+ * the first and last keys from the main set of round keys:
+ * `w_0, [w_1, ..., w_{Nr-1}], w_{Nr}`.
+ *
+ * In generating the key stream, we use slightly different notation compared
+ * to the original spec in an attempt at readability.
+ * `w_{i-1}` is denoted `w_1`, and `w_{i-Nk}` is denoted `w_nk`.
+ */
+expandKey : [32 * Nk] -> (RoundKey, [Nr-1]RoundKey, RoundKey)
+expandKey key = ( keys @ 0
+                , keys @@ [1 .. (Nr - 1)]
+                , keys @ `Nr
+                )
+  where
+    // Lines 2-6: The first `Nk` words of the expanded key are the key itself
+    seed : [Nk][4]GF28
+    seed = split (split key)
+
+    // Lines 7-16: A loop to recursively generate the key stream
+    ws : [inf][4]GF28
+    ws = seed # [ nextWord i w_1 w_nk
+       | i    <- [ `Nk ... ]
+       | w_1  <- drop`{Nk-1} ws
+       | w_nk <- ws
+       ]
+
+    // Generate a single word `w_i` in the key stream.
+    // Each word `w_i` is a function of the previous word `w_{i-1}`
+    // and the word `Nk` positions earlier `w_{i-Nk}`.
+    nextWord : [8] ->[4]GF28 -> [4]GF28 -> [4]GF28
+    nextWord i w_1 w_nk = w_i where
+      // Lines 8 - 13: Derive the mask `temp`.
+      temp =
+        // If `i` is a multiple of `Nk`:
+        if i % `Nk == 0 then
+          SubWord (RotWord w_1) ^ Rcon (i / `Nk)
+        // For AES-256 (Nk == 8), if `i + 4` is a multiple of 8:
+        else if (`Nk > 6) && (i % `Nk == 4) then
+          SubWord w_1
+        // For all other cases:
+        else w_1
+
+      // Line 14: Apply the mask to the `i-Nk`th word to get the `i`th word.
+      w_i = w_nk ^ temp
+
+    // Line 17: Return the resulting key stream
+    // This breaks the stream into correctly-shaped words
+    keys = [ transpose g | g <- split ws ]

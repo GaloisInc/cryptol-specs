@@ -8,17 +8,21 @@
    It operates over 128-bit blocks. To use AES with any practical application,
    use it with a mode of operation, like CTR or GCM-SIV.
 
+   References
+   [FIPS-197u1]: Morris J. Dworkin, Elaine B. Barker, James R. Nechvatal,
+   James Foti, Lawrence E. Bassham, E. Roback, and James F. Dray Jr.
+   Advanced Encryption Standard (AES). Federal Inf. Process. Stds. (NIST FIPS)
+   197, update 1. May 2023.
 */
 
 module Primitive::Symmetric::Cipher::Block::AES_specification where
 
 import `Primitive::Symmetric::Cipher::Block::AES::Algorithm as AES
 import `Primitive::Symmetric::Cipher::Block::AES::ExpandKey
-import Primitive::Symmetric::Cipher::Block::AES::TBox
 
 parameter
    // This constraint enforces the standard key sizes of 128, 192, and
-   // 256-bits [FIPS-PUB-197 Sections 1, 5, and 6.1].
+   // 256-bits. [FIPS-197u1] Sections 1, 5, and 6.1.
    type KeySize' : #
    type constraint (fin KeySize', KeySize' % 64 == 0, KeySize' / 64 >= 2, KeySize' / 64 <= 4)
 
@@ -33,31 +37,35 @@ type KeySize = KeySize'
 type BlockSize = 128
 
 encrypt : [KeySize] -> [BlockSize] -> [BlockSize]
-encrypt k = encryptWithSchedule (expandKeyEnc k)
+encrypt k = encryptWithSchedule (keyExpansion k)
 
 decrypt : [KeySize] -> [BlockSize] -> [BlockSize]
-decrypt k = decryptWithSchedule (expandKeyDec k)
+decrypt k = decryptWithSchedule (keyExpansion k)
 
-type EncryptionKey = AES::KeySchedule Mode
-type DecryptionKey = AES::KeySchedule Mode
-
-expandKeyEnc : [KeySize] -> EncryptionKey
-expandKeyEnc = expandKey`{Nk = AES::Nk Mode, Nr = AES::Nr Mode}
-
-encryptWithSchedule : EncryptionKey -> [BlockSize] -> [BlockSize]
-encryptWithSchedule = AES::encrypt params
-
-expandKeyDec : [KeySize] -> EncryptionKey
-expandKeyDec k = makeDecKey (expandKey`{Nk = AES::Nk Mode, Nr = AES::Nr Mode} k)
-
-// AES decryption with a specified KeySchedule
-decryptWithSchedule : DecryptionKey -> [BlockSize] -> [BlockSize]
-decryptWithSchedule = AES::decrypt params
-
-params = { encRound = AESRound, decRound = AESInvRound }
-
-// This property must be true; it's not provable as-is because it's not monomorphic.
-// It should be instantiated separately for each key size.
-// With high probability, it will be extremely slow to prove and should be `:check`ed.
+/*
+ * This property must be true for each instantiation.
+ * With high probability, it will be extremely slow to prove.
+ *
+ * ```cryptol
+ * :check aesIsCorrect
+ * ```
+ */
 property aesIsCorrect k pt = decrypt k (encrypt k pt) == pt
+
+// The following methods should not be used in general. They are public
+// to support a confusing endianness issue in the implementation of
+// AES-GCM-SIV.
+type ExpandedKey = AES::KeySchedule Mode
+
+keyExpansion: [KeySize] -> ExpandedKey
+keyExpansion = expandKey`{Nk = AES::Nk Mode, Nr = AES::Nr Mode}
+
+encryptWithSchedule :  ExpandedKey -> [BlockSize] -> [BlockSize]
+encryptWithSchedule = AES::cipher
+
+private
+   decryptWithSchedule : ExpandedKey -> [BlockSize] -> [BlockSize]
+   decryptWithSchedule = AES::invCipher
+
+
 

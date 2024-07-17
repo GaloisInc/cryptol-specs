@@ -1,16 +1,15 @@
 /**
  * Test vectors for AES256
  * I don't actually know where these are sourced from.
+ *
+ *  @copyright Galois Inc.
+ *  @author Nichole Schimanski <nls@galois.com>
+ *  @author Marcella Hastings <marcella@galois.com>
+ *  www.cryptol.net
  */
 import Primitive::Symmetric::Cipher::Block::AES192 as AES192
 import Primitive::Symmetric::Cipher::Block::AES128 as AES128
 import Primitive::Symmetric::Cipher::Block::AES256 as AES256
-
-// These properties must be true, but they will probably take an
-// extraordinarily long time to prove.
-property aes128Correct msg key = AES128::decrypt key (AES128::encrypt key msg) == msg
-property aes192Correct msg key = AES192::decrypt key (AES192::encrypt key msg) == msg
-property aes256Correct msg key = AES256::decrypt key (AES256::encrypt key msg) == msg
 
 // These test vectors must all come from the same place, because they use the same plaintexts
 pts = [0x6bc1bee22e409f96e93d7e117393172a
@@ -18,30 +17,47 @@ pts = [0x6bc1bee22e409f96e93d7e117393172a
   ,0x30c81c46a35ce411e5fbc1191a0a52ef
   ,0xf69f2445df4f9b17ad2b417be66c3710]
 
-property aes128TestVectorsPass = and [ AES128::encrypt key msg == ct
-                     | msg <- pts | ct <- expected_cts]
+/**
+ * ```cryptol
+ * :prove aes128TestVectorsPass
+ * ```
+ */
+property aes128TestVectorsPass = and encryptions /\ and decryptions
     where
         key = 0x2b7e151628aed2a6abf7158809cf4f3c
         expected_cts = [0x3ad77bb40d7a3660a89ecaf32466ef97
           ,0xf5d3d58503b9699de785895a96fdbaaf
           ,0x43b1cd7f598ece23881b00e3ed030688
           ,0x7b0c785e27e8ad3f8223207104725dd4]
+        encryptions = [ AES128::encrypt key msg == ct | msg <- pts | ct <- expected_cts ]
+        decryptions = [ AES128::decrypt key ct == pt | pt <- pts | ct <- expected_cts ]
 
-
-property aes192TestVectorsPass = and [ AES192::encrypt key msg == ct
-                          | msg <- pts | ct <- expected_cts]
+/**
+ * ```cryptol
+ * :prove aes192TestVectorsPass
+ * ```
+ */
+property aes192TestVectorsPass = and encryptions /\ and decryptions
     where
         key = 0x8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b
         expected_cts = [0xbd334f1d6e45f25ff712a214571fa5cc
           ,0x974104846d0ad3ad7734ecb3ecee4eef
           ,0xef7afd2270e2e60adce0ba2face6444e
           ,0x9a4b41ba738d6c72fb16691603c18e0e]
+        encryptions = [ AES192::encrypt key msg == ct | msg <- pts | ct <- expected_cts ]
+        decryptions = [ AES192::decrypt key ct == pt | pt <- pts | ct <- expected_cts ]
 
-property aes256TestVectorsPass = and [ AES256::encrypt key msg == ct
-                     | msg <- pts | ct <- expected_cts]
+/**
+ * ```cryptol
+ * :prove aes256TestVectorsPass
+ * ```
+ */
+property aes256TestVectorsPass = and encryptions /\ and decryptions
     where
         key = 0x603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4
         expected_cts = [0xf3eed1bdb5d2a03c064b5a7e3db181f8
           ,0x591ccb10d410ed26dc5ba74a31362870
           ,0xb6ed21b99ca6f4f9f153e7b1beafed1d
           ,0x23304b7a39f9f3ff067d8d8f9e24ecc7]
+        encryptions = [ AES256::encrypt key msg == ct | msg <- pts | ct <- expected_cts ]
+        decryptions = [ AES256::decrypt key ct == pt | pt <- pts | ct <- expected_cts ]

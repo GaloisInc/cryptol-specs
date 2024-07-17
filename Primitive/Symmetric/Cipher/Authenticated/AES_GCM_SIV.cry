@@ -1,5 +1,5 @@
 /* This module implements that AES-GCM-SIV mode of operations
-   as desribed in:
+   as described in:
 
    "AES-GCM-SIV: Specification and Analysis"
    by Shay Gueron, Adam Langley, and Yehuda Lindell
@@ -7,7 +7,9 @@
    See also:
    https://tools.ietf.org/html/draft-irtf-cfrg-gcmsiv-06
 
-   Copyright (c) 2018, Galois Inc.
+   @copyright Galois Inc.
+   @author Nichole Schimanski <nls@galois.com>
+   @author Marcella Hastings <marcella@galois.com>
    www.cryptol.net
 
 */
@@ -33,7 +35,7 @@ type Mode = KeySize / 128 - 1
 type K  = 128 + 128 * Mode
 import Primitive::Symmetric::Cipher::Block::AES_specification as AES where
   type KeySize' = KeySize
-type KS = AES::EncryptionKey
+type KS = AES::ExpandedKey
 
 
 /** Note the weird byte-swapping business (also in `blockify` and `unblockify`)
@@ -58,7 +60,7 @@ aes : KS -> [128] -> [128]
 aes ks v = byteSwap (AES::encryptWithSchedule ks (byteSwap v))
 
 expandKey : [K] -> KS
-expandKey k = AES::expandKeyEnc (byteSwap k)
+expandKey k = AES::keyExpansion (byteSwap k)
 
 /** See Figure 2 in Section 4 */
 derive_key : [K] -> [96] -> ([128], KS)
