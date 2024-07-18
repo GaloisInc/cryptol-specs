@@ -1,6 +1,5 @@
 module ml_kem512 = specification where
 
-type q = 3329
 type k = 2
 type eta_1 = 3
 type eta_2 = 2
