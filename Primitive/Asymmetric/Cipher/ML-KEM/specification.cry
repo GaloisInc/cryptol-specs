@@ -237,47 +237,57 @@ fast_invntt v = mul_recip128 (fast_invnttl v 1)
 // Properties and proofs of Naive and Fast NTT
 //////////////////////////////////////////////////////////////
 
-// This property demonstrates that NaiveNTT is self-inverting
-// ```
-// :prove NaiveNTT_Inverts
-// ```
-//
+/**
+ * This property demonstrates that NaiveNTT is self-inverting
+ * ```
+ * :prove NaiveNTT_Inverts
+ * ```
+ */
 NaiveNTT_Inverts : Z_q_256 -> Bit
 property NaiveNTT_Inverts f =  NaiveNTTInv (NaiveNTT f) == f
 
-// This property demonstrates that NaiveNTTInv is self-inverting
-// ```
-// :prove NaiveNTTInv_Inverts
-// ```
-//
+/**
+ * This property demonstrates that NaiveNTTInv is self-inverting
+ * ```
+ * :prove NaiveNTTInv_Inverts
+ * ```
+ */
 NaiveNTTInv_Inverts : Z_q_256 -> Bit
 property NaiveNTTInv_Inverts f =  NaiveNTT (NaiveNTTInv f) == f
 
-// This property demonstrates that `fast_ntt` is the inverse of `fast_invntt`.
-// ```
-// :prove fast_ntt_inverts
-// ```
+/**
+ * This property demonstrates that `fast_ntt` is the inverse of `fast_invntt`.
+ * ```
+ * :prove fast_ntt_inverts
+ * ```
+ */
 fast_ntt_inverts    : Z_q_256 -> Bit
 property fast_ntt_inverts    f =  fast_invntt (fast_ntt f)    == f
 
-// This property demonstrates that `fast_invntt` is the inverse of `fast_ntt`.
-// ```
-// :prove fast_invntt_inverts
-// ```
+/**
+ * This property demonstrates that `fast_invntt` is the inverse of `fast_ntt`.
+ * ```
+ * :prove fast_invntt_inverts
+ * ```
+ */
 fast_invntt_inverts : Z_q_256 -> Bit
 property fast_invntt_inverts f =  fast_ntt    (fast_invntt f) == f
 
-// This property demonstrates that `naive_ntt` is equivalent to `fast_ntt`.
-// ```
-// :prove naive_fast_ntt_equiv
-// ```
+/**
+ * This property demonstrates that `naive_ntt` is equivalent to `fast_ntt`.
+ * ```
+ * :prove naive_fast_ntt_equiv
+ * ```
+ */
 naive_fast_ntt_equiv : Z_q_256 -> Bit
 property naive_fast_ntt_equiv f =  NaiveNTT f == fast_ntt f
 
-// This property demonstrates that `naive_invntt` is equivalent to `fast_invntt`.
-// ```
-// :prove naive_fast_invntt_equiv
-// ```
+/**
+ * This property demonstrates that `naive_invntt` is equivalent to `fast_invntt`.
+ * ```
+ * :prove naive_fast_invntt_equiv
+ * ```
+ */
 naive_fast_invntt_equiv : Z_q_256 -> Bit
 property naive_fast_invntt_equiv f =  NaiveNTTInv f == fast_invntt f
 
