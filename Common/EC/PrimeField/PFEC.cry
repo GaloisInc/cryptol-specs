@@ -1,32 +1,134 @@
-// NIST Prime Field Elliptic Curves defined in FIPS-186-4
+/*
+ Prime Field Elliptic Curves in short-Weierstrass form.
+
+ This contains an implementation of elliptic curve operations for curves
+ in short-Weierstrass form, defined over the finite field GF(P), where P
+ is an odd prime power (short-Weierstrass form can also be used over the
+ binary field GF(2^m), but curves of this form were deprecated in
+ [SP-800-186] Section 3.3 and are not supported by this implementation).
+
+ This implementation draws from several sources:
+ - The NIST recommendation for elliptic curves defines allowable domain
+   parameters and the group operation (`ec_add`) [SP-800-186]. Note that
+   this module is generic over domain parameters.
+ - The digital signature standard includes some elliptic curve operations
+   needed to implement ECDSA [FIPS-186-5].
+ - Additional routines for elliptic curves are defined in [MATH-2008].
+ - The SEC1 standard consolidates many of the other resources cited herein.
+   In some cases, we refer to both the original source and [SEC1-v2].
+
+ References
+ [FIPS-186-5]: National Institute of Standards and Technology. Digital
+   Signature Standard (DSS). (Department of Commerce, Washington, D.C.),
+   Federal Information Processing Standards Publication (FIPS) NIST FIPS 186-5.
+   February 2023.
+   https://doi.org/10.6028/NIST.FIPS.186-5
+ [MATH-2008]: Mathematical routines for the NIST prime elliptic curves.
+    March 2008.
+    https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=e1b05e600bfcdeecf8555bc9948483c5fbbdd478
+ [SP-800-186]: Lily Chen, Dustin Moody, Karen Randall, Andrew Regenscheid,
+    Angela Robinson. Recommendations for Discrete Logarithm-based Cryptography:
+    Elliptic Curve Domain Parameters. (National Institute of Standards and
+    Technology, Gaithersburg, MD), NIST Special Publication (SP) NIST SP
+    800-186. February 2023.
+    https://doi.org/10.6028/NIST.SP.800-186
+  [SEC1-v2]: Daniel R. L. Brown. SEC 1: Elliptic Curve Cryptography, Version
+    2.0. Standards for Efficient Cryptography. May 2009.
+    http://www.secg.org/sec1-v2.pdf
+*/
 
 module Common::EC::PrimeField::PFEC where
 
 import Common::ModDivZ
 
 parameter
-    type P : #     //  The prime modulus
-    type constraint (fin P, P >= 5)
-    n  : Integer   //  Prime order of generator G
-    b  : Z P       //  Curve coefficient
-    Gx : Z P       //  Curve coordinates
-    Gy : Z P       //    of generator point
+    /**
+     * Field size `P`.
+     * P must be an odd prime power and is not divisible by 3.
+     * I don't think there's a way to enforce "prime power" in the type
+     * constraint.
+     * [SP-800-186] Section 2.1.1.
+     */
+    type P : #
+    type constraint (fin P, P >= 5, P % 2 == 1, P % 3 != 0)
 
+    /**
+     * Order of the base point `G = (Gx, Gy)`. This must be prime.
+     * [SP-800-186] Section 2.1.1.
+     */
+    n : Integer
+
+    /**
+     * Coefficients that define the curve.
+     * For a curve in short-Weierstrass form, the equation is
+     * `y^2 = x^3 + ax + b`.
+     * See the `curveCoefficientsAreValid` property.
+     * [SP-800-186] Section 2.1.1.
+     */
+    a : Z P
+    b : Z P
+
+    /**
+     * Coordinates of the generator point `G = (Gx, Gy)`.
+     */
+    Gx : Z P
+    Gy : Z P
+
+/**
+ * A point that satisfies the curve equation `y^2 = x^3 + ax + b`.
+ * Sometimes this is called an "affine" representation.
+ * [SP-800-186] Section 2.1.1.
+ */
 type Point = (Z P, Z P)
-G = (Gx, Gy) : Point
-a = -3 : Z P       //  Curve coefficient
 
-// A convenient representation of the point-at-infinity identity element
-oo = (0, 0) : Point
-
-// Check that a given point is on the curve
+/**
+ * Check that a given point is on the curve -- either it is the point at
+ * infinity or it satisfies the curve equation.
+ * [SP-800-186] Section 2.1.1.
+ * [SEC1-v2] Section 2.2.1.
+ */
 valid_point : Point -> Bit
 valid_point (x, y) =
     ((x, y) == oo) \/ (y ^^ 2 == x ^^ 3 + a * x + b)
 
-// (From http://www.secg.org/sec1-v2.pdf, section 2.2.1)
-// Addition of two elliptic curve points in E(F_p) (p an odd prime)
-// on a curve with coefficient 'a'. Note 'b' is unused.
+/**
+ * Convenient `Point` representation of the base point `G`.
+ */
+G = (Gx, Gy) : Point
+
+/**
+ * A convenient representation of the point-at-infinity identity element
+ * TODO: cite?
+ */
+oo = (0, 0) : Point
+
+
+/**
+ * For curves in short-Weierstrass form, the following inequality must hold:
+ *      4a^3 + 27b^2 != 0
+ * [SP-800-186] Section 2.1.1.
+ */
+property curveCoefficientsAreValid = (4 * a^^3 + _27 * b^^2 != 0)
+    where
+        _27 : Z P
+        _27 = fromInteger 27
+
+// TODO: needs a primality checker!
+// property p_prime = prime `P
+// property n_prime = prime n
+
+/**
+ * G must be of order `n`.
+ * This `:proves`, but takes up to 20 seconds on our largest curves.
+ */
+property gOrderIsN = (n + 1) ~* G == G
+
+/**
+ * Addition of two elliptic curve points on a prime-field curve
+ * with coefficient 'a'. Note 'b' is unused.
+ * [SP-800-186] Appendix A.1.1.
+ * [SEC1-v2] Section 2.2.1.
+ */
 ec_add : Point -> Point -> Point
 ec_add (x1, y1) (x2, y2) =
     if (x1, y1) ==    oo     then  (x2, y2)  //  Rules 1, 2
@@ -34,24 +136,47 @@ ec_add (x1, y1) (x2, y2) =
      | (x1, y1) == (x2, -y1) then     oo     //  Rule 3
                              else   (x, y)   //  Rules 4, 5
     where  // all arithmetic operations are mod p
-    x = L ^^ 2 - x1 - x2
-    y = L * (x1 - x) - y1
-    L = if x1 == x2 then (3 * x1 ^^ 2 + a) %/ (2 * y1)
+    x = lambda ^^ 2 - x1 - x2
+    y = lambda * (x1 - x) - y1
+    lambda = if x1 == x2 then (3 * x1 ^^ 2 + a) %/ (2 * y1)
                     else (y2 - y1) %/ (x2 - x1)
 
-// Scalar multiplication of a curve point using double-and-add
+/**
+ * Scalar multiplication of a curve point.
+
+ * Scalar multiplication is the process of adding `P` to itself `k` times.
+ * Here we use the double-and-add algorithm.
+ *
+ * [MATH-2008] Routine 2.2.10 describes scalar multiplication for points
+ * in the projective form, but it's not exactly this.
+ * [SEC1-v2] Section 2.2.1 refers to the double-and-add algorithm but doesn't
+ * specify it explicitly.
+ *
+ * TODO: This might only allow `k < P`. Find a valid spec and check all assumptions.
+ */
 scmul : Integer -> Point -> Point
-scmul m xy =
-    if m == 0 then oo
-     | m == 1 then xy
-     | even m then scmul (m / 2) (ec_add xy xy)
-              else ec_add xy (scmul (m - 1) xy)
+scmul k P =
+    if k == 0 then oo
+     | k == 1 then P
+     | even k then scmul (k / 2) (ec_add P P)
+              else ec_add P (scmul (k - 1) P)
 
 (~*) = scmul  // infix form of operator
 
-// TODO: needs a primality checker!
-// property p_prime = prime p
-// property n_prime = prime n
-property valid_n = (n + 1) ~* G == G
+/**
+ * Scalar multiplication of a curve point must also be on the curve.
+ * ```cryptol
+ * :check valid_scmul
+ * ```
+ * This is remarkably slow even to check.
+ */
 property valid_scmul m = valid_point (m ~* G)
+
+/**
+ * Scalar multiplication is commutative.
+ * ```cryptol
+ * :check valid_scmul
+ * ```
+ * This is remarkably slow even to check.
+ */
 property scmul_commutes m m' = m ~* (m' ~* G) == m' ~* (m ~* G)
