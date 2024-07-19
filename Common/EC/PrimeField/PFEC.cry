@@ -40,6 +40,7 @@
 module Common::EC::PrimeField::PFEC where
 
 import Common::ModDivZ
+import Common::utils(mp_mod_inv)
 
 parameter
     /**
@@ -98,7 +99,8 @@ G = (Gx, Gy) : Point
 
 /**
  * A convenient representation of the point-at-infinity identity element
- * TODO: cite?
+ * TODO: cite? This is not correct; there is no affine representation of
+ * the point at infinity.
  */
 oo = (0, 0) : Point
 
@@ -180,3 +182,26 @@ property valid_scmul m = valid_point (m ~* G)
  * This is remarkably slow even to check.
  */
 property scmul_commutes m m' = m ~* (m' ~* G) == m' ~* (m ~* G)
+
+private
+    type ProjectivePoint = (Z P, Z P, Z P)
+
+    /**
+     * Convert from an affine to a projective representation.
+     * [MATH-2008] Routine 2.2.1.
+     */
+    to_projective : Point -> ProjectivePoint
+    to_projective (x, y) = (x, y, 1)
+
+    /**
+     * Convert from a projective to an affine representation.
+     * [MATH-2008] Routine 2.2.2.
+     */
+    to_affine : ProjectivePoint -> Option Point
+    to_affine (x, y, z) =
+        // The point at infinity does not have an affine representation.
+        if z == 0 then None
+        else Some (lambda ^^2 * x, lambda ^^3 * y)
+      where
+        lambda = mp_mod_inv z
+
