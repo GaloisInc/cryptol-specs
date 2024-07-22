@@ -84,7 +84,7 @@ parameter
  * Sometimes this is called an "affine" representation.
  * [SP-800-186] Section 2.1.1.
  */
-enum Point = Infinity | Affine (Z P, Z P)
+enum Point = Infinity | Affine (Z P) (Z P)
 
 /**
  * Check equality of two affine points.
@@ -97,8 +97,8 @@ affineEq p1 p2 = case p1 of
   Infinity -> case p2 of
       Infinity -> True
       _ -> False
-  Affine (x, y) -> case p2 of
-      Affine (x', y') -> (x == x') && (y == y')
+  Affine x y -> case p2 of
+      Affine x' y' -> (x == x') && (y == y')
       _ -> False
 
 /**
@@ -110,12 +110,12 @@ affineEq p1 p2 = case p1 of
 valid_point : Point -> Bit
 valid_point point = case point of
     Infinity -> True
-    Affine (x, y) -> (y ^^ 2 == x ^^ 3 + a * x + b)
+    Affine x y -> (y ^^ 2 == x ^^ 3 + a * x + b)
 
 /**
  * Convenient `Point` representation of the base point `G`.
  */
-G = Affine (Gx, Gy) : Point
+G = Affine Gx Gy : Point
 
 /**
  * For curves in short-Weierstrass form, the following inequality must hold:
@@ -146,10 +146,10 @@ property gOrderIsN = affineEq G ((n + 1) ~* G)
 ec_add : Point -> Point -> Point
 ec_add point1 point2 = case point1 of
     Infinity -> point2
-    Affine (x1, y1) -> case point2 of
+    Affine x1 y1 -> case point2 of
         Infinity -> point1
-        Affine (x2, y2) -> if (x1 == x2) && (y1 == -y2) then Infinity
-            else Affine (x, y)
+        Affine x2 y2 -> if (x1 == x2) && (y1 == -y2) then Infinity
+            else Affine x y
             where  // all arithmetic operations are mod p
                 x = lambda ^^ 2 - x1 - x2
                 y = lambda * (x1 - x) - y1
@@ -206,7 +206,7 @@ private
     to_projective : Point -> ProjectivePoint
     to_projective p = case p of
         Infinity -> (1, 1, 0)
-        Affine (x, y) -> (x, y, 1)
+        Affine x y -> (x, y, 1)
 
     /**
      * Convert from a projective to an affine representation.
@@ -216,7 +216,7 @@ private
     to_affine (x, y, z) =
         // The point at infinity does not have an affine representation.
         if z == 0 then Infinity
-        else Affine (lambda ^^2 * x, lambda ^^3 * y)
+        else Affine (lambda ^^2 * x) (lambda ^^3 * y)
       where
         lambda = mp_mod_inv z
 
