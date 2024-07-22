@@ -39,12 +39,13 @@
 @copyright Galois, Inc
 @author Max Orhai
 @author Marcella Hastings <marcella@galois.com>
+@author Sean Weaver
 */
 
 module Common::EC::PrimeField::PFEC where
 
 import Common::ModDivZ
-import Common::utils(mp_mod_inv)
+import Common::utils(half, mp_mod_inv, mul2, mul3, mul4, mul8)
 
 parameter
     /**
@@ -70,7 +71,6 @@ parameter
      * See the `curveCoefficientsAreValid` property.
      * [SP-800-186] Section 2.1.1.
      */
-    a : Z P
     b : Z P
 
     /**
@@ -78,6 +78,19 @@ parameter
      */
     Gx : Z P
     Gy : Z P
+
+/*
+ * Coefficient that defines the curve.
+ * For a curve in short-Weierstrass form, the equation is
+ * `y^2 = x^3 + ax + b`.
+ * See the `curveCoefficientsAreValid` property.
+ * [SP-800-186] Section 2.1.1.
+ *
+ * Due to restrictions on the underlying elliptic curve operations, the
+ * a-coordinate must be -3. This is the case for all NIST-standardized
+ * prime order fields in short-Weierstrass form.
+ */
+a = -3 : Z P
 
 /**
  * A point that satisfies the curve equation `y^2 = x^3 + ax + b`.
@@ -106,6 +119,7 @@ affineEq p1 p2 = case p1 of
  * infinity or it satisfies the curve equation.
  * [SP-800-186] Section 2.1.1.
  * [SEC1-v2] Section 2.2.1.
+ * [MATH-2008] Routine 2.2.5.
  */
 valid_point : Point -> Bit
 valid_point point = case point of
@@ -142,9 +156,11 @@ property gOrderIsN = affineEq G ((n + 1) ~* G)
  * with coefficient 'a'. Note 'b' is unused.
  * [SP-800-186] Appendix A.1.1.
  * [SEC1-v2] Section 2.2.1.
+ *
+ * This uses the less-efficient affine representation.
  */
-ec_add : Point -> Point -> Point
-ec_add point1 point2 = case point1 of
+add : Point -> Point -> Point
+add point1 point2 = case point1 of
     Infinity -> point2
     Affine x1 y1 -> case point2 of
         Infinity -> point1
@@ -173,8 +189,8 @@ scmul : Integer -> Point -> Point
 scmul k P =
     if k == 0 then Infinity
      | k == 1 then P
-     | even k then scmul (k / 2) (ec_add P P)
-              else ec_add P (scmul (k - 1) P)
+     | even k then scmul (k / 2) (add P P)
+              else add P (scmul (k - 1) P)
 
 (~*) = scmul  // infix form of operator
 
@@ -197,7 +213,9 @@ property valid_scmul m = valid_point (m ~* G)
 property scmul_commutes m m' = affineEq (m ~* (m' ~* G)) (m' ~* (m ~* G))
 
 private
-    type ProjectivePoint = (Z P, Z P, Z P)
+    type ProjectivePoint = { x : Z P, y : Z P, z : Z P }
+    InfinityProjective = { x=1, y=1, z=0 }
+    Zero = { x=0, y=0, z=0 }
 
     /**
      * Convert from an affine to a projective representation.
@@ -205,18 +223,124 @@ private
      */
     to_projective : Point -> ProjectivePoint
     to_projective p = case p of
-        Infinity -> (1, 1, 0)
-        Affine x y -> (x, y, 1)
+        Infinity -> InfinityProjective
+        Affine x y -> { x=x, y=y, z=1 }
 
     /**
      * Convert from a projective to an affine representation.
      * [MATH-2008] Routine 2.2.2.
      */
     to_affine : ProjectivePoint -> Point
-    to_affine (x, y, z) =
+    to_affine p =
         // The point at infinity does not have an affine representation.
-        if z == 0 then Infinity
-        else Affine (lambda ^^2 * x) (lambda ^^3 * y)
+        if p.z == 0 then Infinity
+        else Affine (lambda ^^2 * p.x) (lambda ^^3 * p.y)
       where
-        lambda = mp_mod_inv z
+        lambda = mp_mod_inv p.z
 
+    /**
+     * Double an elliptic curve point.
+     * [MATH-2008] Routine 2.2.6.
+     *
+     * Requires that curve parameter `a = -3 mod P`
+     */
+    ec_double : ProjectivePoint -> ProjectivePoint
+    ec_double S =
+      if S.z == 0 then InfinityProjective /* 5: r <- (1,1,0) and return */
+      else
+        {x = r18, y = r23, z = r13}
+      where r7  = S.z ^^ 2                /*  7: t4 <- (t3)^2 */
+            r8  = S.x - r7                /*  8: t5 <- t1 - t4 */
+            r9  = S.x + r7                /*  9: t4 <- t1 + t4 */
+            r10 = r9 * r8                 /* 10: t5 <- t4 * t5 */
+            r11 = mul3 r10                /* 11: t4 <- 3 * t5 */
+            r12 = S.z * S.y               /* 12: t3 <- t3 * t2 */
+            r13 = mul2 r12                /* 13: t3 <- 2 * t3 */
+            r14 = S.y ^^ 2                /* 14: t2 <- (t2)^2 */
+            r15 = S.x * r14               /* 15: t5 <- t1 * t2 */
+            r16 = mul4 r15                /* 16: t5 <- 4 * t5 */
+            r17 = r11 ^^ 2                /* 17: t1 <- (t4)^2 */
+            r18 = r17 - (mul2 r16)        /* 18: t1 <- t1 - 2 * t5 */
+            r19 = r14 ^^ 2                /* 19: t2 <- (t2)^2 */
+            r20 = mul8 r19                /* 20: t2 <- 8 * t2 */
+            r21 = r16 - r18               /* 21: t5 <- t5 - t1 */
+            r22 = r11 * r21               /* 22: t5 <- t4 * t5 */
+            r23 = r22 - r20               /* 23: t2 <- t5 - t2 */
+
+    /**
+     * Addition of two elliptic curve points.
+     *
+     * This will fail in the case where either of the input points are the
+     * point at infinity or if the two input points are the same (if they
+     * are the same, will return a default value of (0,0,0)).
+     * [MATH2008] Routine 2.2.7.
+     */
+    ec_add : ProjectivePoint -> ProjectivePoint -> ProjectivePoint
+    ec_add S T =
+      if r13 == 0 then
+        if r14 == 0 then Zero       /* 17: r <- (0,0,0) and return */
+        else InfinityProjective     /* 19: r <- (1,1,0) and return */
+      else
+        {x = r32, y = r37, z = r27} /* 38: Rx <- t1; Ry <- t2, Rz <- t3 */
+      where (t1, t2, t3, t4, t5, t6) = if T.z == 1
+              then (S.x, S.y, S.z, T.x, T.y, T.z) /* 1: we set t6 = 1 to make L25 work */
+              else (r5, r7, S.z, T.x, T.y, r3)
+
+            r3 = T.z                /* 3: t6 <- T_z */
+            r4 = r3 ^^ 2            /* 4: t7 <- t6^2 */
+            r5 = S.x * r4           /* 5: t1 <- t1 * t7 */
+            r6 = r3 * r4            /* 6: t7 <- t6 * t7 */
+            r7 = S.y * r6           /* 7: t2 <- t2 * t7 */
+
+            r9  = t3 ^^ 2           /*  9: t7 <- (t3)^2 */
+            r10 = t4 * r9           /* 10: t4 <- t4 * t7 */
+            r11 = t3 * r9           /* 11: t7 <- t3 * t7 */
+            r12 = t5 * r11          /* 12: t5 <- t5 * t7 */
+            r13 = t1 - r10          /* 13: t4 <- t1 - t4 */
+            r14 = t2 - r12          /* 14: t5 <- t2 - t5 */
+
+            r22 = mul2 t1 - r13     /* 22: t1 <- 2*t1 - t4 */
+            r23 = mul2 t2 - r14     /* 23: t2 <- 2*t2 - t5 */
+
+            r25 = t3 * t6           /* 25: t3 <- t3 * t6 if Tz =/= 1.
+                                       If T.z == 1, then t6 == 1 and this is a no-op */
+
+            r27 = r25 * r13          /* 27: t3 <- t3 * t4 */
+            r28 = r13 ^^ 2           /* 28: t7 <- (t4)^2 */
+            r29 = r13 * r28          /* 29: t4 <- t4 * t7 */
+            r30 = r22 * r28          /* 30: t7 <- t1 * t7 */
+            r31 = r14 ^^ 2           /* 31: t1 <- (t5)^2 */
+            r32 = r31 - r30          /* 32: t1 <- t1 - t7 */
+            r33 = r30 - (mul2 r32)   /* 33: t7 <- t7 - 2*t1 */
+            r34 = r14 * r33          /* 34: t5 <- t5 * t7 */
+            r35 = r23 * r29          /* 35: t4 <- t2 * t4 */
+            r36 = r34 - r35          /* 36: t2 <- t5 - t4 */
+            r37 = half r36           /* 37: t2 <- t2/2 */
+
+
+    /**
+     * Checked addition of two elliptic curve points.
+     *
+     * This method handles the cases where either of the input points are the
+     * point at infinity or if the input points are the same.
+     * [MATH2008] Routine 2.2.8.
+     */
+    ec_full_add : ProjectivePoint -> ProjectivePoint -> ProjectivePoint
+    ec_full_add S T =
+      if S.z == 0 then T
+       | T.z == 0 then S
+       | R == {x = 0, y = 0, z = 0} then ec_double S
+       else R
+      where R = ec_add S T
+
+    /**
+     * Checked subtraction of two elliptic curve points.
+     *
+     * This method handles the cases where either of the input points are the
+     * point at infinity or if the input points are the same.
+     * [MATH2008] Routine 2.2.8.
+     */
+    ec_full_sub : ProjectivePoint -> ProjectivePoint -> ProjectivePoint
+    ec_full_sub S T = R
+      where U = {x = T.x, y = -T.y, z = T.z}
+            R = ec_full_add S U
