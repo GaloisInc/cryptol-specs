@@ -45,7 +45,7 @@
 module Common::EC::PrimeField::PFEC where
 
 import Common::ModDivZ
-import Common::utils(half, mp_mod_inv, mul2, mul3, mul4, mul8)
+import Common::utils(half, mp_mod_inv, mul2, mul3, mul4, mul8, ZtoBV)
 
 parameter
     /**
@@ -344,3 +344,38 @@ private
     ec_full_sub S T = R
       where U = {x = T.x, y = -T.y, z = T.z}
             R = ec_full_add S U
+
+    /**
+     * Scalar multiplication on projective points
+     * [MATH-2008] Routine 2.2.10.
+     *
+     * The routine requires that 0 <= d < P. We enforce this constraint by
+     * setting the type of `d` to be `Z P`, then converting it to an integer
+     * for all actual uses.
+     */
+    ec_mult : Z P -> ProjectivePoint -> ProjectivePoint
+    ec_mult d S =
+      if d == 0 then to_projective Infinity
+       | d == 1 then S
+       | S.z == 0 then to_projective Infinity
+      else Rs ! 1 /* the iteration stops at 1, not 0 */
+      where
+        S' = if S.z != 1 then to_projective (to_affine S) else S
+        // Get bits of `d` and `3d`. The width of `ks` is set to be large
+        // enough to hold the full width of `hs`.
+        ks = ZtoBV d : [width P + 2]
+        hs = 3 * ks
+
+        // The specified routine initializes R = S and skips the first high-bit
+        // of `hs`, assuming that it's 1. Since we're a little floppy with our
+        // bitwise conversion, we'll start at 0 and iterate over all the bits.
+        Rs = [ InfinityProjective ] #
+             [ if hi && ~ki then ec_full_add doubleR S
+                | ~hi && ki then ec_full_sub doubleR S
+                else doubleR
+               where doubleR = ec_double Ri
+             | ki <- ks | hi <- hs | Ri <- Rs ]
+
+
+
+
