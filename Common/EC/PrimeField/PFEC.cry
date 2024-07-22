@@ -84,7 +84,22 @@ parameter
  * Sometimes this is called an "affine" representation.
  * [SP-800-186] Section 2.1.1.
  */
-type Point = (Z P, Z P)
+enum Point = Infinity | Affine (Z P, Z P)
+
+/**
+ * Check equality of two affine points.
+ *
+ * I don't know if this is explicitly specified anywhere because it's just
+ * by definition.
+ */
+affineEq : Point -> Point -> Bool
+affineEq p1 p2 = case p1 of
+  Infinity -> case p2 of
+      Infinity -> True
+      _ -> False
+  Affine (x, y) -> case p2 of
+      Affine (x', y') -> (x == x') && (y == y')
+      _ -> False
 
 /**
  * Check that a given point is on the curve -- either it is the point at
@@ -93,21 +108,14 @@ type Point = (Z P, Z P)
  * [SEC1-v2] Section 2.2.1.
  */
 valid_point : Point -> Bit
-valid_point (x, y) =
-    ((x, y) == oo) \/ (y ^^ 2 == x ^^ 3 + a * x + b)
+valid_point point = case point of
+    Infinity -> True
+    Affine (x, y) -> (y ^^ 2 == x ^^ 3 + a * x + b)
 
 /**
  * Convenient `Point` representation of the base point `G`.
  */
-G = (Gx, Gy) : Point
-
-/**
- * A convenient representation of the point-at-infinity identity element
- * TODO: cite? This is not correct; there is no affine representation of
- * the point at infinity.
- */
-oo = (0, 0) : Point
-
+G = Affine (Gx, Gy) : Point
 
 /**
  * For curves in short-Weierstrass form, the following inequality must hold:
@@ -127,7 +135,7 @@ property curveCoefficientsAreValid = (4 * a^^3 + _27 * b^^2 != 0)
  * G must be of order `n`.
  * This `:proves`, but takes up to 20 seconds on our largest curves.
  */
-property gOrderIsN = (n + 1) ~* G == G
+property gOrderIsN = affineEq G ((n + 1) ~* G)
 
 /**
  * Addition of two elliptic curve points on a prime-field curve
@@ -136,15 +144,16 @@ property gOrderIsN = (n + 1) ~* G == G
  * [SEC1-v2] Section 2.2.1.
  */
 ec_add : Point -> Point -> Point
-ec_add (x1, y1) (x2, y2) =
-    if (x1, y1) ==    oo     then  (x2, y2)  //  Rules 1, 2
-     | (x2, y2) ==    oo     then  (x1, y1)  //  Rules 1, 2
-     | (x1, y1) == (x2, -y1) then     oo     //  Rule 3
-                             else   (x, y)   //  Rules 4, 5
-    where  // all arithmetic operations are mod p
-    x = lambda ^^ 2 - x1 - x2
-    y = lambda * (x1 - x) - y1
-    lambda = if x1 == x2 then (3 * x1 ^^ 2 + a) %/ (2 * y1)
+ec_add point1 point2 = case point1 of
+    Infinity -> point2
+    Affine (x1, y1) -> case point2 of
+        Infinity -> point1
+        Affine (x2, y2) -> if (x1 == x2) && (y1 == -y2) then Infinity
+            else Affine (x, y)
+            where  // all arithmetic operations are mod p
+                x = lambda ^^ 2 - x1 - x2
+                y = lambda * (x1 - x) - y1
+                lambda = if x1 == x2 then (3 * x1 ^^ 2 + a) %/ (2 * y1)
                     else (y2 - y1) %/ (x2 - x1)
 
 /**
@@ -162,7 +171,7 @@ ec_add (x1, y1) (x2, y2) =
  */
 scmul : Integer -> Point -> Point
 scmul k P =
-    if k == 0 then oo
+    if k == 0 then Infinity
      | k == 1 then P
      | even k then scmul (k / 2) (ec_add P P)
               else ec_add P (scmul (k - 1) P)
@@ -185,7 +194,7 @@ property valid_scmul m = valid_point (m ~* G)
  * ```
  * This is remarkably slow even to check.
  */
-property scmul_commutes m m' = m ~* (m' ~* G) == m' ~* (m ~* G)
+property scmul_commutes m m' = affineEq (m ~* (m' ~* G)) (m' ~* (m ~* G))
 
 private
     type ProjectivePoint = (Z P, Z P, Z P)
@@ -195,17 +204,19 @@ private
      * [MATH-2008] Routine 2.2.1.
      */
     to_projective : Point -> ProjectivePoint
-    to_projective (x, y) = (x, y, 1)
+    to_projective p = case p of
+        Infinity -> (1, 1, 0)
+        Affine (x, y) -> (x, y, 1)
 
     /**
      * Convert from a projective to an affine representation.
      * [MATH-2008] Routine 2.2.2.
      */
-    to_affine : ProjectivePoint -> Option Point
+    to_affine : ProjectivePoint -> Point
     to_affine (x, y, z) =
         // The point at infinity does not have an affine representation.
-        if z == 0 then None
-        else Some (lambda ^^2 * x, lambda ^^3 * y)
+        if z == 0 then Infinity
+        else Affine (lambda ^^2 * x, lambda ^^3 * y)
       where
         lambda = mp_mod_inv z
 
