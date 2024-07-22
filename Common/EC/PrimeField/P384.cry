@@ -1,4 +1,8 @@
-// NIST P-384 Elliptic Curve defined in FIPS-186-4
+/*
+ NIST P-384 Elliptic Curve defined in FIPS-186-4
+ @copyright Galois, Inc
+ @author Max Orhai
+*/
 
 module Common::EC::PrimeField::P384 =
        Common::EC::PrimeField::PFEC where

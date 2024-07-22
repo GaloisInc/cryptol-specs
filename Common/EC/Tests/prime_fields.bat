@@ -1,3 +1,6 @@
+// @copyright Galois, Inc
+// @author Marcella Hastings <marcella@galois.com>
+
 :l Common/EC/PrimeField/P192.cry
 :prove curveCoefficientsAreValid
 

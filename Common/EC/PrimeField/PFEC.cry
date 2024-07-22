@@ -35,6 +35,10 @@
   [SEC1-v2]: Daniel R. L. Brown. SEC 1: Elliptic Curve Cryptography, Version
     2.0. Standards for Efficient Cryptography. May 2009.
     http://www.secg.org/sec1-v2.pdf
+
+@copyright Galois, Inc
+@author Max Orhai
+@author Marcella Hastings <marcella@galois.com>
 */
 
 module Common::EC::PrimeField::PFEC where
