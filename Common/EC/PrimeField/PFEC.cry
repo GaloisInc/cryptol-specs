@@ -156,25 +156,22 @@ property curveCoefficientsAreValid = (4 * a^^3 + _27 * b^^2 != 0)
 property gOrderIsN = affineEq G ((`n + 1) ~* G)
 
 /**
- * Addition of two elliptic curve points on a prime-field curve with
- * coefficient 'a'. Note 'b' is unused.
- * [SP-800-186] Appendix A.1.1.
- * [SEC1-v2] Section 2.2.1.
- *
- * This uses the less-efficient affine representation.
+ * Add two elliptic curve points together.
  */
 add : Point -> Point -> Point
-add point1 point2 = case point1 of
-    Infinity -> point2
-    Affine x1 y1 -> case point2 of
-        Infinity -> point1
-        Affine x2 y2 -> if (x1 == x2) && (y1 == -y2) then Infinity
-            else Affine x y
-            where  // all arithmetic operations are mod p
-                x = lambda ^^ 2 - x1 - x2
-                y = lambda * (x1 - x) - y1
-                lambda = if x1 == x2 then (3 * x1 ^^ 2 + a) %/ (2 * y1)
-                    else (y2 - y1) %/ (x2 - x1)
+add p1 p2 = to_affine (ec_full_add (to_projective p1) (to_projective p2))
+
+/**
+ * Double an elliptic curve point.
+ */
+double : Point -> Point
+double p = to_affine (ec_double (to_projective p))
+
+/**
+ * Subtract one curve point from another.
+ */
+sub : Point -> Point -> Point
+sub p1 p2 = to_affine (ec_full_sub (to_projective p1) (to_projective p2))
 
 /**
  * Scalar multiplication of a curve point.
@@ -371,3 +368,37 @@ private
                 else doubleR
                where doubleR = ec_double Ri
              | ki <- ks | hi <- hs | Ri <- Rs ]
+
+    /**
+     * Addition of two elliptic curve points on a prime-field curve with
+     * coefficient 'a'. Note 'b' is unused.
+     * [SP-800-186] Appendix A.1.1.
+     * [SEC1-v2] Section 2.2.1.
+     *
+     * This uses the less-efficient affine representation.
+     */
+    affine_add : Point -> Point -> Point
+    affine_add point1 point2 = case point1 of
+        Infinity -> point2
+        Affine x1 y1 -> case point2 of
+            Infinity -> point1
+            Affine x2 y2 -> if (x1 == x2) && (y1 == -y2) then Infinity
+                else Affine x y
+                where  // all arithmetic operations are mod p
+                    x = lambda ^^ 2 - x1 - x2
+                    y = lambda * (x1 - x) - y1
+                    lambda = if x1 == x2 then (3 * x1 ^^ 2 + a) %/ (2 * y1)
+                        else (y2 - y1) %/ (x2 - x1)
+
+    /**
+     * Proof that the affine and projective versions of addition are equivalent.
+     *
+     * ```repl
+     * :set tests=100000
+     * :check addsAreEquivalent
+     * ```
+     */
+    property addsAreEquivalent p1 p2 = if valid_point p1 && valid_point p2
+        then affineEq (affine_add p1 p2) (to_affine (ec_full_add (to_projective p1) (to_projective p2)))
+        else True
+
