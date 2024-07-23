@@ -1,0 +1,82 @@
+/*
+Test vectors for the P224 elliptic curve.
+
+I don't know where these came from, although they seem to be used in other EC
+implementations as test vectors.
+
+@copyright Galois Inc
+@author Sean Weaver
+@author Marcella Hastings <marcellahastings@gmail.com>
+
+*/
+
+import Common::EC::PrimeField::P224 as P224
+import Common::utils(BVtoZ)
+
+// NB: We haven't implemented the point compression functions yet, but if we
+// do we can use these test vectors
+//property p224_G_compress = P224::affineEq (P224::compress P224::G)
+//    0x00000002b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21
+//property mp_mod_sqrt_224_correct = p224::mp_mod_sqrt_correct
+
+
+S = P224::Affine (BVtoZ 0x6eca814ba59a930843dc814edd6c97da95518df3c6fdf16e9a10bb5b)
+     (BVtoZ 0xef4b497f0963bc8b6aec0ca0f259b89cd80994147e05dc6b64d7bf22)
+
+T = P224::Affine (BVtoZ 0xb72b25aea5cb03fb88d7e842002969648e6ef23c5d39ac903826bd6d)
+     (BVtoZ 0xc42a8a4d34984f0b71b5b4091af7dceb33ea729c1a2dc8b434f10c34)
+
+/**
+ * ```repl
+ * :prove sAndTAreValid
+ * ```
+ */
+property sAndTAreValid = P224::valid_point S && P224::valid_point T
+
+/**
+ * ```repl
+ * :prove additionVectorPasses
+ * ```
+ */
+property additionVectorPasses = P224::affineEq (P224::add S T) R
+  where R = P224::Affine (BVtoZ 0x236f26d9e84c2f7d776b107bd478ee0a6d2bcfcaa2162afae8d2fd15)
+             (BVtoZ 0xe53cc0a7904ce6c3746f6a97471297a0b7d5cdf8d536ae25bb0fda70)
+
+/**
+ * ```repl
+ * :prove subtractionVectorPasses
+ * ```
+ */
+property subtractionVectorPasses = P224::affineEq (P224::sub S T) R
+  where R = P224::Affine (BVtoZ 0xdb4112bcc8f34d4f0b36047bca1054f3615413852a7931335210b332)
+             (BVtoZ 0x90c6e8304da4813878c1540b2396f411facf787a520a0ffb55a8d961)
+
+/**
+ * ```repl
+ * :prove doubleVectorPasses
+ * ```
+ */
+property doubleVectorPasses = P224::affineEq (P224::double S) R
+  where R = P224::Affine (BVtoZ 0xa9c96f2117dee0f27ca56850ebb46efad8ee26852f165e29cb5cdfc7)
+             (BVtoZ 0xadf18c84cf77ced4d76d4930417d9579207840bf49bfbf5837dfdd7d)
+
+/**
+ * ```repl
+ * :prove scalarMultVectorPasses
+ * ```
+ */
+property scalarMultVectorPasses = P224::affineEq (P224::scmul d S) R
+  where d = toInteger 0xa78ccc30eaca0fcc8e36b2dd6fbb03df06d37f52711e6363aaf1d73b
+        R = P224::Affine (BVtoZ 0x96a7625e92a8d72bff1113abdb95777e736a14c6fdaacc392702bca4)
+             (BVtoZ 0x0f8e5702942a3c5e13cd2fd5801915258b43dfadc70d15dbada3ed10)
+
+/*
+// NB: We haven't implemented the joint-scalar-multiply algorithm yet (aka
+// twin_mult), but when we do we can use this test vector.
+property p224_joint_scalar_multiply_example =
+  p224::joint_scalar_multiply_example R S T d e
+  where d = BVtoZ 0xa78ccc30eaca0fcc8e36b2dd6fbb03df06d37f52711e6363aaf1d73b
+        e = BVtoZ 0x54d549ffc08c96592519d73e71e8e0703fc8177fa88aa77a6ed35736
+        R = {x = BVtoZ 0xdbfe2958c7b2cda1302a67ea3ffd94c918c5b350ab838d52e288c83e,
+             y = BVtoZ 0x2f521b83ac3b0549ff4895abcc7f0c5a861aacb87acbc5b8147bb18b}
+*/
