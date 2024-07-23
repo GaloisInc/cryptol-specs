@@ -135,6 +135,12 @@ NaiveNTTInv f = [term*(recip 128) | term <- ParametricNTTInv f (recip zeta)]
 //////////////////////////////////////////////////////////////
 // This section specifies fast O(N log N) NTT and Inverse NTT
 //
+// A readable explanation of the derivation of this form of
+// the NTT is in "A Complete Beginner Guide to the Number
+// Theoretic Transform (NTT)" by Ardianto Satriawan,
+// Rella Mareta, and Hanho Lee. Available from:
+//    https://eprint.iacr.org/2024/585
+//
 // This section Copyright Amazon.com, Inc. or its affiliates.
 //////////////////////////////////////////////////////////////
 
