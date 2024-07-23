@@ -1,5 +1,5 @@
 /*
- NIST P-384 Elliptic Curve defined in FIPS-186-4
+ NIST P-384 Elliptic Curve defined in [FIPS-186-5]
  @copyright Galois, Inc
  @author Max Orhai
 */

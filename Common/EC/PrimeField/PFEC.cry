@@ -135,6 +135,10 @@ G = Affine Gx Gy : Point
  * For curves in short-Weierstrass form, the following inequality must hold:
  *      4a^3 + 27b^2 != 0
  * [SP-800-186] Section 2.1.1.
+ *
+ * ```repl
+ * :prove curveCoefficientsAreValid
+ * ```
  */
 property curveCoefficientsAreValid = (4 * a^^3 + _27 * b^^2 != 0)
     where
@@ -148,12 +152,15 @@ property curveCoefficientsAreValid = (4 * a^^3 + _27 * b^^2 != 0)
 /**
  * G must be of order `n`.
  * This `:proves`, but takes up to 20 seconds on our largest curves.
+ * ```repl
+ * :prove gOrderIsN
+ * ```
  */
 property gOrderIsN = affineEq G ((n + 1) ~* G)
 
 /**
- * Addition of two elliptic curve points on a prime-field curve
- * with coefficient 'a'. Note 'b' is unused.
+ * Addition of two elliptic curve points on a prime-field curve with
+ * coefficient 'a'. Note 'b' is unused.
  * [SP-800-186] Appendix A.1.1.
  * [SEC1-v2] Section 2.2.1.
  *
@@ -175,40 +182,32 @@ add point1 point2 = case point1 of
 /**
  * Scalar multiplication of a curve point.
 
- * Scalar multiplication is the process of adding `P` to itself `k` times.
- * Here we use the double-and-add algorithm.
+ * Scalar multiplication is the process of adding `P` to itself `k` times
+ * for an integer `k`.
  *
- * [MATH-2008] Routine 2.2.10 describes scalar multiplication for points
- * in the projective form, but it's not exactly this.
- * [SEC1-v2] Section 2.2.1 refers to the double-and-add algorithm but doesn't
- * specify it explicitly.
- *
- * TODO: This might only allow `k < P`. Find a valid spec and check all assumptions.
+ * [SEC1-v2] Section 2.2.1 doesn't explicitly specify an algorithm, but it
+ * notes that it can be computed efficiently using the addition rule and a
+ * variant of the double-and-add algorithm.
+ * In this implementation, we use a variant from [MATH-2008] (see `ec_mult`).
  */
 scmul : Integer -> Point -> Point
-scmul k P =
-    if k == 0 then Infinity
-     | k == 1 then P
-     | even k then scmul (k / 2) (add P P)
-              else add P (scmul (k - 1) P)
+scmul k p = to_affine (ec_mult (fromInteger k) (to_projective p))
 
 (~*) = scmul  // infix form of operator
 
 /**
  * Scalar multiplication of a curve point must also be on the curve.
- * ```cryptol
+ * ```repl
  * :check valid_scmul
  * ```
- * This is remarkably slow even to check.
  */
 property valid_scmul m = valid_point (m ~* G)
 
 /**
  * Scalar multiplication is commutative.
- * ```cryptol
+ * ```repl
  * :check valid_scmul
  * ```
- * This is remarkably slow even to check.
  */
 property scmul_commutes m m' = affineEq (m ~* (m' ~* G)) (m' ~* (m ~* G))
 
@@ -273,7 +272,7 @@ private
      * This will fail in the case where either of the input points are the
      * point at infinity or if the two input points are the same (if they
      * are the same, will return a default value of (0,0,0)).
-     * [MATH2008] Routine 2.2.7.
+     * [MATH-2008] Routine 2.2.7.
      */
     ec_add : ProjectivePoint -> ProjectivePoint -> ProjectivePoint
     ec_add S T =
@@ -323,7 +322,7 @@ private
      *
      * This method handles the cases where either of the input points are the
      * point at infinity or if the input points are the same.
-     * [MATH2008] Routine 2.2.8.
+     * [MATH-2008] Routine 2.2.8.
      */
     ec_full_add : ProjectivePoint -> ProjectivePoint -> ProjectivePoint
     ec_full_add S T =
@@ -338,7 +337,7 @@ private
      *
      * This method handles the cases where either of the input points are the
      * point at infinity or if the input points are the same.
-     * [MATH2008] Routine 2.2.8.
+     * [MATH-2008] Routine 2.2.8.
      */
     ec_full_sub : ProjectivePoint -> ProjectivePoint -> ProjectivePoint
     ec_full_sub S T = R
@@ -375,7 +374,3 @@ private
                 else doubleR
                where doubleR = ec_double Ri
              | ki <- ks | hi <- hs | Ri <- Rs ]
-
-
-
-
