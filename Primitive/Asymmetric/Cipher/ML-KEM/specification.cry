@@ -210,6 +210,16 @@ fast_ntt : Z_q_256 -> Z_q_256
 fast_ntt v = fast_nttl v 1
 
 // Fast recursive GS-Inverse-NTT
+//
+// The "coerceSize" calls in this code are required to satisfy
+// Cryptol's type constraint solver that this code really
+// is type-correct by effectively changing a static type-check
+// into a dynamic one.
+//
+// As the static type constraint prover improves, this
+// might become unncessesary.
+//
+// See https://github.com/GaloisInc/cryptol/issues/1489 for more details.
 gs_butterfly :
     {m, hm}
     (m >= 2, m <= 8, hm >= 1, hm <= 7, hm == m - 1) =>
