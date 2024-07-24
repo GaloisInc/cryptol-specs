@@ -197,7 +197,8 @@ fast_nttl v k
   | lv == 2 => ct_butterfly`{lv,lv-1} v (zeta_expc@k)
 
   // Recursive case. Butterfly what we have, then recurse on each half,
-  // concatenate the results and return
+  // concatenate the results and return. As above, we need coerceSize
+  // here (twice) to satisfy the type checker.
   | lv  > 2 => coerceSize ((fast_nttl`{lv-1} s0 (k * 2)) #
                            (fast_nttl`{lv-1} s1 (k * 2 + 1)))
                 where
@@ -242,7 +243,8 @@ fast_invnttl v k
   | lv == 2 => gs_butterfly`{lv,lv-1} v (zeta_expc@k)
 
   // Recursive case. Recurse on each half,
-  // concatenate the results, butterfly that, and return
+  // concatenate the results, butterfly that, and return.
+  // As above, we need coerceSize here (twice) to satisfy the type checker.
   | lv  > 2 => gs_butterfly`{lv,lv-1} t (zeta_expc@k)
                 where
                   // Split t into two halves s0 and s1
