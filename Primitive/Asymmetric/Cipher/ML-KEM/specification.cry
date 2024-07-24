@@ -166,6 +166,16 @@ zeta_expc = [ 1, 1729, 2580, 3289, 2642, 630, 1897, 848,
               1722, 1212, 1874, 1029, 2110, 2935, 885, 2154 ]
 
 // Fast recursive CT-NTT
+//
+// The "coerceSize" calls in this code are required to satisfy
+// Cryptol's type constraint solver that this code really
+// is type-correct by effectively changing a static type-check
+// into a dynamic one.
+//
+// As the static type constraint prover improves, this
+// might become unncessesary.
+//
+// See https://github.com/GaloisInc/cryptol/issues/1489 for more details.
 ct_butterfly :
     {m, hm}
     (m >= 2, m <= 8, hm >= 1, hm <= 7, hm == m - 1) =>
