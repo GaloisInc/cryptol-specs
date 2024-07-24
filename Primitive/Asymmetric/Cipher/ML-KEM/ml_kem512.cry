@@ -1,3 +1,11 @@
+/*
+@copyright Galois, Inc
+@author Marios Georgiou <marios@galois.com>
+
+@copyright Amazon.com or its affiliates.
+@editor Rod Chapman <rodchap@amazon.com>
+*/
+
 module ml_kem512 = specification where
 
 type k = 2

@@ -1,9 +1,11 @@
 /* Recursive NTT
 
-   John D. Ramsdell -- The MITRE Corporation -- May 2022
+   @author John D. Ramsdell -- The MITRE Corporation -- May 2022
 
-   Copyright (c) 2023 The MITRE Corporation.  Distributed under a
-   standard, three-clause BSD license shown in ntt_license.txt. */
+   @copyright 2023 The MITRE Corporation.
+   @license Distributed under a standard, three-clause BSD license
+   shown in ntt_license.txt.
+*/
 
 /* It type checks, and it succeeds in meeting the ntt_correct property
    below which says that the inverse ntt applied to the ntt is the

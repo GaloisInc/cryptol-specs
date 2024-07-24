@@ -1,3 +1,18 @@
+/*
+
+General utility functions for use across implementations.
+
+@copyright Galois, Inc
+@copyright Amazon.com or its affiliates.
+
+@author Sean Weaver
+@author Nichole Schmanski <nls@galois.com>
+@author Rob Dockins
+@author Andrei Stefanescu
+@editor Ryan Scott <rscott@galois.com>
+@editor Rod Chapman <rodchap@amazon.com>
+
+*/
 module Common::utils where
 
 while : {a} (a -> Bit) -> (a -> a) -> a -> a
