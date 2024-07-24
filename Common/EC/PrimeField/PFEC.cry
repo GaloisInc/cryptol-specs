@@ -52,17 +52,19 @@ parameter
      * Field size `P`.
      * P must be an odd prime power and is not divisible by 3.
      * I don't think there's a way to enforce "prime power" in the type
-     * constraint.
+     * constraint, but for the NIST curves, every `P` itself is prime,
+     * so we use the simpler constraint `prime P`.
      * [SP-800-186] Section 2.1.1.
      */
     type P : #
-    type constraint (fin P, P >= 5, P % 2 == 1, P % 3 != 0)
+    type constraint (fin P, prime P, P >= 5, P % 2 == 1, P % 3 != 0)
 
     /**
      * Order of the base point `G = (Gx, Gy)`. This must be prime.
      * [SP-800-186] Section 2.1.1.
      */
-    n : Integer
+    type n : #
+    type constraint (fin n, prime n, n < P)
 
     /**
      * Coefficients that define the curve.
@@ -145,18 +147,13 @@ property curveCoefficientsAreValid = (4 * a^^3 + _27 * b^^2 != 0)
         _27 : Z P
         _27 = fromInteger 27
 
-// TODO: needs a primality checker!
-// property p_prime = prime `P
-// property n_prime = prime n
-
 /**
  * G must be of order `n`.
- * This `:proves`, but takes up to 20 seconds on our largest curves.
  * ```repl
  * :prove gOrderIsN
  * ```
  */
-property gOrderIsN = affineEq G ((n + 1) ~* G)
+property gOrderIsN = affineEq G ((`n + 1) ~* G)
 
 /**
  * Addition of two elliptic curve points on a prime-field curve with
