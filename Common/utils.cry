@@ -1,3 +1,18 @@
+/*
+
+General utility functions for use across implementations.
+
+@copyright Galois, Inc
+@copyright Amazon.com or its affiliates.
+
+@author Sean Weaver
+@author Nichole Schmanski <nls@galois.com>
+@author Rob Dockins
+@author Andrei Stefanescu
+@editor Ryan Scott <rscott@galois.com>
+@editor Rod Chapman <rodchap@amazon.com>
+
+*/
 module Common::utils where
 
 while : {a} (a -> Bit) -> (a -> a) -> a -> a
@@ -71,3 +86,6 @@ mp_mod_inv c = if c == 0 then error "Zero does not have a multiplicative inverse
 // Note, this property will only hold when the modulus is prime
 mp_mod_inv_correct : {a} (fin a, a >=2) => Z a -> Bit
 property mp_mod_inv_correct x = x != 0 ==> x * mp_mod_inv x == 1
+
+coerceSize : {m, n, a} [m]a -> [n]a
+coerceSize xs = [ xs @ i | i <- [0 .. <n]]

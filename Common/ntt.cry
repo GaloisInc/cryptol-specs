@@ -1,9 +1,11 @@
 /* Recursive NTT
 
-   John D. Ramsdell -- The MITRE Corporation -- May 2022
+   @author John D. Ramsdell -- The MITRE Corporation -- May 2022
 
-   Copyright (c) 2023 The MITRE Corporation.  Distributed under a
-   standard, three-clause BSD license shown in ntt_license.txt. */
+   @copyright 2023 The MITRE Corporation.
+   @license Distributed under a standard, three-clause BSD license
+   shown in ntt_license.txt.
+*/
 
 /* It type checks, and it succeeds in meeting the ntt_correct property
    below which says that the inverse ntt applied to the ntt is the
@@ -85,6 +87,8 @@ roots = iterate ((*) (r * r)) 1
 /**
  * An O(n log n) number theortic transform for Dilithium.
  */
+import Common::utils (coerceSize)
+
 ntt : [nn]Fld -> [nn]Fld
 ntt a = ntt_r`{lg2 nn} 0 a
 
@@ -98,9 +102,6 @@ ntt_r depth a =
       (lft, rht) = shuffle (coerceSize a)
       even = ntt_r`{max 1 n - 1} (depth + 1) lft
       odd = ntt_r`{max 1 n - 1} (depth + 1) rht
-
-coerceSize : {m, n, a} [m]a -> [n]a
-coerceSize xs = [ xs @ i | i <- [0 .. <n]]
 
 /**
  * Group even indices in first half and odd indices in second half.
