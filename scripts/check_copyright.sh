@@ -5,8 +5,8 @@
 # @author Marcella Hastings <marcella@galois.com>
 #
 
-COPYRIGHT="@copyright Galois"
-AUTHOR="@author .*@galois.com>"
+COPYRIGHT="@copyright"
+AUTHOR="@author"
 
 # Filters the set of changed files to only those we want copyright
 # notices on -- files that likely have cryptol code in them.
