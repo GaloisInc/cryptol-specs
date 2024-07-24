@@ -16,7 +16,7 @@ AUTHOR="@author"
 interesting_files() {
     for fname in $@ ; do
         case $fname in
-            README.md) continue ;;
+            *README.md) continue ;;
 
             *.cry | *.tex | *.md | *.bat | *.awk)
                 echo $fname ;;

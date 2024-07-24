@@ -1,57 +1,373 @@
-// NIST Prime Field Elliptic Curves defined in FIPS-186-4
+/*
+ Prime Field Elliptic Curves in short-Weierstrass form.
+
+ This contains an implementation of elliptic curve operations for curves
+ in short-Weierstrass form, defined over the finite field GF(P), where P
+ is an odd prime power (short-Weierstrass form can also be used over the
+ binary field GF(2^m), but curves of this form were deprecated in
+ [SP-800-186] Section 3.3 and are not supported by this implementation).
+
+ This implementation draws from several sources:
+ - The NIST recommendation for elliptic curves defines allowable domain
+   parameters and the group operation (`ec_add`) [SP-800-186]. Note that
+   this module is generic over domain parameters.
+ - The digital signature standard includes some elliptic curve operations
+   needed to implement ECDSA [FIPS-186-5].
+ - Additional routines for elliptic curves are defined in [MATH-2008].
+ - The SEC1 standard consolidates many of the other resources cited herein.
+   In some cases, we refer to both the original source and [SEC1-v2].
+
+ References
+ [FIPS-186-5]: National Institute of Standards and Technology. Digital
+   Signature Standard (DSS). (Department of Commerce, Washington, D.C.),
+   Federal Information Processing Standards Publication (FIPS) NIST FIPS 186-5.
+   February 2023.
+   https://doi.org/10.6028/NIST.FIPS.186-5
+ [MATH-2008]: Mathematical routines for the NIST prime elliptic curves.
+    March 2008.
+    https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=e1b05e600bfcdeecf8555bc9948483c5fbbdd478
+ [SP-800-186]: Lily Chen, Dustin Moody, Karen Randall, Andrew Regenscheid,
+    Angela Robinson. Recommendations for Discrete Logarithm-based Cryptography:
+    Elliptic Curve Domain Parameters. (National Institute of Standards and
+    Technology, Gaithersburg, MD), NIST Special Publication (SP) NIST SP
+    800-186. February 2023.
+    https://doi.org/10.6028/NIST.SP.800-186
+  [SEC1-v2]: Daniel R. L. Brown. SEC 1: Elliptic Curve Cryptography, Version
+    2.0. Standards for Efficient Cryptography. May 2009.
+    http://www.secg.org/sec1-v2.pdf
+
+@copyright Galois, Inc
+@author Max Orhai
+@author Marcella Hastings <marcella@galois.com>
+@author Sean Weaver
+*/
 
 module Common::EC::PrimeField::PFEC where
 
 import Common::ModDivZ
+import Common::utils(half, mp_mod_inv, mul2, mul3, mul4, mul8, ZtoBV)
 
 parameter
-    type P : #     //  The prime modulus
-    type constraint (fin P, P >= 5)
-    n  : Integer   //  Prime order of generator G
-    b  : Z P       //  Curve coefficient
-    Gx : Z P       //  Curve coordinates
-    Gy : Z P       //    of generator point
+    /**
+     * Field size `P`.
+     * P must be an odd prime power and is not divisible by 3.
+     * I don't think there's a way to enforce "prime power" in the type
+     * constraint, but for the NIST curves, every `P` itself is prime,
+     * so we use the simpler constraint `prime P`.
+     * [SP-800-186] Section 2.1.1.
+     */
+    type P : #
+    type constraint (fin P, prime P, P >= 5, P % 2 == 1, P % 3 != 0)
 
-type Point = (Z P, Z P)
-G = (Gx, Gy) : Point
-a = -3 : Z P       //  Curve coefficient
+    /**
+     * Order of the base point `G = (Gx, Gy)`. This must be prime.
+     * [SP-800-186] Section 2.1.1.
+     */
+    type n : #
+    type constraint (fin n, prime n, n < P)
 
-// A convenient representation of the point-at-infinity identity element
-oo = (0, 0) : Point
+    /**
+     * Coefficients that define the curve.
+     * For a curve in short-Weierstrass form, the equation is
+     * `y^2 = x^3 + ax + b`.
+     * See the `curveCoefficientsAreValid` property.
+     * [SP-800-186] Section 2.1.1.
+     */
+    b : Z P
 
-// Check that a given point is on the curve
+    /**
+     * Coordinates of the generator point `G = (Gx, Gy)`.
+     */
+    Gx : Z P
+    Gy : Z P
+
+/*
+ * Coefficient that defines the curve.
+ * For a curve in short-Weierstrass form, the equation is
+ * `y^2 = x^3 + ax + b`.
+ * See the `curveCoefficientsAreValid` property.
+ * [SP-800-186] Section 2.1.1.
+ *
+ * Due to restrictions on the underlying elliptic curve operations, the
+ * a-coordinate must be -3. This is the case for all NIST-standardized
+ * prime order fields in short-Weierstrass form.
+ */
+a = -3 : Z P
+
+/**
+ * A point that satisfies the curve equation `y^2 = x^3 + ax + b`.
+ * Sometimes this is called an "affine" representation.
+ * [SP-800-186] Section 2.1.1.
+ */
+enum Point = Infinity | Affine (Z P) (Z P)
+
+/**
+ * Check equality of two affine points.
+ *
+ * I don't know if this is explicitly specified anywhere because it's just
+ * by definition.
+ */
+affineEq : Point -> Point -> Bool
+affineEq p1 p2 = case p1 of
+  Infinity -> case p2 of
+      Infinity -> True
+      _ -> False
+  Affine x y -> case p2 of
+      Affine x' y' -> (x == x') && (y == y')
+      _ -> False
+
+/**
+ * Check that a given point is on the curve -- either it is the point at
+ * infinity or it satisfies the curve equation.
+ * [SP-800-186] Section 2.1.1.
+ * [SEC1-v2] Section 2.2.1.
+ * [MATH-2008] Routine 2.2.5.
+ */
 valid_point : Point -> Bit
-valid_point (x, y) =
-    ((x, y) == oo) \/ (y ^^ 2 == x ^^ 3 + a * x + b)
+valid_point point = case point of
+    Infinity -> True
+    Affine x y -> (y ^^ 2 == x ^^ 3 + a * x + b)
 
-// (From http://www.secg.org/sec1-v2.pdf, section 2.2.1)
-// Addition of two elliptic curve points in E(F_p) (p an odd prime)
-// on a curve with coefficient 'a'. Note 'b' is unused.
-ec_add : Point -> Point -> Point
-ec_add (x1, y1) (x2, y2) =
-    if (x1, y1) ==    oo     then  (x2, y2)  //  Rules 1, 2
-     | (x2, y2) ==    oo     then  (x1, y1)  //  Rules 1, 2
-     | (x1, y1) == (x2, -y1) then     oo     //  Rule 3
-                             else   (x, y)   //  Rules 4, 5
-    where  // all arithmetic operations are mod p
-    x = L ^^ 2 - x1 - x2
-    y = L * (x1 - x) - y1
-    L = if x1 == x2 then (3 * x1 ^^ 2 + a) %/ (2 * y1)
+/**
+ * Convenient `Point` representation of the base point `G`.
+ */
+G = Affine Gx Gy : Point
+
+/**
+ * For curves in short-Weierstrass form, the following inequality must hold:
+ *      4a^3 + 27b^2 != 0
+ * [SP-800-186] Section 2.1.1.
+ *
+ * ```repl
+ * :prove curveCoefficientsAreValid
+ * ```
+ */
+property curveCoefficientsAreValid = (4 * a^^3 + _27 * b^^2 != 0)
+    where
+        _27 : Z P
+        _27 = fromInteger 27
+
+/**
+ * G must be of order `n`.
+ * ```repl
+ * :prove gOrderIsN
+ * ```
+ */
+property gOrderIsN = affineEq G ((`n + 1) ~* G)
+
+/**
+ * Addition of two elliptic curve points on a prime-field curve with
+ * coefficient 'a'. Note 'b' is unused.
+ * [SP-800-186] Appendix A.1.1.
+ * [SEC1-v2] Section 2.2.1.
+ *
+ * This uses the less-efficient affine representation.
+ */
+add : Point -> Point -> Point
+add point1 point2 = case point1 of
+    Infinity -> point2
+    Affine x1 y1 -> case point2 of
+        Infinity -> point1
+        Affine x2 y2 -> if (x1 == x2) && (y1 == -y2) then Infinity
+            else Affine x y
+            where  // all arithmetic operations are mod p
+                x = lambda ^^ 2 - x1 - x2
+                y = lambda * (x1 - x) - y1
+                lambda = if x1 == x2 then (3 * x1 ^^ 2 + a) %/ (2 * y1)
                     else (y2 - y1) %/ (x2 - x1)
 
-// Scalar multiplication of a curve point using double-and-add
+/**
+ * Scalar multiplication of a curve point.
+
+ * Scalar multiplication is the process of adding `P` to itself `k` times
+ * for an integer `k`.
+ *
+ * [SEC1-v2] Section 2.2.1 doesn't explicitly specify an algorithm, but it
+ * notes that it can be computed efficiently using the addition rule and a
+ * variant of the double-and-add algorithm.
+ * In this implementation, we use a variant from [MATH-2008] (see `ec_mult`).
+ */
 scmul : Integer -> Point -> Point
-scmul m xy =
-    if m == 0 then oo
-     | m == 1 then xy
-     | even m then scmul (m / 2) (ec_add xy xy)
-              else ec_add xy (scmul (m - 1) xy)
+scmul k p = to_affine (ec_mult (fromInteger k) (to_projective p))
 
 (~*) = scmul  // infix form of operator
 
-// TODO: needs a primality checker!
-// property p_prime = prime p
-// property n_prime = prime n
-property valid_n = (n + 1) ~* G == G
+/**
+ * Scalar multiplication of a curve point must also be on the curve.
+ * ```repl
+ * :check valid_scmul
+ * ```
+ */
 property valid_scmul m = valid_point (m ~* G)
-property scmul_commutes m m' = m ~* (m' ~* G) == m' ~* (m ~* G)
+
+/**
+ * Scalar multiplication is commutative.
+ * ```repl
+ * :check valid_scmul
+ * ```
+ */
+property scmul_commutes m m' = affineEq (m ~* (m' ~* G)) (m' ~* (m ~* G))
+
+private
+    type ProjectivePoint = { x : Z P, y : Z P, z : Z P }
+    InfinityProjective = { x=1, y=1, z=0 }
+    Zero = { x=0, y=0, z=0 }
+
+    /**
+     * Convert from an affine to a projective representation.
+     * [MATH-2008] Routine 2.2.1.
+     */
+    to_projective : Point -> ProjectivePoint
+    to_projective p = case p of
+        Infinity -> InfinityProjective
+        Affine x y -> { x=x, y=y, z=1 }
+
+    /**
+     * Convert from a projective to an affine representation.
+     * [MATH-2008] Routine 2.2.2.
+     */
+    to_affine : ProjectivePoint -> Point
+    to_affine p =
+        // The point at infinity does not have an affine representation.
+        if p.z == 0 then Infinity
+        else Affine (lambda ^^2 * p.x) (lambda ^^3 * p.y)
+      where
+        lambda = mp_mod_inv p.z
+
+    /**
+     * Double an elliptic curve point.
+     * [MATH-2008] Routine 2.2.6.
+     *
+     * Requires that curve parameter `a = -3 mod P`
+     */
+    ec_double : ProjectivePoint -> ProjectivePoint
+    ec_double S =
+      if S.z == 0 then InfinityProjective /* 5: r <- (1,1,0) and return */
+      else
+        {x = r18, y = r23, z = r13}
+      where r7  = S.z ^^ 2                /*  7: t4 <- (t3)^2 */
+            r8  = S.x - r7                /*  8: t5 <- t1 - t4 */
+            r9  = S.x + r7                /*  9: t4 <- t1 + t4 */
+            r10 = r9 * r8                 /* 10: t5 <- t4 * t5 */
+            r11 = mul3 r10                /* 11: t4 <- 3 * t5 */
+            r12 = S.z * S.y               /* 12: t3 <- t3 * t2 */
+            r13 = mul2 r12                /* 13: t3 <- 2 * t3 */
+            r14 = S.y ^^ 2                /* 14: t2 <- (t2)^2 */
+            r15 = S.x * r14               /* 15: t5 <- t1 * t2 */
+            r16 = mul4 r15                /* 16: t5 <- 4 * t5 */
+            r17 = r11 ^^ 2                /* 17: t1 <- (t4)^2 */
+            r18 = r17 - (mul2 r16)        /* 18: t1 <- t1 - 2 * t5 */
+            r19 = r14 ^^ 2                /* 19: t2 <- (t2)^2 */
+            r20 = mul8 r19                /* 20: t2 <- 8 * t2 */
+            r21 = r16 - r18               /* 21: t5 <- t5 - t1 */
+            r22 = r11 * r21               /* 22: t5 <- t4 * t5 */
+            r23 = r22 - r20               /* 23: t2 <- t5 - t2 */
+
+    /**
+     * Addition of two elliptic curve points.
+     *
+     * This will fail in the case where either of the input points are the
+     * point at infinity or if the two input points are the same (if they
+     * are the same, will return a default value of (0,0,0)).
+     * [MATH-2008] Routine 2.2.7.
+     */
+    ec_add : ProjectivePoint -> ProjectivePoint -> ProjectivePoint
+    ec_add S T =
+      if r13 == 0 then
+        if r14 == 0 then Zero       /* 17: r <- (0,0,0) and return */
+        else InfinityProjective     /* 19: r <- (1,1,0) and return */
+      else
+        {x = r32, y = r37, z = r27} /* 38: Rx <- t1; Ry <- t2, Rz <- t3 */
+      where (t1, t2, t3, t4, t5, t6) = if T.z == 1
+              then (S.x, S.y, S.z, T.x, T.y, T.z) /* 1: we set t6 = 1 to make L25 work */
+              else (r5, r7, S.z, T.x, T.y, r3)
+
+            r3 = T.z                /* 3: t6 <- T_z */
+            r4 = r3 ^^ 2            /* 4: t7 <- t6^2 */
+            r5 = S.x * r4           /* 5: t1 <- t1 * t7 */
+            r6 = r3 * r4            /* 6: t7 <- t6 * t7 */
+            r7 = S.y * r6           /* 7: t2 <- t2 * t7 */
+
+            r9  = t3 ^^ 2           /*  9: t7 <- (t3)^2 */
+            r10 = t4 * r9           /* 10: t4 <- t4 * t7 */
+            r11 = t3 * r9           /* 11: t7 <- t3 * t7 */
+            r12 = t5 * r11          /* 12: t5 <- t5 * t7 */
+            r13 = t1 - r10          /* 13: t4 <- t1 - t4 */
+            r14 = t2 - r12          /* 14: t5 <- t2 - t5 */
+
+            r22 = mul2 t1 - r13     /* 22: t1 <- 2*t1 - t4 */
+            r23 = mul2 t2 - r14     /* 23: t2 <- 2*t2 - t5 */
+
+            r25 = t3 * t6           /* 25: t3 <- t3 * t6 if Tz =/= 1.
+                                       If T.z == 1, then t6 == 1 and this is a no-op */
+
+            r27 = r25 * r13          /* 27: t3 <- t3 * t4 */
+            r28 = r13 ^^ 2           /* 28: t7 <- (t4)^2 */
+            r29 = r13 * r28          /* 29: t4 <- t4 * t7 */
+            r30 = r22 * r28          /* 30: t7 <- t1 * t7 */
+            r31 = r14 ^^ 2           /* 31: t1 <- (t5)^2 */
+            r32 = r31 - r30          /* 32: t1 <- t1 - t7 */
+            r33 = r30 - (mul2 r32)   /* 33: t7 <- t7 - 2*t1 */
+            r34 = r14 * r33          /* 34: t5 <- t5 * t7 */
+            r35 = r23 * r29          /* 35: t4 <- t2 * t4 */
+            r36 = r34 - r35          /* 36: t2 <- t5 - t4 */
+            r37 = half r36           /* 37: t2 <- t2/2 */
+
+
+    /**
+     * Checked addition of two elliptic curve points.
+     *
+     * This method handles the cases where either of the input points are the
+     * point at infinity or if the input points are the same.
+     * [MATH-2008] Routine 2.2.8.
+     */
+    ec_full_add : ProjectivePoint -> ProjectivePoint -> ProjectivePoint
+    ec_full_add S T =
+      if S.z == 0 then T
+       | T.z == 0 then S
+       | R == {x = 0, y = 0, z = 0} then ec_double S
+       else R
+      where R = ec_add S T
+
+    /**
+     * Checked subtraction of two elliptic curve points.
+     *
+     * This method handles the cases where either of the input points are the
+     * point at infinity or if the input points are the same.
+     * [MATH-2008] Routine 2.2.8.
+     */
+    ec_full_sub : ProjectivePoint -> ProjectivePoint -> ProjectivePoint
+    ec_full_sub S T = R
+      where U = {x = T.x, y = -T.y, z = T.z}
+            R = ec_full_add S U
+
+    /**
+     * Scalar multiplication on projective points
+     * [MATH-2008] Routine 2.2.10.
+     *
+     * The routine requires that 0 <= d < P. We enforce this constraint by
+     * setting the type of `d` to be `Z P`, then converting it to an integer
+     * for all actual uses.
+     */
+    ec_mult : Z P -> ProjectivePoint -> ProjectivePoint
+    ec_mult d S =
+      if d == 0 then to_projective Infinity
+       | d == 1 then S
+       | S.z == 0 then to_projective Infinity
+      else Rs ! 1 /* the iteration stops at 1, not 0 */
+      where
+        S' = if S.z != 1 then to_projective (to_affine S) else S
+        // Get bits of `d` and `3d`. The width of `ks` is set to be large
+        // enough to hold the full width of `hs`.
+        ks = ZtoBV d : [width P + 2]
+        hs = 3 * ks
+
+        // The specified routine initializes R = S and skips the first high-bit
+        // of `hs`, assuming that it's 1. Since we're a little floppy with our
+        // bitwise conversion, we'll start at 0 and iterate over all the bits.
+        Rs = [ InfinityProjective ] #
+             [ if hi && ~ki then ec_full_add doubleR S
+                | ~hi && ki then ec_full_sub doubleR S
+                else doubleR
+               where doubleR = ec_double Ri
+             | ki <- ks | hi <- hs | Ri <- Rs ]
