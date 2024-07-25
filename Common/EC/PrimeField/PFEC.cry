@@ -38,8 +38,12 @@
     800-186. February 2023.
     https://doi.org/10.6028/NIST.SP.800-186
   [SEC1-v2]: Daniel R. L. Brown. SEC 1: Elliptic Curve Cryptography, Version
-    2.0. Standards for Efficient Cryptography. May 2009.
+    2.0. Standards for Efficient Cryptography Group. May 2009.
     http://www.secg.org/sec1-v2.pdf
+  [SEC2-v2]: Daniel R. L. Brown. SEC 2: Recommened Elliptic Curve Domain
+    Parameters, Version 2.0. Standards for Efficient Cryptography Group. Jan
+    2010.
+    https://www.secg.org/sec2-v2.pdf
 
 @copyright Galois, Inc
 @author Max Orhai

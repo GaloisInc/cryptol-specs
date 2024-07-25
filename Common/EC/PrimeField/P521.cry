@@ -1,7 +1,10 @@
 /*
- NIST P-521 Elliptic Curve defined in [FIPS-186-5]
- @copyright Galois, Inc
- @author Max Orhai
+NIST P-521 Elliptic Curve defined in [FIPS-186-5]
+
+Also standardized as "secp521r1" in [SEC2-v2] Section 2.6.1.
+
+@copyright Galois, Inc
+@author Max Orhai
 */
 
 module Common::EC::PrimeField::P521 =
