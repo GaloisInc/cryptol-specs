@@ -95,7 +95,7 @@ parameter
  *
  * This makes the private functor parameter publicly available.
  */
- type n = n'
+ n = `n' : Integer
 
 /**
  * Coefficient that defines the curve.
@@ -183,7 +183,7 @@ property curveCoefficientsAreValid = (4 * a^^3 + _27 * b^^2 != 0)
  * :prove gOrderIsN
  * ```
  */
-property gOrderIsN = affineEq G ((`n + 1) ~* G)
+property gOrderIsN = affineEq G ((n + 1) ~* G)
 
 /**
  * `G` must be a valid point on the curve.
@@ -294,6 +294,16 @@ property scmulIsClosed m = valid_point (m ~* G)
  * ```
  */
 property scmul_commutes m m' = affineEq (m ~* (m' ~* G)) (m' ~* (m ~* G))
+
+/**
+ * Compute twin multiplication.
+ *
+ * There's a more efficient routine to implement this functionality, but we
+ * haven't implemented it here yet. [MATH-2008] Routine 2.2.12.
+ */
+twin_mul : Integer -> Point -> Integer -> Point -> Point
+twin_mul c P d Q = add (c ~* P) (d ~* Q)
+
 
 private
     type ProjectivePoint = { x : Z P, y : Z P, z : Z P }
@@ -498,7 +508,7 @@ private
      * The scalar multiplication specification specifically allows
      * multiplication by `k` in the range [0, P), hence the conversion.
      */
-    validPointFromK : Z n -> Point
+    validPointFromK : Z n' -> Point
     validPointFromK k = to_affine (ec_mult _k (to_projective G))
       where
         _k : Z P
@@ -512,7 +522,7 @@ private
      * :check addsAreEquivalent
      * ```
      */
-    addsAreEquivalent : Z n -> Z n -> Bool
+    addsAreEquivalent : Z n' -> Z n' -> Bool
     property addsAreEquivalent k1 k2 =
         affineEq (affine_add p1 p2) (to_affine (ec_full_add (to_projective p1) (to_projective p2)))
         where
@@ -526,7 +536,7 @@ private
      * :check addsBehaveCorrectlyAtInfinity
      * ```
      */
-    addsBehaveCorrectlyAtInfinity : Z n -> Bool
+    addsBehaveCorrectlyAtInfinity : Z n' -> Bool
     property addsBehaveCorrectlyAtInfinity k = oo && ok && ko && oo' && ok' && ko'
         where
             // Compute infinity identies in affine form.
