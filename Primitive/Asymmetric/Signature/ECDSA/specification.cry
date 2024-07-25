@@ -1,0 +1,46 @@
+/*
+ECDSA as specified in [FIPS-186-5] Section 6.
+
+@copyright Galois, Inc
+@author Marcella Hastings <marcella@galois.com>
+*/
+
+module Primitive::Asymmetric::Signature::ECDSA::specification where
+
+import interface Common::EC::ECInterface as EC
+
+// TODO: we'll hardcode SHA2 I guess for now but we need an issue to
+// (a) create an abstraction over hash functions and (b) update this
+// spec to be generic over hash.o
+/**
+ * ECDSA signature generation algorithm.
+ *
+ * This deviates from the original spec in two ways:
+ * 1. The per-message secret number `k` is passed as a parameter insteaed of
+ *    being generated using an approved procedure.
+ *    ⚠️ Warning ⚠️: This deviation means that adherence to this spec cannot
+ *    detect a catastrophic secret-number-reuse implementation mistake!
+ *    Implementors must manually verify that secret numbers are chosen
+ *    according to an approved procedure; are protected from unauthorized
+ *    disclosure and modification; and are not reused.
+ * 2. The spec requires the hash function to be passed as an input. In this
+ *    implementation, it is fixed to be SHA2. This is due to lack of an
+ *    appropriate hash-function interface, not for any technical reason.
+ *
+ * Inputs:
+ * M : [m].     Bit string `M` to be signed.
+ * d : Integer. Private key in the interval [1, n-1].
+ * k : Integer. per-message secret number in the interval [1, n-1].
+ *
+ * Outputs:
+ * (r, s) : A pair of integers, each in the interval [1, n-1].
+ *      or failure
+ *
+ * In all inputs and outputs, `n` is the order of the base point `G` for the
+ * elliptic curve specified in the `PFEC` interface.
+ */
+sign :  {m} (fin m) => [m] -> Integer -> Integer -> Option (Integer, Integer)
+sign M d k = if inputsInRange then Some (1, 1)
+    else None
+    where
+        inputsInRange = (0 < d) && (d < EC::n) && (0 < k) && (k < EC::n)
