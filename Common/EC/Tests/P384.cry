@@ -1,8 +1,7 @@
 /*
 Test vectors for the P384 elliptic curve.
 
-I don't know where these came from, although they seem to be used in other EC
-implementations as test vectors.
+From [MATH-2008] Section 4.4.2.
 
 @copyright Galois Inc
 @author Sean Weaver
