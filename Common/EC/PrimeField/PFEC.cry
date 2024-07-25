@@ -180,21 +180,68 @@ property gOrderIsN = affineEq G ((`n + 1) ~* G)
 
 /**
  * Add two elliptic curve points together.
+ *
+ * Assumption: The `Point`s passed as parameters must be valid EC points,
+ * otherwise this operation makes no sense. Use `valid_point` to make sure
+ * the inputs are valid before calling this function.
  */
 add : Point -> Point -> Point
 add p1 p2 = to_affine (ec_full_add (to_projective p1) (to_projective p2))
 
 /**
+ * Addition is a closed operation: the sum of two valid elliptic curve
+ * points is also on the curve.
+ * ```repl
+ * :check addIsClosed
+ * ```
+ */
+property addIsClosed k1 k2 = valid_point (add p1 p2)
+  where
+    p1 = validPointFromK k1
+    p2 = validPointFromK k2
+
+/**
  * Double an elliptic curve point.
+ *
+ * Assumption: The `Point` passed as a parameter must be a valid EC point,
+ * otherwise this operation makes no sense. Use `valid_point` to make sure
+ * the input is valid before calling this function.
  */
 double : Point -> Point
 double p = to_affine (ec_double (to_projective p))
 
 /**
+ * Doubling is a closed operation: the double of a valid elliptic
+ * curve point is also on the curve.
+ * ```repl
+ * :check doubleIsClosed
+ * ```
+ */
+property doubleIsClosed k = valid_point (double p)
+  where
+    p = validPointFromK k
+
+/**
  * Subtract one curve point from another.
+ *
+ * Assumption: The `Point`s passed as parameters must be valid EC points,
+ * otherwise this operation makes no sense. Use `valid_point` to make sure
+ * the inputs are valid before calling this function.
  */
 sub : Point -> Point -> Point
 sub p1 p2 = to_affine (ec_full_sub (to_projective p1) (to_projective p2))
+
+/**
+ * Subtraction is a closed operation: the difference of two valid elliptic
+ * curve points is also on the curve.
+ * ```repl
+ * :check subIsClosed
+ * ```
+ */
+property subIsClosed k1 k2 = valid_point (sub p1 p2)
+  where
+    p1 = validPointFromK k1
+    p2 = validPointFromK k2
 
 /**
  * Scalar multiplication of a curve point.
@@ -206,6 +253,10 @@ sub p1 p2 = to_affine (ec_full_sub (to_projective p1) (to_projective p2))
  * notes that it can be computed efficiently using the addition rule and a
  * variant of the double-and-add algorithm.
  * In this implementation, we use a variant from [MATH-2008] (see `ec_mult`).
+ *
+ * Assumption: The `Point` passed as a parameter must be a valid EC point,
+ * otherwise this operation makes no sense. Use `valid_point` to make sure
+ * the input is valid before calling this function.
  */
 scmul : Integer -> Point -> Point
 scmul k p = to_affine (ec_mult (fromInteger k) (to_projective p))
@@ -213,17 +264,18 @@ scmul k p = to_affine (ec_mult (fromInteger k) (to_projective p))
 (~*) = scmul  // infix form of operator
 
 /**
- * Scalar multiplication of a curve point must also be on the curve.
+ * Scalar multiplication is a closed operation: the result must also be on the
+ * curve.
  * ```repl
- * :check valid_scmul
+ * :check scmulIsClosed
  * ```
  */
-property valid_scmul m = valid_point (m ~* G)
+property scmulIsClosed m = valid_point (m ~* G)
 
 /**
  * Scalar multiplication is commutative.
  * ```repl
- * :check valid_scmul
+ * :check scmul_commutes
  * ```
  */
 property scmul_commutes m m' = affineEq (m ~* (m' ~* G)) (m' ~* (m ~* G))
