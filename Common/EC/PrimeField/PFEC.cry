@@ -179,6 +179,14 @@ property curveCoefficientsAreValid = (4 * a^^3 + _27 * b^^2 != 0)
 property gOrderIsN = affineEq G ((`n + 1) ~* G)
 
 /**
+ * `G` must be a valid point on the curve.
+ * ```repl
+ * :prove gIsValid
+ * ```
+ */
+property gIsValid = valid_point G
+
+/**
  * Add two elliptic curve points together.
  *
  * Assumption: The `Point`s passed as parameters must be valid EC points,
