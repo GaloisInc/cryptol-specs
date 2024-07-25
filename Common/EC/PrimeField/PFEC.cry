@@ -72,8 +72,8 @@ parameter
      * Order of the base point `G = (Gx, Gy)`. This must be prime.
      * [SP-800-186] Section 2.1.1.
      */
-    type n : #
-    type constraint (fin n, prime n, n < P)
+    type n' : #
+    type constraint (fin n', prime n', n' < P)
 
     /**
      * Coefficients that define the curve.
@@ -90,7 +90,14 @@ parameter
     Gx : Z P
     Gy : Z P
 
-/*
+/**
+ * Order of the base point `G`.
+ *
+ * This makes the private functor parameter publicly available.
+ */
+ type n = n'
+
+/**
  * Coefficient that defines the curve.
  * For a curve in short-Weierstrass form, the equation is
  * `y^2 = x^3 + ax + b`.
@@ -101,7 +108,7 @@ parameter
  * a-coordinate must be -3. This is the case for all NIST-standardized
  * prime order fields in short-Weierstrass form.
  */
-a = -3 : Z P
+private a = -3 : Z P
 
 /**
  * Cofactor for the curve.
