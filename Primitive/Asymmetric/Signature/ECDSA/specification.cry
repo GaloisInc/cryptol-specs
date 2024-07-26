@@ -8,6 +8,7 @@ ECDSA as specified in [FIPS-186-5] Section 6.
 module Primitive::Asymmetric::Signature::ECDSA::specification where
 
 import interface Common::EC::ECInterface as EC
+import Primitive::Keyless::Hash::SHA2::SHA256 as Hash
 
 // TODO: we'll hardcode SHA2 I guess for now but we need an issue to
 // (a) create an abstraction over hash functions and (b) update this
@@ -15,7 +16,7 @@ import interface Common::EC::ECInterface as EC
 /**
  * ECDSA signature generation algorithm.
  *
- * This deviates from the original spec in two ways:
+ * This deviates from the original spec in several ways:
  * 1. The per-message secret number `k` is passed as a parameter insteaed of
  *    being generated using an approved procedure.
  *    ⚠️ Warning ⚠️: This deviation means that adherence to this spec cannot
@@ -23,10 +24,19 @@ import interface Common::EC::ECInterface as EC
  *    Implementors must manually verify that secret numbers are chosen
  *    according to an approved procedure; are protected from unauthorized
  *    disclosure and modification; and are not reused.
- * 2. The spec requires the hash function to be passed as an input. In this
- *    implementation, it is fixed to be SHA2. This is due to lack of an
- *    appropriate hash-function interface, not for any technical reason.
- * 3. The spec describes the domain parameters as an input to this function.
+ * 1b. The spec requires that if `r` or `s` are 0 and `k` is not generated
+ *    deterministically, then the computation should repeat until a valid `k`
+ *    is found. This implementation fails if either value is 0, because Cryptol
+ *    cannot produce a new random value for `k`.
+ * 2. The spec requires that `k` and its inverse are securely destroyed in
+ *    step 10. Cryptol does not have any way to express this. Implementors
+ *    must manually verify that they have removed those values from memory.
+ * 3. The spec requires the hash function to be passed as an input. In this
+ *    implementation, it is fixed to be SHA256 (from the SHA2 family). This is
+ *    due to lack of an appropriate hash-function interface, not for any
+ *    technical reason. We also introduce the constraint on `m` that ensures
+ *    it is short enough to be processable by SHA256.
+ * 4. The spec describes the domain parameters as an input to this function.
  *    In this implementation, we encode the domain parameters in the
  *    `ECInterface` included in this module, so they aren't passed explicitly.
  *
@@ -37,13 +47,50 @@ import interface Common::EC::ECInterface as EC
  *
  * Outputs:
  * (r, s) : A pair of integers, each in the interval [1, n-1].
- *      or failure
+ *      or failure (`None`) if:
+ *      - the inputs `d` and `k` were not in the correct interval;
+ *      - the outputs `r` or `s` were 0 for the given inputs;
+ *      - the product `[k]G` is the point at infinity (this is unlikely?
+          Impossible?)
  *
  * In all inputs and outputs, `n` is the order of the base point `G` for the
  * elliptic curve specified in the `PFEC` interface.
  */
-sign :  {m} (fin m) => [m] -> Integer -> Integer -> Option (Integer, Integer)
-sign M d k = if inputsInRange then Some (1, 1)
-    else None
+sign : {m} (fin m, width m < 64) => [m] -> Integer -> Integer -> Option (Integer, Integer)
+sign M d k = if inputsInRange then maybe_rs else None
     where
-        inputsInRange = (0 < d) && (d < EC::n) && (0 < k) && (k < EC::n)
+        // Preconditions must hold.
+        inputsInRange = (0 < d) && (d < `EC::n) && (0 < k) && (k < `EC::n)
+
+        // Step 1.
+        H = Hash::sha M
+
+        // Step 2.
+        // Cryptol's default bitstring-to-integer conversion matches the
+        // routine specified in [FIPS-186-5] Appendix B.2.1.
+        e = toInteger (take`{min (width EC::n) Hash::digestSize} H)
+
+        // Step 3. k is passed as a parameter because Cryptol cannot generate
+        // random numbers.
+
+        // Step 4. TODO: compute inverse mod n
+        k_inv = k
+
+        // Step 5.
+        R = EC::scmul k EC::G
+
+        // Steps 6-7. This fails (returns `None`) if `R` is the point at
+        // infinity.
+        r1 = EC::xCoordAsInteger R
+
+        // This fails (returns `None`) if `r` or `s` are invalid.
+        maybe_rs = case r1 of
+            // Step 11.
+            Some r1' -> if (r != 0) && (s != 0) then Some (r, s) else None
+                where
+                    // Step 8.
+                    r = r1' % `EC::n
+                    // Step 9.
+                    s = (k_inv * (e + r * d)) % `EC::n
+            None -> None
+

@@ -10,7 +10,8 @@ interface module Common::EC::ECInterface where
     /**
      * Order of the elliptic curve.
      */
-    n : Integer
+    type n : #
+    type constraint (fin n, n > 0)
 
     /**
      * Base point for the curve.

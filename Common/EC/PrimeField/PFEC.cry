@@ -95,7 +95,7 @@ parameter
  *
  * This makes the private functor parameter publicly available.
  */
- n = `n' : Integer
+ type n = n'
 
 /**
  * Coefficient that defines the curve.
@@ -183,7 +183,7 @@ property curveCoefficientsAreValid = (4 * a^^3 + _27 * b^^2 != 0)
  * :prove gOrderIsN
  * ```
  */
-property gOrderIsN = affineEq G ((n + 1) ~* G)
+property gOrderIsN = affineEq G ((`n + 1) ~* G)
 
 /**
  * `G` must be a valid point on the curve.

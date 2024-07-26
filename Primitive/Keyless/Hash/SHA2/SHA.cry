@@ -50,6 +50,7 @@ S0 = SIGMA_0
 S1 = SIGMA_1
 s0 = sigma_0
 s1 = sigma_1
+type digestSize = digest_size
 
 // Export Ch, Maj and the block function to be used in SAW proofs
 /** (4.1) (w==32), (4.2) (w==32), (4.8) (w==64) */
