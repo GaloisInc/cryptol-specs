@@ -1,46 +1,57 @@
 interface module Common::EC::ECInterface where
-    /*
+    /**
      * Representation of a point on the curve.
      *
-     * This should be able to represent both concrete points and the point at
-     * infinity.
+     * This should be able to represent both concrete points (with an x and y
+     * coordinate) and the point at infinity.
      */
     type Point : *
 
-    /*
+    /**
      * Order of the elliptic curve.
      */
     n : Integer
 
-    /*
+    /**
      * Base point for the curve.
      */
     G : Point
 
-    /*
+    /**
      * Addition of two points.
      */
     add : Point -> Point -> Point
 
-    /*
+    /**
      * Subtraction of two points.
      */
     sub : Point -> Point -> Point
 
-    /*
+    /**
      * Doubling of a point (typically, elliptic curves offer optimized
      * routines for doubling a point compared to adding it to itself).
      */
     double : Point -> Point
 
-    /*
+    /**
      * Scalar multiplication of a point by an integer.
      */
     scmul : Integer -> Point -> Point
 
-    /*
+    /**
      * Twin multiplication of two points. This is the operation
      * [c]P + [d]Q, which sometimes has an optimized routine
      * compared to doing the scalar multiplications separately.
      */
     twin_mul : Integer -> Point -> Integer -> Point -> Point
+
+    /**
+     * ECDSA requires a routine to extract the x-coordinate of the affine
+     * representation of a `Point` and convert it from a field element an
+     * integer. This is not defined and returns `None` for the point at
+     * infinity.
+     *
+     * For NIST-standardized curves, this should match the conversion
+     * routine in [SP-800-186] Appendix F.1.
+     */
+    xCoordAsInteger : Point -> Option Integer

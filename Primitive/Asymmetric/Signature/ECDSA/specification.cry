@@ -26,6 +26,9 @@ import interface Common::EC::ECInterface as EC
  * 2. The spec requires the hash function to be passed as an input. In this
  *    implementation, it is fixed to be SHA2. This is due to lack of an
  *    appropriate hash-function interface, not for any technical reason.
+ * 3. The spec describes the domain parameters as an input to this function.
+ *    In this implementation, we encode the domain parameters in the
+ *    `ECInterface` included in this module, so they aren't passed explicitly.
  *
  * Inputs:
  * M : [m].     Bit string `M` to be signed.
