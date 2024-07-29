@@ -13,6 +13,7 @@ import Common::utils(mp_mod_inv)
 
 /**
  * ECDSA signature generation algorithm.
+ * [FIPS-186-5] Section 6.4.1
  *
  * This deviates from the original spec in several ways:
  * 1a. The per-message secret number `k` is passed as a parameter instead of
@@ -60,17 +61,8 @@ sign M d k = if inputsInRange then maybe_rs else None
         // Preconditions must hold.
         inputsInRange = (0 != d) && (0 != k)
 
-        // Step 1.
-        H = Hash::sha M
-
-        // Step 2a.
-        e' = take`{min (width EC::n) Hash::digestSize} H
-        // Step 2b.
-        // Cryptol's default bitstring-to-integer `toInteger` conversion
-        // matches the routine specified in [FIPS-186-5] Appendix B.2.1.
-        // We further convert it to an element in `Z n` to support the modular
-        // operations later in the protocol.
-        e = fromInteger (toInteger e') : Z EC::n
+        // Steps 1 - 2.
+        e = hashAndTruncate M
 
         // Step 3. k is passed as a parameter because Cryptol cannot generate
         // random numbers.
@@ -89,8 +81,86 @@ sign M d k = if inputsInRange then maybe_rs else None
         maybe_rs = case maybe_r of
             // Step 11.
             Some r -> if (r != 0) && (s != 0) then Some (r, s) else None
-                where
-                    // Step 9.
-                    s = (k_inv * (e + r * d))
+                // Step 9.
+                where s = (k_inv * (e + r * d))
             None -> None
+
+/**
+ * ECDSA signature verification algorithm.
+ * [FIPS-186-5] Section 6.4.2.
+ *
+ * Inputs:
+ * M : [m]. Message `M`.
+ * (r, s) : (Z n, Z n). A pair of integers.
+ * Q : Point. Purported signature verification key.
+ *
+ * Outputs:
+ * Accept (True) or reject (False) the signature over `M` as originating from
+ * the owner of public key `Q`.
+ *
+ * In all inputs and outputs, `n` is the order of the base point `G` for the
+ * elliptic curve specified in the `PFEC` interface.
+ */
+verify : {m} (fin m, width m < 64) => [m] -> (Z EC::n, Z EC::n) -> EC::Point -> Bool
+verify M (r, s) Q = inputsInRange && rMatches
+    where
+        // Step 1.
+        inputsInRange = (0 != r) && (0 != s)
+
+        // Step 2 - 3.
+        e = hashAndTruncate M
+
+        // Step 4.
+        s_inv = mp_mod_inv s
+
+        // Step 5.
+        u = e * s_inv
+        v = r * s_inv
+
+        // Step 6
+        R_1 = EC::twin_mul (fromZ u) EC::G (fromZ v) Q
+
+        // Step 7 - 8.
+        rMatches = case EC::xCoordModOrder R_1 of
+            // Step 9.
+            Some r' -> r' == r
+            None -> False
+
+/**
+ * Evaluates the public key given a private key `d`.
+ *
+ * This implementation does not describe the method for generating the private
+ * key `d`. However, in [FIPS-186-5] Appendix A.2, given a valid private key
+ * candidate `d`, Section A.2.1 Process Step 5 and Section A.2.2 Process Step 5
+ * define how to evaluate the public key `Q`.
+ *
+ */
+publicKey : Z EC::n -> EC::Point
+publicKey d = EC::scmul (fromZ d) EC::G
+
+/**
+ * A signature over a message created with a private key must verify over
+ * the corresponding public key.
+ * [FIPS-186-5] Section 3.3.
+ */
+signAndVerifyIsCorrect : {m} (fin m, width m < 64) => [m] -> Z EC::n -> Z EC::n -> Bool
+property signAndVerifyIsCorrect M d k = verification
+    where
+        Q = publicKey d
+        signature = sign M d k
+        verification = case signature of
+            Some (r, s) -> verify M (r, s) Q
+            None -> False
+
+private
+    hashAndTruncate : {m} (fin m, width m < 64) => [m] -> Z EC::n
+    hashAndTruncate M = e
+        where
+            H = Hash::sha M
+            e' = take`{min (width EC::n) Hash::digestSize} H
+            // Cryptol's default bitstring-to-integer `toInteger` conversion
+            // matches the routine specified in [FIPS-186-5] Appendix B.2.1.
+            // We further convert it to an element in `Z n` to support the modular
+            // operations later in the protocol.
+            e = fromInteger (toInteger e')
 

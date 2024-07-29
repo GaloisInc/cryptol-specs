@@ -19,15 +19,21 @@ import Common::utils(BVtoZ)
  * :prove testVector
  * ```
  */
-property testVector = signIsCorrect
-    where
+property testVector = signIsCorrect && verifyIsCorrect
+  where
     M = join "sample"
     d = BVtoZ 0x6B9D3DAD2E1B8C1C05B19875B6659F4DE23C3B667BF297BA9AA47740787137D896D5724E4C70A825F872C9EA60D2EDF5
     k = BVtoZ 0x180AE9F9AEC5438A44BC159A1FCB277C7BE54FA20E7CF404B490650A8ACC414E375572342863C899F9F2EDF9747A9B60
     expected_r = BVtoZ 0x21B13D1E013C7FA1392D03C5F99AF8B30C570C6F98D4EA8E354B63A21D3DAA33BDE1E888E63355D92FA2B3C36D8FB2CD
     expected_s = BVtoZ 0xF3AA443FB107745BF4BD77CB3891674632068A10CA67E3D45DB2266FA7D1FEEBEFDC63ECCD1AC42EC0CB8668A4FA0AB0
-    signIsCorrect = case ECDSA::sign M d k of
+
+    sig = ECDSA::sign M d k
+    signIsCorrect = case sig of
         Some (r,s) -> (expected_r == r) && (expected_s == s)
         None -> False
 
+    Q = ECDSA::publicKey d
+    verifyIsCorrect = case sig of
+        Some (r,s) -> ECDSA::verify M (r,s) Q
+        None -> False
 
