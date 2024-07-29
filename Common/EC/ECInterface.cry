@@ -11,7 +11,7 @@ interface module Common::EC::ECInterface where
      * Order of the elliptic curve.
      */
     type n : #
-    type constraint (fin n, n > 0)
+    type constraint (fin n, prime n, n >= 1)
 
     /**
      * Base point for the curve.
@@ -55,4 +55,4 @@ interface module Common::EC::ECInterface where
      * For NIST-standardized curves, this should match the conversion
      * routine in [SP-800-186] Appendix F.1.
      */
-    xCoordAsInteger : Point -> Option Integer
+    xCoordModOrder: Point -> Option (Z n)

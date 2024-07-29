@@ -306,15 +306,15 @@ twin_mul c P d Q = add (c ~* P) (d ~* Q)
 
 
 /**
- * Convert the x-coordinate `Z P` value into an integer, if the point is not
+ * Convert the x-coordinate `Z P` value into a `Z n` value, if the point is not
  * the point at infinity.
  *
  * [SP-800-186] Appendix F.1.
  */
-xCoordAsInteger : Point -> Option Integer
-xCoordAsInteger p = case p of
+xCoordModOrder: Point -> Option (Z n)
+xCoordModOrder p = case p of
     Infinity -> None
-    Affine x _ -> Some (fromZ x)
+    Affine x _ -> Some (fromInteger (fromZ x))
 
 
 private

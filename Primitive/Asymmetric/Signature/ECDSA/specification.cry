@@ -10,9 +10,6 @@ module Primitive::Asymmetric::Signature::ECDSA::specification where
 import interface Common::EC::ECInterface as EC
 import Primitive::Keyless::Hash::SHA2::SHA256 as Hash
 
-// TODO: we'll hardcode SHA2 I guess for now but we need an issue to
-// (a) create an abstraction over hash functions and (b) update this
-// spec to be generic over hash.o
 /**
  * ECDSA signature generation algorithm.
  *
@@ -56,19 +53,23 @@ import Primitive::Keyless::Hash::SHA2::SHA256 as Hash
  * In all inputs and outputs, `n` is the order of the base point `G` for the
  * elliptic curve specified in the `PFEC` interface.
  */
-sign : {m} (fin m, width m < 64) => [m] -> Integer -> Integer -> Option (Integer, Integer)
+sign : {m} (fin m, width m < 64) => [m] -> Z EC::n -> Z EC::n -> Option (Z EC::n, Z EC::n)
 sign M d k = if inputsInRange then maybe_rs else None
     where
         // Preconditions must hold.
-        inputsInRange = (0 < d) && (d < `EC::n) && (0 < k) && (k < `EC::n)
+        inputsInRange = (0 != d) && (0 != k)
 
         // Step 1.
         H = Hash::sha M
 
-        // Step 2.
-        // Cryptol's default bitstring-to-integer conversion matches the
-        // routine specified in [FIPS-186-5] Appendix B.2.1.
-        e = toInteger (take`{min (width EC::n) Hash::digestSize} H)
+        // Step 2a.
+        e' = take`{min (width EC::n) Hash::digestSize} H
+        // Step 2b.
+        // Cryptol's default bitstring-to-integer `toInteger` conversion
+        // matches the routine specified in [FIPS-186-5] Appendix B.2.1.
+        // We further convert it to an element in `Z n` to support the modular
+        // operations later in the protocol.
+        e = fromInteger (toInteger e') : Z EC::n
 
         // Step 3. k is passed as a parameter because Cryptol cannot generate
         // random numbers.
@@ -77,20 +78,18 @@ sign M d k = if inputsInRange then maybe_rs else None
         k_inv = k
 
         // Step 5.
-        R = EC::scmul k EC::G
+        R = EC::scmul (fromZ k) EC::G
 
-        // Steps 6-7. This fails (returns `None`) if `R` is the point at
+        // Steps 6-8. This fails (returns `None`) if `R` is the point at
         // infinity.
-        r1 = EC::xCoordAsInteger R
+        maybe_r = EC::xCoordModOrder R
 
         // This fails (returns `None`) if `r` or `s` are invalid.
-        maybe_rs = case r1 of
+        maybe_rs = case maybe_r of
             // Step 11.
-            Some r1' -> if (r != 0) && (s != 0) then Some (r, s) else None
+            Some r -> if (r != 0) && (s != 0) then Some (r, s) else None
                 where
-                    // Step 8.
-                    r = r1' % `EC::n
                     // Step 9.
-                    s = (k_inv * (e + r * d)) % `EC::n
+                    s = (k_inv * (e + r * d))
             None -> None
 
