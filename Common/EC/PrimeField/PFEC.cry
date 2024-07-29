@@ -1,5 +1,5 @@
 /*
- Prime Field Elliptic Curves in short-Weierstrass form.
+ NIST-standardized Prime Field Elliptic Curves in short-Weierstrass form.
 
  This contains an implementation of elliptic curve operations for curves
  in short-Weierstrass form, defined over the finite field GF(P), where P
@@ -7,10 +7,15 @@
  binary field GF(2^m), but curves of this form were deprecated in
  [SP-800-186] Section 3.3 and are not supported by this implementation).
 
+ This implementation has several restrictions that tie it specifically to
+ the NIST-standardized curves:
+ - it fixes the curve parameter `a = -3`;
+ - it fixes the cofactor `h = 1`;
+ - it requires that the finite field `GF(P)` is over a prime `P` (not a power).
+
  This implementation draws from several sources:
  - The NIST recommendation for elliptic curves defines allowable domain
-   parameters and the group operation (`ec_add`) [SP-800-186]. Note that
-   this module is generic over domain parameters.
+   parameters and the group operation (`affine_add`) [SP-800-186].
  - The digital signature standard includes some elliptic curve operations
    needed to implement ECDSA [FIPS-186-5].
  - Additional routines for elliptic curves are defined in [MATH-2008].
@@ -33,8 +38,12 @@
     800-186. February 2023.
     https://doi.org/10.6028/NIST.SP.800-186
   [SEC1-v2]: Daniel R. L. Brown. SEC 1: Elliptic Curve Cryptography, Version
-    2.0. Standards for Efficient Cryptography. May 2009.
+    2.0. Standards for Efficient Cryptography Group. May 2009.
     http://www.secg.org/sec1-v2.pdf
+  [SEC2-v2]: Daniel R. L. Brown. SEC 2: Recommened Elliptic Curve Domain
+    Parameters, Version 2.0. Standards for Efficient Cryptography Group. Jan
+    2010.
+    https://www.secg.org/sec2-v2.pdf
 
 @copyright Galois, Inc
 @author Max Orhai
@@ -76,7 +85,7 @@ parameter
     b : Z P
 
     /**
-     * Coordinates of the generator point `G = (Gx, Gy)`.
+     * Coordinates of the base point `G = (Gx, Gy)`.
      */
     Gx : Z P
     Gy : Z P
@@ -93,6 +102,20 @@ parameter
  * prime order fields in short-Weierstrass form.
  */
 a = -3 : Z P
+
+/**
+ * Cofactor for the curve.
+ *
+ * The order of the curve is defined as `h * n`, where `h` is small
+ * and `n`, the order of the base point `G`, is prime. If `h` is not
+ * 1, then the base point does not generate the entire curve.
+ *
+ * This is fixed to 1 for all the NIST-standardized prime order fields
+ * in short-Weierstrass form. It's not necessarily true for all reasonable
+ * elliptic curves.
+ */
+h = 1 : Integer
+
 
 /**
  * A point that satisfies the curve equation `y^2 = x^3 + ax + b`.
@@ -156,25 +179,77 @@ property curveCoefficientsAreValid = (4 * a^^3 + _27 * b^^2 != 0)
 property gOrderIsN = affineEq G ((`n + 1) ~* G)
 
 /**
- * Addition of two elliptic curve points on a prime-field curve with
- * coefficient 'a'. Note 'b' is unused.
- * [SP-800-186] Appendix A.1.1.
- * [SEC1-v2] Section 2.2.1.
+ * `G` must be a valid point on the curve.
+ * ```repl
+ * :prove gIsValid
+ * ```
+ */
+property gIsValid = valid_point G
+
+/**
+ * Add two elliptic curve points together.
  *
- * This uses the less-efficient affine representation.
+ * Assumption: The `Point`s passed as parameters must be valid EC points,
+ * otherwise this operation makes no sense. Use `valid_point` to make sure
+ * the inputs are valid before calling this function.
  */
 add : Point -> Point -> Point
-add point1 point2 = case point1 of
-    Infinity -> point2
-    Affine x1 y1 -> case point2 of
-        Infinity -> point1
-        Affine x2 y2 -> if (x1 == x2) && (y1 == -y2) then Infinity
-            else Affine x y
-            where  // all arithmetic operations are mod p
-                x = lambda ^^ 2 - x1 - x2
-                y = lambda * (x1 - x) - y1
-                lambda = if x1 == x2 then (3 * x1 ^^ 2 + a) %/ (2 * y1)
-                    else (y2 - y1) %/ (x2 - x1)
+add p1 p2 = to_affine (ec_full_add (to_projective p1) (to_projective p2))
+
+/**
+ * Addition is a closed operation: the sum of two valid elliptic curve
+ * points is also on the curve.
+ * ```repl
+ * :check addIsClosed
+ * ```
+ */
+property addIsClosed k1 k2 = valid_point (add p1 p2)
+  where
+    p1 = validPointFromK k1
+    p2 = validPointFromK k2
+
+/**
+ * Double an elliptic curve point.
+ *
+ * Assumption: The `Point` passed as a parameter must be a valid EC point,
+ * otherwise this operation makes no sense. Use `valid_point` to make sure
+ * the input is valid before calling this function.
+ */
+double : Point -> Point
+double p = to_affine (ec_double (to_projective p))
+
+/**
+ * Doubling is a closed operation: the double of a valid elliptic
+ * curve point is also on the curve.
+ * ```repl
+ * :check doubleIsClosed
+ * ```
+ */
+property doubleIsClosed k = valid_point (double p)
+  where
+    p = validPointFromK k
+
+/**
+ * Subtract one curve point from another.
+ *
+ * Assumption: The `Point`s passed as parameters must be valid EC points,
+ * otherwise this operation makes no sense. Use `valid_point` to make sure
+ * the inputs are valid before calling this function.
+ */
+sub : Point -> Point -> Point
+sub p1 p2 = to_affine (ec_full_sub (to_projective p1) (to_projective p2))
+
+/**
+ * Subtraction is a closed operation: the difference of two valid elliptic
+ * curve points is also on the curve.
+ * ```repl
+ * :check subIsClosed
+ * ```
+ */
+property subIsClosed k1 k2 = valid_point (sub p1 p2)
+  where
+    p1 = validPointFromK k1
+    p2 = validPointFromK k2
 
 /**
  * Scalar multiplication of a curve point.
@@ -186,6 +261,10 @@ add point1 point2 = case point1 of
  * notes that it can be computed efficiently using the addition rule and a
  * variant of the double-and-add algorithm.
  * In this implementation, we use a variant from [MATH-2008] (see `ec_mult`).
+ *
+ * Assumption: The `Point` passed as a parameter must be a valid EC point,
+ * otherwise this operation makes no sense. Use `valid_point` to make sure
+ * the input is valid before calling this function.
  */
 scmul : Integer -> Point -> Point
 scmul k p = to_affine (ec_mult (fromInteger k) (to_projective p))
@@ -193,17 +272,18 @@ scmul k p = to_affine (ec_mult (fromInteger k) (to_projective p))
 (~*) = scmul  // infix form of operator
 
 /**
- * Scalar multiplication of a curve point must also be on the curve.
+ * Scalar multiplication is a closed operation: the result must also be on the
+ * curve.
  * ```repl
- * :check valid_scmul
+ * :check scmulIsClosed
  * ```
  */
-property valid_scmul m = valid_point (m ~* G)
+property scmulIsClosed m = valid_point (m ~* G)
 
 /**
  * Scalar multiplication is commutative.
  * ```repl
- * :check valid_scmul
+ * :check scmul_commutes
  * ```
  */
 property scmul_commutes m m' = affineEq (m ~* (m' ~* G)) (m' ~* (m ~* G))
@@ -371,3 +451,86 @@ private
                 else doubleR
                where doubleR = ec_double Ri
              | ki <- ks | hi <- hs | Ri <- Rs ]
+
+    /**
+     * Addition of two elliptic curve points on a prime-field curve with
+     * coefficient 'a'. Note 'b' is unused.
+     * [SP-800-186] Appendix A.1.1.
+     * [SEC1-v2] Section 2.2.1.
+     *
+     * This uses the less-efficient affine representation.
+     */
+    affine_add : Point -> Point -> Point
+    affine_add point1 point2 = case point1 of
+        Infinity -> point2
+        Affine x1 y1 -> case point2 of
+            Infinity -> point1
+            Affine x2 y2 -> if (x1 == x2) && (y1 == -y2) then Infinity
+                else Affine x y
+                where  // all arithmetic operations are mod p
+                    x = lambda ^^ 2 - x1 - x2
+                    y = lambda * (x1 - x) - y1
+                    lambda = if x1 == x2 then (3 * x1 ^^ 2 + a) %/ (2 * y1)
+                        else (y2 - y1) %/ (x2 - x1)
+
+
+    /**
+     * Compute a valid curve point from a random `k` and the base point `G`.
+     *
+     * `k` is in the range [0, h * n), where `h * n` is the order of the
+     * elliptic curve.
+     * All the standardized NIST prime-order curves have (as the name suggests)
+     * prime order and cofactor 1.
+     *
+     * NB: If the cofactor `h` is not 1, this function will not derive points
+     * on the curve uniformly. When the cofactor is 1, that means the group is
+     * cyclic and can be generated by a single point. When it's not 1, the group
+     * has a large cyclic subgroup that is generated by `G`, but it's not the
+     * entire group.
+     *
+     * The scalar multiplication specification specifically allows
+     * multiplication by `k` in the range [0, P), hence the conversion.
+     */
+    validPointFromK : Z n -> Point
+    validPointFromK k = to_affine (ec_mult _k (to_projective G))
+      where
+        _k : Z P
+        _k = fromInteger (toInteger (ZtoBV k : [width P]))
+
+    /**
+     * Proof that the affine and projective versions of addition are equivalent.
+     * This doesn't test the point at infinity.
+     *
+     * ```repl
+     * :check addsAreEquivalent
+     * ```
+     */
+    addsAreEquivalent : Z n -> Z n -> Bool
+    property addsAreEquivalent k1 k2 =
+        affineEq (affine_add p1 p2) (to_affine (ec_full_add (to_projective p1) (to_projective p2)))
+        where
+            p1 = validPointFromK k1
+            p2 = validPointFromK k2
+
+    /**
+     * Proof that both addition properties work correctly for the point at infinity.
+     *
+     * ```repl
+     * :check addsBehaveCorrectlyAtInfinity
+     * ```
+     */
+    addsBehaveCorrectlyAtInfinity : Z n -> Bool
+    property addsBehaveCorrectlyAtInfinity k = oo && ok && ko && oo' && ok' && ko'
+        where
+            // Compute infinity identies in affine form.
+            point = validPointFromK k
+            oo = affineEq Infinity (affine_add Infinity Infinity)
+            ok = affineEq point (affine_add Infinity point)
+            ko = affineEq point (affine_add point Infinity)
+
+            // Compute infinity identies in projective form.
+            point' = to_projective point
+            oo' = InfinityProjective == ec_full_add InfinityProjective InfinityProjective
+            ok' = point' == ec_full_add InfinityProjective point'
+            ko' = point' == ec_full_add point' InfinityProjective
+

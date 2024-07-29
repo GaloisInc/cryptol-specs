@@ -1,7 +1,16 @@
 /*
- NIST P-192 Elliptic Curve defined in [FIPS-186-5].
- @copyright Galois, Inc
- @author Max Orhai
+
+NIST P-192 Elliptic Curve defined in [FIPS-186-5].
+
+Also standardized as "secp192r1" in [SEC2-v2] Section 2.2.2.
+
+⚠️ Warning ⚠️: This curve is deprecated and should not be used to proactively
+secure new data! It should only be used to decrypt or verify previously
+encrypted data.
+
+@copyright Galois, Inc
+@author Max Orhai
+
 */
 
 module Common::EC::PrimeField::P192 =

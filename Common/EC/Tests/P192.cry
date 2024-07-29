@@ -1,0 +1,98 @@
+/*
+Test vectors for the P192 elliptic curve.
+
+From [MATH-2008] Section 4.1.2.
+
+@copyright Galois Inc
+@author Sean Weaver
+@author Marcella Hastings <marcella@galois.com>
+
+*/
+
+import Common::EC::PrimeField::P192 as P192
+import Common::utils(BVtoZ)
+
+// NB: We haven't implemented the point compression functions yet, but if we
+// do we can use these test vectors
+/*
+property p192_G_compress = P192::affineEq (P192::compress P192::G)
+    0x00000003188da80eb03090f67cbf20eb43a18800f4ff0afd82ff1012
+property mp_mod_sqrt_192_correct = p192::mp_mod_sqrt_correct
+
+property p192_decompress_S = p192::affine_decompress_correct S
+property p192_decompress_T = p192::affine_decompress_correct T
+*/
+
+S = P192::Affine (BVtoZ 0xd458e7d127ae671b0c330266d246769353a012073e97acf8)
+     (BVtoZ 0x325930500d851f336bddc050cf7fb11b5673a1645086df3b)
+
+T = P192::Affine (BVtoZ 0xf22c4395213e9ebe67ddecdd87fdbd01be16fb059b9753a4)
+     (BVtoZ 0x264424096af2b3597796db48f8dfb41fa9cecc97691a9c79)
+
+/**
+ * ```repl
+ * :prove sAndTAreValid
+ * ```
+ */
+property sAndTAreValid = P192::valid_point S && P192::valid_point T
+
+/**
+ * ```repl
+ * :prove additionVectorPasses
+ * ```
+ */
+property additionVectorPasses = P192::affineEq (P192::add S T) R
+  where R = P192::Affine (BVtoZ 0x48e1e4096b9b8e5ca9d0f1f077b8abf58e843894de4d0290)
+             (BVtoZ 0x408fa77c797cd7dbfb16aa48a3648d3d63c94117d7b6aa4b)
+
+/**
+ * ```repl
+ * :prove subtractionVectorPasses
+ * ```
+ */
+property subtractionVectorPasses = P192::affineEq (P192::sub S T) R
+  where R = P192::Affine (BVtoZ 0xfc9683cc5abfb4fe0cc8cc3bc9f61eabc4688f11e9f64a2e)
+             (BVtoZ 0x093e31d00fb78269732b1bd2a73c23cdd31745d0523d816b)
+
+/**
+ * ```repl
+ * :prove doubleVectorPasses
+ * ```
+ */
+property doubleVectorPasses = P192::affineEq (P192::double S) R
+  where R = P192::Affine (BVtoZ 0x30c5bc6b8c7da25354b373dc14dd8a0eba42d25a3f6e6962)
+             (BVtoZ 0x0dde14bc4249a721c407aedbf011e2ddbbcb2968c9d889cf)
+
+/**
+ * ```repl
+ * :prove scalarMultVectorPasses
+ * ```
+ */
+property scalarMultVectorPasses = P192::affineEq (P192::scmul d S) R
+  where d = toInteger 0xa78a236d60baec0c5dd41b33a542463a8255391af64c74ee
+        R = P192::Affine (BVtoZ 0x1faee4205a4f669d2d0a8f25e3bcec9a62a6952965bf6d31)
+             (BVtoZ 0x5ff2cdfa508a2581892367087c696f179e7a4d7e8260fb06)
+
+/**
+ * ```repl
+ * :prove scalarMultVectorPasses2
+ * ```
+ */
+property scalarMultVectorPasses2 = P192::affineEq (P192::scmul d S') R
+    where
+        S' = P192::Affine (BVtoZ 0x188da80eb03090f67cbf20eb43a18800f4ff0afd82ff1012)
+            (BVtoZ 0x07192b95ffc8da78631011ed6b24cdd573f977a11e794811)
+        d = toInteger 0xe14f37b3d1374ff8b03f41b9b3fdd2f0ebccf275d660d7f3
+        R = P192::Affine (BVtoZ 0x07008ea40b08dbe76432096e80a2494c94982d2d5bcf98e6)
+            (BVtoZ 0x76fab681d00b414ea636ba215de26d98c41bd7f2e4d65477)
+/*
+// NB: We haven't implemented the joint-scalar-multiply algorithm yet (aka
+// twin_mult), but when we do we can use this test vector.
+property p192_joint_scalar_multiply_example =
+  p192::joint_scalar_multiply_example R S T d e
+  where d = BVtoZ 0xa78a236d60baec0c5dd41b33a542463a8255391af64c74ee
+        e = BVtoZ 0xc4be3d53ec3089e71e4de8ceab7cce889bc393cd85b972bc
+        R = {x = BVtoZ 0x019f64eed8fa9b72b7dfea82c17c9bfa60ecb9e1778b5bde,
+             y = BVtoZ 0x16590c5fcd8655fa4ced33fb800e2a7e3c61f35d83503644}
+*/
+

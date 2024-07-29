@@ -1,0 +1,80 @@
+/*
+Test vectors for the P256 elliptic curve.
+
+From [MATH-2008] Section 4.3.2.
+
+@copyright Galois Inc
+@author Sean Weaver
+@author Marcella Hastings <marcella@galois.com>
+
+*/
+
+import Common::EC::PrimeField::P256 as P256
+import Common::utils(BVtoZ)
+
+// NB: We haven't implemented the point compression functions yet, but if we
+// do we can use these test vectors
+//property p256_G_compress = P256::affineEq (P256::compress P256::G)
+//    0x000000036b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296
+//property mp_mod_sqrt_256_correct = p256::mp_mod_sqrt_correct
+
+S = P256::Affine (BVtoZ 0xde2444bebc8d36e682edd27e0f271508617519b3221a8fa0b77cab3989da97c9)
+     (BVtoZ 0xc093ae7ff36e5380fc01a5aad1e66659702de80f53cec576b6350b243042a256)
+
+T = P256::Affine (BVtoZ 0x55a8b00f8da1d44e62f6b3b25316212e39540dc861c89575bb8cf92e35e0986b)
+     (BVtoZ 0x5421c3209c2d6c704835d82ac4c3dd90f61a8a52598b9e7ab656e9d8c8b24316)
+
+/**
+ * ```repl
+ * :prove sAndTAreValid
+ * ```
+ */
+property sAndTAreValid = P256::valid_point S && P256::valid_point T
+
+/**
+ * ```repl
+ * :prove additionVectorPasses
+ * ```
+ */
+property additionVectorPasses = P256::affineEq (P256::add S T) R
+  where R = P256::Affine (BVtoZ 0x72b13dd4354b6b81745195e98cc5ba6970349191ac476bd4553cf35a545a067e)
+             (BVtoZ 0x8d585cbb2e1327d75241a8a122d7620dc33b13315aa5c9d46d013011744ac264)
+
+/**
+ * ```repl
+ * :prove subtractionVectorPasses
+ * ```
+ */
+property subtractionVectorPasses = P256::affineEq (P256::sub S T) R
+  where R = P256::Affine (BVtoZ 0xc09ce680b251bb1d2aad1dbf6129deab837419f8f1c73ea13e7dc64ad6be6021)
+             (BVtoZ 0x1a815bf700bd88336b2f9bad4edab1723414a022fdf6c3f4ce30675fb1975ef3)
+
+/**
+ * ```repl
+ * :prove doubleVectorPasses
+ * ```
+ */
+property doubleVectorPasses = P256::affineEq (P256::double S) R
+  where R = P256::Affine (BVtoZ 0x7669e6901606ee3ba1a8eef1e0024c33df6c22f3b17481b82a860ffcdb6127b0)
+             (BVtoZ 0xfa878162187a54f6c39f6ee0072f33de389ef3eecd03023de10ca2c1db61d0c7)
+
+/**
+ * ```repl
+ * :prove scalarMultVectorPasses
+ * ```
+ */
+property scalarMultVectorPasses = P256::affineEq (P256::scmul d S) R
+  where d = toInteger 0xc51e4753afdec1e6b6c6a5b992f43f8dd0c7a8933072708b6522468b2ffb06fd
+        R = P256::Affine (BVtoZ 0x51d08d5f2d4278882946d88d83c97d11e62becc3cfc18bedacc89ba34eeca03f)
+             (BVtoZ 0x75ee68eb8bf626aa5b673ab51f6e744e06f8fcf8a6c0cf3035beca956a7b41d5)
+
+/*
+// NB: We haven't implemented the joint-scalar-multiply algorithm yet (aka
+// twin_mult), but when we do we can use this test vector.
+property p256_joint_scalar_multiply_example =
+  p256::joint_scalar_multiply_example R S T d e
+  where d = BVtoZ 0xc51e4753afdec1e6b6c6a5b992f43f8dd0c7a8933072708b6522468b2ffb06fd
+        e = BVtoZ 0xd37f628ece72a462f0145cbefe3f0b355ee8332d37acdd83a358016aea029db7
+        R = {x = BVtoZ 0xd867b4679221009234939221b8046245efcf58413daacbeff857b8588341f6b8,
+             y = BVtoZ 0xf2504055c03cede12d22720dad69c745106b6607ec7e50dd35d54bd80f615275}
+*/
