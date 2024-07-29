@@ -9,6 +9,7 @@ module Primitive::Asymmetric::Signature::ECDSA::specification where
 
 import interface Common::EC::ECInterface as EC
 import Primitive::Keyless::Hash::SHA2::SHA256 as Hash
+import Common::utils(mp_mod_inv)
 
 /**
  * ECDSA signature generation algorithm.
@@ -39,8 +40,8 @@ import Primitive::Keyless::Hash::SHA2::SHA256 as Hash
  *
  * Inputs:
  * M : [m].     Bit string `M` to be signed.
- * d : Integer. Private key in the interval [1, n-1].
- * k : Integer. per-message secret number in the interval [1, n-1].
+ * d : Z n. Private key in the interval [1, n-1].
+ * k : Z n. per-message secret number in the interval [1, n-1].
  *
  * Outputs:
  * (r, s) : A pair of integers, each in the interval [1, n-1].
@@ -74,8 +75,8 @@ sign M d k = if inputsInRange then maybe_rs else None
         // Step 3. k is passed as a parameter because Cryptol cannot generate
         // random numbers.
 
-        // Step 4. TODO: compute inverse mod n
-        k_inv = k
+        // Step 4.
+        k_inv = mp_mod_inv k
 
         // Step 5.
         R = EC::scmul (fromZ k) EC::G
