@@ -49,8 +49,8 @@ interface module Common::EC::ECInterface where
     /**
      * ECDSA requires a routine to extract the x-coordinate of the affine
      * representation of a `Point` and convert it from a field element an
-     * integer. This is not defined and returns `None` for the point at
-     * infinity.
+     * integer mod the order of the curve (`n`). This is not defined and
+     * returns `None` for the point at infinity.
      *
      * For NIST-standardized curves, this should match the conversion
      * routine in [SP-800-186] Appendix F.1.

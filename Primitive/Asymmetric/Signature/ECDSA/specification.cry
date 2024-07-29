@@ -15,13 +15,13 @@ import Common::utils(mp_mod_inv)
  * ECDSA signature generation algorithm.
  *
  * This deviates from the original spec in several ways:
- * 1. The per-message secret number `k` is passed as a parameter insteaed of
+ * 1a. The per-message secret number `k` is passed as a parameter instead of
  *    being generated using an approved procedure.
  *    ⚠️ Warning ⚠️: This deviation means that adherence to this spec cannot
  *    detect a catastrophic secret-number-reuse implementation mistake!
  *    Implementors must manually verify that secret numbers are chosen
  *    according to an approved procedure; are protected from unauthorized
- *    disclosure and modification; and are not reused.
+ *    disclosure and modification; and are not reused over time.
  * 1b. The spec requires that if `r` or `s` are 0 and `k` is not generated
  *    deterministically, then the computation should repeat until a valid `k`
  *    is found. This implementation fails if either value is 0, because Cryptol
@@ -39,9 +39,9 @@ import Common::utils(mp_mod_inv)
  *    `ECInterface` included in this module, so they aren't passed explicitly.
  *
  * Inputs:
- * M : [m].     Bit string `M` to be signed.
+ * M : [m]. Bit string `M` to be signed.
  * d : Z n. Private key in the interval [1, n-1].
- * k : Z n. per-message secret number in the interval [1, n-1].
+ * k : Z n. Per-message secret number in the interval [1, n-1].
  *
  * Outputs:
  * (r, s) : A pair of integers, each in the interval [1, n-1].
