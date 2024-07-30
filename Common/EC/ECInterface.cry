@@ -1,3 +1,14 @@
+/*
+Interface for a generic elliptic curve.
+
+This is designed to be used in any algorithm that depends on elliptic curves.
+It's supposed to be generic over the type of curve; the design tries not to
+tie the user into anything specific with respect to the curve construction or
+curve field.
+
+@copyright Galois, Inc.
+@author Marcella Hastings <marcella@galois.com>
+*/
 interface module Common::EC::ECInterface where
     /**
      * Representation of a point on the curve.
