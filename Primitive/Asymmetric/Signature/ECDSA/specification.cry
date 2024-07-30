@@ -68,7 +68,9 @@ sign M d k = if inputsInRange then maybe_rs else None
         // random numbers.
 
         // Step 4.
-        k_inv = mp_mod_inv k
+        // This uses a Cryptol-native method to compute the multiplicative
+        // inverse of `k`.
+        k_inv = recip k
 
         // Step 5.
         R = EC::scmul (fromZ k) EC::G
@@ -111,7 +113,9 @@ verify M (r, s) Q = inputsInRange && rMatches
         e = hashAndTruncate M
 
         // Step 4.
-        s_inv = mp_mod_inv s
+        // This uses a Cryptol-native method to compute the multiplicative
+        // inverse of `s`.
+        s_inv = recip s
 
         // Step 5.
         u = e * s_inv
@@ -153,6 +157,9 @@ property signAndVerifyIsCorrect M d k = verification
             None -> False
 
 private
+    /**
+     * Hash a message and convert it to an integer mod `n`.
+     */
     hashAndTruncate : {m} (fin m, width m < 64) => [m] -> Z EC::n
     hashAndTruncate M = e
         where

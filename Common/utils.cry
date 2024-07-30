@@ -79,7 +79,7 @@ property half_correct x = half x + half x == x
  * Preview of the book with this algorithm available on Google Books:
  * https://www.google.com/books/edition/Guide_to_Elliptic_Curve_Cryptography/V5oACAAAQBAJ
  */
-mp_mod_inv : {p} (fin p, prime p, p >= 1) => Z p -> Z p
+mp_mod_inv : {p} (fin p, p >= 1) => Z p -> Z p
 mp_mod_inv c = if c == 0 then error "Zero does not have a multiplicative inverse"
                else fromInteger (if u'' == 1 then x1'' else x2'')
   where
