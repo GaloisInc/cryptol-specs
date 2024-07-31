@@ -1,0 +1,222 @@
+/*
+ECDSA as specified in [FIPS-186-5] Section 6.
+
+⚠ This implementation is complete except for constraints on the size of the
+input parameters ([FIPS-186-5] Section 6.1.1)! Using this implementation will
+allow invalid combinations of parameters. Consider using `specification.cry`
+instead.
+
+This implementation omits some parts of the original specification:
+- The spec makes recommendations for domain parameter management which is out
+  of scope for this implementation. (6.1.2)
+- The spec associates an ECDSA key pair `(d, Q)` with a specific set of domain
+  parameters. This implementation does not address anything to do with private
+  and public keys, including generation or management. (6.2)
+- The spec requires that a new secret random number `k` is generated for each
+  digital signature. This implementation does not handle secure generation or
+  handling of the secret random number. ⚠ ️️️️Warning ⚠: incorrect generation or
+  management of `k` can cause catastrophic failures of the signature scheme,
+  including revealing the private key. Implementors must manually verify that
+  their implementations satisfy this component of the spec! (6.3)
+
+
+[FIPS-180-4]: National Institute of Standards and Technology. Secure Hash
+  Standard (SHS). (Department of Commerce, Washington, D.C.), Federal
+  Information Processing Standards Publication (FIPS) NIST FIPS 180-4.
+  August 2015.
+  https://doi.org/10.6028/NIST.FIPS.180-4
+[FIPS-186-5]: National Institute of Standards and Technology. Digital
+  Signature Standard (DSS). (Department of Commerce, Washington, D.C.),
+  Federal Information Processing Standards Publication (FIPS) NIST FIPS 186-5.
+  February 2023.
+  https://doi.org/10.6028/NIST.FIPS.186-5
+
+@copyright Galois, Inc
+@author Marcella Hastings <marcella@galois.com>
+*/
+
+module Primitive::Asymmetric::Signature::ECDSA::unconstrained_spec where
+
+/**
+ * ECDSA digital signature generation and verification requires domain
+ * parameters that are generated in accordance with [FIPS-186-5] Section 6.1.1.
+ * The instantiation of this interface must meet those criteria!
+ */
+import interface Common::EC::ECInterface as EC
+
+/**
+ * ECDSA digital signature generation and verification requires an approved
+ * hash function or XOF (extendable-output function).
+ * This implementation currently fixes the hash function to SHA256, as
+ * specified in [FIPS-180-4].
+ */
+import Primitive::Keyless::Hash::SHA2::SHA256 as Hash
+
+/**
+ * ECDSA signature generation algorithm.
+ * [FIPS-186-5] Section 6.4.1
+ *
+ * This deviates from the original spec in several ways:
+ * 1a. The per-message secret number `k` is passed as a parameter instead of
+ *    being generated using an approved procedure.
+ *    ⚠️ Warning ⚠️: This deviation means that adherence to this spec cannot
+ *    detect a catastrophic secret-number-reuse implementation mistake!
+ *    Implementors must manually verify that secret numbers are chosen
+ *    according to an approved procedure; are protected from unauthorized
+ *    disclosure and modification; and are not reused over time.
+ * 1b. The spec requires that if `r` or `s` are 0 and `k` is not generated
+ *    deterministically, then the computation should repeat until a valid `k`
+ *    is found. This implementation fails if either value is 0, because Cryptol
+ *    cannot produce a new random value for `k`.
+ * 2. The spec requires that `k` and its inverse are securely destroyed in
+ *    step 10. Cryptol does not have any way to express this. Implementors
+ *    must manually verify that they have removed those values from memory.
+ * 3. The spec requires the hash function to be passed as an input. In this
+ *    implementation, it is fixed to be SHA256 (from the SHA2 family). This is
+ *    due to lack of an appropriate hash-function interface, not for any
+ *    technical reason. We also introduce the constraint on `m` that ensures
+ *    it is short enough to be processable by SHA256.
+ * 4. The spec describes the domain parameters as an input to this function.
+ *    In this implementation, we encode the domain parameters in the
+ *    `ECInterface` included in this module, so they aren't passed explicitly.
+ *
+ * Other important notes:
+ * - The private key `d` passed as input must be generated as specified in
+ *   [FIPS-186-5] Section 6.2.1. Implementors must manually verify that this
+ *   is the case.
+ *
+ * Inputs:
+ * M : [m]. Bit string `M` to be signed.
+ * d : Z n. Private key in the interval [1, n-1].
+ * k : Z n. Per-message secret number in the interval [1, n-1].
+ *
+ * Outputs:
+ * (r, s) : A pair of integers, each in the interval [1, n-1].
+ *      or failure (`None`) if:
+ *      - the inputs `d` and `k` were not in the correct interval;
+ *      - the outputs `r` or `s` were 0 for the given inputs;
+ *
+ * In all inputs and outputs, `n` is the order of the base point `G` for the
+ * elliptic curve specified in the `PFEC` interface.
+ */
+sign : {m} (fin m, width m < 64) => [m] -> Z EC::n -> Z EC::n -> Option (Z EC::n, Z EC::n)
+sign M d k = if inputsInRange then maybe_rs else None
+    where
+        // Preconditions must hold.
+        inputsInRange = (0 != d) && (0 != k)
+
+        // Steps 1 - 2.
+        e = hashAndTruncate M
+
+        // Step 3. k is passed as a parameter because Cryptol cannot generate
+        // random numbers.
+
+        // Step 4.
+        // This uses a Cryptol-native method to compute the multiplicative
+        // inverse of `k`.
+        k_inv = recip k
+
+        // Step 5.
+        R = EC::scmul (fromZ k) EC::G
+
+        // Steps 6-8. This would fail (returns `None`) if `R` is the point at
+        // infinity. In fact, that case is impossible because `[k]G = 0` if and
+        // only if `k = n`, which can't happen by definition.
+        maybe_r = EC::xCoordModOrder R
+
+        // This fails (returns `None`) if `r` or `s` are invalid.
+        maybe_rs = case maybe_r of
+            // Step 11.
+            Some r -> if (r != 0) && (s != 0) then Some (r, s) else None
+                // Step 9. The `mod n` is implicit here because these are all
+                // of type `Z n`.
+                where s = k_inv * (e + r * d)
+
+            None -> None // Impossible!
+
+/**
+ * ECDSA signature verification algorithm.
+ * [FIPS-186-5] Section 6.4.2.
+ *
+ * Inputs:
+ * M : [m]. Message `M`.
+ * (r, s) : (Z n, Z n). A pair of integers.
+ * Q : Point. Purported signature verification key.
+ *
+ * Outputs:
+ * Accept (True) or reject (False) the signature over `M` as originating from
+ * the owner of public key `Q`.
+ *
+ * In all inputs and outputs, `n` is the order of the base point `G` for the
+ * elliptic curve specified in the `PFEC` interface.
+ */
+verify : {m} (fin m, width m < 64) => [m] -> (Z EC::n, Z EC::n) -> EC::Point -> Bool
+verify M (r, s) Q = inputsInRange && rMatches
+    where
+        // Step 1.
+        inputsInRange = (0 != r) && (0 != s)
+
+        // Step 2 - 3.
+        e = hashAndTruncate M
+
+        // Step 4.
+        // This uses a Cryptol-native method to compute the multiplicative
+        // inverse of `s`.
+        s_inv = recip s
+
+        // Step 5.
+        u = e * s_inv
+        v = r * s_inv
+
+        // Step 6
+        R_1 = EC::twin_mul (fromZ u) EC::G (fromZ v) Q
+
+        // Step 7 - 8.
+        rMatches = case EC::xCoordModOrder R_1 of
+            // Step 9.
+            Some r' -> r' == r
+            None -> False
+
+/**
+ * Evaluates the public key given a private key `d`.
+ *
+ * This implementation does not describe the method for generating the private
+ * key `d`. However, in [FIPS-186-5] Appendix A.2, given a valid private key
+ * candidate `d`, Section A.2.1 Process Step 5 and Section A.2.2 Process Step 5
+ * define how to evaluate the public key `Q`.
+ *
+ */
+publicKey : Z EC::n -> EC::Point
+publicKey d = EC::scmul (fromZ d) EC::G
+
+/**
+ * A signature over a message created with a private key must verify over
+ * the corresponding public key.
+ * [FIPS-186-5] Section 3.3.
+ * ```repl
+ * :check signAndVerifyIsCorrect`{64}
+ */
+signAndVerifyIsCorrect : {m} (fin m, width m < 64) => [m] -> Z EC::n -> Z EC::n -> Bool
+property signAndVerifyIsCorrect M d k = verification
+    where
+        Q = publicKey d
+        signature = sign M d k
+        verification = case signature of
+            Some (r, s) -> verify M (r, s) Q
+            None -> False
+
+private
+    /**
+     * Hash a message and convert it to an integer mod `n`.
+     */
+    hashAndTruncate : {m} (fin m, width m < 64) => [m] -> Z EC::n
+    hashAndTruncate M = e
+        where
+            H = Hash::sha M
+            e' = take`{min (width EC::n) Hash::digestSize} H
+            // Cryptol's default bitstring-to-integer `toInteger` conversion
+            // matches the routine specified in [FIPS-186-5] Appendix B.2.1.
+            // We further convert it to an element in `Z n` to support the modular
+            // operations later in the protocol.
+            e = fromInteger (toInteger e')
+
