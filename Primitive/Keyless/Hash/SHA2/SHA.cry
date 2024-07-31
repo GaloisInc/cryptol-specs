@@ -9,6 +9,11 @@
 @author Andrei Stefanescu
 
 www.cryptol.net
+
+[SP-800-107r1]: Quynh Dang. Recommendation for Applications Using Approved
+    Hash Algorithms. (National Institute of Standards and Technology,
+    Gaithersburg, MD), NIST Special Publication (SP) NIST SP 800-107, Revision
+    1. August 2012. https://doi.org/10.6028/NIST.SP.800-107r1.
 */
 
 module Primitive::Keyless::Hash::SHA2::SHA where
@@ -59,6 +64,16 @@ S1 = SIGMA_1
 s0 = sigma_0
 s1 = sigma_1
 type digestSize = digest_size
+
+/**
+ * The security strength of a hash function is the minimum of its collision
+ * resistance strength, preimage resistance strength, and second preimage
+ * resistance strength. For the SHA2 family of hash functions, the smallest
+ * of these is the collision resistance strength.
+ *
+ * [SP-800-107r1] Section 4.2, Table 1.
+ */
+type securityStrength = digest_size / 2
 
 // Export Ch, Maj and the block function to be used in SAW proofs
 /** (4.1) (w==32), (4.2) (w==32), (4.8) (w==64) */
