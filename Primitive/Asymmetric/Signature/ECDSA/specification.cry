@@ -49,8 +49,6 @@ import Common::utils(mp_mod_inv)
  *      or failure (`None`) if:
  *      - the inputs `d` and `k` were not in the correct interval;
  *      - the outputs `r` or `s` were 0 for the given inputs;
- *      - the product `[k]G` is the point at infinity (this is unlikely?
-          Impossible?)
  *
  * In all inputs and outputs, `n` is the order of the base point `G` for the
  * elliptic curve specified in the `PFEC` interface.
@@ -75,17 +73,20 @@ sign M d k = if inputsInRange then maybe_rs else None
         // Step 5.
         R = EC::scmul (fromZ k) EC::G
 
-        // Steps 6-8. This fails (returns `None`) if `R` is the point at
-        // infinity.
+        // Steps 6-8. This would fail (returns `None`) if `R` is the point at
+        // infinity. In fact, that case is impossible because `[k]G = 0` if and
+        // only if `k = n`, which can't happen by definition.
         maybe_r = EC::xCoordModOrder R
 
         // This fails (returns `None`) if `r` or `s` are invalid.
         maybe_rs = case maybe_r of
             // Step 11.
             Some r -> if (r != 0) && (s != 0) then Some (r, s) else None
-                // Step 9.
-                where s = (k_inv * (e + r * d))
-            None -> None
+                // Step 9. The `mod n` is implicit here because these are all
+                // of type `Z n`.
+                where s = k_inv * (e + r * d)
+
+            None -> None // Impossible!
 
 /**
  * ECDSA signature verification algorithm.
