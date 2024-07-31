@@ -62,6 +62,14 @@ interface constraint (width EC::n >= 224)
 type ECSecurityStrength = (width EC::n / 2)
 
 /**
+ * The security strength for the hash function shall not be less than the
+ * security strength associated with the curve.
+ * [FIPS-186-5] Section 6.1.1.
+ */
+interface constraint (ECSecurityStrength <= Hash::securityStrength)
+
+
+/**
  * ECDSA signature generation algorithm.
  * [FIPS-186-5] Section 6.4.1
  *
