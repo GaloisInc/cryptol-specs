@@ -77,5 +77,3 @@ interface constraint (ECSecurityStrength <= Hash::securityStrength)
 sign = USpec::sign
 verify = USpec::verify
 publicKey = USpec::publicKey
-
-// NB: removed property
