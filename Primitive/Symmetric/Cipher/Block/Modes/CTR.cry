@@ -68,9 +68,14 @@ decrypt k t_1 cs = ps
         // Counters are called T_1, ..., T_n in the original spec
         ctrs = [t_1 + i | i<- [0...]]
 
-// Decryption must be the inverse of encryption.
-// With high probability, this will be incredibly slow to prove, and should be
-// `:check`ed instead for each instantiation of this module.
+/**
+ * Decryption must be the inverse of encryption.
+ * With high probability, this will be incredibly slow to prove.
+ * ```repl
+ * :check encryptCorrect`{n=5}
+ * ```
+ */
+encryptCorrect : {n} (fin n, n < 2^^C::BlockSize) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> Bool
 property encryptCorrect k c ps = (decrypt k c (encrypt k c ps)) == ps
 
 

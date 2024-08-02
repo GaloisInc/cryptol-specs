@@ -1,7 +1,7 @@
 // Cryptol AES CBC test vectors
-// Copyright (c) 2010-2018, Galois Inc.
+// @copyright Galois Inc. 2010-2018,
+// @author Ajay Kumar Eeralla
 // www.cryptol.net
-// Author: Ajay Kumar Eeralla
 
 module Primitive::Symmetric::Cipher::Block::Modes::AES128_CBC where
 import Primitive::Symmetric::Cipher::Block::Modes::CBC
@@ -14,7 +14,12 @@ AES128_CBC_decrypt: {n} (fin n) => [AES128::KeySize] -> iv -> [n]block -> [n]blo
 AES128_CBC_decrypt = cbcDec AES128::decrypt
 // Test vectors from https://tools.ietf.org/html/rfc3602
 
-// No. of blocks := 1
+/**
+ * CBC mode with 1 block works.
+ * ```repl
+ * :prove testEncCbcPassB1
+ * ```
+ */
 property testEncCbcPassB1 = and [ (AES128_CBC_encrypt k iv ps) == cs
                                 | k <- testKey | iv <- testIv | ps <- testPt | cs <- testCt ]
     where
@@ -24,7 +29,12 @@ property testEncCbcPassB1 = and [ (AES128_CBC_encrypt k iv ps) == cs
         testCt = [[0xe353779c1079aeb82708942dbe77181a]]
 
 
-// No. of blocks := 2
+/**
+ * CBC mode with 2 block works.
+ * ```repl
+ * :prove testEncCbcPassB2
+ * ```
+ */
 property testEncCbcPassB2 = and [ (AES128_CBC_encrypt k iv ps) == cs
                                 | k <- testKey2 | iv <- testIv2 | ps <- testPt2 | cs <- testCt2 ]
     where
@@ -34,7 +44,12 @@ property testEncCbcPassB2 = and [ (AES128_CBC_encrypt k iv ps) == cs
         testCt2 = [[0xd296cd94c2cccf8a3a863028b5e1dc0a, 0x7586602d253cfff91b8266bea6d61ab1]]
 
 
-// No. of blocks := 3
+/**
+ * CBC mode with 3 block works.
+ * ```repl
+ * :prove testEncCbcPassB3
+ * ```
+ */
 property testEncCbcPassB3 = and [ (AES128_CBC_encrypt k iv ps) == cs
                                 | k <- testKey3 | iv <- testIv3 | ps <- testPt3 | cs <- testCt3 ]
     where
@@ -43,7 +58,12 @@ property testEncCbcPassB3 = and [ (AES128_CBC_encrypt k iv ps) == cs
         testPt3 = [[0x5468697320697320612034382d627974, 0x65206d65737361676520286578616374, 0x6c7920332041455320626c6f636b7329]]
         testCt3 = [[0xd0a02b3836451753d493665d33f0e886, 0x2dea54cdb293abc7506939276772f8d5, 0x021c19216bad525c8579695d83ba2684]]
 
-// No. of blocks := 4
+/**
+ * CBC mode with 4 block works.
+ * ```repl
+ * :prove testEncCbcPassB4
+ * ```
+ */
 property testEncCbcPassB4 = and [ (AES128_CBC_encrypt k iv ps) == cs
                                 | k <- testKey4 | iv <- testIv4 | ps <- testPt4 | cs <- testCt4 ]
     where
