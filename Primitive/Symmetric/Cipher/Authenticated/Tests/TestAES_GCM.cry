@@ -18,8 +18,12 @@ import Primitive::Symmetric::Cipher::Authenticated::Instantiations::AES256_GCM a
  Accessed from https://github.com/openssl/openssl/blob/master/test/aesgcmtest.c
  */
 
-// This can be `:prove`n quickly.
-// Source: [GCM Submission]
+/**
+ * Source: [GCM Submission]
+ * ```repl
+ * :prove aes128_vector_0
+ * ```
+ */
 property aes128_vector_0 = ct == expected_ct /\ tag == expected_tag /\ is_symmetric
     where
         pt = []
@@ -33,9 +37,12 @@ property aes128_vector_0 = ct == expected_ct /\ tag == expected_tag /\ is_symmet
           Some actual_pt -> pt == actual_pt
           None -> False
 
-
-// This can be `:prove`n quickly.
-// Source: [GCM Submission]
+/**
+ * Source: [GCM Submission]
+ * ```repl
+ * :prove aes128_vector_1
+ * ```
+ */
 property aes128_vector_1 =
     ct == expected_ct /\ tag == expected_tag /\ is_symmetric
     where
@@ -52,8 +59,12 @@ property aes128_vector_1 =
           None -> False
 
 
-// This can be `:prove`n quickly.
-// Source: [GCM Submission]
+/**
+ * Source: [GCM Submission]
+ * ```repl
+ * :prove aes128_vector_2
+ * ```
+ */
 property aes128_vector_2 =
     ct == expected_ct /\ tag == expected_tag /\ is_symmetric
     where
@@ -70,8 +81,12 @@ property aes128_vector_2 =
           None -> False
 
 
-// This can be `:prove`n quickly.
-// Source: [GCM Submission]
+/**
+ * Source: [GCM Submission]
+ * ```repl
+ * :prove aes128_vector_3
+ * ```
+ */
 property aes128_vector_3 =
     ct == expected_ct /\ tag == expected_tag /\ is_symmetric
     where
@@ -87,9 +102,12 @@ property aes128_vector_3 =
           Some actual_pt -> pt == actual_pt
           None -> False
 
-
-// This can be `:prove`n quickly.
-// Source: [OPENSSL]
+/**
+ * Source: [OPENSSL]
+ * ```repl
+ * :prove aes256_vector_0
+ * ```
+ */
 property aes256_vector_0 =
     ct == expected_ct /\ tag == expected_tag /\ is_symmetric
     where
@@ -105,9 +123,13 @@ property aes256_vector_0 =
           Some actual_pt -> pt == actual_pt
           None -> False
 
-// This can be `:prove`n quickly.
-// Source: Modified from [OPENSSL]. I just borked the tag to make sure decryption fails if
-// the tag is wrong.
+/**
+ * Source: Modified from [OPENSSL]. I just borked the tag to make sure decryption fails if
+ * the tag is wrong.
+ * ```repl
+ * :prove aes256_invalid_vector_1
+ * ```
+ */
 property aes256_invalid_vector_1 =
     ct == expected_ct /\ tag == expected_tag /\ requires_symmetry
     where
