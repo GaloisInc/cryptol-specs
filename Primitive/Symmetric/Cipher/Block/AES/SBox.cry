@@ -36,7 +36,7 @@ sboxInv = [ GF28::inverse (transformInv b) | b <- [0 .. 255] ] where
 
 /**
  * S-box inversion must be correctly defined.
- * ```cryptol
+ * ```repl
  * :prove sBoxInverts
  * ```
  */
