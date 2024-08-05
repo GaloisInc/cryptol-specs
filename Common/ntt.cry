@@ -87,21 +87,17 @@ roots = iterate ((*) (r * r)) 1
 /**
  * An O(n log n) number theortic transform for Dilithium.
  */
-import Common::utils (coerceSize)
-
 ntt : [nn]Fld -> [nn]Fld
 ntt a = ntt_r`{lg2 nn} 0 a
 
 ntt_r : {n} (fin n) => Integer -> [2 ^^ n]Fld -> [2 ^^ n]Fld
-ntt_r depth a =
-  if `n == 0 then
-    a
-  else
-    coerceSize (butterfly depth even odd)
+ntt_r depth a
+  | n == 0 =>  a
+  | n > 0 => butterfly depth even odd
     where
-      (lft, rht) = shuffle (coerceSize a)
-      even = ntt_r`{max 1 n - 1} (depth + 1) lft
-      odd = ntt_r`{max 1 n - 1} (depth + 1) rht
+      (lft, rht) = shuffle a
+      even = ntt_r`{n - 1} (depth + 1) lft
+      odd = ntt_r`{n - 1} (depth + 1) rht
 
 /**
  * Group even indices in first half and odd indices in second half.
@@ -115,13 +111,14 @@ shuffle a =
 /**
  * Perform the butterfly operation.
  */
-butterfly : {n} (fin n, n > 0) => Integer -> [n]Fld -> [n]Fld -> [2 * n]Fld
+butterfly : {n} (fin n) => Integer -> [2^^n]Fld -> [2^^n]Fld -> [2 ^^ (n+1)]Fld
 butterfly depth even odd =
   lft # rht
   where
     j = 2 ^^ depth
-    lft = [ even @ i + roots @ (i * j) * odd @ i | i <- [0 .. <n] ]
-    rht = [ even @ i - roots @ (i * j) * odd @ i | i <- [0 .. <n] ]
+    lft = [ even @ i + roots @ (i * j) * odd @ i | i <- [0 .. <len] ]
+    rht = [ even @ i - roots @ (i * j) * odd @ i | i <- [0 .. <len] ]
+    type len = 2^^n
 
 /* INVERSE NTT */
 
@@ -139,13 +136,11 @@ ivntt a =
   map ((*) ivn) (ivntt_r`{lg2 nn} 0 a)
 
 ivntt_r : {n} (fin n) => Integer -> [2 ^^ n]Fld -> [2 ^^ n]Fld
-ivntt_r depth a =
-  if `n == 0 then
-    a
-  else
-    coerceSize (ivbutterfly depth even odd)
+ivntt_r depth a
+  | n == 0 => a
+  | n > 0 => ivbutterfly depth even odd
     where
-      (lft, rht) = shuffle (coerceSize a)
+      (lft, rht) = shuffle a
       even = ivntt_r`{max 1 n - 1} (depth + 1) lft
       odd = ivntt_r`{max 1 n - 1} (depth + 1) rht
 
