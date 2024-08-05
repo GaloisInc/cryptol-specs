@@ -343,6 +343,53 @@ private
       where
         lambda = mp_mod_inv p.z
 
+
+    // The twin affine function depends on the set of four points: two
+    // arbitrary points S and T, their sum SpT, and their difference SmT.
+    type TwinPoints = {
+        A: ProjectivePoint,
+        B: ProjectivePoint,
+        C: ProjectivePoint,
+        D: ProjectivePoint
+    }
+    /**
+     * Optimized routine to affinify and projectify four points at once
+     * (or do nothing, if any of the points are the point at infinity).
+     *
+     * This optimization is designed for use in `ec_twin_mult` and should not
+     * be used in other settings without checking that its behavior is suitable.
+     * [MATH-2008] Section 2.2, Note 8.
+     */
+    twin_normalize: TwinPoints -> TwinPoints
+    twin_normalize { A=A, B=B, C=C, D=D } =
+        // We can't compute twin normalization on the point at infinity
+        // because it doesn't have an inverse. Instead, skip the normalization
+        // step (the algorithm will still work!)
+        if (A.z == 0) || (B.z == 0) || (C.z == 0) || (D.z == 0) then
+            { A=A, B=B, C=C, D=D }
+        else {
+            A = normalize_from_inv A a_inv,
+            B = normalize_from_inv B b_inv,
+            C = normalize_from_inv C c_inv,
+            D = normalize_from_inv D d_inv
+        }
+        where
+            ab = A.z * B.z
+            cd = C.z * D.z
+            abc = ab * C.z
+            abd = ab * D.z
+            acd = A.z * cd
+            bcd = B.z * cd
+            abcd = ab * cd
+            e = recip abcd
+            a_inv = e * bcd
+            b_inv = e * acd
+            c_inv = e * abd
+            d_inv = e * abc
+            normalize_from_inv p inv =
+                to_projective (Affine (inv ^^2 * p.x) (inv ^^3 * p.y))
+
+
     /**
      * Double an elliptic curve point.
      * [MATH-2008] Routine 2.2.6.
@@ -578,6 +625,10 @@ private
         where
             SpT = ec_full_add S T                      /* Line 1 */
             SmT = ec_full_sub S T                      /* Line 2 */
+            // [MATH-2008] Section 2.2, Note 8 describes an optimization to
+            // speed up the arithmetic in L19-26 by normalizing (convert to
+            // affine and then back to projective) the points.
+            {A=S', B=T', C=SpT', D=SmT'} = twin_normalize {A=S, B=T, C=SpT, D=SmT}
             e0s = ZtoBV d0 : [max 4 (width P)]         /* Line 3 */
             e1s = ZtoBV d1 : [max 4 (width P)]         /* Line 4 */
             c   = [[False, False] # take e0s,          /* Line 5 */
@@ -600,14 +651,14 @@ private
                      // Line 18.
                      RkDouble = ec_double Rk
                      // Lines 19-26.
-                     Rk' = if (u0 == -1) && (u1 == -1) then ec_full_sub RkDouble SpT
-                            | (u0 == -1) && (u1 ==  0) then ec_full_sub RkDouble S
-                            | (u0 == -1) && (u1 ==  1) then ec_full_sub RkDouble SmT
-                            | (u0 ==  0) && (u1 == -1) then ec_full_sub RkDouble T
-                            | (u0 ==  0) && (u1 ==  1) then ec_full_add RkDouble T
-                            | (u0 ==  1) && (u1 == -1) then ec_full_add RkDouble SmT
-                            | (u0 ==  1) && (u1 ==  0) then ec_full_add RkDouble S
-                            | (u0 ==  1) && (u1 ==  1) then ec_full_add RkDouble SpT
+                     Rk' = if (u0 == -1) && (u1 == -1) then ec_full_sub RkDouble SpT'
+                            | (u0 == -1) && (u1 ==  0) then ec_full_sub RkDouble S'
+                            | (u0 == -1) && (u1 ==  1) then ec_full_sub RkDouble SmT'
+                            | (u0 ==  0) && (u1 == -1) then ec_full_sub RkDouble T'
+                            | (u0 ==  0) && (u1 ==  1) then ec_full_add RkDouble T'
+                            | (u0 ==  1) && (u1 == -1) then ec_full_add RkDouble SmT'
+                            | (u0 ==  1) && (u1 ==  0) then ec_full_add RkDouble S'
+                            | (u0 ==  1) && (u1 ==  1) then ec_full_add RkDouble SpT'
                             else RkDouble
                 | (Rk, [c0, c1]) <- states
                 // Line 7: Iterate through the eis, after dropping the four
@@ -624,6 +675,14 @@ private
                    | (4 <= t)  && (t < 12) then 14
                    else 12
 
+    /**
+     * Checks that twin multiplication works as expected. Note that a given
+     * point can have multiple projective representations, so we have to
+     * check equality in the affine representation.
+     * ```repl
+     * :check twin_mult_works
+     * ```
+     */
     property twin_mult_works d0 k0 d1 k1 = affineEq R_plain R_twin
         where
             S = to_projective (validPointFromK k0)
