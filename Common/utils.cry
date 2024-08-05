@@ -102,6 +102,3 @@ mp_mod_inv c = if c == 0 then error "Zero does not have a multiplicative inverse
  */
 mp_mod_inv_correct : {a} (fin a, prime a, a >=2) => Z a -> Bit
 property mp_mod_inv_correct x = x != 0 ==> x * mp_mod_inv x == 1
-
-coerceSize : {m, n, a} [m]a -> [n]a
-coerceSize xs = [ xs @ i | i <- [0 .. <n]]

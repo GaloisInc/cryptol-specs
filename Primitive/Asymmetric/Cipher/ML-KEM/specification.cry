@@ -153,8 +153,6 @@ NaiveNTTInv f = [term*(recip 128) | term <- ParametricNTTInv f (recip zeta)]
 // This section Copyright Amazon.com, Inc. or its affiliates.
 //////////////////////////////////////////////////////////////
 
-import Common::utils (coerceSize)
-
 // Simple lookup table for Zeta value given K
 zeta_expc  : [128](Z q)
 zeta_expc = [ 1, 1729, 2580, 3289, 2642, 630, 1897, 848,
@@ -175,16 +173,6 @@ zeta_expc = [ 1, 1729, 2580, 3289, 2642, 630, 1897, 848,
               1722, 1212, 1874, 1029, 2110, 2935, 885, 2154 ]
 
 // Fast recursive CT-NTT
-//
-// The "coerceSize" calls in this code are required to satisfy
-// Cryptol's type constraint solver that this code really
-// is type-correct by effectively changing a static type-check
-// into a dynamic one.
-//
-// As the static type constraint prover improves, this
-// might become unncessesary.
-//
-// See https://github.com/GaloisInc/cryptol/issues/1489 for more details.
 ct_butterfly :
     {m, hm}
     (m >= 2, m <= 8, hm >= 1, hm <= 7, hm == m - 1) =>
@@ -195,7 +183,7 @@ ct_butterfly v z = new_v
     lower, upper : [2^^hm](Z q)
     lower@x = v@x + z * v@(x + halflen)
     upper@x = v@x - z * v@(x + halflen)
-    new_v = coerceSize (lower # upper)
+    new_v = lower # upper
 
 fast_nttl :
     {lv}  // Length of v is a member of {256,128,64,32,16,8,4}
@@ -206,30 +194,19 @@ fast_nttl v k
   | lv == 2 => ct_butterfly`{lv,lv-1} v (zeta_expc@k)
 
   // Recursive case. Butterfly what we have, then recurse on each half,
-  // concatenate the results and return. As above, we need coerceSize
-  // here (twice) to satisfy the type checker.
-  | lv  > 2 => coerceSize ((fast_nttl`{lv-1} s0 (k * 2)) #
-                           (fast_nttl`{lv-1} s1 (k * 2 + 1)))
+  // concatenate the results and return.
+  | lv  > 2 => (fast_nttl`{lv-1} s0 (k * 2)) #
+               (fast_nttl`{lv-1} s1 (k * 2 + 1))
                 where
                   t = ct_butterfly`{lv,lv-1} v (zeta_expc@k)
                   // Split t into two halves s0 and s1
-                  [s0, s1] = split (coerceSize t)
+                  [s0, s1] = split t
 
 // Top level entry point - start with lv=256, k=1
 fast_ntt : Z_q_256 -> Z_q_256
 fast_ntt v = fast_nttl v 1
 
 // Fast recursive GS-Inverse-NTT
-//
-// The "coerceSize" calls in this code are required to satisfy
-// Cryptol's type constraint solver that this code really
-// is type-correct by effectively changing a static type-check
-// into a dynamic one.
-//
-// As the static type constraint prover improves, this
-// might become unncessesary.
-//
-// See https://github.com/GaloisInc/cryptol/issues/1489 for more details.
 gs_butterfly :
     {m, hm}
     (m >= 2, m <= 8, hm >= 1, hm <= 7, hm == m - 1) =>
@@ -240,7 +217,7 @@ gs_butterfly v z = new_v
     lower, upper : [2^^hm](Z q)
     lower@x = v@x  + v@(x + halflen)
     upper@x = z * (v@(x + halflen) - v@x)
-    new_v = coerceSize (lower # upper)
+    new_v = lower # upper
 
 fast_invnttl :
     {lv}  // Length of v is a member of {256,128,64,32,16,8,4}
@@ -253,13 +230,12 @@ fast_invnttl v k
 
   // Recursive case. Recurse on each half,
   // concatenate the results, butterfly that, and return.
-  // As above, we need coerceSize here (twice) to satisfy the type checker.
   | lv  > 2 => gs_butterfly`{lv,lv-1} t (zeta_expc@k)
                 where
                   // Split t into two halves s0 and s1
-                  [s0, s1] = split (coerceSize v)
-                  t = coerceSize ((fast_invnttl`{lv-1} s0 (k * 2 + 1)) #
-                                  (fast_invnttl`{lv-1} s1 (k * 2)))
+                  [s0, s1] = split v
+                  t = (fast_invnttl`{lv-1} s0 (k * 2 + 1)) #
+                      (fast_invnttl`{lv-1} s1 (k * 2))
 
 // Multiply all elements of v by the reciprocal of 128 (modulo q)
 recip_128_modq = (recip 128) : (Z q)
