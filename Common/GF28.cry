@@ -73,7 +73,7 @@ matrixMult xss yss = [ vectorMult xs yss' | xs <- xss ]
 
 /**
  * [FIPS-197u1] Section 4.4, Algorithm 4.10
- * ```cryptol
+ * ```repl
  * :prove inverseDefined
  * ```
  */
@@ -94,7 +94,7 @@ inverse x = pow x 254
 
 /**
  * Correctness property for inverses.
- * ```cryptol
+ * ```repl
  * :prove inverseCorrect
  * ```
  */

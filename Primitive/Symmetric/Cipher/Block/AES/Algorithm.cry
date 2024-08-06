@@ -132,10 +132,8 @@ InvMixColumns state = GF28::matrixMult m state
 
 /**
  * SubBytes inversion must be correctly defined.
- * ```cryptol
- * :prove subBytesInverts `{Mode=0}
- * :prove subBytesInverts `{Mode=1}
- * :prove subBytesInverts `{Mode=2}
+ * ```repl
+ * :prove subBytesInverts
  * ```
  */
 subBytesInverts : State -> Bool
@@ -143,10 +141,8 @@ property subBytesInverts s = InvSubBytes (SubBytes s) == s
 
 /**
  * ShiftRows inversion must be correctly defined.
- * ```cryptol
- * :prove shiftRowsInverts `{Mode=0}
- * :prove shiftRowsInverts `{Mode=1}
- * :prove shiftRowsInverts `{Mode=2}
+ * ```repl
+ * :prove shiftRowsInverts
  * ```
  */
 shiftRowsInverts : State -> Bool
@@ -154,10 +150,8 @@ property shiftRowsInverts s = InvShiftRows (ShiftRows s) == s
 
 /**
  * MixColumns inversion must be correctly defined.
- * ```cryptol
- * :check mixColumnsInverts `{Mode=0}
- * :check mixColumnsInverts `{Mode=1}
- * :check mixColumnsInverts `{Mode=2}
+ * ```repl
+ * :check mixColumnsInverts
  * ```
  */
 mixColumnsInverts : State -> Bool

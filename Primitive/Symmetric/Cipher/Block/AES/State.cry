@@ -44,7 +44,7 @@ stateToMsg st = join (join (transpose st))
  * Note that we don't ever need this property in the execution of AES,
  * but it should hold true anyway.
  *
- * ```cryptol
+ * ```repl
  * :prove ioInverts
  * ```
  */

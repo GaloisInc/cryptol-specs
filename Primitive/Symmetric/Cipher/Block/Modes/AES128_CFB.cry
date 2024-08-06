@@ -1,8 +1,8 @@
 // Cryptol AES CFB test vectors
-// Copyright (c) 2010-2018, Galois Inc.
+// @copyright Galois Inc. 2010-2018
+// @author Ajay Kumar Eeralla
 // www.cryptol.net
 // You can freely use this source code for educational purposes.
-// Author: Ajay Kumar Eeralla
 
 module Primitive::Symmetric::Cipher::Block::Modes::AES128_CFB where
 import Primitive::Symmetric::Cipher::Block::Modes::CFB
@@ -15,7 +15,12 @@ AES128_CFB_decrypt: {n} (fin n) => [AES128::KeySize] -> iv -> [n]block -> [n]blo
 AES128_CFB_decrypt = cfbDec AES128::decrypt
 
 // Test vectors from https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf
-// No. of blocks := 1
+/**
+ * CFB mode with 1 block works.
+ * ```repl
+ * :prove testEncCfbPassB1
+ * ```
+ */
 property testEncCfbPassB1 = and [ (AES128_CFB_encrypt k iv ps) == cs
                                 | k <- testKey | iv <- testIv | ps <- testPt | cs <- testCt ]
     where
@@ -25,7 +30,12 @@ property testEncCfbPassB1 = and [ (AES128_CFB_encrypt k iv ps) == cs
         testCt = [[0x3b3fd92eb72dad20333449f8e83cfb4a]]
 
 
-// No. of blocks := 2
+/**
+ * CFB mode with 2 block works.
+ * ```repl
+ * :prove testEncCfbPassB2
+ * ```
+ */
 property testEncCfbPassB2 = and [ (AES128_CFB_encrypt k iv ps) == cs
                                 | k <- testKey2 | iv <- testIv2 | ps <- testPt2 | cs <- testCt2 ]
     where

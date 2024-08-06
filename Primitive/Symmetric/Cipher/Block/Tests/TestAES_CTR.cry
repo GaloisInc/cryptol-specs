@@ -17,7 +17,11 @@ import Primitive::Symmetric::Cipher::Block::Instantiations::AES128_CTR as AES128
 import Primitive::Symmetric::Cipher::Block::Instantiations::AES192_CTR as AES192_CTR
 import Primitive::Symmetric::Cipher::Block::Instantiations::AES256_CTR as AES256_CTR
 
-// This can be `:prove`n.
+/**
+ * ```repl
+ * :prove aes128_ctr_encrypt_vector
+ * ```
+ */
 property aes128_ctr_encrypt_vector = (AES128_CTR::encrypt k ic plaintext) == ciphertext
     where
     k = 0x2b7e151628aed2a6abf7158809cf4f3c
@@ -33,7 +37,11 @@ property aes128_ctr_encrypt_vector = (AES128_CTR::encrypt k ic plaintext) == cip
         0x5ae4df3edbd5d35e5b4f09020db03eab,
         0x1e031dda2fbe03d1792170a0f3009cee]
 
-// This can be `:prove`n.
+/**
+ * ```repl
+ * :prove aes128_ctr_decrypt_vector
+ * ```
+ */
 property aes128_ctr_decrypt_vector = (AES128_CTR::decrypt k ic ciphertext) == plaintext
     where
     k = 0x2b7e151628aed2a6abf7158809cf4f3c
@@ -49,7 +57,11 @@ property aes128_ctr_decrypt_vector = (AES128_CTR::decrypt k ic ciphertext) == pl
         0x30c81c46a35ce411e5fbc1191a0a52ef,
         0xf69f2445df4f9b17ad2b417be66c3710]
 
-// This can be `:prove`n.
+/**
+ * ```repl
+ * :prove aes192_ctr_encrypt_vector
+ * ```
+ */
 property aes192_ctr_encrypt_vector = (AES192_CTR::encrypt k ic plaintext) == ciphertext
     where
     k = 0x8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b
@@ -65,7 +77,11 @@ property aes192_ctr_encrypt_vector = (AES192_CTR::encrypt k ic plaintext) == cip
         0x1e36b26bd1ebc670d1bd1d665620abf7,
         0x4f78a7f6d29809585a97daec58c6b050]
 
-// This can be `:prove`n.
+/**
+ * ```repl
+ * :prove aes192_ctr_decrypt_vector
+ * ```
+ */
 property aes192_ctr_decrypt_vector = (AES192_CTR::decrypt k ic ciphertext) == plaintext
     where
     k = 0x8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b
@@ -81,7 +97,11 @@ property aes192_ctr_decrypt_vector = (AES192_CTR::decrypt k ic ciphertext) == pl
         0x30c81c46a35ce411e5fbc1191a0a52ef,
         0xf69f2445df4f9b17ad2b417be66c3710]
 
-// This can be `:prove`n.
+/**
+ * ```repl
+ * :prove aes256_ctr_encrypt_vector
+ * ```
+ */
 property aes256_ctr_encrypt_vector = (AES256_CTR::encrypt k ic plaintext) == ciphertext
     where
     k = 0x603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4
@@ -97,7 +117,11 @@ property aes256_ctr_encrypt_vector = (AES256_CTR::encrypt k ic plaintext) == cip
         0x2b0930daa23de94ce87017ba2d84988d,
         0xdfc9c58db67aada613c2dd08457941a6]
 
-// This can be `:prove`n.
+/**
+ * ```repl
+ * :prove aes256_ctr_decrypt_vector
+ * ```
+ */
 property aes256_ctr_decrypt_vector = (AES256_CTR::decrypt k ic ciphertext) == plaintext
     where
     k = 0x603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4

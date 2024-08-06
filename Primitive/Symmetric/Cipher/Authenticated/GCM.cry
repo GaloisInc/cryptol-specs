@@ -113,14 +113,28 @@ GCM_AD key iv ct aad tag =
     T' = MSB`{T} (GCTR CIPHk J0 S)
 
 /**
-* Property demonstrating equivalence between `mult` and `•`.
-*/
+ * Property demonstrating equivalence between `mult` and `•`.
+ * This takes more than 25 minutes to `:prove`.
+ * ```repl
+ * :check dotAndMultAreEquivalent
+ * ```
+ */
 property dotAndMultAreEquivalent X Y = mult X Y == X • Y
 
 /**
  * Property demonstrating that decryption is the inverse of encryption.
  *
- * This should be instantiated for each block cipher `C::encrypt` that uses GCM mode.
+ * This property takes more than 20 minutes to `:prove`.
+ * It's spot-checked in the test vectors.
+ * Here we pick a fixed set of parameters, but it should be true
+ * for all valid tag, aad, and plaintext lengths.
+ * - P = 256 because we want to test the block chaining, so we need at least 2
+ * - IV = 96 because it's the shortest allowable value
+ * - AAD = 8 because we want to make sure it's incorporated
+ *
+ * ```repl
+ * :check gcmIsSymmetric `{AAD=8, P=256, IV=96}
+ * ```
  */
 gcmIsSymmetric : { P, IV, AAD } ( ValidText P, ValidIV IV, ValidAAD AAD )
   => [C::KeySize] -> [IV] -> [P] -> [AAD] -> Bool
@@ -222,7 +236,10 @@ private
   /**
    * GCTR should return an empty output when given an empty input.
    * This property is described in [NIST-SP-800-38D], Algorithm 3.
-   * It can be `:prove`n.
+   *
+   * ```repl
+   * :prove emptyInputProducesEmptyOutputGCTR
+   * ```
    */
   emptyInputProducesEmptyOutputGCTR : [C::KeySize] -> [128] -> Bool
   property emptyInputProducesEmptyOutputGCTR key icb =
