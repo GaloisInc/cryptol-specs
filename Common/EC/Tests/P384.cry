@@ -69,13 +69,14 @@ property scalarMultVectorPasses = P384::affineEq (P384::scmul d S) R
         R = P384::Affine (BVtoZ 0xe4f77e7ffeb7f0958910e3a680d677a477191df166160ff7ef6bb5261f791aa7b45e3e653d151b95dad3d93ca0290ef2)
              (BVtoZ 0xac7dee41d8c5f4a7d5836960a773cfc1376289d3373f8cf7417b0c6207ac32e913856612fc9ff2e357eb2ee05cf9667f)
 
-/*
-// NB: We haven't implemented the joint-scalar-multiply algorithm yet (aka
-// twin_mult), but when we do we can use this test vector.
-property p384_joint_scalar_multiply_example =
-  p384::joint_scalar_multiply_example R S T d e
-  where d = BVtoZ 0xa4ebcae5a665983493ab3e626085a24c104311a761b5a8fdac052ed1f111a5c44f76f45659d2d111a61b5fdd97583480
-        e = BVtoZ 0xafcf88119a3a76c87acbd6008e1349b29f4ba9aa0e12ce89bcfcae2180b38d81ab8cf15095301a182afbc6893e75385d
-        R = {x = BVtoZ 0x917ea28bcd641741ae5d18c2f1bd917ba68d34f0f0577387dc81260462aea60e2417b8bdc5d954fc729d211db23a02dc,
-             y = BVtoZ 0x1a29f7ce6d074654d77b40888c73e92546c8f16a5ff6bcbd307f758d4aee684beff26f6742f597e2585c86da908f7186}
-*/
+/**
+ * ```repl
+ * :prove twinMultVectorPasses
+ * ```
+ */
+property twinMultVectorPasses =
+  P384::affineEq R (P384::twin_mul d S e T)
+  where d = toInteger 0xa4ebcae5a665983493ab3e626085a24c104311a761b5a8fdac052ed1f111a5c44f76f45659d2d111a61b5fdd97583480
+        e = toInteger 0xafcf88119a3a76c87acbd6008e1349b29f4ba9aa0e12ce89bcfcae2180b38d81ab8cf15095301a182afbc6893e75385d
+        R = P384::Affine (BVtoZ 0x917ea28bcd641741ae5d18c2f1bd917ba68d34f0f0577387dc81260462aea60e2417b8bdc5d954fc729d211db23a02dc)
+            (BVtoZ 0x1a29f7ce6d074654d77b40888c73e92546c8f16a5ff6bcbd307f758d4aee684beff26f6742f597e2585c86da908f7186)

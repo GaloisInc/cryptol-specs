@@ -297,12 +297,13 @@ property scmul_commutes m m' = affineEq (m ~* (m' ~* G)) (m' ~* (m ~* G))
 
 /**
  * Compute twin multiplication.
- *
- * There's a more efficient routine to implement this functionality, but we
- * haven't implemented it here yet. [MATH-2008] Routine 2.2.12.
  */
 twin_mul : Integer -> Point -> Integer -> Point -> Point
-twin_mul c P d Q = add (c ~* P) (d ~* Q)
+twin_mul c P d Q = to_affine (ec_twin_mult c' P' d' Q')
+    where
+        [c', d'] = [fromInteger   x | x <- [c, d]]
+        [P', Q'] = [to_projective p | p <- [P, Q]]
+
 
 
 /**
