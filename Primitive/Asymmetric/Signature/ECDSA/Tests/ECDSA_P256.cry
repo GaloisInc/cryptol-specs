@@ -4,7 +4,7 @@ Test vectors for ECDSA with curve P256.
 [RFC6979]: Thomas Pornin. Deterministic Usage of the Digital Siganture
     Algorithm (DSA) and Elliptic Curve Digital Signature Algorithm (ECDSA).
     Internet Requests for Comments (RFC) 6979. August 2013.
-    https://datatracker.ietf.org/doc/html/rfc6979
+    @see https://datatracker.ietf.org/doc/html/rfc6979
 
 @copyright Galois, Inc.
 @author Marcella Hastings <marcella@galois.com>

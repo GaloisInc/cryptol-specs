@@ -24,12 +24,12 @@ This implementation omits some parts of the original specification:
   Standard (SHS). (Department of Commerce, Washington, D.C.), Federal
   Information Processing Standards Publication (FIPS) NIST FIPS 180-4.
   August 2015.
-  https://doi.org/10.6028/NIST.FIPS.180-4
+  @see https://doi.org/10.6028/NIST.FIPS.180-4
 [FIPS-186-5]: National Institute of Standards and Technology. Digital
   Signature Standard (DSS). (Department of Commerce, Washington, D.C.),
   Federal Information Processing Standards Publication (FIPS) NIST FIPS 186-5.
   February 2023.
-  https://doi.org/10.6028/NIST.FIPS.186-5
+  @see https://doi.org/10.6028/NIST.FIPS.186-5
 
 @copyright Galois, Inc
 @author Marcella Hastings <marcella@galois.com>

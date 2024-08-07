@@ -13,7 +13,8 @@ www.cryptol.net
 [SP-800-107r1]: Quynh Dang. Recommendation for Applications Using Approved
     Hash Algorithms. (National Institute of Standards and Technology,
     Gaithersburg, MD), NIST Special Publication (SP) NIST SP 800-107, Revision
-    1. August 2012. https://doi.org/10.6028/NIST.SP.800-107r1.
+    1. August 2012.
+    @see https://doi.org/10.6028/NIST.SP.800-107r1.
 */
 
 module Primitive::Keyless::Hash::SHA2::SHA where
