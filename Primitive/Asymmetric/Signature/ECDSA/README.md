@@ -2,12 +2,12 @@
 
 This section contains three indepdendent implementations of ECDSA, each of which uses a different elliptic curve implementation.
 
-The most spec-adherent version includes the following files. `specification.cry` matches [FIPS-186-5](https://doi.org/10.6028/NIST.FIPS.186-5) as closely as possible; `unconstrained_spec.cry` implements the same algorithms but omits some of the top-level domain parameter constraints (e.g. on the size of the curve).
+The most spec-adherent version includes the following files. `Specification.cry` matches [FIPS-186-5](https://doi.org/10.6028/NIST.FIPS.186-5) as closely as possible; `UnconstrainedSpec.cry` implements the same algorithms but omits some of the top-level domain parameter constraints (e.g. on the size of the curve).
 This implementation is instantiated and tested for curve P-256 and SHA256. It relies on the curve implementation in `Common/EC/PrimeField/`.
 ```
 Primitive/Asymmetric/Signature/ECDSA/
-+ specification.cry
-+ unconstrained_spec.cry
++ Specification.cry
++ UnconstrainedSpec.cry
 + Instantiations/
   + ECDSA_P256.cry
 + Tests/

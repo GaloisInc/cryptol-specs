@@ -3,7 +3,7 @@ ECDSA as specified in [FIPS-186-5] Section 6.
 
 ⚠ This implementation is complete except for constraints on the size of the
 input parameters ([FIPS-186-5] Section 6.1.1)! Using this implementation will
-allow invalid combinations of parameters. Consider using `specification.cry`
+allow invalid combinations of parameters. Consider using `Specification.cry`
 instead.
 
 This implementation omits some parts of the original specification:
@@ -35,7 +35,7 @@ This implementation omits some parts of the original specification:
 @author Marcella Hastings <marcella@galois.com>
 */
 
-module Primitive::Asymmetric::Signature::ECDSA::unconstrained_spec where
+module Primitive::Asymmetric::Signature::ECDSA::UnconstrainedSpec where
 
 /**
  * ECDSA digital signature generation and verification requires domain

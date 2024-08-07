@@ -5,7 +5,7 @@
  * @author Marcella Hastings <marcella@galois.com>
  */
 module Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P256 =
-    Primitive::Asymmetric::Signature::ECDSA::specification {
+    Primitive::Asymmetric::Signature::ECDSA::Specification {
         Common::EC::PrimeField::P256
     }
 

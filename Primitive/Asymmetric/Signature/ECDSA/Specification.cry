@@ -30,7 +30,7 @@ This implementation omits some parts of the original specification:
 @author Marcella Hastings <marcella@galois.com>
 */
 
-module Primitive::Asymmetric::Signature::ECDSA::specification where
+module Primitive::Asymmetric::Signature::ECDSA::Specification where
 
 /**
  * ECDSA digital signature generation and verification requires domain
@@ -40,7 +40,7 @@ module Primitive::Asymmetric::Signature::ECDSA::specification where
 import interface Common::EC::ECInterface as EC
 
 
-import Primitive::Asymmetric::Signature::ECDSA::unconstrained_spec
+import Primitive::Asymmetric::Signature::ECDSA::UnconstrainedSpec
     { interface EC } as USpec
 
 /**
@@ -73,7 +73,7 @@ type ECSecurityStrength = (width EC::n / 2)
 interface constraint (ECSecurityStrength <= Hash::securityStrength)
 
 // Documentation for the public interface of this API can be found in
-// `unconstrained_spec.cry`.
+// `UnconstrainedSpec.cry`.
 sign = USpec::sign
 verify = USpec::verify
 publicKey = USpec::publicKey
