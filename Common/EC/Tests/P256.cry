@@ -68,13 +68,14 @@ property scalarMultVectorPasses = P256::affineEq (P256::scmul d S) R
         R = P256::Affine (BVtoZ 0x51d08d5f2d4278882946d88d83c97d11e62becc3cfc18bedacc89ba34eeca03f)
              (BVtoZ 0x75ee68eb8bf626aa5b673ab51f6e744e06f8fcf8a6c0cf3035beca956a7b41d5)
 
-/*
-// NB: We haven't implemented the joint-scalar-multiply algorithm yet (aka
-// twin_mult), but when we do we can use this test vector.
-property p256_joint_scalar_multiply_example =
-  p256::joint_scalar_multiply_example R S T d e
-  where d = BVtoZ 0xc51e4753afdec1e6b6c6a5b992f43f8dd0c7a8933072708b6522468b2ffb06fd
-        e = BVtoZ 0xd37f628ece72a462f0145cbefe3f0b355ee8332d37acdd83a358016aea029db7
-        R = {x = BVtoZ 0xd867b4679221009234939221b8046245efcf58413daacbeff857b8588341f6b8,
-             y = BVtoZ 0xf2504055c03cede12d22720dad69c745106b6607ec7e50dd35d54bd80f615275}
-*/
+/**
+ * ```repl
+ * :prove twinMultVectorPasses
+ * ```
+ */
+property twinMultVectorPasses =
+  P256::affineEq R (P256::twin_mul d S e T)
+  where d = toInteger 0xc51e4753afdec1e6b6c6a5b992f43f8dd0c7a8933072708b6522468b2ffb06fd
+        e = toInteger 0xd37f628ece72a462f0145cbefe3f0b355ee8332d37acdd83a358016aea029db7
+        R = P256::Affine (BVtoZ 0xd867b4679221009234939221b8046245efcf58413daacbeff857b8588341f6b8)
+            (BVtoZ 0xf2504055c03cede12d22720dad69c745106b6607ec7e50dd35d54bd80f615275)

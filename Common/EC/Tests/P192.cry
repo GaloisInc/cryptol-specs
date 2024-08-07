@@ -85,14 +85,15 @@ property scalarMultVectorPasses2 = P192::affineEq (P192::scmul d S') R
         d = toInteger 0xe14f37b3d1374ff8b03f41b9b3fdd2f0ebccf275d660d7f3
         R = P192::Affine (BVtoZ 0x07008ea40b08dbe76432096e80a2494c94982d2d5bcf98e6)
             (BVtoZ 0x76fab681d00b414ea636ba215de26d98c41bd7f2e4d65477)
-/*
-// NB: We haven't implemented the joint-scalar-multiply algorithm yet (aka
-// twin_mult), but when we do we can use this test vector.
-property p192_joint_scalar_multiply_example =
-  p192::joint_scalar_multiply_example R S T d e
-  where d = BVtoZ 0xa78a236d60baec0c5dd41b33a542463a8255391af64c74ee
-        e = BVtoZ 0xc4be3d53ec3089e71e4de8ceab7cce889bc393cd85b972bc
-        R = {x = BVtoZ 0x019f64eed8fa9b72b7dfea82c17c9bfa60ecb9e1778b5bde,
-             y = BVtoZ 0x16590c5fcd8655fa4ced33fb800e2a7e3c61f35d83503644}
-*/
 
+/**
+ * ```repl
+ * :prove twinMultVectorPasses
+ * ```
+ */
+property twinMultVectorPasses =
+  P192::affineEq R (P192::twin_mul d S e T)
+  where d = toInteger 0xa78a236d60baec0c5dd41b33a542463a8255391af64c74ee
+        e = toInteger 0xc4be3d53ec3089e71e4de8ceab7cce889bc393cd85b972bc
+        R = P192::Affine (BVtoZ 0x019f64eed8fa9b72b7dfea82c17c9bfa60ecb9e1778b5bde)
+            (BVtoZ 0x16590c5fcd8655fa4ced33fb800e2a7e3c61f35d83503644)
