@@ -48,6 +48,11 @@ import Primitive::Asymmetric::Signature::ECDSA::UnconstrainedSpec
  * hash function or XOF (extendable-output function).
  * This implementation currently fixes the hash function to SHA256, as
  * specified in [FIPS-180-4].
+ *
+ * @design Marcella Hastings <marcella@galois.com>. Fixing the hash function
+ *   to SHA256 is due to lack of an appropriate hash-function interface, not
+ *   for any technical reason. This is intended to be a temporary state,
+ *   blocked on the creation of such an interface.
  */
 import Primitive::Keyless::Hash::SHA2::SHA256 as Hash
 

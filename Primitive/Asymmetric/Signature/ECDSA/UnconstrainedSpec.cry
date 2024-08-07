@@ -10,14 +10,14 @@ This implementation omits some parts of the original specification:
 - The spec makes recommendations for domain parameter management which is out
   of scope for this implementation. (6.1.2)
 - The spec associates an ECDSA key pair `(d, Q)` with a specific set of domain
-  parameters. This implementation does not address anything to do with private
-  and public keys, including generation or management. (6.2)
+  parameters. This implementation does not include any details of generation,
+  management, or association of private and public keys. (6.2)
 - The spec requires that a new secret random number `k` is generated for each
   digital signature. This implementation does not handle secure generation or
   handling of the secret random number. ⚠ ️️️️Warning ⚠: incorrect generation or
   management of `k` can cause catastrophic failures of the signature scheme,
-  including revealing the private key. Implementors must manually verify that
-  their implementations satisfy this component of the spec! (6.3)
+  including revealing the private key! Implementors must manually verify that
+  their implementations satisfy this component of the spec. (6.3)
 
 
 [FIPS-180-4]: National Institute of Standards and Technology. Secure Hash
@@ -74,8 +74,8 @@ import Primitive::Keyless::Hash::SHA2::SHA256 as Hash
  * 3. The spec requires the hash function to be passed as an input. In this
  *    implementation, it is fixed to be SHA256 (from the SHA2 family). This is
  *    due to lack of an appropriate hash-function interface, not for any
- *    technical reason. We also introduce the constraint on `m` that ensures
- *    it is short enough to be processable by SHA256.
+ *    technical reason. We also introduce the `width` constraint on `m` that
+ *    ensures it is short enough to be processable by SHA256.
  * 4. The spec describes the domain parameters as an input to this function.
  *    In this implementation, we encode the domain parameters in the
  *    `ECInterface` included in this module, so they aren't passed explicitly.
@@ -138,9 +138,14 @@ sign M d k = if inputsInRange then maybe_rs else None
  * ECDSA signature verification algorithm.
  * [FIPS-186-5] Section 6.4.2.
  *
+ * Requirements:
+ * - The public key `Q` passed as input must be generated as specified in
+ *   [FIPS-186-5] Section 6.2.1. Implementors must manually verify that this
+ *   is the case.
+ *
  * Inputs:
  * M : [m]. Message `M`.
- * (r, s) : (Z n, Z n). A pair of integers.
+ * (r, s) : (Z n, Z n). A signature.
  * Q : Point. Purported signature verification key.
  *
  * Outputs:
