@@ -1,0 +1,84 @@
+/*
+ECDSA as specified in [FIPS-186-5] Section 6.
+
+This implementation omits some parts of the original specification:
+- The spec makes recommendations for domain parameter management which is out
+  of scope for this implementation. (6.1.2)
+- The spec associates an ECDSA key pair `(d, Q)` with a specific set of domain
+  parameters. This implementation does not address anything to do with private
+  and public keys, including generation or management. (6.2)
+- The spec requires that a new secret random number `k` is generated for each
+  digital signature. This implementation does not handle secure generation or
+  handling of the secret random number. ⚠ ️️️️Warning ⚠: incorrect generation or
+  management of `k` can cause catastrophic failures of the signature scheme,
+  including revealing the private key. Implementors must manually verify that
+  their implementations satisfy this component of the spec! (6.3)
+
+
+[FIPS-180-4]: National Institute of Standards and Technology. Secure Hash
+  Standard (SHS). (Department of Commerce, Washington, D.C.), Federal
+  Information Processing Standards Publication (FIPS) NIST FIPS 180-4.
+  August 2015.
+  @see https://doi.org/10.6028/NIST.FIPS.180-4
+[FIPS-186-5]: National Institute of Standards and Technology. Digital
+  Signature Standard (DSS). (Department of Commerce, Washington, D.C.),
+  Federal Information Processing Standards Publication (FIPS) NIST FIPS 186-5.
+  February 2023.
+  @see https://doi.org/10.6028/NIST.FIPS.186-5
+
+@copyright Galois, Inc
+@author Marcella Hastings <marcella@galois.com>
+*/
+
+module Primitive::Asymmetric::Signature::ECDSA::Specification where
+
+/**
+ * ECDSA digital signature generation and verification requires domain
+ * parameters that are generated in accordance with [FIPS-186-5] Section 6.1.1.
+ * The instantiation of this interface must meet those criteria!
+ */
+import interface Common::EC::ECInterface as EC
+
+
+import Primitive::Asymmetric::Signature::ECDSA::UnconstrainedSpec
+    { interface EC } as USpec
+
+/**
+ * ECDSA digital signature generation and verification requires an approved
+ * hash function or XOF (extendable-output function).
+ * This implementation currently fixes the hash function to SHA256, as
+ * specified in [FIPS-180-4].
+ *
+ * @design Marcella Hastings <marcella@galois.com>. Fixing the hash function
+ *   to SHA256 is due to lack of an appropriate hash-function interface, not
+ *   for any technical reason. This is intended to be a temporary state,
+ *   blocked on the creation of such an interface.
+ */
+import Primitive::Keyless::Hash::SHA2::SHA256 as Hash
+
+/**
+ * The standard specifies four ranges for the bit length of `n` (the order of
+ * the elliptic curve). The minimum allowable bit length is 224.
+ * [FIPS-186-5] Section 6.1.1, Table 1.
+ */
+interface constraint (width EC::n >= 224)
+
+/**
+ * For an elliptic curve of order `n`, the comparable security strength of
+ * ECDSA is approximately `len(n)/2`.
+ * [FIPS-186-5] Section 6.1.1, Table 1.
+ */
+type ECSecurityStrength = (width EC::n / 2)
+
+/**
+ * The security strength for the hash function shall not be less than the
+ * security strength associated with the curve.
+ * [FIPS-186-5] Section 6.1.1.
+ */
+interface constraint (ECSecurityStrength <= Hash::securityStrength)
+
+// Documentation for the public interface of this API can be found in
+// `UnconstrainedSpec.cry`.
+sign = USpec::sign
+verify = USpec::verify
+publicKey = USpec::publicKey

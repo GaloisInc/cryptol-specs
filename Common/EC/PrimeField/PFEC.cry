@@ -27,23 +27,23 @@
    Signature Standard (DSS). (Department of Commerce, Washington, D.C.),
    Federal Information Processing Standards Publication (FIPS) NIST FIPS 186-5.
    February 2023.
-   https://doi.org/10.6028/NIST.FIPS.186-5
+   @see https://doi.org/10.6028/NIST.FIPS.186-5
  [MATH-2008]: Mathematical routines for the NIST prime elliptic curves.
     March 2008.
-    https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=e1b05e600bfcdeecf8555bc9948483c5fbbdd478
+    @see https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=e1b05e600bfcdeecf8555bc9948483c5fbbdd478
  [SP-800-186]: Lily Chen, Dustin Moody, Karen Randall, Andrew Regenscheid,
     Angela Robinson. Recommendations for Discrete Logarithm-based Cryptography:
     Elliptic Curve Domain Parameters. (National Institute of Standards and
     Technology, Gaithersburg, MD), NIST Special Publication (SP) NIST SP
     800-186. February 2023.
-    https://doi.org/10.6028/NIST.SP.800-186
+    @see https://doi.org/10.6028/NIST.SP.800-186
   [SEC1-v2]: Daniel R. L. Brown. SEC 1: Elliptic Curve Cryptography, Version
     2.0. Standards for Efficient Cryptography Group. May 2009.
-    http://www.secg.org/sec1-v2.pdf
+    @see http://www.secg.org/sec1-v2.pdf
   [SEC2-v2]: Daniel R. L. Brown. SEC 2: Recommened Elliptic Curve Domain
     Parameters, Version 2.0. Standards for Efficient Cryptography Group. Jan
     2010.
-    https://www.secg.org/sec2-v2.pdf
+    @see https://www.secg.org/sec2-v2.pdf
 
 @copyright Galois, Inc
 @author Max Orhai
@@ -72,8 +72,8 @@ parameter
      * Order of the base point `G = (Gx, Gy)`. This must be prime.
      * [SP-800-186] Section 2.1.1.
      */
-    type n : #
-    type constraint (fin n, prime n, n < P)
+    type n' : #
+    type constraint (fin n', prime n', n' < P)
 
     /**
      * Coefficients that define the curve.
@@ -90,7 +90,14 @@ parameter
     Gx : Z P
     Gy : Z P
 
-/*
+/**
+ * Order of the base point `G`.
+ *
+ * This makes the private functor parameter publicly available.
+ */
+ type n = n'
+
+/**
  * Coefficient that defines the curve.
  * For a curve in short-Weierstrass form, the equation is
  * `y^2 = x^3 + ax + b`.
@@ -101,7 +108,7 @@ parameter
  * a-coordinate must be -3. This is the case for all NIST-standardized
  * prime order fields in short-Weierstrass form.
  */
-a = -3 : Z P
+private a = -3 : Z P
 
 /**
  * Cofactor for the curve.
@@ -287,6 +294,28 @@ property scmulIsClosed m = valid_point (m ~* G)
  * ```
  */
 property scmul_commutes m m' = affineEq (m ~* (m' ~* G)) (m' ~* (m ~* G))
+
+/**
+ * Compute twin multiplication.
+ *
+ * There's a more efficient routine to implement this functionality, but we
+ * haven't implemented it here yet. [MATH-2008] Routine 2.2.12.
+ */
+twin_mul : Integer -> Point -> Integer -> Point -> Point
+twin_mul c P d Q = add (c ~* P) (d ~* Q)
+
+
+/**
+ * Convert the x-coordinate `Z P` value into a `Z n` value, if the point is not
+ * the point at infinity.
+ *
+ * [SP-800-186] Appendix F.1.
+ */
+xCoordModOrder: Point -> Option (Z n)
+xCoordModOrder p = case p of
+    Infinity -> None
+    Affine x _ -> Some (fromInteger (fromZ x))
+
 
 private
     type ProjectivePoint = { x : Z P, y : Z P, z : Z P }
@@ -491,11 +520,11 @@ private
      * The scalar multiplication specification specifically allows
      * multiplication by `k` in the range [0, P), hence the conversion.
      */
-    validPointFromK : Z n -> Point
+    validPointFromK : Z n' -> Point
     validPointFromK k = to_affine (ec_mult _k (to_projective G))
       where
         _k : Z P
-        _k = fromInteger (toInteger (ZtoBV k : [width P]))
+        _k = fromInteger (fromZ k)
 
     /**
      * Proof that the affine and projective versions of addition are equivalent.
@@ -505,7 +534,7 @@ private
      * :check addsAreEquivalent
      * ```
      */
-    addsAreEquivalent : Z n -> Z n -> Bool
+    addsAreEquivalent : Z n' -> Z n' -> Bool
     property addsAreEquivalent k1 k2 =
         affineEq (affine_add p1 p2) (to_affine (ec_full_add (to_projective p1) (to_projective p2)))
         where
@@ -519,7 +548,7 @@ private
      * :check addsBehaveCorrectlyAtInfinity
      * ```
      */
-    addsBehaveCorrectlyAtInfinity : Z n -> Bool
+    addsBehaveCorrectlyAtInfinity : Z n' -> Bool
     property addsBehaveCorrectlyAtInfinity k = oo && ok && ko && oo' && ok' && ko'
         where
             // Compute infinity identies in affine form.

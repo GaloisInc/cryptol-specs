@@ -67,24 +67,40 @@ half x = fromInteger (if isEven xint then xint/2 else ((xint + `p) / 2))
 half_correct : {p} (fin p, p >= 3, isOdd p) => Z p -> Bit
 property half_correct x = half x + half x == x
 
-mp_mod_inv : {n} (fin n, n >= 1) => Z n -> Z n
+/**
+ * Binary algorithm for inversion in Z n, for a prime `n`.
+ *
+ * [HMV] Algorithm 2.22. [MATH-2008] recommends this algorithm because all the
+ * divisions are by 2, so they could be implemented as right shifts. In this
+ * implementation, we don't take advantage of that optimization.
+ *
+ * [HMV]: D. Hankerson, A. Menezes, S. Vanstone, Guide to Elliptic Curve
+ * Cryptography. Springer-Verlag, New York, 2004.
+ * Preview of the book with this algorithm available on Google Books:
+ * https://www.google.com/books/edition/Guide_to_Elliptic_Curve_Cryptography/V5oACAAAQBAJ
+ */
+mp_mod_inv : {p} (fin p, p >= 1) => Z p -> Z p
 mp_mod_inv c = if c == 0 then error "Zero does not have a multiplicative inverse"
                else fromInteger (if u'' == 1 then x1'' else x2'')
   where
     innercond (a, x) = isEven a
-    innerbody (a, x) = (a / 2, if isEven x then x / 2 else (x + `n) / 2)
+    innerbody (a, x) = (a / 2, if isEven x then x / 2 else (x + `p) / 2)
 
     outtercond (u, v, x1, x2) = (u != 1) /\ (v != 1)
-    outterbody (u, v, x1, x2) = if(u' >= v') then (u' - v', v', x1' - x2' % `n, x2')
-                                             else (u', v' - u', x1', x2' - x1' % `n)
+    outterbody (u, v, x1, x2) = if(u' >= v') then (u' - v', v', x1' - x2' % `p, x2')
+                                             else (u', v' - u', x1', x2' - x1' % `p)
       where
         (u', x1') = while innercond innerbody (u, x1)
         (v', x2') = while innercond innerbody (v, x2)
 
-    (u'', _, x1'', x2'') = while outtercond outterbody (fromZ c, `n, 1, 0)
+    (u'', _, x1'', x2'') = while outtercond outterbody (fromZ c, `p, 1, 0)
 
-// Note, this property will only hold when the modulus is prime
-mp_mod_inv_correct : {a} (fin a, a >=2) => Z a -> Bit
+/**
+ * The inverse must be correct.
+ * This property will only hold when the modulus is prime!
+ * It must be `:check`ed.
+ */
+mp_mod_inv_correct : {a} (fin a, prime a, a >=2) => Z a -> Bit
 property mp_mod_inv_correct x = x != 0 ==> x * mp_mod_inv x == 1
 
 coerceSize : {m, n, a} [m]a -> [n]a

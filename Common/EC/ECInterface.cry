@@ -1,0 +1,91 @@
+/*
+Interface for a generic elliptic curve.
+
+This is designed to be used in any algorithm that depends on elliptic curves.
+It's supposed to be generic over the type of curve; the design tries not to
+tie the user into anything specific with respect to the curve construction or
+curve field.
+
+There is no single specification that defines elliptic curves in its entirety;
+here we provide a few resources to use as a starting point to learn more about
+curves and their uses in cryptography:
+Nick Sullivan. A (Relatively Easy to Understand) Primer on Elliptic Curve
+    Cryptography. October 2013.
+    @see https://blog.cloudflare.com/a-relatively-easy-to-understand-primer-on-elliptic-curve-cryptography
+Joseph H. Silverman. An Introduction to the Theory of Elliptic Curves.
+    June 2006.
+    @see https://www.math.brown.edu/johsilve/Presentations/WyomingEllipticCurve.pdf
+Dan Boneh. "Pairings in Cryptography" lecture. July 2015.
+    @see https://www.youtube.com/watch?v=8WDOpzxpnTE
+Ian Blake, Gadiel Seroussi, and Nigel Smart. Elliptic Curves in
+    Cryptography. United Kingdom, Cambridge University Press, 1999.
+    @see https://www.google.com/books/edition/Elliptic_Curves_in_Cryptography/0_vegzgyqGMC
+
+[SP-800-186]: Lily Chen, Dustin Moody, Karen Randall, Andrew Regenscheid,
+   Angela Robinson. Recommendations for Discrete Logarithm-based Cryptography:
+   Elliptic Curve Domain Parameters. (National Institute of Standards and
+   Technology, Gaithersburg, MD), NIST Special Publication (SP) NIST SP
+   800-186. February 2023.
+   @see https://doi.org/10.6028/NIST.SP.800-186
+
+@copyright Galois, Inc.
+@author Marcella Hastings <marcella@galois.com>
+*/
+interface module Common::EC::ECInterface where
+    /**
+     * Representation of a point on the curve.
+     *
+     * This should be able to represent both concrete points (with an x and y
+     * coordinate) and the point at infinity.
+     */
+    type Point : *
+
+    /**
+     * Order of the elliptic curve.
+     */
+    type n : #
+    type constraint (fin n, prime n, n >= 1)
+
+    /**
+     * Base point for the curve.
+     */
+    G : Point
+
+    /**
+     * Addition of two points.
+     */
+    add : Point -> Point -> Point
+
+    /**
+     * Subtraction of two points.
+     */
+    sub : Point -> Point -> Point
+
+    /**
+     * Doubling of a point (typically, elliptic curves offer optimized
+     * routines for doubling a point compared to adding it to itself).
+     */
+    double : Point -> Point
+
+    /**
+     * Scalar multiplication of a point by an integer.
+     */
+    scmul : Integer -> Point -> Point
+
+    /**
+     * Twin multiplication of two points. This is the operation
+     * [c]P + [d]Q, which sometimes has an optimized routine
+     * compared to doing the scalar multiplications separately.
+     */
+    twin_mul : Integer -> Point -> Integer -> Point -> Point
+
+    /**
+     * ECDSA requires a routine to extract the x-coordinate of the affine
+     * representation of a `Point` and convert it from a field element an
+     * integer mod the order of the curve (`n`). This is not defined and
+     * returns `None` for the point at infinity.
+     *
+     * For NIST-standardized curves, this should match the conversion
+     * routine in [SP-800-186] Appendix F.1.
+     */
+    xCoordModOrder: Point -> Option (Z n)
