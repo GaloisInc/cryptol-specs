@@ -11,30 +11,37 @@ References
 */
 module Primitive::Keyless::Hash::SHA2::Specification where
 
+parameter
+    /**
+     * Word size.
+     * The specification defines words to be either 32 or 64 bits.
+     * [FIPS-180-4] Section 1, Figure 1.
+     */
+    type w : #
+    type constraint (fin w, w % 32 == 0, 1 <= w / 32, 2 >= w / 32)
 
 /**
  * Circular rotate left operation.
  * [FIPS-180-4] Section 2.2.2 and Section 3.2 #5.
  */
-ROTL : {w} (fin w, w > 0) => Z w -> [w] -> [w]
+ROTL : Z w -> [w] -> [w]
 ROTL n x = x <<< (fromZ n)
 
 /**
  * Circular rotate right operation.
  * [FIPS-180-4] Section 2.2.2 and Section 3.2 #4.
  */
-ROTR : {w} (fin w, w > 0) => Z w -> [w] -> [w]
+ROTR : Z w -> [w] -> [w]
 ROTR n x = x >>> (fromZ n)
 
 /**
  * Circular rotations have a specific kind of circularity.
  * [FIPS-180-4] Section 3.2 #6.
  * ```repl
- * :prove rotationEquivalenceRelationsHold`{32}
- * :prove rotationEquivalenceRelationsHold`{64}
+ * :prove rotationEquivalenceRelationsHold
  * ```
  */
-rotationEquivalenceRelationsHold : {w} (fin w, w > 0) => Z w -> [w] -> Bool
+rotationEquivalenceRelationsHold : Z w -> [w] -> Bool
 property rotationEquivalenceRelationsHold n x = left && right where
     left = ROTL n x == ROTR w_n x
     right = ROTR n x == ROTL w_n x
@@ -44,7 +51,7 @@ property rotationEquivalenceRelationsHold n x = left && right where
  * Right shift operation.
  * [FIPS-180-4] Section 2.2.2 and Section 3.2 #3
  */
-SHR : {w} (fin w, w > 0) => Z w -> [w] -> [w]
+SHR : Z w -> [w] -> [w]
 SHR n x = x >> (fromZ n)
 
 /**
@@ -78,3 +85,57 @@ property wordsEncodeCorrectly = short && long where
  * ```
  */
 property integersEncodeCorrectly = 291 == 0x00000123
+
+/**
+ * The first logical function for the SHA family.
+ * [FIPS-180-4] Section 4.1.2, Equation 4.2 and Section 4.1.3, Equation 4.8.
+ */
+Ch : [w] -> [w] -> [w] -> [w]
+Ch x y z = (x && y) ^ (~x && z)
+
+/**
+ * The second logical function for the SHA family.
+ * [FIPS-180-4] Section 4.1.2, Equation 4.3 and Section 4.1.3, Equation 4.9.
+ */
+Maj : [w] -> [w] -> [w] -> [w]
+Maj x y z = (x && y) ^ (x && z) ^ (y && z)
+
+/**
+ * The third logical function for the SHA family.
+ * [FIPS-180-4] Section 4.1.2, Equation 4.4 and Section 4.1.3, Equation 4.10.
+ */
+Sigma0: [w] -> [w]
+Sigma0 x
+    | w == 32 => ROTR  2 x ^ ROTR 13 x ^ ROTR 22 x
+    | w == 64 => ROTR 28 x ^ ROTR 34 x ^ ROTR 39 x
+
+/**
+ * The fourth logical function for the SHA family.
+ * [FIPS-180-4] Section 4.1.2, Equation 4.5 and Section 4.1.3, Equation 4.11.
+ */
+Sigma1: [w] -> [w]
+Sigma1 x
+    | w == 32 => ROTR  6 x ^ ROTR 11 x ^ ROTR 25 x
+    | w == 64 => ROTR 14 x ^ ROTR 18 x ^ ROTR 41 x
+
+/**
+ * The fifth logical function for the SHA family.
+ * [FIPS-180-4] Section 4.1.2, Equation 4.6 and Section 4.1.3, Equation 4.12.
+ */
+sigma0: [w] -> [w]
+sigma0 x
+    | w == 32 => ROTR 7 x ^ ROTR 18 x ^ ROTR 3 x
+    | w == 64 => ROTR 1 x ^ ROTR  8 x ^ ROTR 7 x
+
+/**
+ * The sixth logical function for the SHA family.
+ * [FIPS-180-4] Section 4.1.2, Equation 4.7 and Section 4.1.3, Equation 4.13.
+ */
+sigma1: [w] -> [w]
+sigma1 x
+    | w == 32 => ROTR 17 x ^ ROTR 19 x ^ ROTR 10 x
+    | w == 64 => ROTR 19 x ^ ROTR 61 x ^ ROTR  6 x
+
+
+
+
