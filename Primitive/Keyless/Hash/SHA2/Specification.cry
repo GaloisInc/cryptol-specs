@@ -1,5 +1,13 @@
 /*
-SHA2 specification.
+Implementation of the secure hash algorithms known as SHA2 from [FIPS-180-4].
+
+This implementation does not include SHA-1. It does include:
+- SHA-224
+- SHA-256
+- SHA-384
+- SHA-512
+- SHA-512/224
+- SHA-512/256
 
 References
 [FIPS-180-4]: National Institute of Standards and Technology. Secure Hash
