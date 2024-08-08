@@ -14,23 +14,67 @@ module Primitive::Keyless::Hash::SHA2::Specification where
 
 /**
  * Circular rotate left operation.
- * [FIPS-180-4] Section 2.2.2.
+ * [FIPS-180-4] Section 2.2.2 and Section 3.2 #5.
  */
 ROTL : {w} (fin w, w > 0) => Z w -> [w] -> [w]
 ROTL n x = x <<< (fromZ n)
 
 /**
  * Circular rotate right operation.
- * [FIPS-180-4] Section 2.2.2.
+ * [FIPS-180-4] Section 2.2.2 and Section 3.2 #4.
  */
 ROTR : {w} (fin w, w > 0) => Z w -> [w] -> [w]
 ROTR n x = x >>> (fromZ n)
 
 /**
+ * Circular rotations have a specific kind of circularity.
+ * [FIPS-180-4] Section 3.2 #6.
+ * ```repl
+ * :prove rotationEquivalenceRelationsHold`{32}
+ * :prove rotationEquivalenceRelationsHold`{64}
+ * ```
+ */
+rotationEquivalenceRelationsHold : {w} (fin w, w > 0) => Z w -> [w] -> Bool
+property rotationEquivalenceRelationsHold n x = left && right where
+    left = ROTL n x == ROTR w_n x
+    right = ROTR n x == ROTL w_n x
+    w_n = (fromInteger `w) - n
+
+/**
  * Right shift operation.
- * [FIPS-180-4] Section 2.2.2.
+ * [FIPS-180-4] Section 2.2.2 and Section 3.2 #3
  */
 SHR : {w} (fin w, w > 0) => Z w -> [w] -> [w]
 SHR n x = x >> (fromZ n)
 
+/**
+ * The default Cryptol representation of hex digits and bit strings matches
+ * the requirements of the spec.
+ * [FIPS-180-4] Section 3.1, #1.
+ * ```repl
+ * :prove hexDigitsEncodeCorrectly
+ * ```
+ */
+property hexDigitsEncodeCorrectly = (0x7 == 0b0111) && (0xa == 0b1010)
 
+/**
+ * The default Cryptol representation of hex words and bit strings matches
+ * the requirements of the spec.
+ * [FIPS-180-4] Section 3.1, #2.
+ * ```repl
+ * :prove wordsEncodeCorrectly
+ * ```
+ */
+property wordsEncodeCorrectly = short && long where
+    short = 0xa103fe23 == 0b10100001000000111111111000100011
+    long = 0xa103fe2332ef301a == 0b1010000100000011111111100010001100110010111011110011000000011010
+
+/**
+ * The default Cryptol representation of integers and hex words matches
+ * the requirements of the spec.
+ * [FIPS-180-4] Section 3.1, #3.
+ * ```repl
+ * :prove integersEncodeCorrectly
+ * ```
+ */
+property integersEncodeCorrectly = 291 == 0x00000123
