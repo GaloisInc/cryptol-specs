@@ -29,21 +29,21 @@ parameter
      * [FIPS-180-4] Section 1, Figure 1.
      */
     type w : #
-    type constraint (fin w, w % 32 == 0, 1 <= w / 32, 2 >= w / 32)
+    type constraint (w % 32 == 0, 32 <= w, 64 >= w)
 
 /**
  * Circular rotate left operation.
  * [FIPS-180-4] Section 2.2.2 and Section 3.2 #5.
  */
-ROTL : Z w -> [w] -> [w]
-ROTL n x = x <<< (fromZ n)
+ROTL : {n} (n < w) => [w] -> [w]
+ROTL x = x <<< `n
 
 /**
  * Circular rotate right operation.
  * [FIPS-180-4] Section 2.2.2 and Section 3.2 #4.
  */
-ROTR : Z w -> [w] -> [w]
-ROTR n x = x >>> (fromZ n)
+ROTR : {n} (n < w) => [w] -> [w]
+ROTR x = x >>> `n
 
 /**
  * Circular rotations have a specific kind of circularity.
@@ -52,18 +52,17 @@ ROTR n x = x >>> (fromZ n)
  * :prove rotationEquivalenceRelationsHold
  * ```
  */
-rotationEquivalenceRelationsHold : Z w -> [w] -> Bool
-property rotationEquivalenceRelationsHold n x = left && right where
-    left = ROTL n x == ROTR w_n x
-    right = ROTR n x == ROTL w_n x
-    w_n = (fromInteger `w) - n
+rotationEquivalenceRelationsHold : {n} (n < w) => [w] -> Bool
+property rotationEquivalenceRelationsHold x = left && right where
+    left = ROTL`{n} x == ROTR`{(w - n) % w} x
+    right = ROTR`{n} x == ROTL`{(w - n) % w} x
 
 /**
  * Right shift operation.
  * [FIPS-180-4] Section 2.2.2 and Section 3.2 #3
  */
-SHR : Z w -> [w] -> [w]
-SHR n x = x >> (fromZ n)
+SHR : {n} (n < w) => [w] -> [w]
+SHR x = x >> `n
 
 /**
  * The default Cryptol representation of hex digits and bit strings matches
@@ -117,8 +116,8 @@ Maj x y z = (x && y) ^ (x && z) ^ (y && z)
  */
 Sigma0: [w] -> [w]
 Sigma0 x
-    | w == 32 => ROTR  2 x ^ ROTR 13 x ^ ROTR 22 x
-    | w == 64 => ROTR 28 x ^ ROTR 34 x ^ ROTR 39 x
+    | w == 32 => ROTR`{ 2} x ^ ROTR`{13} x ^ ROTR`{22} x
+    | w == 64 => ROTR`{28} x ^ ROTR`{34} x ^ ROTR`{39} x
 
 /**
  * The fourth logical function for the SHA family.
@@ -126,8 +125,8 @@ Sigma0 x
  */
 Sigma1: [w] -> [w]
 Sigma1 x
-    | w == 32 => ROTR  6 x ^ ROTR 11 x ^ ROTR 25 x
-    | w == 64 => ROTR 14 x ^ ROTR 18 x ^ ROTR 41 x
+    | w == 32 => ROTR`{ 6} x ^ ROTR`{11} x ^ ROTR`{25} x
+    | w == 64 => ROTR`{14} x ^ ROTR`{18} x ^ ROTR`{41} x
 
 /**
  * The fifth logical function for the SHA family.
@@ -135,8 +134,8 @@ Sigma1 x
  */
 sigma0: [w] -> [w]
 sigma0 x
-    | w == 32 => ROTR 7 x ^ ROTR 18 x ^ ROTR 3 x
-    | w == 64 => ROTR 1 x ^ ROTR  8 x ^ ROTR 7 x
+    | w == 32 => ROTR`{7} x ^ ROTR`{18} x ^ SHR`{3} x
+    | w == 64 => ROTR`{1} x ^ ROTR`{ 8} x ^ SHR`{7} x
 
 /**
  * The sixth logical function for the SHA family.
@@ -144,8 +143,8 @@ sigma0 x
  */
 sigma1: [w] -> [w]
 sigma1 x
-    | w == 32 => ROTR 17 x ^ ROTR 19 x ^ ROTR 10 x
-    | w == 64 => ROTR 19 x ^ ROTR 61 x ^ ROTR  6 x
+    | w == 32 => ROTR`{17} x ^ ROTR`{19} x ^ SHR`{10} x
+    | w == 64 => ROTR`{19} x ^ ROTR`{61} x ^ SHR`{ 6} x
 
 /**
  * The SHA family uses a sequence of constant `w`-bit words, which represent
