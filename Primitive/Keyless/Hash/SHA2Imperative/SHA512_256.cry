@@ -1,18 +1,18 @@
 /*
-Copyright (c) 2018, Galois Inc.
-www.cryptol.net
+   Copyright (c) 2018, Galois Inc.
+   www.cryptol.net
 */
 
-module Primitive::Keyless::Hash::SHA2::SHA384 = Primitive::Keyless::Hash::SHA2::SHA where
+module Primitive::Keyless::Hash::SHA2Imperative::SHA512_256 = Primitive::Keyless::Hash::SHA2Imperative::SHA where
 
 type wp = 64
 
-type digest_size = 384
+type digest_size = 256
 
 type j = 80
 
-H0 = [ 0xcbbb9d5dc1059ed8, 0x629a292a367cd507, 0x9159015a3070dd17, 0x152fecd8f70e5939,
-       0x67332667ffc00b31, 0x8eb44a8768581511, 0xdb0c2e0d64f98fa7, 0x47b5481dbefa4fa4]
+H0 = [ 0x22312194fc2bf72c, 0x9f555fa3c84c64c2, 0x2393b86b6f53b151, 0x963877195940eabd,
+       0x96283ee2a88effe3, 0xbe5e1e2553863992, 0x2b0199fc2c85b8aa, 0x0eb72ddc81c52ca2]
 
 K = [ 0x428a2f98d728ae22, 0x7137449123ef65cd, 0xb5c0fbcfec4d3b2f, 0xe9b5dba58189dbbc,
       0x3956c25bf348b538, 0x59f111f1b605d019, 0x923f82a4af194f9b, 0xab1c5ed5da6d8118,

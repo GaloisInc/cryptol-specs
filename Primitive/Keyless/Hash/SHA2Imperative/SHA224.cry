@@ -3,7 +3,7 @@
    www.cryptol.net
 */
 
-module Primitive::Keyless::Hash::SHA2::SHA224 = Primitive::Keyless::Hash::SHA2::SHA where
+module Primitive::Keyless::Hash::SHA2Imperative::SHA224 = Primitive::Keyless::Hash::SHA2Imperative::SHA where
 
 type wp = 32
 
