@@ -1,0 +1,36 @@
+/*
+SHA2 specification.
+
+References
+[FIPS-180-4]: National Institute of Standards and Technology. Secure Hash
+  Standard (SHS). (Department of Commerce, Washington, D.C.), Federal
+  Information Processing Standards Publication (FIPS) NIST FIPS 180-4.
+  August 2015.
+  @see https://doi.org/10.6028/NIST.FIPS.180-4
+
+*/
+module Primitive::Keyless::Hash::SHA2::Specification where
+
+
+/**
+ * Circular rotate left operation.
+ * [FIPS-180-4] Section 2.2.2.
+ */
+ROTL : {w} (fin w, w > 0) => Z w -> [w] -> [w]
+ROTL n x = x <<< (fromZ n)
+
+/**
+ * Circular rotate right operation.
+ * [FIPS-180-4] Section 2.2.2.
+ */
+ROTR : {w} (fin w, w > 0) => Z w -> [w] -> [w]
+ROTR n x = x >>> (fromZ n)
+
+/**
+ * Right shift operation.
+ * [FIPS-180-4] Section 2.2.2.
+ */
+SHR : {w} (fin w, w > 0) => Z w -> [w] -> [w]
+SHR n x = x >> (fromZ n)
+
+
