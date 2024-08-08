@@ -1,6 +1,8 @@
 /*
-Copyright (c) 2018, Galois Inc.
-www.cryptol.net
+   @copyright Galois Inc. 2018
+   @author Sean Weaver
+   @editor Sam Breese
+   www.cryptol.net
 */
 
 module Primitive::Keyless::Hash::SHA2Imperative::SHA384 = Primitive::Keyless::Hash::SHA2Imperative::SHA where

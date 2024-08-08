@@ -16,6 +16,9 @@ References
   August 2015.
   @see https://doi.org/10.6028/NIST.FIPS.180-4
 
+@copyright Galois, Inc.
+@author Marcella Hastings <marcella@galois.com>
+
 */
 module Primitive::Keyless::Hash::SHA2::Specification where
 
