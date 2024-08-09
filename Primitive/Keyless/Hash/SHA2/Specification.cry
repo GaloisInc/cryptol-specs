@@ -48,8 +48,13 @@ ROTR x = x >>> `n
 /**
  * Circular rotations have a specific kind of circularity.
  * [FIPS-180-4] Section 3.2 #6.
+ *
+ * We check this for a sampling of `n`s.
  * ```repl
- * :prove rotationEquivalenceRelationsHold
+ * :prove rotationEquivalenceRelationsHold`{0}
+ * :prove rotationEquivalenceRelationsHold`{1}
+ * :prove rotationEquivalenceRelationsHold`{w-1}
+ * :prove rotationEquivalenceRelationsHold`{w/2}
  * ```
  */
 rotationEquivalenceRelationsHold : {n} (n < w) => [w] -> Bool
