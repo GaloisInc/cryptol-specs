@@ -31,7 +31,20 @@ parameter
     type w : #
     type constraint (w % 32 == 0, 32 <= w, 64 >= w)
 
+/**
+ * Upper bound on the width of messages that can be processed.
+ * [FIPS-180-4] Section 1, Figure 1.
+ */
+type MaxMessageWidth = 2 * w
+type constraint ValidMessageLength L = width L < MaxMessageWidth
+
 private
+    /**
+     * Size of blocks of data used in hashing.
+     * [FIPS-180-4] Section 1, Figure 1.
+     */
+    type BlockSize = 16 * w
+
     /**
      * Circular rotate left operation.
      * [FIPS-180-4] Section 2.2.2 and Section 3.2 #5.
@@ -193,3 +206,42 @@ private
         0x06f067aa72176fba, 0x0a637dc5a2c898a6, 0x113f9804bef90dae, 0x1b710b35131c471b,
         0x28db77f523047d84, 0x32caab7b40c72493, 0x3c9ebe0a15c9bebc, 0x431d67c49c100d4c,
         0x4cc5d4becb3e42b6, 0x597f299cfc657e2a, 0x5fcb6fab3ad6faec, 0x6c44198c4a475817]
+
+
+    /**
+     * Number of bits used to encode the length of the message for padding.
+     * [FIPS-180-4] Section 5.1.
+     */
+    type LengthBits = 2 * w
+    /**
+     * Number of blocks needed to hold the padded version of a message of length L.
+     * [FIPS-180-4] Section 5.1.
+     */
+    type NumBlocks L = (L + 1 + LengthBits) /^ BlockSize
+
+    /**
+     * Deterministically pad a message to a multiple of the block size.
+     *
+     * [FIPS-180-4] Section 5.1.1 and 5.1.2.
+     *
+     * The constraint is not explicitly noted in Section 5.1, but all
+     * messages to be hashed must not exceed the valid message length.
+     */
+    pad : {L} (ValidMessageLength L) => [L] -> [NumBlocks L * BlockSize]
+    pad M = M # 0b1 # zero # (`L : [LengthBits])
+
+    /**
+     * The example used to demonstrate padding in the spec works.
+     * [FIPS-180-4] Section 5.1.1 and Section 5.1.2.
+     * ```repl
+     * :prove paddingExampleWorks
+     * ```
+     */
+    paddingExampleWorks : Bool
+    paddingExampleWorks
+        | w == 32 => pad (join "abc") ==
+            (0b01100001 # 0b01100010 # 0b01100011
+            # 0b1 # (zero : [423]) # (zero : [59]) # 0b11000)
+        | w == 64 => pad (join "abc") ==
+            (0b01100001 # 0b01100010 # 0b01100011
+            # 0b1 # (zero : [871]) # (zero : [123]) # 0b11000)
