@@ -40,7 +40,7 @@ type constraint ValidMessageLength L = width L < MaxMessageWidth
 
 private
     /**
-     * Size of blocks of data used in hashing.
+     * Size of blocks of data used in hashing; denoted `m` in the spec.
      * [FIPS-180-4] Section 1, Figure 1.
      */
     type BlockSize = 16 * w
@@ -239,9 +239,14 @@ private
      */
     paddingExampleWorks : Bool
     paddingExampleWorks
-        | w == 32 => pad (join "abc") ==
-            (0b01100001 # 0b01100010 # 0b01100011
+        | w == 32 => pad (join "abc") == (0b01100001 # 0b01100010 # 0b01100011
             # 0b1 # (zero : [423]) # (zero : [59]) # 0b11000)
-        | w == 64 => pad (join "abc") ==
-            (0b01100001 # 0b01100010 # 0b01100011
+        | w == 64 => pad (join "abc") == (0b01100001 # 0b01100010 # 0b01100011
             # 0b1 # (zero : [871]) # (zero : [123]) # 0b11000)
+
+    /**
+     * The message and its padding must be parsed into `N` blocks.
+     * [FIPS-180-4] Section 5.2.
+     */
+    parse : {N} () => [N * BlockSize] -> [N][BlockSize]
+    parse M = split M
