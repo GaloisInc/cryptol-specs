@@ -50,7 +50,7 @@ import interface Common::EC::ECInterface as EC
  * This implementation currently fixes the hash function to SHA256, as
  * specified in [FIPS-180-4].
  */
-import Primitive::Keyless::Hash::SHA2::SHA256 as Hash
+import Primitive::Keyless::Hash::SHA2Imperative::SHA256 as Hash
 
 /**
  * ECDSA signature generation algorithm.

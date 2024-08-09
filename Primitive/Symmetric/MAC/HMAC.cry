@@ -1,16 +1,13 @@
-////////////////////////////////////////////////////////////////
-// Copyright 2016-2018 Galois, Inc. All Rights Reserved
-//
-// Authors:
-//      Aaron Tomb : atomb@galois.com
-//	Nathan Collins : conathan@galois.com
-//      Joey Dodds : jdodds@galois.com
-//
-////////////////////////////////////////////////////////////////
+/*
+@copyright Galois, Inc. 2016-2018
+@author Aaron Tomb <atomb@galois.com>
+@author Nathan Collins <conathan@galois.com>
+@author Joey Dodds <jdodds@galois.com>
+*/
 
 module Primitive::Symmetric::MAC::HMAC where
 
-import Primitive::Keyless::Hash::SHA2::SHA256
+import Primitive::Keyless::Hash::SHA2Imperative::SHA256
 
 //////// Functional version ////////
 
@@ -35,7 +32,7 @@ kinit hash key =
   else take `{blockLength} (key # (zero : [blockLength][8]))
 
 // Due to limitations of the type system we must accept two
-// separate arguments (both aledgedly the same) for two
+// separate arguments (both allegedly the same) for two
 // separate length inputs.
 hmac : { msgBytes, pwBytes, digest, blockLength }
        ( fin pwBytes, fin digest, fin blockLength )

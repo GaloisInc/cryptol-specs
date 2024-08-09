@@ -1,16 +1,20 @@
 /* Cryptol SHACAL Implementation
-   Copyright (c) 2018, Galois Inc.
+   @copyright Galois Inc. 2018
+   @author Ajay Kumar Eeralla
+   @editor Nichole Schmanski <nls@galois.com>
+   @editor Brian Huffman
+   @editor Aaron Tomb
+   @editor Iavor Diatchki <diatchki@galois.com>
    www.cryptol.net
 
    Source: https://www.cosic.esat.kuleuven.be/nessie/tweaks.html
    SHACAL: SHACAL-1, blocksize: 160bits, keysize: 512bits, uses SHA-1 (160bits);
            SHACAL-2, block size: 256bits, key size: 512bits, uses SHA-2 (256bits)
-   Author: Ajay Kumar Eeralla
 */
 
 module Primitive::Symmetric::Cipher::Block::SHACAL where
 
-import Primitive::Keyless::Hash::SHA2::SHA256
+import Primitive::Keyless::Hash::SHA2Imperative::SHA256
 import Primitive::Keyless::Hash::SHA1
 
 /**SHACAL1**/
