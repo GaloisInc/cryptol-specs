@@ -1,0 +1,16 @@
+/**
+Secure hash algorithm SHA384.
+
+@copyright Galois, Inc
+@author Marcella Hastings <marcella@galois.com>
+*/
+module Primitive::Keyless::Hash::SHA2::Instantiations::SHA384 =
+    Primitive::Keyless::Hash::SHA2::Specification where
+        type w = 64
+
+        // Per [FIPS-180-4], these are the the first sixty-four bits of the
+        // fractional parts of the square roots of the 9th - 16th prime numbers.
+        H0 = [ 0xcbbb9d5dc1059ed8, 0x629a292a367cd507,
+            0x9159015a3070dd17, 0x152fecd8f70e5939,
+            0x67332667ffc00b31, 0x8eb44a8768581511,
+            0xdb0c2e0d64f98fa7, 0x47b5481dbefa4fa4]

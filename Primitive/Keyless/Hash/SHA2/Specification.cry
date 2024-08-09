@@ -31,6 +31,12 @@ parameter
     type w : #
     type constraint (w % 32 == 0, 32 <= w, 64 >= w)
 
+    /**
+     * Initial hash value.
+     * These are defined in [FIPS-180-4] Section 5.3.
+     */
+    H0 : [8][w]
+
 /**
  * Upper bound on the width of messages that can be processed.
  * [FIPS-180-4] Section 1, Figure 1.
