@@ -392,6 +392,36 @@ private
 
 
     /**
+     * This checks that the normalization function doesn't break on normalized
+     * points. The actual, more interesting check would be to generate random
+     * projective points (in non-normal representation, e.g. where the z coord
+     * is not 1) on the curve and run those through `twin_normalize` but there
+     * is not an obvious efficient way to sample such points.
+     *
+     * ```repl
+     * :set tests=25
+     * :check normalizeWorksOnNormalPoints
+     * ```
+     */
+    property normalizeWorksOnNormalPoints k1 k2 k3 k4 =
+        all_are_normal && all_match
+        where
+            p1 = to_projective (validPointFromK k1)
+            p2 = to_projective (validPointFromK k2)
+            p3 = to_projective (validPointFromK k3)
+            p4 = to_projective (validPointFromK k4)
+
+            input = {A=p1, B=p2, C=p3, D=p4}
+            out = twin_normalize input
+
+            all_are_normal = (out.A.z == 1) && (out.B.z == 1)
+                && (out.C.z == 1) && (out.D.z == 1)
+            all_match = (out.A == p1) && (out.B == p2)
+                && (out.C == p3) && (out.D == p4)
+
+
+
+    /**
      * Double an elliptic curve point.
      * [MATH-2008] Routine 2.2.6.
      *
