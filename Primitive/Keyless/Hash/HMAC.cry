@@ -1,5 +1,6 @@
 /*
-   Copyright (c) 2020, Galois Inc.
+   @copyright Galois Inc. 2020
+   @author Brett Boston
    www.cryptol.net
 */
 
@@ -9,7 +10,7 @@
 
 module Primitive::Keyless::Hash::HMAC where
 
-import Primitive::Keyless::Hash::SHA2::SHA384
+import Primitive::Keyless::Hash::SHA2Imperative::SHA384
 
 // Pad or hash `key`, depending on its length, until it is 128 bytes long
 key_init : {key_size} (fin key_size) => [key_size][8] -> [128][8]

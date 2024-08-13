@@ -54,7 +54,7 @@ import Primitive::Asymmetric::Signature::ECDSA::UnconstrainedSpec
  *   for any technical reason. This is intended to be a temporary state,
  *   blocked on the creation of such an interface.
  */
-import Primitive::Keyless::Hash::SHA2::SHA256 as Hash
+import Primitive::Keyless::Hash::SHA2Imperative::SHA256 as Hash
 
 /**
  * The standard specifies four ranges for the bit length of `n` (the order of

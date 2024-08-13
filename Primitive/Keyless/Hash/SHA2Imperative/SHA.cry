@@ -3,7 +3,7 @@
 
 @author Nichole Schmanski <nls@galois.com>
 @editor Sean Weaver
-@editor Github user @msaaltink
+@editor Mark Saaltink
 @editor Sam Breese
 @editor Brett Boston
 @author Andrei Stefanescu
@@ -17,7 +17,7 @@ www.cryptol.net
     @see https://doi.org/10.6028/NIST.SP.800-107r1.
 */
 
-module Primitive::Keyless::Hash::SHA2::SHA where
+module Primitive::Keyless::Hash::SHA2Imperative::SHA where
 
 import Array
 import Common::ByteArray
