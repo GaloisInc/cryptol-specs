@@ -52,6 +52,19 @@ private
     type BlockSize = 16 * w
 
     /**
+     * `ScheduleLength` is fixed based on `w`: 64 when `w = 32` and 80 when `w = 64`.
+     * We encode this using the relation `48 + w/2`.
+     *
+     * It is not explicitly defined with this name in the spec. You can see it used
+     * in several places:
+     * - The constant `K` has `ScheduleLength` words ([FIPS-180-4] Section
+     *   4.2.2 and 4.2.3)
+     * - The message schedule `W` has length `ScheduleLength` ([FIPS-180-4]
+     *   Section 6.2.2 #1 and Section 6.4.2 #1)
+     */
+    type ScheduleLength = 48 + w / 2
+
+    /**
      * Circular rotate left operation.
      * [FIPS-180-4] Section 2.2.2 and Section 3.2 #5.
      */
@@ -174,14 +187,11 @@ private
     /**
      * The SHA family uses a sequence of constant `w`-bit words, which represent
      * the first `w` bits of the fractional parts of the cube roots of the first
-     * `n` prime numbers.
-     *
-     * `n` is fixed based on `w`: 64 when `w = 32` and 80 when `w = 64`. This is
-     * encoded into the type of `K` using the relation `48 + w/2`.
+     * `ScheduleLength` prime numbers.
      *
      * [FIPS-180-4] Section 4.2.2 and 4.2.3.
      */
-    K : [48 + w / 2][w]
+    K : [ScheduleLength][w]
     K | w == 32 => [
         0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
         0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
@@ -256,3 +266,20 @@ private
      */
     parse : {N} () => [N * BlockSize] -> [N][BlockSize]
     parse M = split M
+
+    /**
+     * All the SHA functions (excluding SHA-1) in the spec share the same
+     * message schedule.
+     *
+     * [FIPS-180-4] Section 6.2.2 #1 and Section 6.4.2 #1.
+     */
+    messageSchedule : [16][w] -> [ScheduleLength][w]
+    messageSchedule Mi = take W where
+        W : [inf][w]
+        W = Mi # [ sigma1 w2 + w7 + sigma0 w15 + w16
+            | w16 <- W
+            | w15 <- drop`{1} W
+            | w7  <- drop`{9} W
+            | w2  <- drop`{14} W
+        ]
+
