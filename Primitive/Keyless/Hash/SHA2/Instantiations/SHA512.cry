@@ -9,6 +9,8 @@ module Primitive::Keyless::Hash::SHA2::Instantiations::SHA512 =
 where
     type w = 64
 
+    type DigestSize = 512
+
     // Per [FIPS-180-4], these are the the first sixty-four bits of the
     // fractional parts of the square roots of the first 8 prime numbers.
     H0 = [

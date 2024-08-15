@@ -1,0 +1,40 @@
+import Primitive::Keyless::Hash::SHA2::Instantiations::SHA256 as SHA256
+
+/**
+ * ```repl
+ * :prove abcWorks
+ * ```
+ */
+property abcWorks = SHA256::hash (join "abc") == 0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+
+/**
+ * ```repl
+ * :prove emptyStringWorks
+ * ```
+ */
+property emptyStringWorks = SHA256::hash [] == 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+
+/**
+ * ```repl
+ * :prove alphabet448
+ * ```
+ */
+property alphabet448 = SHA256::hash input == output where
+    input = join "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
+    output = 0x248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1
+
+/**
+ * ```repl
+ * :prove alphabet896
+ * ```
+ */
+property alphabet896 = SHA256::hash input == output where
+    input = join "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu"
+    output = 0xcf5b16a778af8380036ce59e7b0492370b249b11e8f07a51afac45037afee9d1
+
+/**
+ * This has not yet proved for me.
+ */
+property aaaaaah = SHA256::hash input == output where
+    input = join (join (take`{1000000} (repeat "a")))
+    output = 0xcdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0

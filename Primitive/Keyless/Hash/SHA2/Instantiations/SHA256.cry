@@ -4,10 +4,12 @@
  * @copyright Galois, Inc
  * @author Marcella Hastings <marcella@galois.com>
  */
-module Primitive::Keyless::Hash::SHA2::Instantiations::SHA =
+module Primitive::Keyless::Hash::SHA2::Instantiations::SHA256 =
     Primitive::Keyless::Hash::SHA2::Specification
 where
     type w = 32
+
+    type DigestSize = 256
 
     // Per [FIPS-180-4], these are the first 32 bits of the fractional
     // parts of the square roots of the first 8 prime numbers.

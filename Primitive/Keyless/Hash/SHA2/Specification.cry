@@ -31,6 +31,9 @@ parameter
     type w : #
     type constraint (w % 32 == 0, 32 <= w, 64 >= w)
 
+    type DigestSize : #
+    type constraint (8 * w >= DigestSize)
+
     /**
      * Initial hash value.
      * These are defined in [FIPS-180-4] Section 5.3.
@@ -277,9 +280,55 @@ private
     messageSchedule Mi = take W where
         W : [inf][w]
         W = Mi # [ sigma1 w2 + w7 + sigma0 w15 + w16
+            // The spec indexes these by counting from the other direction.
             | w16 <- W
             | w15 <- drop`{1} W
             | w7  <- drop`{9} W
             | w2  <- drop`{14} W
         ]
 
+    type LetterVars = ([w], [w], [w], [w], [w], [w], [w], [w])
+
+hash: {l} (ValidMessageLength l) => [l] -> [DigestSize]
+hash M = drop (join (digest ! 0)) where
+    digest = [H0] # [Hi
+        where
+            // Step 1. Prepare the message schedule.
+            Ws = messageSchedule (split Mi)
+
+            // Step 2. Initialize the eight working variables with the
+            // previous hash value.
+            letters = [(Hi0, Hi1, Hi2, Hi3, Hi4, Hi5, Hi6, Hi7)] #
+               // Step 3. Update temporary and working variables...
+                [ digestUpdate l Kt Wt
+                | l <- letters
+
+                // ...for t=0 to 63
+                | Wt <- Ws
+                | Kt <- K
+            ]
+            (a, b, c, d, e, f, g, h) = letters ! 0
+
+            // Step 4. Compute the intermediate hash value.
+            Hi = [a + Hi0, b + Hi1, c + Hi2, d + Hi3, e + Hi4, f + Hi5, g + Hi6, h + Hi7]
+
+        // Each message block is processed in order.
+        | Mi <- parse (pad M)
+        | [Hi0, Hi1, Hi2, Hi3, Hi4, Hi5, Hi6, Hi7] <- digest
+    ]
+
+    // Step 3. Update temporary and working variables (one iteration).
+    digestUpdate : LetterVars -> [w] -> [w] -> LetterVars
+    digestUpdate (a, b, c, d, e, f, g, h) Kt Wt =
+        (a', b', c', d', e', f', g', h')
+        where
+            T1 = h + Sigma1 e + Ch e f g + Kt + Wt
+            T2 = Sigma0 a + Maj a b c
+            h' = g
+            g' = f
+            f' = e
+            e' = d + T1
+            d' = c
+            c' = b
+            b' = a
+            a' = T1 + T2
