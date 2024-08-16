@@ -1,3 +1,23 @@
+/**
+ * Test vectors for SHA512 as specified in [FIPS-180-4].
+ *
+ * These vectors were originally specified in [CSG-SHA], but we also used the
+ * convenient collected test vectors page from David Ireland.
+ * @see DI Management https://www.di-mgt.com.au/sha_testvectors.html
+ *
+ * @copyright Galois, Inc
+ * @author Marcella Hastings <marcella@galois.com>
+ *
+ * [CSG-SHA]: National Institute of Standards and Technology. Example
+ *     algorithms - Secure hashing.
+ *     @see http://csrc.nist.gov/groups/ST/toolkit/examples.html
+ *     @see https://csrc.nist.gov/csrc/media/projects/cryptographic-standards-and-guidelines/documents/examples/sha_all.pdf
+ * [FIPS-180-4]: National Institute of Standards and Technology. Secure Hash
+ *     Standard (SHS). (Department of Commerce, Washington, D.C.), Federal
+ *     Information Processing Standards Publication (FIPS) NIST FIPS 180-4.
+ *     August 2015.
+ *     @see https://doi.org/10.6028/NIST.FIPS.180-4
+ */
 import Primitive::Keyless::Hash::SHA2::Instantiations::SHA512 as SHA512
 
 /**

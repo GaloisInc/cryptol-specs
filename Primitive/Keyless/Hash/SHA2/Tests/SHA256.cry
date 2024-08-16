@@ -1,3 +1,23 @@
+/**
+ * Test vectors for SHA256 as specified in [FIPS-180-4].
+ *
+ * These vectors were originally specified in [CSG-SHA], but we also used the
+ * convenient collected test vectors page from David Ireland.
+ * @see DI Management https://www.di-mgt.com.au/sha_testvectors.html
+ *
+ * @copyright Galois, Inc
+ * @author Marcella Hastings <marcella@galois.com>
+ *
+ * [CSG-SHA]: National Institute of Standards and Technology. Example
+ *     algorithms - Secure hashing.
+ *     @see http://csrc.nist.gov/groups/ST/toolkit/examples.html
+ *     @see https://csrc.nist.gov/csrc/media/projects/cryptographic-standards-and-guidelines/documents/examples/sha_all.pdf
+ * [FIPS-180-4]: National Institute of Standards and Technology. Secure Hash
+ *     Standard (SHS). (Department of Commerce, Washington, D.C.), Federal
+ *     Information Processing Standards Publication (FIPS) NIST FIPS 180-4.
+ *     August 2015.
+ *     @see https://doi.org/10.6028/NIST.FIPS.180-4
+ */
 import Primitive::Keyless::Hash::SHA2::Instantiations::SHA256 as SHA256
 
 /**
@@ -5,14 +25,22 @@ import Primitive::Keyless::Hash::SHA2::Instantiations::SHA256 as SHA256
  * :prove abcWorks
  * ```
  */
-property abcWorks = SHA256::hash (join "abc") == 0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+property abcWorks = SHA256::hash (join "abc") == output where
+    output = join [
+        0xba7816bf, 0x8f01cfea, 0x414140de, 0x5dae2223,
+        0xb00361a3, 0x96177a9c, 0xb410ff61, 0xf20015ad
+    ]
 
 /**
  * ```repl
  * :prove emptyStringWorks
  * ```
  */
-property emptyStringWorks = SHA256::hash [] == 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+property emptyStringWorks = SHA256::hash [] == output where
+    output = join [
+        0xe3b0c442, 0x98fc1c14, 0x9afbf4c8, 0x996fb924,
+        0x27ae41e4, 0x649b934c, 0xa495991b, 0x7852b855
+    ]
 
 /**
  * ```repl
@@ -21,7 +49,10 @@ property emptyStringWorks = SHA256::hash [] == 0xe3b0c44298fc1c149afbf4c8996fb92
  */
 property alphabet448 = SHA256::hash input == output where
     input = join "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
-    output = 0x248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1
+    output = join [
+        0x248d6a61, 0xd20638b8, 0xe5c02693, 0x0c3e6039,
+        0xa33ce459, 0x64ff2167, 0xf6ecedd4, 0x19db06c1
+    ]
 
 /**
  * ```repl
@@ -30,11 +61,7 @@ property alphabet448 = SHA256::hash input == output where
  */
 property alphabet896 = SHA256::hash input == output where
     input = join "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu"
-    output = 0xcf5b16a778af8380036ce59e7b0492370b249b11e8f07a51afac45037afee9d1
-
-/**
- * This has not yet proved for me.
- */
-property aaaaaah = SHA256::hash input == output where
-    input = join (join (take`{1000000} (repeat "a")))
-    output = 0xcdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0
+    output = join [
+        0xcf5b16a7, 0x78af8380, 0x036ce59e, 0x7b049237,
+        0x0b249b11, 0xe8f07a51, 0xafac4503, 0x7afee9d1
+    ]

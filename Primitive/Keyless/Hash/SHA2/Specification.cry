@@ -270,28 +270,25 @@ private
     parse : {N} () => [N * BlockSize] -> [N][BlockSize]
     parse M = split M
 
-    /**
-     * All the SHA functions (excluding SHA-1) in the spec share the same
-     * message schedule.
-     *
-     * [FIPS-180-4] Section 6.2.2 #1 and Section 6.4.2 #1.
-     */
-    messageSchedule : [16][w] -> [ScheduleLength][w]
-    messageSchedule Mi = take W where
-        W : [inf][w]
-        W = Mi # [ sigma1 w2 + w7 + sigma0 w15 + w16
-            // The spec indexes these by counting from the other direction.
-            | w16 <- W
-            | w15 <- drop`{1} W
-            | w7  <- drop`{9} W
-            | w2  <- drop`{14} W
-        ]
 
-    type LetterVars = ([w], [w], [w], [w], [w], [w], [w], [w])
-
+/**
+ * Secure hash function.
+ *
+ * All the SHA functions (excluding SHA-1) share the same structure.
+ * The primary differences can be handled through Cryptol's built-in
+ * polymorphism:
+ * - The word sizes are different;
+ * - The length of the message schedule and subsequent number of iterations
+ *   over the working variables are different; and
+ * - The digest length is different.
+ *
+ * [FIPS-180-4] Section 6.2 - 6.7.
+ * The hash functionality itself is primarily described in Sections 6.2 and
+ * 6.4. The correct truncation for other bit lengths is in the other sections.
+ */
 hash: {l} (ValidMessageLength l) => [l] -> [DigestSize]
 hash M = take (join (digest ! 0)) where
-    digest = [H0] # [Hi
+    digest = [H0] # [Hi'
         where
             // Step 1. Prepare the message schedule.
             Ws = messageSchedule (split Mi)
@@ -299,27 +296,48 @@ hash M = take (join (digest ! 0)) where
             // Step 2. Initialize the eight working variables with the
             // previous hash value.
             letters = [(Hi0, Hi1, Hi2, Hi3, Hi4, Hi5, Hi6, Hi7)] #
-               // Step 3. Update temporary and working variables...
-                [ digestUpdate l Kt Wt
+                // Step 3. Update temporary and working variables...
+                [ variableUpdate l Kt Wt
                 | l <- letters
 
-                // ...for t=0 to 63
+                // ...for t=0 to `ScheduleLength`.
                 | Wt <- Ws
                 | Kt <- K
             ]
             (a, b, c, d, e, f, g, h) = letters ! 0
 
-            // Step 4. Compute the intermediate hash value.
-            Hi = [a + Hi0, b + Hi1, c + Hi2, d + Hi3, e + Hi4, f + Hi5, g + Hi6, h + Hi7]
+            // Step 4. Compute the next intermediate hash value.
+            // Note that in the spec, this is denoted H^(i).
+            Hi' = [a + Hi0, b + Hi1, c + Hi2, d + Hi3, e + Hi4, f + Hi5, g + Hi6, h + Hi7]
 
         // Each message block is processed in order.
         | Mi <- parse (pad M)
+
+        // An intermediate hash digest is computed at each iteration.
+        // Note that in the spec, these are denoted H^(i-1)_j for j = 0..7.
         | [Hi0, Hi1, Hi2, Hi3, Hi4, Hi5, Hi6, Hi7] <- digest
     ]
 
+    // Step 1. Prepare the message schedule.
+    messageSchedule : [16][w] -> [ScheduleLength][w]
+    messageSchedule Mi = take W where
+        W : [inf][w]
+        W = Mi # [ sigma1 w2 + w7 + sigma0 w15 + w16
+            // The spec indexes these by counting from the other direction.
+            // We can't do that here because it's an infinite sequence.
+            // Note that 15 - the drop parameter is the index in the spec.
+            | w16 <- W
+            | w15 <- drop`{1} W
+            | w7  <- drop`{9} W
+            | w2  <- drop`{14} W
+        ]
+
+    // Convenience type to describe the set of working variables a - h.
+    type LetterVars = ([w], [w], [w], [w], [w], [w], [w], [w])
+
     // Step 3. Update temporary and working variables (one iteration).
-    digestUpdate : LetterVars -> [w] -> [w] -> LetterVars
-    digestUpdate (a, b, c, d, e, f, g, h) Kt Wt =
+    variableUpdate : LetterVars -> [w] -> [w] -> LetterVars
+    variableUpdate (a, b, c, d, e, f, g, h) Kt Wt =
         (a', b', c', d', e', f', g', h')
         where
             T1 = h + Sigma1 e + Ch e f g + Kt + Wt
