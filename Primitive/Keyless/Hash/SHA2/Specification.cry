@@ -290,7 +290,7 @@ private
     type LetterVars = ([w], [w], [w], [w], [w], [w], [w], [w])
 
 hash: {l} (ValidMessageLength l) => [l] -> [DigestSize]
-hash M = drop (join (digest ! 0)) where
+hash M = take (join (digest ! 0)) where
     digest = [H0] # [Hi
         where
             // Step 1. Prepare the message schedule.
