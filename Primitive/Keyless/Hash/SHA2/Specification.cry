@@ -24,13 +24,20 @@ module Primitive::Keyless::Hash::SHA2::Specification where
 
 parameter
     /**
-     * Word size.
+     * Length of words, in bits, that are used during hashing.
+     *
      * The specification defines words to be either 32 or 64 bits.
      * [FIPS-180-4] Section 1, Figure 1.
      */
     type w : #
     type constraint (w % 32 == 0, 32 <= w, 64 >= w)
 
+    /**
+     * Length of the message digest produced by the hash algorithm.
+     *
+     * Allowable values for each word size `w` are defined in [FIPS-180-4]
+     * Section 1, Figure 1.
+     */
     type DigestSize : #
     type constraint (8 * w >= DigestSize)
 
@@ -49,8 +56,9 @@ type constraint ValidMessageLength L = width L < MaxMessageWidth
 
 private
     /**
-     * Size of blocks of data used in hashing; denoted `m` in the spec.
-     * [FIPS-180-4] Section 1, Figure 1.
+     * Size of blocks of data used in hashing, measured in bits.
+     *
+     * This is denoted `m` in the spec. [FIPS-180-4] Section 1, Figure 1.
      */
     type BlockSize = 16 * w
 
@@ -295,9 +303,9 @@ hash M = take (join (digest ! 0)) where
 
             // Step 2. Initialize the eight working variables with the
             // previous hash value.
-            letters = [(Hi0, Hi1, Hi2, Hi3, Hi4, Hi5, Hi6, Hi7)] #
+            letters = [(Hi0, Hi1, Hi2, Hi3, Hi4, Hi5, Hi6, Hi7)] # [
                 // Step 3. Update temporary and working variables...
-                [ variableUpdate l Kt Wt
+                variableUpdate l Kt Wt
                 | l <- letters
 
                 // ...for t=0 to `ScheduleLength`.
