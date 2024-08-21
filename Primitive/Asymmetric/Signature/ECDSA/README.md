@@ -33,3 +33,9 @@ Finally, there is a version formalized from ANSI X9-62 (2005). This uses an impl
 Primitive/Asymmetric/Signature/
 + ecdsa.cry
 ```
+
+This is one of many implementations of ECDSA have been written in Cryptol over the years. One such grandparent of particular interest is a 2011 version that was used to verify a Java implementation in combination with [SAWScript](https://saw.galois.com/). This implementation no longer lives in this repo, but it can be seen together with the Java code and the SAW scripts used in the full verification toolchain [in the examples directory of the SAWScript repository](https://github.com/GaloisInc/saw-script/tree/master/examples/ecdsa). Additional information can be found in [an article by Galois](https://galois.com/blog/2012/03/verifying-ecc-implementations/) and [a talk from HCSS 2012](https://sos-vo.org/node/3405).
+
+Several other implementations of ECDSA used to live in this repository. If you would like to explore these, they were removed in the commit with hash:
+> TODO: add hash and link on github to the diff.
+
