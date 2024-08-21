@@ -7,7 +7,7 @@ Also standardized as "secp256r1" in [SEC2-v2] Section 2.4.2.
 @author Max Orhai
 */
 
-module Common::EC::PrimeField::P256 =
+module Common::EC::PrimeField::Instantiations::P256 =
        Common::EC::PrimeField::PFEC where
 type P = 115792089210356248762697446949407573530086143415290314195533631308867097853951
 type n' = 115792089210356248762697446949407573529996955224135760342422259061068512044369

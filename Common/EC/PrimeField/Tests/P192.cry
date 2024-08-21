@@ -9,7 +9,7 @@ From [MATH-2008] Section 4.1.2.
 
 */
 
-import Common::EC::PrimeField::P192 as P192
+import Common::EC::PrimeField::Instantiations::P192 as P192
 import Common::utils(BVtoZ)
 
 // NB: We haven't implemented the point compression functions yet, but if we
