@@ -13,7 +13,7 @@ encrypted data.
 
 */
 
-module Common::EC::PrimeField::P192 =
+module Common::EC::PrimeField::Instantiations::P192 =
        Common::EC::PrimeField::PFEC where
 type P = 6277101735386680763835789423207666416083908700390324961279
 type n' =  6277101735386680763835789423176059013767194773182842284081

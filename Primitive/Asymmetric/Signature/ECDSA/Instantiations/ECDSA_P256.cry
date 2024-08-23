@@ -6,7 +6,7 @@
  */
 module Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P256 =
     Primitive::Asymmetric::Signature::ECDSA::Specification {
-        Common::EC::PrimeField::P256
+        Common::EC::PrimeField::Instantiations::P256
     }
 
 
