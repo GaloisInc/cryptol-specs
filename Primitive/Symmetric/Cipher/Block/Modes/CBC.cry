@@ -4,6 +4,7 @@
 // Author: Ajay Kumar Eeralla
 
 module Primitive::Symmetric::Cipher::Block::Modes::CBC where
+import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
 
 // set the sizes
 type iv = [128]
@@ -18,4 +19,42 @@ cbcDec : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> iv -> [n]block
 cbcDec dec k iv cs = [ (dec k c) ^ c' | c <- cs | c' <- [iv] # cs ]
 
 // This will need to be parameterized with a specific encryption function before it can be proved
-property cbcEncCorrect encrypt k c ps = (cbcDec encrypt k c (cbcEnc encrypt k c ps)) == ps
+property cbcEncCorrect enc k c ps = (cbcDec enc k c (cbcEnc enc k c ps)) == ps
+
+/**
+ * CBC encryption: [NIST-SP-800-38A] Section 6.2.
+ *
+ * Parameters: key, initialization vector, plaintext
+ *
+ * ⚠️ Warning ⚠️: CBC mode requires that the initialization vector (IV) is generated "unpredictably".
+ * See Appendix C of [NIST-SP-800-38A] for discussion.
+ */
+encrypt : {n} (fin n) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> [n][C::BlockSize]
+encrypt k iv ps = cs
+    where 
+        ciph_k = C::encrypt k
+        cs = [ ciph_k (p_j ^ c') | p_j <- ps | c' <- [iv] # cs] 
+
+/**
+ * CBC decryption: [NIST-SP-800-38A] Section 6.2.
+ *
+ * Parameters: key, initialization vector, ciphertext
+ *
+ * ⚠️ Warning ⚠️: CBC mode requires that the initialization vector (IV) is generated "unpredictably".
+ * See Appendix C of [NIST-SP-800-38A] for discussion.
+ */
+decrypt : {n} (fin n) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> [n][C::BlockSize]
+decrypt k iv cs = ps
+    where 
+        ciph_inv_k = C::decrypt k
+        ps = [ (ciph_inv_k c) ^ c' | c <- cs | c' <- [iv] # cs] 
+
+/**
+ * Decryption must be the inverse of encryption.
+ * With high probability, this will be incredibly slow to prove.
+ * ```repl
+ * :check encryptCorrect`{n=5}
+ * ```
+ */
+encryptCorrect : {n} (fin n) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> Bool
+property encryptCorrect k iv ps = (decrypt k iv (encrypt k iv ps)) == ps
