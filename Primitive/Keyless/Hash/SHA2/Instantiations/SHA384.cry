@@ -1,5 +1,6 @@
 /**
- * Secure hash algorithm SHA-384 as specified in [FIPS-180-4].
+ * Instantiation of the secure hash algorithm SHA-384 as specified in
+ * [FIPS-180-4], Section 5.3.4.
  *
  * @copyright Galois, Inc
  * @author Marcella Hastings <marcella@galois.com>

@@ -1,5 +1,6 @@
 /**
- * Secure hash algorithm SHA-256 as specified in [FIPS-180-4].
+ * Instantiation of the secure hash algorithm SHA-256 as specified in
+ * [FIPS-180-4], Section 5.3.3.
  *
  * @copyright Galois, Inc
  * @author Marcella Hastings <marcella@galois.com>

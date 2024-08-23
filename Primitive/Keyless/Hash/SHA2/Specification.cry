@@ -26,7 +26,9 @@ parameter
     /**
      * Length of words, in bits, that are used during hashing.
      *
-     * The specification defines words to be either 32 or 64 bits.
+     * The specification defines words to be either 32 bits (for
+     * SHA-224 and SHA-256) or 64 bits (for SHA-384, SHA-512, and
+     * SHA-512/t for any valid `t`).
      * [FIPS-180-4] Section 1, Figure 1.
      */
     type w : #
