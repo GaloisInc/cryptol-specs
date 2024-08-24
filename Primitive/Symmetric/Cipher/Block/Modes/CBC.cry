@@ -1,7 +1,22 @@
-// Cryptol CBC Implementation
-// Copyright (c) 2010-2018, Galois Inc.
-// www.cryptol.net
-// Author: Ajay Kumar Eeralla
+/*
+ * Cipher Block Chaining mode of operation, as defined in [NIST-SP-800-38A], Section 6.2.
+ *
+ * ⚠️ Warning ⚠️: CBC mode requires that the initialization vector (IV) is generated "unpredictably".
+ * See Appendix C of [NIST-SP-800-38A] for discussion.
+ *
+ * @copyright Galois, Inc.
+ * @author Ajay Kumar Eeralla
+ * @author Marcella Hastings <marcella@galois.com>
+ * @author Stanislav Lyakhov <stan@galois.com>
+ * www.cryptol.net
+ *
+ * References:
+ * [NIST-SP-800-38A]: Morris Dworkin. Recommendation for Block Cipher
+ * Modes of Operation: Methods and Techniques. NIST Special Publication
+ * 800-38A. December 2001.
+ *
+ */
+
 
 module Primitive::Symmetric::Cipher::Block::Modes::CBC where
 import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
