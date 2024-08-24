@@ -6,21 +6,6 @@
 module Primitive::Symmetric::Cipher::Block::Modes::CBC where
 import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
 
-// set the sizes
-type iv = [128]
-type block = [128]
-
-
-cbcEnc : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> iv -> [n]block -> [n]block
-cbcEnc enc k iv ps = cs
-    where cs = [ enc k (p ^ c') | p <- ps | c' <- [iv] # cs ]
-
-cbcDec : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> iv -> [n]block -> [n]block
-cbcDec dec k iv cs = [ (dec k c) ^ c' | c <- cs | c' <- [iv] # cs ]
-
-// This will need to be parameterized with a specific encryption function before it can be proved
-property cbcEncCorrect enc k c ps = (cbcDec enc k c (cbcEnc enc k c ps)) == ps
-
 /**
  * CBC encryption: [NIST-SP-800-38A] Section 6.2.
  *
