@@ -1,4 +1,12 @@
 /**
+ * Specification for some of the cryptographic primitives used in pair-wise key
+ * establishment as defined in [SP-800-56Ar3].
+ *
+ * This does not implement any complete key establishment schemes! It
+ * currently includes a method to compute a shared secret (`ECC_CDH`), but
+ * this must be combined with a key derivation scheme at a minimum in order
+ * to have secure key establishment. See [SP-800-56Ar3] Section 6.
+ *
  * References:
  * [SP-800-56Ar3]: Elaine Barker, LilyChen, Allen Roginsky, Apostol Vassilev,
  *    Richard Davis. Recommendation for Pair-Wise Key-Establishment Schemes
@@ -18,6 +26,8 @@
  *
  */
 module Primitive::Asymmetric::Generation::ECDH::Specification where
+
+import Common::utils(ZtoBV)
 
 /**
  * Secure key establishment depends on the arithmetic validity of the domain
@@ -110,3 +120,42 @@ verifyingKeyPartiallyValid Q = EC::isValid Q && ~(EC::isInfinity Q)
 keyPairIsConsistent : SigningKey -> VerifyingKey -> Bool
 keyPairIsConsistent d Q = EC::pointEq expectedQ Q where
     expectedQ = EC::scmul (fromZ d) EC::G
+
+/**
+ * Compute a shared secret `Z` using the domain parameters, the other party's
+ * public key (`QB`) and one's own private key (`dA`).
+ *
+ * This deviates from the spec in one important way: All intermediate values,
+ * including `P` and `z`, should be destroyed (zeroized) before providing
+ * output. Cryptol cannot express this; implementors must manually verify that
+ * all potentially sensitive local data is destroyed.
+ * [SP-800-56Ar3] Section 5.7.1.2.
+ *
+ * ⚠ Usage notes ⚠: This routine is not secure if used in isolation! It should be
+ * used as a component of one of the key agreement schemes described in
+ * [SP-800-56Ar3] Section 6. These schemes handle (input) key management and
+ * validation, (output) key derivation, and optional key confirmation.
+ *
+ * - Failure to use a valid key agreement scheme can compromise the security of
+ * the `SigningKey`s used in `ECC_CDH`! This routine does not validate the
+ * other party's public key. A malicious party can claim invalid curve points
+ * for her public key `QB` and collect residues to derive the honest party's
+ * private key!
+ *
+ * - The output of this method is a _shared secret_, not a key!
+ * It _must not_ be used directly as keying material. An approved key
+ * derivation method must be used to derive keying material from the shared
+ * secret. [SP-800-56Ar3] Section 5.8.
+ */
+ECC_CDH : SigningKey -> VerifyingKey -> Option ([(width EC::n) /^ 8][8])
+ECC_CDH dA QB = maybe_Z where
+    // Step 1. Compute P = h dA QB
+    P = EC::scmul EC::h (EC::scmul (fromZ dA) QB)
+    maybe_Z = case EC::xCoord P of
+        // Step 2.
+        // xCoord returns `None` if `P` is the point at infinity.
+        None -> None
+        // Step 3.
+        // The built-in Cryptol conversion methods produce the same output as the
+        // routine described in [SP-800-56Ar3] Appendix C.2.
+        Some z -> Some (split (ZtoBV z))
