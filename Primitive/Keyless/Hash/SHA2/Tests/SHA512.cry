@@ -1,0 +1,72 @@
+/**
+ * Test vectors for SHA512 as specified in [FIPS-180-4].
+ *
+ * These vectors were originally specified in [CSG-SHA], but we also used the
+ * convenient collected test vectors page from David Ireland.
+ * @see DI Management https://www.di-mgt.com.au/sha_testvectors.html
+ *
+ * @copyright Galois, Inc
+ * @author Marcella Hastings <marcella@galois.com>
+ *
+ * [CSG-SHA]: National Institute of Standards and Technology. Example
+ *     algorithms - Secure hashing.
+ *     @see http://csrc.nist.gov/groups/ST/toolkit/examples.html
+ *     @see https://csrc.nist.gov/csrc/media/projects/cryptographic-standards-and-guidelines/documents/examples/sha_all.pdf
+ * [FIPS-180-4]: National Institute of Standards and Technology. Secure Hash
+ *     Standard (SHS). (Department of Commerce, Washington, D.C.), Federal
+ *     Information Processing Standards Publication (FIPS) NIST FIPS 180-4.
+ *     August 2015.
+ *     @see https://doi.org/10.6028/NIST.FIPS.180-4
+ */
+import Primitive::Keyless::Hash::SHA2::Instantiations::SHA512 as SHA512
+
+/**
+ * ```repl
+ * :prove abcWorks
+ * ```
+ */
+property abcWorks = SHA512::hash (join "abc") == output where
+    output = join [
+        0xddaf35a193617aba, 0xcc417349ae204131, 0x12e6fa4e89a97ea2,
+        0x0a9eeee64b55d39a, 0x2192992a274fc1a8, 0x36ba3c23a3feebbd,
+        0x454d4423643ce80e, 0x2a9ac94fa54ca49f
+    ]
+
+
+/**
+ * ```repl
+ * :prove emptyStringWorks
+ * ```
+ */
+property emptyStringWorks = SHA512::hash [] == output where
+    output = join [
+        0xcf83e1357eefb8bd, 0xf1542850d66d8007, 0xd620e4050b5715dc,
+        0x83f4a921d36ce9ce, 0x47d0d13c5d85f2b0, 0xff8318d2877eec2f,
+        0x63b931bd47417a81, 0xa538327af927da3e
+    ]
+
+/**
+ * ```repl
+ * :prove alphabet448
+ * ```
+ */
+property alphabet448 = SHA512::hash input == output where
+    input = join "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
+    output = join [
+        0x204a8fc6dda82f0a, 0x0ced7beb8e08a416, 0x57c16ef468b228a8,
+        0x279be331a703c335, 0x96fd15c13b1b07f9, 0xaa1d3bea57789ca0,
+        0x31ad85c7a71dd703, 0x54ec631238ca3445
+    ]
+
+/**
+ * ```repl
+ * :prove alphabet896
+ * ```
+ */
+property alphabet896 = SHA512::hash input == output where
+    input = join "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu"
+    output = join [
+        0x8e959b75dae313da, 0x8cf4f72814fc143f, 0x8f7779c6eb9f7fa1,
+        0x7299aeadb6889018, 0x501d289e4900f7e4, 0x331b99dec4b5433a,
+        0xc7d329eeb6dd2654, 0x5e96e55b874be909
+    ]

@@ -24,12 +24,24 @@ module Primitive::Keyless::Hash::SHA2::Specification where
 
 parameter
     /**
-     * Word size.
-     * The specification defines words to be either 32 or 64 bits.
+     * Length of words, in bits, that are used during hashing.
+     *
+     * The specification defines words to be either 32 bits (for
+     * SHA-224 and SHA-256) or 64 bits (for SHA-384, SHA-512, and
+     * SHA-512/t for any valid `t`).
      * [FIPS-180-4] Section 1, Figure 1.
      */
     type w : #
     type constraint (w % 32 == 0, 32 <= w, 64 >= w)
+
+    /**
+     * Length of the message digest produced by the hash algorithm.
+     *
+     * Allowable values for each word size `w` are defined in [FIPS-180-4]
+     * Section 1, Figure 1.
+     */
+    type DigestSize : #
+    type constraint (8 * w >= DigestSize)
 
     /**
      * Initial hash value.
@@ -46,10 +58,24 @@ type constraint ValidMessageLength L = width L < MaxMessageWidth
 
 private
     /**
-     * Size of blocks of data used in hashing; denoted `m` in the spec.
-     * [FIPS-180-4] Section 1, Figure 1.
+     * Size of blocks of data used in hashing, measured in bits.
+     *
+     * This is denoted `m` in the spec. [FIPS-180-4] Section 1, Figure 1.
      */
     type BlockSize = 16 * w
+
+    /**
+     * `ScheduleLength` is fixed based on `w`: 64 when `w = 32` and 80 when `w = 64`.
+     * We encode this using the relation `48 + w/2`.
+     *
+     * It is not explicitly defined with this name in the spec. You can see it used
+     * in several places:
+     * - The constant `K` has `ScheduleLength` words ([FIPS-180-4] Section
+     *   4.2.2 and 4.2.3)
+     * - The message schedule `W` has length `ScheduleLength` ([FIPS-180-4]
+     *   Section 6.2.2 #1 and Section 6.4.2 #1)
+     */
+    type ScheduleLength = 48 + w / 2
 
     /**
      * Circular rotate left operation.
@@ -174,14 +200,11 @@ private
     /**
      * The SHA family uses a sequence of constant `w`-bit words, which represent
      * the first `w` bits of the fractional parts of the cube roots of the first
-     * `n` prime numbers.
-     *
-     * `n` is fixed based on `w`: 64 when `w = 32` and 80 when `w = 64`. This is
-     * encoded into the type of `K` using the relation `48 + w/2`.
+     * `ScheduleLength` prime numbers.
      *
      * [FIPS-180-4] Section 4.2.2 and 4.2.3.
      */
-    K : [48 + w / 2][w]
+    K : [ScheduleLength][w]
     K | w == 32 => [
         0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
         0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
@@ -256,3 +279,84 @@ private
      */
     parse : {N} () => [N * BlockSize] -> [N][BlockSize]
     parse M = split M
+
+
+/**
+ * Secure hash function.
+ *
+ * All the SHA functions (excluding SHA-1) share the same structure.
+ * The primary differences can be handled through Cryptol's built-in
+ * polymorphism:
+ * - The word sizes are different;
+ * - The length of the message schedule and subsequent number of iterations
+ *   over the working variables are different; and
+ * - The digest length is different.
+ *
+ * [FIPS-180-4] Section 6.2 - 6.7.
+ * The hash functionality itself is primarily described in Sections 6.2 and
+ * 6.4. The correct truncation for other bit lengths is in the other sections.
+ */
+hash: {l} (ValidMessageLength l) => [l] -> [DigestSize]
+hash M = take (join (digest ! 0)) where
+    digest = [H0] # [Hi'
+        where
+            // Step 1. Prepare the message schedule.
+            Ws = messageSchedule (split Mi)
+
+            // Step 2. Initialize the eight working variables with the
+            // previous hash value.
+            letters = [(Hi0, Hi1, Hi2, Hi3, Hi4, Hi5, Hi6, Hi7)] # [
+                // Step 3. Update temporary and working variables...
+                variableUpdate l Kt Wt
+                | l <- letters
+
+                // ...for t=0 to `ScheduleLength`.
+                | Wt <- Ws
+                | Kt <- K
+            ]
+            (a, b, c, d, e, f, g, h) = letters ! 0
+
+            // Step 4. Compute the next intermediate hash value.
+            // Note that in the spec, this is denoted H^(i).
+            Hi' = [a + Hi0, b + Hi1, c + Hi2, d + Hi3, e + Hi4, f + Hi5, g + Hi6, h + Hi7]
+
+        // Each message block is processed in order.
+        | Mi <- parse (pad M)
+
+        // An intermediate hash digest is computed at each iteration.
+        // Note that in the spec, these are denoted H^(i-1)_j for j = 0..7.
+        | [Hi0, Hi1, Hi2, Hi3, Hi4, Hi5, Hi6, Hi7] <- digest
+    ]
+
+    // Step 1. Prepare the message schedule.
+    messageSchedule : [16][w] -> [ScheduleLength][w]
+    messageSchedule Mi = take W where
+        W : [inf][w]
+        W = Mi # [ sigma1 w2 + w7 + sigma0 w15 + w16
+            // The spec indexes these by counting from the other direction.
+            // We can't do that here because it's an infinite sequence.
+            // Note that 15 - the drop parameter is the index in the spec.
+            | w16 <- W
+            | w15 <- drop`{1} W
+            | w7  <- drop`{9} W
+            | w2  <- drop`{14} W
+        ]
+
+    // Convenience type to describe the set of working variables a - h.
+    type LetterVars = ([w], [w], [w], [w], [w], [w], [w], [w])
+
+    // Step 3. Update temporary and working variables (one iteration).
+    variableUpdate : LetterVars -> [w] -> [w] -> LetterVars
+    variableUpdate (a, b, c, d, e, f, g, h) Kt Wt =
+        (a', b', c', d', e', f', g', h')
+        where
+            T1 = h + Sigma1 e + Ch e f g + Kt + Wt
+            T2 = Sigma0 a + Maj a b c
+            h' = g
+            g' = f
+            f' = e
+            e' = d + T1
+            d' = c
+            c' = b
+            b' = a
+            a' = T1 + T2

@@ -1,13 +1,22 @@
 /**
- * Secure hash algorithm SHA384.
+ * Instantiation of the secure hash algorithm SHA-384 as specified in
+ * [FIPS-180-4], Section 5.3.4.
  *
  * @copyright Galois, Inc
  * @author Marcella Hastings <marcella@galois.com>
+ *
+ * [FIPS-180-4]: National Institute of Standards and Technology. Secure Hash
+ *     Standard (SHS). (Department of Commerce, Washington, D.C.), Federal
+ *     Information Processing Standards Publication (FIPS) NIST FIPS 180-4.
+ *     August 2015.
+ *     @see https://doi.org/10.6028/NIST.FIPS.180-4
  */
 module Primitive::Keyless::Hash::SHA2::Instantiations::SHA384 =
     Primitive::Keyless::Hash::SHA2::Specification
 where
     type w = 64
+
+    type DigestSize = 384
 
     // Per [FIPS-180-4], these are the the first sixty-four bits of the
     // fractional parts of the square roots of the 9th - 16th prime numbers.

@@ -1,0 +1,68 @@
+/**
+ * Test vectors for SHA384 as specified in [FIPS-180-4].
+ *
+ * These vectors were originally specified in [CSG-SHA], but we also used the
+ * convenient collected test vectors page from David Ireland.
+ * @see DI Management https://www.di-mgt.com.au/sha_testvectors.html
+ *
+ * @copyright Galois, Inc
+ * @author Marcella Hastings <marcella@galois.com>
+ *
+ * [CSG-SHA]: National Institute of Standards and Technology. Example
+ *     algorithms - Secure hashing.
+ *     @see http://csrc.nist.gov/groups/ST/toolkit/examples.html
+ *     @see https://csrc.nist.gov/csrc/media/projects/cryptographic-standards-and-guidelines/documents/examples/sha_all.pdf
+ * [FIPS-180-4]: National Institute of Standards and Technology. Secure Hash
+ *     Standard (SHS). (Department of Commerce, Washington, D.C.), Federal
+ *     Information Processing Standards Publication (FIPS) NIST FIPS 180-4.
+ *     August 2015.
+ *     @see https://doi.org/10.6028/NIST.FIPS.180-4
+ */
+import Primitive::Keyless::Hash::SHA2::Instantiations::SHA384 as SHA384
+
+/**
+ * ```repl
+ * :prove abcWorks
+ * ```
+ */
+property abcWorks = SHA384::hash (join "abc") == output where
+    output = join [
+        0xcb00753f45a35e8b, 0xb5a03d699ac65007, 0x272c32ab0eded163,
+        0x1a8b605a43ff5bed, 0x8086072ba1e7cc23, 0x58baeca134c825a7
+    ]
+
+
+/**
+ * ```repl
+ * :prove emptyStringWorks
+ * ```
+ */
+property emptyStringWorks = SHA384::hash [] == output where
+    output = join [
+        0x38b060a751ac9638, 0x4cd9327eb1b1e36a, 0x21fdb71114be0743,
+        0x4c0cc7bf63f6e1da, 0x274edebfe76f65fb, 0xd51ad2f14898b95b
+    ]
+
+/**
+ * ```repl
+ * :prove alphabet448
+ * ```
+ */
+property alphabet448 = SHA384::hash input == output where
+    input = join "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
+    output = join [
+        0x3391fdddfc8dc739, 0x3707a65b1b470939, 0x7cf8b1d162af05ab,
+        0xfe8f450de5f36bc6, 0xb0455a8520bc4e6f, 0x5fe95b1fe3c8452b
+    ]
+
+/**
+ * ```repl
+ * :prove alphabet896
+ * ```
+ */
+property alphabet896 = SHA384::hash input == output where
+    input = join "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu"
+    output = join [
+        0x09330c33f71147e8, 0x3d192fc782cd1b47, 0x53111b173b3b05d2,
+        0x2fa08086e3b0f712, 0xfcc7c71a557e2db9, 0x66c3e9fa91746039
+    ]
