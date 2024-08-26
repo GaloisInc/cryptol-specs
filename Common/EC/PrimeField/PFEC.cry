@@ -98,6 +98,14 @@ parameter
 type n = n'
 
 /**
+ * Modulus of the field over which the curve is defined.
+ *
+ * This is called `q` for the `ECInterface`, which is designed to support
+ * curves that are not necessarily over prime order fields.
+ */
+type q = P
+
+/**
  * Coefficient that defines the curve.
  * For a curve in short-Weierstrass form, the equation is
  * `y^2 = x^3 + ax + b`.
@@ -321,18 +329,14 @@ twin_mul c P d Q = to_affine (ec_twin_mult c' P' d' Q')
         [c', d'] = [fromInteger   x | x <- [c, d]]
         [P', Q'] = [to_projective p | p <- [P, Q]]
 
-
-
 /**
- * Convert the x-coordinate `Z P` value into a `Z n` value, if the point is not
- * the point at infinity.
- *
- * [SP-800-186] Appendix F.1.
+ * Extract the x-coordinate `Z P` value, if the point is not the point at
+ * infinity.
  */
-xCoordModOrder: Point -> Option (Z n)
-xCoordModOrder p = case p of
+xCoord: Point -> Option (Z P)
+xCoord p = case p of
     Infinity -> None
-    Affine x _ -> Some (fromInteger (fromZ x))
+    Affine x _ -> Some x
 
 
 private

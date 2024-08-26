@@ -119,18 +119,23 @@ sign M d k = if inputsInRange then maybe_rs else None
         // Step 5.
         R = EC::scmul (fromZ k) EC::G
 
-        // Steps 6-8. This would fail (returns `None`) if `R` is the point at
+        // Step 6 (the case expression).
+        // This would fail (returns `None`) if `R` is the point at
         // infinity. In fact, that case is impossible because `[k]G = 0` if and
         // only if `k = n`, which can't happen by definition.
-        maybe_r = EC::xCoordModOrder R
-
-        // This fails (returns `None`) if `r` or `s` are invalid.
-        maybe_rs = case maybe_r of
+        maybe_rs = case EC::xCoord R of
             // Step 11.
-            Some r -> if (r != 0) && (s != 0) then Some (r, s) else None
-                // Step 9. The `mod n` is implicit here because these are all
-                // of type `Z n`.
-                where s = k_inv * (e + r * d)
+            // This fails (returns `None`) if `r` or `s` are invalid.
+            Some xR -> if (r != 0) && (s != 0) then Some (r, s) else None
+                where
+                    // Step 7.
+                    // Cryptol's `fromZ` method matches [SP-800-186] Appendix F.1.
+                    r1 = fromZ xR
+                    // Step 8.
+                    r = fromInteger r1
+                    // Step 9. The `mod n` is implicit here because these are
+                    // all of type `Z n`.
+                    s = k_inv * (e + r * d)
 
             None -> None // Impossible!
 
@@ -173,13 +178,16 @@ verify M (r, s) Q = inputsInRange && rMatches
         u = e * s_inv
         v = r * s_inv
 
-        // Step 6
+        // Step 6.
         R_1 = EC::twin_mul (fromZ u) EC::G (fromZ v) Q
 
-        // Step 7 - 8.
-        rMatches = case EC::xCoordModOrder R_1 of
+        // Step 7. `xCoord` retrieves the x-coordinate of `R_1`.
+        rMatches = case EC::xCoord R_1 of
             // Step 9.
-            Some r' -> r' == r
+            Some xR -> r1 == r where
+                // Step 8.
+                // This converts to an integer mod `n`.
+                r1 = fromInteger (fromZ xR)
             None -> False
 
 /**

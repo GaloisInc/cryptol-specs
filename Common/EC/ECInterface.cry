@@ -47,6 +47,15 @@ interface module Common::EC::ECInterface where
     type constraint (fin n, prime n, n >= 1)
 
     /**
+     * Modulus of the field over which the curve is defined.
+     *
+     * The curve must be defined over a Galois fields `GF(q)` for some `q`
+     * (typically an odd prime or 2^m).
+     */
+    type q : #
+    type constraint (fin q, q >= 1)
+
+    /**
      * Cofactor for the elliptic curve.
      *
      * The order of the curve is defined as `h * n`, where `h` is small
@@ -111,12 +120,7 @@ interface module Common::EC::ECInterface where
     twin_mul : Integer -> Point -> Integer -> Point -> Point
 
     /**
-     * ECDSA requires a routine to extract the x-coordinate of the affine
-     * representation of a `Point` and convert it from a field element an
-     * integer mod the order of the curve (`n`). This is not defined and
-     * returns `None` for the point at infinity.
-     *
-     * For NIST-standardized curves, this should match the conversion
-     * routine in [SP-800-186] Appendix F.1.
+     * Extract the x-coordinate of the affine representation of a `Point`,
+     * or `None` if it's the point at infinity.
      */
-    xCoordModOrder: Point -> Option (Z n)
+    xCoord: Point -> Option (Z q)
