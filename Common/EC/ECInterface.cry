@@ -41,15 +41,46 @@ interface module Common::EC::ECInterface where
     type Point : *
 
     /**
-     * Order of the elliptic curve.
+     * Order of the base point `G` for the curve.
      */
     type n : #
     type constraint (fin n, prime n, n >= 1)
 
     /**
+     * Cofactor for the elliptic curve.
+     *
+     * The order of the curve is defined as `h * n`, where `h` is small
+     * and `n`, the order of the base point `G`, is prime. If `h` is not
+     * 1, then the base point does not generate the entire curve.
+     */
+    h : Integer
+
+    /**
      * Base point for the curve.
      */
     G : Point
+
+    /**
+     * Indicate whether a point is the point at infinity (also known as the
+     * identity).
+     */
+    isInfinity : Point -> Bool
+
+    /**
+     * Indicate whether a point is valid: either the point at infinity or
+     * another point on the curve.
+     *
+     * This should check the following:
+     * - The coordinates of the `Point` are correctly formed
+     * - The point is either on the curve (e.g. satisfies the curve equation)
+     *   OR is the point at infinity.
+     */
+    isValid : Point -> Bool
+
+    /**
+     * Indicate whether two points are the same.
+     */
+    pointEq : Point -> Point -> Bool
 
     /**
      * Addition of two points.

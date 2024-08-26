@@ -29,7 +29,7 @@ T = P256::Affine (BVtoZ 0x55a8b00f8da1d44e62f6b3b25316212e39540dc861c89575bb8cf9
  * :prove sAndTAreValid
  * ```
  */
-property sAndTAreValid = P256::valid_point S && P256::valid_point T
+property sAndTAreValid = P256::isValid S && P256::isValid T
 
 /**
  * ```repl
