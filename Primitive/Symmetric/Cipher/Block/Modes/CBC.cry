@@ -1,8 +1,12 @@
 /*
  * Cipher Block Chaining mode of operation, as defined in [NIST-SP-800-38A], Section 6.2.
  *
- * ⚠️ Warning ⚠️: CBC mode requires that the initialization vector (IV) is generated "unpredictably".
- * See Appendix C of [NIST-SP-800-38A] for discussion.
+ * ⚠️ Warning ⚠️: To ensure confidentiality, CBC mode requires that the initialization vector (IV) is generated "unpredictably".
+ * This specification does not verify IV generation;
+ * implementors must manually verify that their IVs were chosen appropriately.
+ *
+ * For guidelines on generating IVs, see Appendix C of [NIST-SP-800-38A].
+ * For information on the importance of protecting IV integrity, see Appendix D of [NIST-SP-800-38A].
  *
  * @copyright Galois, Inc.
  * @author Ajay Kumar Eeralla
@@ -10,10 +14,10 @@
  * @author Stanislav Lyakhov <stan@galois.com>
  * www.cryptol.net
  *
- * References:
  * [NIST-SP-800-38A]: Morris Dworkin. Recommendation for Block Cipher
- * Modes of Operation: Methods and Techniques. NIST Special Publication
- * 800-38A. December 2001.
+ *     Modes of Operation: Methods and Techniques. NIST Special Publication
+ *     800-38A. December 2001.
+ *     @see https://doi.org/10.6028/NIST.SP.800-38A 
  *
  */
 
@@ -26,8 +30,9 @@ import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
  *
  * Parameters: key, initialization vector, plaintext
  *
- * ⚠️ Warning ⚠️: CBC mode requires that the initialization vector (IV) is generated "unpredictably".
- * See Appendix C of [NIST-SP-800-38A] for discussion.
+ * ⚠️ Warning ⚠️: To ensure confidentiality, CBC mode requires that the initialization vector (IV) is generated "unpredictably".
+ * This specification does not verify IV generation;
+ * implementors must manually verify that their IVs were chosen appropriately.
  */
 encrypt : {n} (fin n) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> [n][C::BlockSize]
 encrypt k iv ps = cs
@@ -40,8 +45,9 @@ encrypt k iv ps = cs
  *
  * Parameters: key, initialization vector, ciphertext
  *
- * ⚠️ Warning ⚠️: CBC mode requires that the initialization vector (IV) is generated "unpredictably".
- * See Appendix C of [NIST-SP-800-38A] for discussion.
+ * ⚠️ Warning ⚠️: To ensure confidentiality, CBC mode requires that the initialization vector (IV) is generated "unpredictably".
+ * This specification does not verify IV generation;
+ * implementors must manually verify that their IVs were chosen appropriately.
  */
 decrypt : {n} (fin n) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> [n][C::BlockSize]
 decrypt k iv cs = ps
