@@ -500,7 +500,7 @@ property CorrectnessEncodeDecode' f = Decode'`{12}(Encode'`{12} f) == f
 
 K_PKE_KeyGen: ([32]Byte) -> ([384*k+32]Byte, [384*k]Byte)
 K_PKE_KeyGen(d) = (ekPKE, dkPKE) where
-  (ρ,σ) = G(d)
+  (ρ,σ) = G(d # [`(k)])
   A_hat = [[SampleNTT (XOF(ρ # [j] # [i])) | j <- [0 .. k-1]] | i <- [0 .. k-1]] : [k][k]Z_q_256
   s = [SamplePolyCBD`{eta_1}(PRF(σ,N)) | N <- [0 .. k-1]] : [k]Z_q_256
   e = [SamplePolyCBD`{eta_1}(PRF(σ,N)) | N <- [k .. (2*k-1)]] : [k]Z_q_256
