@@ -98,7 +98,7 @@ Decompress x = map Decompress'`{d} x
 
 // These types distinguish infinite from finite length
 PRF : {prfeta} (fin prfeta, prfeta > 0) => ([32]Byte, Byte) -> [64 * prfeta]Byte
-XOF : ([32]Byte, Byte, Byte) -> [inf]Byte
+XOF : ([34]Byte) -> [inf]Byte
 H : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
 J : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
 G : {ginl} (fin ginl) => [ginl]Byte -> ([32]Byte, [32]Byte)
@@ -501,7 +501,7 @@ property CorrectnessEncodeDecode' f = Decode'`{12}(Encode'`{12} f) == f
 K_PKE_KeyGen: ([32]Byte) -> ([384*k+32]Byte, [384*k]Byte)
 K_PKE_KeyGen(d) = (ekPKE, dkPKE) where
   (ρ,σ) = G(d)
-  A_hat = [[SampleNTT (XOF(ρ,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]Z_q_256
+  A_hat = [[SampleNTT (XOF(ρ # [j] # [i])) | j <- [0 .. k-1]] | i <- [0 .. k-1]] : [k][k]Z_q_256
   s = [SamplePolyCBD`{eta_1}(PRF(σ,N)) | N <- [0 .. k-1]] : [k]Z_q_256
   e = [SamplePolyCBD`{eta_1}(PRF(σ,N)) | N <- [k .. (2*k-1)]] : [k]Z_q_256
   s_hat = NTT(s)
@@ -516,7 +516,7 @@ K_PKE_Encrypt : ([384*k+32]Byte, [32]Byte, [32]Byte) -> [32*(d_u*k+d_v)]Byte
 K_PKE_Encrypt(ekPKE, m, r) = c where
   t_hat = Decode`{12} (ekPKE@@[0 .. 384*k - 1])
   rho = ekPKE@@[384*k .. 384*k + 32 - 1]
-  A_hat = [[SampleNTT (XOF(rho,i,j)) | i <- [0 .. k-1]] | j <- [0 .. k-1]] : [k][k]Z_q_256
+  A_hat = [[SampleNTT (XOF(rho # [j] # [i])) | j <- [0 .. k-1]] | i <- [0 .. k-1]] : [k][k]Z_q_256
   rvec = [SamplePolyCBD`{eta_1}(PRF(r,N)) | N <- [0 .. k-1]] : [k]Z_q_256
   e1 = [SamplePolyCBD`{eta_2}(PRF(r,N)) | N <- [k .. (2*k-1)]] : [k]Z_q_256
   e2 = SamplePolyCBD`{eta_2}(PRF(r,2*`k)) : Z_q_256
@@ -610,7 +610,7 @@ parameter
 
 import Primitive::Keyless::Hash::utils
 import Primitive::Keyless::Hash::SHAKE::SHAKE128
-XOF(rho, i, j) = groupBy`{8}(shake128((fromBytes(rho))# reverse i# reverse j))
+XOF(d) = groupBy`{8}(shake128(fromBytes(d)))
 J(s) = take(groupBy(shake256(fromBytes(s))))
 
 import `Primitive::Keyless::Hash::SHA3::SHA3
