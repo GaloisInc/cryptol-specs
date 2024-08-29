@@ -1,21 +1,66 @@
-// Cryptol CBC Implementation
-// Copyright (c) 2010-2018, Galois Inc.
-// www.cryptol.net
-// Author: Ajay Kumar Eeralla
+/*
+ * Cipher Block Chaining mode of operation, as defined in [NIST-SP-800-38A], Section 6.2.
+ *
+ * ⚠️ Warning ⚠️: To ensure confidentiality, CBC mode requires that the initialization vector (IV) is generated "unpredictably".
+ * This specification does not verify IV generation;
+ * implementors must manually verify that their IVs were chosen appropriately.
+ *
+ * For guidelines on generating IVs, see Appendix C of [NIST-SP-800-38A].
+ * For information on the importance of protecting IV integrity, see Appendix D of [NIST-SP-800-38A].
+ *
+ * @copyright Galois, Inc.
+ * @author Ajay Kumar Eeralla
+ * @author Marcella Hastings <marcella@galois.com>
+ * @author Stanislav Lyakhov <stan@galois.com>
+ * www.cryptol.net
+ *
+ * [NIST-SP-800-38A]: Morris Dworkin. Recommendation for Block Cipher
+ *     Modes of Operation: Methods and Techniques. NIST Special Publication
+ *     800-38A. December 2001.
+ *     @see https://doi.org/10.6028/NIST.SP.800-38A 
+ *
+ */
+
 
 module Primitive::Symmetric::Cipher::Block::Modes::CBC where
+import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
 
-// set the sizes
-type iv = [128]
-type block = [128]
+/**
+ * CBC encryption: [NIST-SP-800-38A] Section 6.2.
+ *
+ * Parameters: key, initialization vector, plaintext
+ *
+ * ⚠️ Warning ⚠️: To ensure confidentiality, CBC mode requires that the initialization vector (IV) is generated "unpredictably".
+ * This specification does not verify IV generation;
+ * implementors must manually verify that their IVs were chosen appropriately.
+ */
+encrypt : {n} (fin n) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> [n][C::BlockSize]
+encrypt K IV Ps = Cs
+    where 
+        CIPH_K = C::encrypt K
+        Cs = [ CIPH_K (P_j ^ C_j_1) | P_j <- Ps | C_j_1 <- [IV] # Cs] 
 
+/**
+ * CBC decryption: [NIST-SP-800-38A] Section 6.2.
+ *
+ * Parameters: key, initialization vector, ciphertext
+ *
+ * ⚠️ Warning ⚠️: To ensure confidentiality, CBC mode requires that the initialization vector (IV) is generated "unpredictably".
+ * This specification does not verify IV generation;
+ * implementors must manually verify that their IVs were chosen appropriately.
+ */
+decrypt : {n} (fin n) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> [n][C::BlockSize]
+decrypt K IV Cs = Ps
+    where 
+        CIPH_K_inv = C::decrypt K
+        Ps = [ (CIPH_K_inv C_j) ^ C_j_1 | C_j <- Cs | C_j_1 <- [IV] # Cs] 
 
-cbcEnc : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> iv -> [n]block -> [n]block
-cbcEnc enc k iv ps = cs
-    where cs = [ enc k (p ^ c') | p <- ps | c' <- [iv] # cs ]
-
-cbcDec : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> iv -> [n]block -> [n]block
-cbcDec dec k iv cs = [ (dec k c) ^ c' | c <- cs | c' <- [iv] # cs ]
-
-// This will need to be parameterized with a specific encryption function before it can be proved
-property cbcEncCorrect encrypt k c ps = (cbcDec encrypt k c (cbcEnc encrypt k c ps)) == ps
+/**
+ * Decryption must be the inverse of encryption.
+ * With high probability, this will be incredibly slow to prove.
+ * ```repl
+ * :check encryptCorrect`{n=5}
+ * ```
+ */
+encryptCorrect : {n} (fin n) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> Bool
+property encryptCorrect K IV Ps = (decrypt K IV (encrypt K IV Ps)) == Ps
