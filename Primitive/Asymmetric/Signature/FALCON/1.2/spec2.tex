@@ -653,8 +653,8 @@ The \falcon public key \pk corresponding to the private key $\sk =
     | n > 0 => butterfly depth even odd
       where
         (lft, rht) = shuffle a
-        even = ntt_r`{max 1 n - 1} (depth + 1) lft
-        odd = ntt_r`{max 1 n - 1} (depth + 1) rht
+        even = ntt_r`{n - 1} (depth + 1) lft
+        odd = ntt_r`{n - 1} (depth + 1) rht
 
   shuffle : {n, a} (fin n, n > 0) => [2 * n]a -> ([n]a, [n]a)
   shuffle a =
@@ -692,8 +692,8 @@ The \falcon public key \pk corresponding to the private key $\sk =
     | n > 0 => ivbutterfly depth even odd
       where
         (lft, rht) = shuffle a
-        even = ivntt_r`{max 1 n - 1} (depth + 1) lft
-        odd = ivntt_r`{max 1 n - 1} (depth + 1) rht
+        even = ivntt_r`{n - 1} (depth + 1) lft
+        odd = ivntt_r`{n - 1} (depth + 1) rht
 
   ivbutterfly : {n} (fin n, n > 0) =>
     Integer -> [n](Z q) -> [n](Z q) -> [2 * n](Z q)
