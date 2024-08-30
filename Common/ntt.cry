@@ -66,6 +66,11 @@ naive_ivntt xs = map ((*) ivn) ys
     ys = [ foldl (+) 0 (zipWith (*) (reverse xs) (odd_powers wi))
          | wi <- all_powers r ]
 
+/**
+ * ```repl
+ * :check naive_ntt_correct
+ * ```
+ */
 naive_ntt_correct : [nn]Fld -> Bool
 property naive_ntt_correct a = naive_ivntt (naive_ntt a) == a
 
@@ -87,21 +92,17 @@ roots = iterate ((*) (r * r)) 1
 /**
  * An O(n log n) number theortic transform for Dilithium.
  */
-import Common::utils (coerceSize)
-
 ntt : [nn]Fld -> [nn]Fld
 ntt a = ntt_r`{lg2 nn} 0 a
 
 ntt_r : {n} (fin n) => Integer -> [2 ^^ n]Fld -> [2 ^^ n]Fld
-ntt_r depth a =
-  if `n == 0 then
-    a
-  else
-    coerceSize (butterfly depth even odd)
+ntt_r depth a
+  | n == 0 =>  a
+  | n > 0 => butterfly depth even odd
     where
-      (lft, rht) = shuffle (coerceSize a)
-      even = ntt_r`{max 1 n - 1} (depth + 1) lft
-      odd = ntt_r`{max 1 n - 1} (depth + 1) rht
+      (lft, rht) = shuffle a
+      even = ntt_r`{n - 1} (depth + 1) lft
+      odd = ntt_r`{n - 1} (depth + 1) rht
 
 /**
  * Group even indices in first half and odd indices in second half.
@@ -115,7 +116,7 @@ shuffle a =
 /**
  * Perform the butterfly operation.
  */
-butterfly : {n} (fin n, n > 0) => Integer -> [n]Fld -> [n]Fld -> [2 * n]Fld
+butterfly : {n} (fin n, n > 0) => Integer -> [n]Fld -> [n]Fld -> [2*n]Fld
 butterfly depth even odd =
   lft # rht
   where
@@ -139,15 +140,13 @@ ivntt a =
   map ((*) ivn) (ivntt_r`{lg2 nn} 0 a)
 
 ivntt_r : {n} (fin n) => Integer -> [2 ^^ n]Fld -> [2 ^^ n]Fld
-ivntt_r depth a =
-  if `n == 0 then
-    a
-  else
-    coerceSize (ivbutterfly depth even odd)
+ivntt_r depth a
+  | n == 0 => a
+  | n > 0 => ivbutterfly depth even odd
     where
-      (lft, rht) = shuffle (coerceSize a)
-      even = ivntt_r`{max 1 n - 1} (depth + 1) lft
-      odd = ivntt_r`{max 1 n - 1} (depth + 1) rht
+      (lft, rht) = shuffle a
+      even = ivntt_r`{n - 1} (depth + 1) lft
+      odd = ivntt_r`{n - 1} (depth + 1) rht
 
 /**
  * Perform the butterfly operation with inverse roots.
@@ -160,7 +159,12 @@ ivbutterfly depth even odd =
     lft = [ even @ i + ivroots @ (i * j) * odd @ i | i <- [0 .. <n] ]
     rht = [ even @ i - ivroots @ (i * j) * odd @ i | i <- [0 .. <n] ]
 
-// Try prove
+/**
+ * Takes ~20s to prove.
+ * ```repl
+ * :prove ntt_correct
+ * ```
+ */
 ntt_correct : [nn]Fld -> Bool
 property ntt_correct a = ivntt (ntt a) == a
 
@@ -169,17 +173,32 @@ property ntt_correct a = ivntt (ntt a) == a
 fntt : [nn]Fld -> [nn]Fld
 fntt xs = ntt (zipWith (*) xs (all_powers r))
 
-// Try prove
+/**
+ * Takes ~40s to prove.
+ * ```repl
+ * :prove fntt_correct
+ * ```
+ */
 fntt_correct : [nn]Fld -> Bool
 property fntt_correct a = naive_ntt a == fntt a
 
 fivntt : [nn]Fld -> [nn]Fld
 fivntt xs = zipWith (*) (all_powers ivr) (ivntt xs)
 
-// Try prove
+/**
+ * Takes ~10s to prove.
+ * ```repl
+ * :prove fivntt_correct
+ * ```
+ */
 fivntt_correct : [nn]Fld -> Bool
 property fivntt_correct a = fivntt a == naive_ivntt a
 
-// Try prove
+/**
+ * Takes ~30s to prove.
+ * ```repl
+ * :prove ffivntt_correct
+ * ```
+ */
 ffivntt_correct : [nn]Fld -> Bool
 property ffivntt_correct a = fivntt (fntt a) == a
