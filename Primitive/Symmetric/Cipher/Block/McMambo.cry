@@ -1,4 +1,9 @@
-module McMambo where
+/*
+ * @copyright Galois, Inc
+ * @editor Nichole Schimanski <nls@galois.com>
+ * @author Aaron Tomb
+ */
+module Primitive::Symmetric::Cipher::Block::McMambo where
 
 type word = [32]
 type state = [4][4]word
@@ -24,9 +29,20 @@ R (x, c) = x <<< c
 T : word -> tweak -> state -> state
 T n t s = s ⊕ (if n == 5 then split t else zero)
 
+
+/**
+ * ```repl
+ * :prove T_bijective
+ * ```
+ */
 property T_bijective t n s s' =
   (s != s') == (T n t s != T n t s')
 
+/**
+ * ```repl
+ * :prove T_inverse
+ * ```
+ */
 property T_inverse n t s =
   T n t (T n t s) == s
 
@@ -38,6 +54,11 @@ Q [x0, x1, x2, x3] = [y0, y1, y2, y3]
     y3 = x3 ⊕ R (y1 ↑ x0, 13)
     y0 = x0 ⊕ R (y1 ↓ y2, 18)
 
+/**
+ * ```repl
+ * :prove Q_bijective
+ * ```
+ */
 property Q_bijective x x' =
   (x != x') == (Q x != Q x')
 
@@ -91,9 +112,19 @@ D'_verbose [ [ x0,  x1,  x2,  x3]
         , [ z8,  z9, z10, z11]
         , [z12, z13, z14, z15] ]
 
+/**
+ * ```repl
+ * :prove D_matches
+ * ```
+ */
 property D_matches =
   D === D_verbose
 
+/**
+ * ```repl
+ * :prove D'_matches
+ * ```
+ */
 property D'_matches =
   D' === D'_verbose
 
@@ -110,6 +141,11 @@ K [k0, k1, k2, k3, k4, k5, k6, k7] j x =
       , [ k6,  0, k7,  j ]
       ]
 
+/**
+ * ```repl
+ * :prove K_inverse
+ * ```
+ */
 property K_inverse k j s =
   K k j (K k j s) == s
 
@@ -136,9 +172,19 @@ from_bytes bytes = [ join (reverse xs) | (xs : [4][8]) <- blocks ]
 to_bytes : {a} [a][32] -> [a*4][8]
 to_bytes words = join [ reverse (split word : [4][8]) | word <- words ]
 
+/**
+ * ```repl
+ * :prove from_to_bytes
+ * ```
+ */
 property from_to_bytes (words : [16][32]) =
   from_bytes (to_bytes words) == words
 
+/**
+ * ```repl
+ * :prove to_from_bytes
+ * ```
+ */
 property to_from_bytes (bytes : [64][8]) =
   to_bytes (from_bytes bytes) == bytes
 
@@ -165,6 +211,11 @@ Mambo_bytes k t m = to_bytes (Mambo (from_bytes k) (from_bytes t) (from_bytes m)
 Mambo_bytes' : [_][8] -> [_][8] -> [_][8] -> _
 Mambo_bytes' k t m = to_bytes (Mambo' (from_bytes k) (from_bytes t) (from_bytes m))
 
+/**
+ * ```repl
+ * :prove Mambo_test
+ * ```
+ */
 property Mambo_test =
   join (Mambo_bytes ("Me" # zero) ("Try" # zero) ("Test" # zero)) ==
   0xeb514a1ff2609f3a81ccfdd5e5342dba332d7b159a1571cee66d14bb6fd48ceb1ae956a91d3f54c8a545262c26611245a917d0a1582ecbc1d397b612baf7a62d
