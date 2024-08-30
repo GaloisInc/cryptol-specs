@@ -1,9 +1,19 @@
-/*
- * Copyright (c) 2013 David Lazar <lazard@galois.com>
+/**
+ * Specification of the Keccak (SHA-3) hash function
+ *
+ *
+ *
+ * [FIPS-202]: National Institute of Standards and Technology. SHA-3 Standard:
+ *     Permutation-Based Hash and Extendable-Output Functions. (Department of
+ *     Commerce, Washington, D.C.), Federal Information Processing Standards
+ *     Publication (FIPS) NIST FIPS 202. August 2015.
+ *     @see https://dx.doi.org/10.6028/NIST.FIPS.202
+ *
+ * @copyright Galois, Inc. 2013 - 2024
+ * @author David Lazar <lazard@galois.com>
+ * @author Marcella Hastings <marcella@galois.com>
+ *
  */
-
-// Specification of the Keccak (SHA-3) hash function
-// Author: David Lazar
 module Primitive::Keyless::Hash::keccak where
 
 Keccak : {r, c, m}
@@ -37,6 +47,11 @@ Keccak_f A0 = rounds ! 0
 Round : {w} (fin w) => [5][5][w] -> [5][5][w] -> [5][5][w]
 Round RC A = ι RC (χ (π (ρ (θ A))))
 
+/**
+ * One of the step mappings that's part of a round of Keccak-p.
+ *
+ * [FIPS-202] Section 3.2.1.
+ */
 θ : {w} (fin w) => [5][5][w] -> [5][5][w]
 θ A = A'
   where
@@ -47,6 +62,11 @@ Round RC A = ι RC (χ (π (ρ (θ A))))
         ]
     A' = [ [ a ^ (D @ x) | a <- A @ x ] | (x:[8]) <- [0 .. 4] ]
 
+/**
+ * One of the step mappings that's part of a round of Keccak-p.
+ *
+ * [FIPS-202] Section 3.2.2.
+ */
 ρ : {w} (fin w) => [5][5][w] -> [5][5][w]
 ρ A = groupBy`{5} [ a <<< r | a <- join A | (r:[8]) <- R ]
   where R = [00, 36, 03, 41, 18,
@@ -55,17 +75,32 @@ Round RC A = ι RC (χ (π (ρ (θ A))))
              28, 55, 25, 21, 56,
              27, 20, 39, 08, 14]
 
+/**
+ * One of the step mappings that's part of a round of Keccak-p.
+ *
+ * [FIPS-202] Section 3.2.3.
+ */
 π : {w} (fin w) => [5][5][w] -> [5][5][w]
 π A = groupBy`{5} [ A @ ((x + 3*y) % 5) @ x
                   | (x:[8]) <- [0..4], (y:[8]) <- [0..4]
                   ]
 
+/**
+ * One of the step mappings that's part of a round of Keccak-p.
+ *
+ * [FIPS-202] Section 3.2.4.
+ */
 χ : {w} (fin w) => [5][5][w] -> [5][5][w]
 χ A = groupBy`{5} [ (A @ x @ y) ^ (~ A @ ((x + 1) % 5) @ y
                                   && A @ ((x + 2) % 5) @ y)
                   | (x:[8]) <- [0..4], (y:[8]) <- [0..4]
                   ]
 
+/**
+ * One of the step mappings that's part of a round of Keccak-p.
+ *
+ * [FIPS-202] Section 3.2.5.
+ */
 ι : {w} (fin w) => [5][5][w] -> [5][5][w] -> [5][5][w]
 ι RC A = A ^ RC
 
