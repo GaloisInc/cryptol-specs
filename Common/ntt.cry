@@ -116,14 +116,13 @@ shuffle a =
 /**
  * Perform the butterfly operation.
  */
-butterfly : {n} (fin n) => Integer -> [2^^n]Fld -> [2^^n]Fld -> [2 ^^ (n+1)]Fld
+butterfly : {n} (fin n, n > 0) => Integer -> [n]Fld -> [n]Fld -> [2*n]Fld
 butterfly depth even odd =
   lft # rht
   where
     j = 2 ^^ depth
-    lft = [ even @ i + roots @ (i * j) * odd @ i | i <- [0 .. <len] ]
-    rht = [ even @ i - roots @ (i * j) * odd @ i | i <- [0 .. <len] ]
-    type len = 2^^n
+    lft = [ even @ i + roots @ (i * j) * odd @ i | i <- [0 .. <n] ]
+    rht = [ even @ i - roots @ (i * j) * odd @ i | i <- [0 .. <n] ]
 
 /* INVERSE NTT */
 
