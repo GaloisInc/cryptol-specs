@@ -1,3 +1,8 @@
+/*
+ * @copyright Galois, Inc
+ * @editor Nichole Schimanski <nls@galois.com>
+ * @author Aaron Tomb
+ */
 module Primitive::Symmetric::Cipher::Block::McMambo where
 
 type word = [32]
