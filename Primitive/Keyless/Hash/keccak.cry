@@ -17,32 +17,32 @@
 module Primitive::Keyless::Hash::keccak where
 
 Keccak : {r, c, m}
-  ( fin r, fin c, fin m
-  , r >= 1
-  , (r + c) % 25 == 0
-  , 64 >= (r + c) / 25
-  ) => [m] -> [inf]
+    ( fin r, fin c, fin m
+    , r >= 1
+    , (r + c) % 25 == 0
+    , 64 >= (r + c) / 25
+    ) => [m] -> [inf]
 Keccak M = squeeze `{r = r} (absorb `{w = (r + c) / 25} Ps)
-  where Ps = pad `{r = r} M
+    where Ps = pad `{r = r} M
 
 squeeze : {r, w} (fin r, fin w, 64 >= w, r >= 0, 25 * w >= r) => [5][5][w] -> [inf]
 squeeze A = take`{r} (flatten A) # squeeze`{r = r} (Keccak_f A)
 
 absorb : {r, w, n} (fin r, fin w, fin n, 64 >= w, 25 * w >= r) => [n][r] -> [5][5][w]
 absorb Ps = as ! 0
-  where
-    as = [zero] # [ Keccak_f `{w = w} (s ^ (unflatten p)) | s <- as | p <- Ps ]
+    where
+        as = [zero] # [ Keccak_f `{w = w} (s ^ (unflatten p)) | s <- as | p <- Ps ]
 
 pad : {r, m}
-  ( fin r, fin m
-  , r >= 1
-  ) => [m] -> [(m + 2) /^ r][r]
+    ( fin r, fin m
+    , r >= 1
+    ) => [m] -> [(m + 2) /^ r][r]
 pad M = split (M # [True] # zero # [True])
 
 Keccak_f : {w} (fin w, 64 >= w) => [5][5][w] -> [5][5][w]
 Keccak_f A0 = rounds ! 0
-  where
-    rounds = [A0] # [ Round RC A | RC <- RCs`{w = w} | A <- rounds ]
+    where
+        rounds = [A0] # [ Round RC A | RC <- RCs`{w = w} | A <- rounds ]
 
 Round : {w} (fin w) => [5][5][w] -> [5][5][w] -> [5][5][w]
 Round RC A = ι RC (χ (π (ρ (θ A))))
@@ -53,11 +53,12 @@ Round RC A = ι RC (χ (π (ρ (θ A))))
  * [FIPS-202] Section 3.2.1.
  */
 θ : {w} (fin w) => [5][5][w] -> [5][5][w]
-θ A = A'
-  where
+θ A = A' where
     C = [ xor a | a <- A ]
     D = [ C @ x ^ (C @ y <<< 1)
+        // In the spec, this is denoted `(x-1) mod 5` for 0 <= x < 5.
         | (x:[8]) <- [4,0,1,2,3]
+        // In the spec, this is denoted `(x+1) mod 5` for 0 <= x < 5.
         | (y:[8]) <- [1,2,3,4,0]
         ]
     A' = [ [ a ^ (D @ x) | a <- A @ x ] | (x:[8]) <- [0 .. 4] ]
@@ -69,11 +70,14 @@ Round RC A = ι RC (χ (π (ρ (θ A))))
  */
 ρ : {w} (fin w) => [5][5][w] -> [5][5][w]
 ρ A = groupBy`{5} [ a <<< r | a <- join A | (r:[8]) <- R ]
-  where R = [00, 36, 03, 41, 18,
-             01, 44, 10, 45, 02,
-             62, 06, 43, 15, 61,
-             28, 55, 25, 21, 56,
-             27, 20, 39, 08, 14]
+    where
+        R = [
+            00, 36, 03, 41, 18,
+            01, 44, 10, 45, 02,
+            62, 06, 43, 15, 61,
+            28, 55, 25, 21, 56,
+            27, 20, 39, 08, 14
+        ]
 
 /**
  * One of the step mappings that's part of a round of Keccak-p.
@@ -131,24 +135,24 @@ flatten A = reverse (join (reverse (join (transpose A))))
 
 xor : {a, b} (fin a) => [a][b] -> [b]
 xor xs = xors ! 0
-  where xors = [zero] # [ x ^ z | x <- xs | z <- xors ]
+    where xors = [zero] # [ x ^ z | x <- xs | z <- xors ]
 
 property RC_correct i j =
-  (i:[8]) < 24 ==> (j:[8]) < 7 ==> RCs64@i!(2^^j - 1) == lfsr@(j + 7*i)
+    (i:[8]) < 24 ==> (j:[8]) < 7 ==> RCs64@i!(2^^j - 1) == lfsr@(j + 7*i)
 
 lfsr : [inf]
 lfsr = [ p!0 | p <- ps ]
-  where
+    where
     /* powers of x modulo m */
     ps = [0x01] # [ pmod (pmult p 0b10) m | p <- ps ]
     m = <| x^^8 + x^^6 + x^^5 + x^^4 + 1 |>
 
 /* See https://keccak.team/files/Keccak-reference-3.0.pdf, Section 1.2 */
 property unflatten_correct x y z p =
-  x < 5 ==> y < 5 ==> z < (64:[12]) ==>
-  p@((5*y + x)*64 + z) == unflatten`{1600,64} p @ x @ y ! z
+    x < 5 ==> y < 5 ==> z < (64:[12]) ==>
+    p@((5*y + x)*64 + z) == unflatten`{1600,64} p @ x @ y ! z
 
 property flatten_correct s =
-  unflatten`{1600,64} (flatten`{64} s) == s
+    unflatten`{1600,64} (flatten`{64} s) == s
 
 
