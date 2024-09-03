@@ -2,7 +2,6 @@ module Primitive::Asymmetric::Signature::DSA::p2048_q224=
     Primitive::Asymmetric::Signature::DSA::DSA where
 import Common::utils
 import Primitive::Keyless::Hash::SHA1
-import Primitive::Keyless::Hash::keccak
 import Primitive::Keyless::Hash::SHA3::SHA3_256
 
 type L = 2048 // p length

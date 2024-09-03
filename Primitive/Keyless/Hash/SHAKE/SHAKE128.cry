@@ -1,11 +1,12 @@
 module Primitive::Keyless::Hash::SHAKE::SHAKE128 where
-import Primitive::Keyless::Hash::keccak
+import Primitive::Keyless::Hash::keccak where
+    type b = 1600
+    type nr = 24
 import Primitive::Keyless::Hash::utils (toBytes)
 
-type total = 1600
 type secBits = 128
 
-shake128 M = Keccak `{r = total - 2 * secBits, c = 2 * secBits } (M # 0b1111)
+shake128 M = Keccak `{r = 1600 - 2 * secBits } (M # 0b1111)
 
 property k1 = join (toBytes (take`{512} (shake128 []))) == join [ 0x7f9c2ba4e88f827d616045507605853e
                                                              , 0xd73b8093f6efbc88eb1a6eacfa66ef26

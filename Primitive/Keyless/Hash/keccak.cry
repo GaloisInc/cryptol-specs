@@ -3,7 +3,7 @@
  *
  *
  *
- * [FIPS-202]: National Institute of Standards and Technology. SHA-3 Standard:
+ * [FIPS-02]: National Institute of Standards and Technology. SHA-3 Standard:
  *     Permutation-Based Hash and Extendable-Output Functions. (Department of
  *     Commerce, Washington, D.C.), Federal Information Processing Standards
  *     Publication (FIPS) NIST FIPS 202. August 2015.
@@ -16,22 +16,54 @@
  */
 module Primitive::Keyless::Hash::keccak where
 
-Keccak : {r, c, m}
-    ( fin r, fin c, fin m
-    , r >= 1
-    , (r + c) % 25 == 0
-    , 64 >= (r + c) / 25
-    ) => [m] -> [inf]
-Keccak M = squeeze `{r = r} (absorb `{w = (r + c) / 25} Ps)
+parameter
+    /**
+     * Width: the fixed length of the strings that are permuted.
+     *
+     * This restricts `b` to the valid permutation widths:
+     * 25, 50, 100, 200, 400, 800, and 1600.
+     * In particular, the final constraint enforces that `b / 25` is exactly a
+     * power of two, so 0 and any other multiple of 25 is invalid.
+     *
+     * [FIPS-202] Section 3 (intro).
+     */
+    type b : #
+    type constraint (fin b, b % 25 == 0, b <= 1600, (2 ^^ (lg2 (b / 25))) * 25 == b)
+
+    /**
+     * Rounds: the number of iterations of an internal transformation.
+     *
+     * [FIPS-202] Section 3 (intro).
+     */
+    type nr : #
+    type constraint (fin nr, nr > 0, nr == 12 + 2 * (lg2 ( b / 25)))
+
+/**
+ * State width of the permuatation.
+ * [FIPS-202] Section 3.1.
+ */
+type w = b / 25
+
+/**
+ * TODO: Figure out what this represents for the docs.
+ * [FIPS-202] Section 3.1.
+ */
+type ell = lg2 w
+
+type State = [5][5][w]
+
+Keccak : {r, m}
+    ( fin r, fin m, b >= r, r >= 1) => [m] -> [inf]
+Keccak M = squeeze `{r = r} (absorb Ps)
     where Ps = pad `{r = r} M
 
-squeeze : {r, w} (fin r, fin w, 64 >= w, r >= 0, 25 * w >= r) => [5][5][w] -> [inf]
+squeeze : {r} (fin r, r >= 0, b >= r) => State -> [inf]
 squeeze A = take`{r} (flatten A) # squeeze`{r = r} (Keccak_f A)
 
-absorb : {r, w, n} (fin r, fin w, fin n, 64 >= w, 25 * w >= r) => [n][r] -> [5][5][w]
+absorb : {r, n} (fin r, fin n, b >= r) => [n][r] -> State
 absorb Ps = as ! 0
     where
-        as = [zero] # [ Keccak_f `{w = w} (s ^ (unflatten p)) | s <- as | p <- Ps ]
+        as = [zero] # [ Keccak_f (s ^ (unflatten p)) | s <- as | p <- Ps ]
 
 pad : {r, m}
     ( fin r, fin m
@@ -39,12 +71,12 @@ pad : {r, m}
     ) => [m] -> [(m + 2) /^ r][r]
 pad M = split (M # [True] # zero # [True])
 
-Keccak_f : {w} (fin w, 64 >= w) => [5][5][w] -> [5][5][w]
+Keccak_f : State -> State
 Keccak_f A0 = rounds ! 0
     where
-        rounds = [A0] # [ Round RC A | RC <- RCs`{w = w} | A <- rounds ]
+        rounds = [A0] # [ Round RC A | RC <- RCs | A <- rounds ]
 
-Round : {w} (fin w) => [5][5][w] -> [5][5][w] -> [5][5][w]
+Round : State -> State -> State
 Round RC A = ι RC (χ (π (ρ (θ A))))
 
 /**
@@ -52,7 +84,7 @@ Round RC A = ι RC (χ (π (ρ (θ A))))
  *
  * [FIPS-202] Section 3.2.1.
  */
-θ : {w} (fin w) => [5][5][w] -> [5][5][w]
+θ : State -> State
 θ A = A' where
     C = [ xor a | a <- A ]
     D = [ C @ x ^ (C @ y <<< 1)
@@ -68,7 +100,7 @@ Round RC A = ι RC (χ (π (ρ (θ A))))
  *
  * [FIPS-202] Section 3.2.2.
  */
-ρ : {w} (fin w) => [5][5][w] -> [5][5][w]
+ρ : State -> State
 ρ A = groupBy`{5} [ a <<< r | a <- join A | (r:[8]) <- R ]
     where
         R = [
@@ -84,7 +116,7 @@ Round RC A = ι RC (χ (π (ρ (θ A))))
  *
  * [FIPS-202] Section 3.2.3.
  */
-π : {w} (fin w) => [5][5][w] -> [5][5][w]
+π : State -> State
 π A = groupBy`{5} [ A @ ((x + 3*y) % 5) @ x
                   | (x:[8]) <- [0..4], (y:[8]) <- [0..4]
                   ]
@@ -94,7 +126,7 @@ Round RC A = ι RC (χ (π (ρ (θ A))))
  *
  * [FIPS-202] Section 3.2.4.
  */
-χ : {w} (fin w) => [5][5][w] -> [5][5][w]
+χ : State -> State
 χ A = groupBy`{5} [ (A @ x @ y) ^ (~ A @ ((x + 1) % 5) @ y
                                   && A @ ((x + 2) % 5) @ y)
                   | (x:[8]) <- [0..4], (y:[8]) <- [0..4]
@@ -105,10 +137,10 @@ Round RC A = ι RC (χ (π (ρ (θ A))))
  *
  * [FIPS-202] Section 3.2.5.
  */
-ι : {w} (fin w) => [5][5][w] -> [5][5][w] -> [5][5][w]
+ι : State -> State -> State
 ι RC A = A ^ RC
 
-RCs : {w, n} (fin w, fin n, 24 >= n, n == 12 + 2 * (lg2 w)) => [n][5][5][w]
+RCs : {n} (fin n, 24 >= n, n == 12 + 2 * ell) => [n]State
 RCs = take`{n} [ [[take`{w} RC] # zero] # zero | RC <- RCs64 ]
 
 RCs64 : [24][64]
@@ -127,13 +159,13 @@ RCs64 = join (transpose [
     [0x000000008000000A, 0x8000000080008008]
 ])
 
-unflatten : {r, w} (fin w, 25*w >= r) => [r] -> [5][5][w]
+unflatten : {r} (b >= r) => [r] -> State
 unflatten p = transpose (groupBy`{5} (reverse (groupBy`{w} (reverse (p # zero)))))
 
-flatten : {w} (fin w) => [5][5][w] -> [5 * 5 * w]
+flatten : State -> [5 * 5 * w]
 flatten A = reverse (join (reverse (join (transpose A))))
 
-xor : {a, b} (fin a) => [a][b] -> [b]
+xor : {a, c} (fin a) => [a][c] -> [c]
 xor xs = xors ! 0
     where xors = [zero] # [ x ^ z | x <- xs | z <- xors ]
 
@@ -147,12 +179,23 @@ lfsr = [ p!0 | p <- ps ]
     ps = [0x01] # [ pmod (pmult p 0b10) m | p <- ps ]
     m = <| x^^8 + x^^6 + x^^5 + x^^4 + 1 |>
 
-/* See https://keccak.team/files/Keccak-reference-3.0.pdf, Section 1.2 */
+/**
+ * See https://keccak.team/files/Keccak-reference-3.0.pdf, Section 1.2
+ * ```repl
+ * :prove unflatten_correct`{w=1600}
+ * ```
+ * TODO: These hardcoded 64s might be wrong.
+ */
 property unflatten_correct x y z p =
     x < 5 ==> y < 5 ==> z < (64:[12]) ==>
-    p@((5*y + x)*64 + z) == unflatten`{1600,64} p @ x @ y ! z
+    p@((5*y + x)*64 + z) == unflatten p @ x @ y ! z
 
+/**
+ * ```repl
+ * :prove flatten_correct`{w=1600}
+ * ```
+ */
 property flatten_correct s =
-    unflatten`{1600,64} (flatten`{64} s) == s
+    unflatten (flatten s) == s
 
 
