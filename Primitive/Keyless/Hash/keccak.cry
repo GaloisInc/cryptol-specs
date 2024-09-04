@@ -40,8 +40,21 @@ parameter
 
 Keccak : {r, m}
     ( fin r, fin m, b >= r, r >= 1) => [m] -> [inf]
-Keccak M = squeeze `{r = r} (absorb Ps)
-    where Ps = pad `{r = r} M
+Keccak M = extend (Ss ! 0) where
+    // Step 1.
+    P = M # pad `{x = r, m = m}
+    // Step 2. We leave the type `n` implicit.
+    // Step k3.
+    type c = b - r
+    // Step 4. Ps = P_0, ..., P_{n-1}.
+    Ps = split P : [_][r]
+    // Step 5.
+    S = zero : [b]
+    // Step 6. We create a list `Ss` instead of overwriting the variable `S`.
+    Ss = [S] # [Keccak_f (S' ^ (Pi # (zero : [c]))) | Pi <- Ps | S' <- Ss]
+    // Step 7 - 9. This step is sometimes known as "squeeze".
+    extend : [b] -> [inf]
+    extend Z = (take`{r} Z) # extend (Keccak_f Z)
 
 private
     /**
@@ -57,27 +70,17 @@ private
     type ell = lg2 w
     type State = [5][5][w]
 
-    squeeze : {r} (fin r, r >= 0, b >= r) => State -> [inf]
-    squeeze A = take`{r} (flatten A) # squeeze`{r = r} (Keccak_f A)
-
-    absorb : {r, n} (fin r, fin n, b >= r) => [n][r] -> State
-    absorb Ps = as ! 0
-        where
-            as = [zero] # [ Keccak_f (s ^ (unflatten p)) | s <- as | p <- Ps ]
-
-    pad : {r, m}
-        ( fin r, fin m
-        , r >= 1
-        ) => [m] -> [(m + 2) /^ r][r]
-    pad M = split (M # [True] # zero # [True])
-
-    Keccak_f : State -> State
-    Keccak_f A0 = rounds ! 0
-        where
-            rounds = [A0] # [ Round RC A | RC <- RCs | A <- rounds ]
-
-    Round : State -> State -> State
-    Round RC A = ι RC (χ (π (ρ (θ A))))
+    /**
+     * Padding rule `pad10*1`.
+     *
+     * This function produces padding e.g. a string with an appropriate length
+     * to append to another string.
+     * [FIPS-202] Section 5.1.
+     *
+     * TODO: add notes about j equivalence and why the return type here makes sense.
+     */
+    pad : {x, m} (fin x, fin m, x >= 1) => [x * ((m + 2) /^ x) - m]
+    pad = [1] # zero # [1]
 
     /**
      * One of the step mappings that's part of a round of Keccak-p.
@@ -158,6 +161,22 @@ private
         [0x0000000080008009, 0x0000000080000001],
         [0x000000008000000A, 0x8000000080008008]
     ])
+
+    /**
+     * Keccak-f family of permutations.
+     *
+     * [FIPS-202] Section 3.4.
+     */
+    Keccak_f : [b] -> [b]
+    Keccak_f S = S'
+        where
+            A0 = unflatten S
+            rounds = [A0] # [ Round RC A | RC <- RCs | A <- rounds ]
+            S' = flatten (rounds ! 0)
+
+
+    Round : State -> State -> State
+    Round RC A = ι RC (χ (π (ρ (θ A))))
 
     unflatten : {r} (b >= r) => [r] -> State
     unflatten p = transpose (groupBy`{5} (reverse (groupBy`{w} (reverse (p # zero)))))
