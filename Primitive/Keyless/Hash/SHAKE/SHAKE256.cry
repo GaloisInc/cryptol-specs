@@ -12,6 +12,11 @@ type secBits = 256
 shake256: {m, d} (fin m, fin d) => [m] -> [d]
 shake256 M = Keccak (M # 0b1111)
 
+/*
+ * ```repl
+ * :prove k5
+ * ```
+ */
 property k5 = join (toBytes (shake256`{d=512} [])) == expected_result where
     expected_result = join [
         0x46b9dd2b0ba88d13233b3feb743eeb24,
@@ -20,6 +25,11 @@ property k5 = join (toBytes (shake256`{d=512} [])) == expected_result where
         0xfc821c49479ab48640292eacb3b7c4be
     ]
 
+/*
+ * ```repl
+ * :prove k6
+ * ```
+ */
 property k6 = join (toBytes (shake256 0b0)) == expected_result where
     expected_result = join [
         0x1e20b13f3bdb730d286913335c092bce,
@@ -28,6 +38,11 @@ property k6 = join (toBytes (shake256 0b0)) == expected_result where
         0x55d30410d71b8e275a676545600f1c35
     ]
 
+/*
+ * ```repl
+ * :prove k7
+ * ```
+ */
 property k7 = join (toBytes (shake256 0b11 : [512])) == expected_result where
     expected_result = join [
         0x4f86b0eb85f7a9f6dc38b622706948ad,
@@ -36,6 +51,11 @@ property k7 = join (toBytes (shake256 0b11 : [512])) == expected_result where
         0x7c98f3948e6b7959a9b8950ffd6345d5
     ]
 
+/*
+ * ```repl
+ * :prove k8
+ * ```
+ */
 property k8 = join (toBytes (shake256 (reverse 0b110))) == expected_result where
     expected_result = join [
         0x27b5f40b3645215e370472ebb06817ae,
