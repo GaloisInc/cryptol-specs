@@ -38,16 +38,29 @@ parameter
     type nr : #
     type constraint (fin nr, nr > 0, nr == 12 + 2 * (lg2 ( b / 25)))
 
-Keccak : {r, m}
-    ( fin r, fin m, b >= r, r >= 1) => [m] -> [inf]
-Keccak M = extend (Ss ! 0) where
+    /**
+     * Capacity parameter for the sponge construction.
+     * [FIPS-202] Section 4.
+     */
+    type c : #
+    type constraint (fin c, c < b, c > 0)
+
+/**
+ * Keccak family of sponge functions.
+ *
+ * At this time, the implementation is not generic with respect to the sponge
+ * construction.
+ */
+Keccak : {m, d}
+    (fin m, fin d) => [m] -> [d]
+Keccak M = take`{d} (extend (Ss ! 0)) where
     // Step 1.
     P = M # pad `{x = r, m = m}
     // Step 2. We leave the type `n` implicit.
-    // Step k3.
-    type c = b - r
+    type n = (m + 2) /^ r
+    // Step 3. `c` is a parameter for this module.
     // Step 4. Ps = P_0, ..., P_{n-1}.
-    Ps = split P : [_][r]
+    Ps = split P : [n][r]
     // Step 5.
     S = zero : [b]
     // Step 6. We create a list `Ss` instead of overwriting the variable `S`.
@@ -57,6 +70,12 @@ Keccak M = extend (Ss ! 0) where
     extend Z = (take`{r} Z) # extend (Keccak_f Z)
 
 private
+    /**
+     * Rate parameter for the sponge construction.
+     * [FIPS-202] Section 4.
+     */
+    type r = b - c
+
     /**
      * State width of the permutation.
      * [FIPS-202] Section 3.1.
@@ -68,7 +87,24 @@ private
      * [FIPS-202] Section 3.1.
      */
     type ell = lg2 w
+
+    /**
+     * State for Keccak-p[b, nr], represented as an array.
+     * [FIPS-202] Section 3.1.
+     */
     type State = [5][5][w]
+
+    /**
+     * [FIPS-202] Section 3.1.2.
+     */
+    unflatten : [b] -> State
+    unflatten p = transpose (groupBy`{5} (reverse (groupBy`{w} (reverse p))))
+
+    /**
+     * [FIPS-202] Section 3.1.3.
+     */
+    flatten : State -> [5 * 5 * w]
+    flatten A = reverse (join (reverse (join (transpose A))))
 
     /**
      * Padding rule `pad10*1`.
@@ -146,6 +182,9 @@ private
     RCs : {n} (fin n, 24 >= n, n == 12 + 2 * ell) => [n]State
     RCs = take`{n} [ [[take`{w} RC] # zero] # zero | RC <- RCs64 ]
 
+    /**
+     * Hardcode the ??? values for b = 6400.
+     */
     RCs64 : [24][64]
     RCs64 = join (transpose [
         [0x0000000000000001, 0x000000008000808B],
@@ -178,13 +217,7 @@ private
     Round : State -> State -> State
     Round RC A = ι RC (χ (π (ρ (θ A))))
 
-    unflatten : {r} (b >= r) => [r] -> State
-    unflatten p = transpose (groupBy`{5} (reverse (groupBy`{w} (reverse (p # zero)))))
-
-    flatten : State -> [5 * 5 * w]
-    flatten A = reverse (join (reverse (join (transpose A))))
-
-    xor : {a, c} (fin a) => [a][c] -> [c]
+    xor : {a, l} (fin a) => [a][l] -> [l]
     xor xs = xors ! 0
         where xors = [zero] # [ x ^ z | x <- xs | z <- xors ]
 
@@ -201,21 +234,19 @@ property RC_correct i j =
 /**
  * See https://keccak.team/files/Keccak-reference-3.0.pdf, Section 1.2
  * ```repl
- * :prove unflatten_correct`{n=1600}
+ * :prove unflatten_correct
  * ```
- * TODO: These hardcoded 64s are wrong when `n =/= 1600`.
  */
-unflatten_correct : {n} (fin n, b >= n) => [12] -> [12] -> [12] -> [n] -> Bit
+unflatten_correct : [12] -> [12] -> [12] -> [b] -> Bit
 property unflatten_correct x y z p =
-    x < 5 ==> y < 5 ==> z < (64:[12]) ==>
-    p@((5*y + x)*64 + z) == unflatten p @ x @ y ! z
+    x < 5 ==> y < 5 ==> z < (`w:[12]) ==>
+    p@((5*y + x)*`w + z) == unflatten p @ x @ y ! z
 
 /**
  * ```repl
  * :prove flatten_correct
  * ```
  */
-property flatten_correct s =
-    unflatten (flatten s) == s
+property flatten_correct s = unflatten (flatten s) == s
 
 

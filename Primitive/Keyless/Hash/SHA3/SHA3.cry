@@ -2,11 +2,11 @@ module Primitive::Keyless::Hash::SHA3::SHA3 where
 import Primitive::Keyless::Hash::keccak where
     type b = 1600
     type nr = 24
+    type c = 2 * digest
 
 parameter
   type digest : #
   type constraint (fin digest, digest >= 224, digest <= 512)
 
 sha3 : {n} (fin n) => [n] -> [digest]
-sha3 M =
-  take`{digest} (Keccak `{r=1600-(2*digest)} (M # 0b01))
+sha3 M = Keccak`{d=digest} (M # 0b01)
