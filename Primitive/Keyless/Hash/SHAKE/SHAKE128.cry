@@ -1,3 +1,18 @@
+/*
+ * Instantiation of SHAKE128, a SHA-3 extendable-output function, as specified
+ * in [FIPS-202].
+ *
+ * [FIPS-202]: National Institute of Standards and Technology. SHA-3 Standard:
+ *     Permutation-Based Hash and Extendable-Output Functions. (Department of
+ *     Commerce, Washington, D.C.), Federal Information Processing Standards
+ *     Publication (FIPS) NIST FIPS 202. August 2015.
+ *     @see https://dx.doi.org/10.6028/NIST.FIPS.202
+ *
+ * @copyright Galois, Inc.
+ * @author Ajay Kumar Eeralla
+ * @editor Marcella Hastings <marcella@galois.com>
+ *
+ */
 module Primitive::Keyless::Hash::SHAKE::SHAKE128 where
 import Primitive::Keyless::Hash::keccak where
     type b = 1600
@@ -7,6 +22,13 @@ import Primitive::Keyless::Hash::keccak where
     type c = 256
 import Primitive::Keyless::Hash::utils (toBytes)
 
+/**
+ * SHAKE128 extendable-output function.
+ * [FIPS-202] Section 6.2.
+ *
+ * Note that the specification of `c` is above, in the instantiation of the
+ * `keccak` module.
+ */
 shake128 : {m, d} (fin m, fin d) => [m] -> [d]
 shake128 M = Keccak (M # 0b1111)
 
