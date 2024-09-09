@@ -61,9 +61,8 @@ parameter
  * with the specific functions for Keccak (Sec 5.2).
  * [FIPS-202] Section 4, Algorithm 8; instantiated as in Section 5.2.
  */
-Keccak : {m, d}
-    (fin m, fin d) => [m] -> [d]
-Keccak M = take`{d} (extend (Ss ! 0)) where
+Keccak : {d, m} (fin m) => [m] -> [d]
+Keccak M = take`{front=d, back=inf} (extend (Ss ! 0)) where
     // Step 1.
     P = M # pad `{x = r, m = m}
     // Step 2.

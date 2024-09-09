@@ -26,10 +26,12 @@ import Primitive::Keyless::Hash::utils (toBytes)
  * SHAKE128 extendable-output function.
  * [FIPS-202] Section 6.2.
  *
+ * This supports any output length `d`, including infinite length.
+ *
  * Note that the specification of `c` is above, in the instantiation of the
  * `keccak` module.
  */
-shake128 : {m, d} (fin m, fin d) => [m] -> [d]
+shake128 : {d, m} (fin m) => [m] -> [d]
 shake128 M = Keccak (M # 0b1111)
 
 /**
