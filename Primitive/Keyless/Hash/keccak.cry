@@ -115,16 +115,36 @@ private
     /**
      * Convert a string into a state array.
      * [FIPS-202] Section 3.1.2.
+     *
+     * Note: The spec describes this in terms of all three coordinates
+     * `(x, y, z)`. Since the lanes determined by a pair `(x, y)` are composed
+     * of consecutive bits, we don't index into them separately; instead, we
+     * separate `S` into 25 lanes of length `w` and then place those lanes in
+     * the correct order according to the `(x, y)` coordinates.
+     * For ease of implementation of the subsequent step mappings, the bits of
+     * each lane are reversed.
      */
     unflatten : [b] -> State
-    unflatten p = transpose (groupBy`{5} (reverse (groupBy`{w} (reverse p))))
+    unflatten S = [[ Lanes@((5 * y + x))
+        | y <- [0..4]]
+        | x <- [0..4]] where
+        Lanes = map reverse (split`{25} S)
 
     /**
      * Convert a state array into a string.
      * [FIPS-202] Section 3.1.3.
      */
-    flatten : State -> [5 * 5 * w]
-    flatten A = reverse (join (reverse (join (transpose A))))
+    flatten : State -> [b]
+    flatten A = S where
+        // No explicit appending or joining is needed to compute the Lanes.
+        // But we do need to accomodate the lane reversal that happened in the
+        // inverse `unflatten` function.
+        Lanes = [[ reverse (A@i@j)
+            | j <- [0..4]]
+            | i <- [0..4]]
+        Planes = [ Lanes@0@j # Lanes@1@j # Lanes@2@j # Lanes@3@j # Lanes@4@j
+            | j <- [0..4]]
+        S = join Planes
 
     /**
      * One of the step mappings that's part of a round of Keccak-p.
@@ -144,7 +164,6 @@ private
         A' = [[ A@x@y ^ D@x
             | y <- [0..4]]
             | x <- [0..4] ]
-
 
     /**
      * One of the step mappings that's part of a round of Keccak-p.
