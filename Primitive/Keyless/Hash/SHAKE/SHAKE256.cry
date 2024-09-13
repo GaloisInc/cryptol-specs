@@ -39,7 +39,7 @@ shake256 M = Keccak (M # 0b1111)
  * :prove k5
  * ```
  */
-property k5 = join (toBytes (shake256`{d=512} [])) == expected_result where
+property k5 = join (toBytes (shake256`{512} [])) == expected_result where
     expected_result = join [
         0x46b9dd2b0ba88d13233b3feb743eeb24,
         0x3fcd52ea62b81b82b50c27646ed5762f,
@@ -78,7 +78,7 @@ property k7 = join (toBytes (shake256 0b11 : [512])) == expected_result where
  * :prove k8
  * ```
  */
-property k8 = join (toBytes (shake256 (reverse 0b110))) == expected_result where
+property k8 = join (toBytes (shake256`{d=512} (reverse 0b110))) == expected_result where
     expected_result = join [
         0x27b5f40b3645215e370472ebb06817ae,
         0xbddbe2cbd3a9a3ba3914da88e5853e70,

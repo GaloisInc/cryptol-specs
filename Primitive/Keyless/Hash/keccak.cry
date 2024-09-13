@@ -40,8 +40,11 @@ parameter
      * For the standardized SHA3 parameter sets, only `Keccak-f` is required.
      * [FIPS-202] Section 3.4.
      *
-     * @design we intend to refactor this and the RC functions to allow the
-     * fully generic Keccak-p implementation.
+     * @design Marcella Hastings <marcella@galois.com>. I intend to refactor
+     * this and the RC functions to allow the fully generic `Keccak-p`
+     * implementation; right now it's restricted to this specific function of
+     * `b`, as is required by `Keccak-f`; this is enough to support the
+     * standardized SHA3 functions but not the fully generic specification.
      */
     type nr : #
     type constraint (fin nr, nr > 0, nr == 12 + 2 * (lg2 ( b / 25)))
@@ -62,10 +65,12 @@ parameter
  * [FIPS-202] Section 4, Algorithm 8; instantiated as in Section 5.2.
  */
 Keccak : {d, m} (fin m) => [m] -> [d]
-Keccak M = take`{front=d, back=inf} (extend (Ss ! 0)) where
+Keccak M = digest where
     // Step 1.
     P = M # pad `{x = r, m = m}
-    // Step 2.
+    // Step 2. Note than `len(P)` is not necessarily _exactly_ `m + 2`; that's
+    // the minimum length of `P`. We use round-up division `/^` to compute the
+    // correct number of `r`-length strings.
     type n = (m + 2) /^ r
     // Step 3. `c` is a parameter for this module.
     // Step 4. Ps = P_0, ..., P_{n-1}.
@@ -74,9 +79,12 @@ Keccak M = take`{front=d, back=inf} (extend (Ss ! 0)) where
     S = zero : [b]
     // Step 6. We create a list `Ss` instead of overwriting the variable `S`.
     Ss = [S] # [Keccak_f (S' ^ (Pi # (zero : [c]))) | Pi <- Ps | S' <- Ss]
-    // Step 7 - 9. This step is sometimes known as "squeeze".
+    // Steps 7 - 10. This step is sometimes known as "squeeze".
+    // The truncation in Step 8 is handled here with `take`{r}`
+    // The truncation in Step 9 is below with `take`{front=d, back=inf}`.
     extend : [b] -> [inf]
     extend Z = (take`{r} Z) # extend (Keccak_f Z)
+    digest = take`{front=d, back=inf} (extend (Ss ! 0))
 
 private
     /**
