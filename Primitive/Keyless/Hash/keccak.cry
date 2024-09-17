@@ -385,3 +385,44 @@ property unflatten_correct x y z p =
 property flatten_correct s = unflatten (flatten s) == s
 
 
+/**
+ * This converts between a bit vector in MSB order and a bit vector in SHA-3
+ * bit ordering (the bytes are in MSB order; the bits in each byte are in LSB
+ * order).
+ *
+ * For arbitrary-length strings, the conversion is symmetric. This can be used
+ * to convert from SHA-3 strings into MSB strings, or from MSB strings into
+ * SHA-3 strings. This function assumes there is no padding on the string.
+ *
+ * This function does not have an explicit equivalent in the spec. [FIPS-202]
+ * is not quite explicit about the ordering expected for for input and output
+ * strings; Appendix B does reference a conversion between hexadecimal strings
+ * and SHA-3 strings, but does not specify when to use it. This function is not
+ * equivalent to the `h2b` or `b2h` functions in Appendix B. We took an
+ * experimental approach; when we apply this function to the input and output
+ * of our implementation, the CAVP test vectors pass (see individual
+ * instantiations of the SHA-3 functions for details).
+ *
+ * Sources:
+ * A blog post with some references to other versions of the spec, explaining
+ * the overall bit ordering scheme:
+ * @see https://cryptologie.net/article/387/byte-ordering-and-bit-numbering-in-keccak-and-sha-3/
+ * The CAVP test vectors from NIST:
+ * @see https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values#Hashing
+ */
+reverseBitOrdering : {m} [m] -> [m]
+reverseBitOrdering msg
+    | m == inf => join (map reverse (groupBy`{8} msg))
+    | fin m => (flipped_full_bytes # flipped_remainder) where
+        // This is number of bits in the set of "complete" bytes in the input
+        // There are `m % 8` bits remaining.
+        type Bytes = 8 * (m / 8)
+        flipped_full_bytes = join (map reverse (groupBy`{each=8, parts=m /8} (take`{Bytes} msg)))
+        flipped_remainder = reverse (drop`{Bytes} msg)
+
+/**
+ * The conversion between SHA-3 strings and MSB strings is its own inverse.
+ */
+reverseBitOrderingInvolutes : {m} (fin m) => [m] -> Bit
+property reverseBitOrderingInvolutes msg = reReverse == msg where
+    reReverse = reverseBitOrdering (reverseBitOrdering msg)

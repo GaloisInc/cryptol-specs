@@ -32,15 +32,27 @@ import Primitive::Keyless::Hash::utils (toBytes)
  * `keccak` module.
  */
 shake128 : {d, m} (fin m) => [m] -> [d]
-shake128 M = Keccak (M # 0b1111)
+shake128 M = reverseBitOrdering (Keccak ((reverseBitOrdering M) # 0b1111))
 
 /**
- * Example showing how to call shake128 using a type parameter.
+ * The CAVP test vectors provide input in MSB order as hex strings, and each
+ * test is for a specific bit-length input.
+ * By default, Cryptol reads hex-encoded literals as having a length that's a
+ * multiple of 4 or 8. In order to get the correct-length input, we need to convert
+ * to the Keccak bit ordering, truncate the tailing 0s, and convert back to MSB
+ * bit ordering to use in our `shake128` call.
+ */
+computeCavpTestVector : {k, k', l} (fin k, fin l, k' >= k) => [k'] -> [l] -> Bool
+computeCavpTestVector msg expectedResult = result == expectedResult where
+    correctLengthInput = reverseBitOrdering (take`{k} (reverseBitOrdering msg))
+    result = shake128 correctLengthInput
+
+/**
  * ```repl
- * :prove k1
+ * :prove k0
  * ```
  */
-property k1 = join (toBytes (shake128`{512} [])) == expected_result where
+property k0 = computeCavpTestVector`{0} [] expected_result where
     expected_result = join [
         0x7f9c2ba4e88f827d616045507605853e,
         0xd73b8093f6efbc88eb1a6eacfa66ef26,
@@ -49,12 +61,11 @@ property k1 = join (toBytes (shake128`{512} [])) == expected_result where
     ]
 
 /**
- * Example showing how to call shake128 using a type annotation.
  * ```repl
- * :prove k2
+ * :prove k1
  * ```
  */
-property k2 = join (toBytes (shake128 0b0 : [512])) == expected_result where
+property k1 = computeCavpTestVector`{1} 0x0 expected_result where
     expected_result = join [
         0xe78b86559a9ccdc72288bf7bcf8e11d5,
         0x74543a2922978913a02be149e89d03ca,
@@ -62,12 +73,11 @@ property k2 = join (toBytes (shake128 0b0 : [512])) == expected_result where
         0x21ebe59dcfc249a510b82255a18250dd
     ]
 /**
- * Example showing how to call shake128 using an implicit output type.
  * ```repl
- * :prove k3
+ * :prove k2
  * ```
  */
-property k3 = join (toBytes (shake128 0b11)) == expected_result where
+property k2 = computeCavpTestVector`{2} 0x3 expected_result where
     expected_result = join [
         0xf6b6c4093f0a2ceba61b9f2c2fea2ca2,
         0x38ce9005edcd588c380405070532ddd0,
@@ -77,10 +87,10 @@ property k3 = join (toBytes (shake128 0b11)) == expected_result where
 
 /**
  * ```repl
- * :prove k4
+ * :prove k3
  * ```
  */
-property k4 = join (toBytes (shake128`{d=512} (reverse 0b110))) == expected_result where
+property k3 = computeCavpTestVector`{3} 0x6 expected_result where
     expected_result = join [
         0x178afb3be00c33b682f0c920520699e3,
         0xb7e4c360274fd8b41cdeaa8d3c675bdc,
@@ -88,5 +98,20 @@ property k4 = join (toBytes (shake128`{d=512} (reverse 0b110))) == expected_resu
         0xbf60169becd0ff9ff3ff6be24bc6fd83
     ]
 
+/**
+ * ```repl
+ * :prove k265
+ * ```
+ */
+property k265 = computeCavpTestVector`{265} msg expected_output where
+    msg = 0xa4fb52a45c1e49e1805ccbe419ef3c57b773d84eaa478ed07536129480572e080d01
+    expected_output = 0xf5e3f9934cfa817d75e8db5dce000977
 
-
+/**
+ * ```repl
+ * :prove k266
+ * ```
+ */
+property k266 = computeCavpTestVector`{266} msg expectedResult where
+    msg = 0x01de90ca986e1abd50d28ad9f82cc77b45ebd99d19fa4bab0437d3930c27351ca900
+    expectedResult = 0xc47bb657d4f474cd5fa0f29537b85a7a
