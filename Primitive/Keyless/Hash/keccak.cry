@@ -149,18 +149,30 @@ private
     /**
      * One of the step mappings that's part of a round of Keccak-p.
      *
+     * The effect of thuis mapping is to rotate the bits of each lane by a
+     * an _offset_ (computed in `set_lane`) that depends on the `x` and `y`
+     * coordinates of that lane.
      * [FIPS-202] Section 3.2.2.
      */
     ρ : State -> State
-    ρ A = groupBy`{5} [ a <<< r | a <- join A | (r:[8]) <- R ]
-        where
-            R = [
-                00, 36, 03, 41, 18,
-                01, 44, 10, 45, 02,
-                62, 06, 43, 15, 61,
-                28, 55, 25, 21, 56,
-                27, 20, 39, 08, 14
-            ]
+    ρ A = A' where
+        // Step 1.
+        A1 = [[ if (x == 0) && (y == 0) then A@0@0 else zero
+            | y <- [0..4]]
+            | x <- [0..4]]
+        // Step 2-3.
+        As = [((1,0), A1)] #
+            [ ((y, (2*x + 3*y) % 5), set_lane x y t Ai)
+            | ((x, y), Ai) <- As
+            | t <- [0..23]]
+        (_, A') = As ! 0
+
+        // Step 3a. Update the lane defined by x' and y'.
+        set_lane x' y' t Ai = [[
+            if (x' == x) && (y' == y) then A@x@y <<< ((t+1)*(t+2)/2)
+            else Ai@x@y
+            | y <- [0..4]]
+            | x <- [0..4]]
 
     /**
      * One of the step mappings that's part of a round of Keccak-p.
