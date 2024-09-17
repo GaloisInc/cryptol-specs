@@ -129,22 +129,21 @@ private
     /**
      * One of the step mappings that's part of a round of Keccak-p.
      *
+     * The effect of this mapping is to XOR each bit in the state with the
+     * parity of two columns in the array. `C` computes the parities, `D`
+     * combines two of the parities for each column, and `A'` completes the
+     * transformation.
      * [FIPS-202] Section 3.2.1.
      */
     θ : State -> State
     θ A = A' where
-        C = [ xor a | a <- A ]
-        D = [ C @ x ^ (C @ y <<< 1)
-            // In the spec, this is denoted `(x-1) mod 5` for 0 <= x < 5.
-            | (x:[8]) <- [4,0,1,2,3]
-            // In the spec, this is denoted `(x+1) mod 5` for 0 <= x < 5.
-            | (y:[8]) <- [1,2,3,4,0]
-            ]
-        A' = [ [ a ^ (D @ x) | a <- A @ x ] | (x:[8]) <- [0 .. 4] ]
-
-        xor : {a, l} (fin a) => [a][l] -> [l]
-        xor xs = xors ! 0
-            where xors = [zero] # [ x ^ z | x <- xs | z <- xors ]
+        C = [ A@x@0 ^ A@x@1 ^ A@x@2 ^ A@x@3 ^ A@x@4
+            | x <- [0..4]]
+        D = [ C @ ((x - 1) % 5) ^ (C @ ((x + 1) % 5) <<< 1)
+            | x <- [0..4]]
+        A' = [[ A@x@y ^ D@x
+            | y <- [0..4]]
+            | x <- [0..4] ]
 
 
     /**
