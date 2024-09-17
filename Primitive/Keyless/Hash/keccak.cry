@@ -149,7 +149,7 @@ private
     /**
      * One of the step mappings that's part of a round of Keccak-p.
      *
-     * The effect of thuis mapping is to rotate the bits of each lane by a
+     * The effect of this mapping is to rotate the bits of each lane by a
      * an _offset_ (computed in `set_lane`) that depends on the `x` and `y`
      * coordinates of that lane.
      * [FIPS-202] Section 3.2.2.
@@ -177,12 +177,14 @@ private
     /**
      * One of the step mappings that's part of a round of Keccak-p.
      *
+     * The effect of this mapping is to rearrange the position of the lanes,
+     * based on an offset of the `x` and `y` coordinates.
      * [FIPS-202] Section 3.2.3.
      */
     π : State -> State
-    π A = groupBy`{5} [ A @ ((x + 3*y) % 5) @ x
-                    | (x:[8]) <- [0..4], (y:[8]) <- [0..4]
-                    ]
+    π A = [[ A @((x + 3 * y) % 5) @x
+        | y <- [0..4]]
+        | x <- [0..4]]
 
     /**
      * One of the step mappings that's part of a round of Keccak-p.
