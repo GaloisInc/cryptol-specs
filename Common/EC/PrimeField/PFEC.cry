@@ -98,6 +98,14 @@ parameter
 type n = n'
 
 /**
+ * Modulus of the field over which the curve is defined.
+ *
+ * This is called `q` for the `ECInterface`, which is designed to support
+ * curves that are not necessarily over prime order fields.
+ */
+type q = P
+
+/**
  * Coefficient that defines the curve.
  * For a curve in short-Weierstrass form, the equation is
  * `y^2 = x^3 + ax + b`.
@@ -147,16 +155,33 @@ affineEq p1 p2 = case p1 of
         _ -> False
 
 /**
+ * The EC interface uses `pointEq` to compare equality on two points, since it
+ * isn't prescriptive about what its point type is, exactly.
+ */
+pointEq = affineEq
+
+/**
  * Check that a given point is on the curve -- either it is the point at
  * infinity or it satisfies the curve equation.
  * [SP-800-186] Section 2.1.1.
  * [SEC1-v2] Section 2.2.1.
  * [MATH-2008] Routine 2.2.5.
+ *
+ * Note: by definition, the coordinates of an affine point will be correctly
+ * formed (e.g. in the range [0, P-1]), because they are of type `Z P`.
  */
-valid_point : Point -> Bit
-valid_point point = case point of
+isValid : Point -> Bit
+isValid point = case point of
     Infinity -> True
     Affine x y -> (y ^^ 2 == x ^^ 3 + a * x + b)
+
+/**
+ * Indicate whether a point is the point at infinity.
+ */
+isInfinity : Point -> Bool
+isInfinity point = case point of
+    Infinity -> True
+    _ -> False
 
 /**
  * Convenient `Point` representation of the base point `G`.
@@ -191,13 +216,13 @@ property gOrderIsN = affineEq G ((`n + 1) ~* G)
  * :prove gIsValid
  * ```
  */
-property gIsValid = valid_point G
+property gIsValid = isValid G
 
 /**
  * Add two elliptic curve points together.
  *
  * Assumption: The `Point`s passed as parameters must be valid EC points,
- * otherwise this operation makes no sense. Use `valid_point` to make sure
+ * otherwise this operation makes no sense. Use `isValid` to make sure
  * the inputs are valid before calling this function.
  */
 add : Point -> Point -> Point
@@ -210,7 +235,7 @@ add p1 p2 = to_affine (ec_full_add (to_projective p1) (to_projective p2))
  * :check addIsClosed
  * ```
  */
-property addIsClosed k1 k2 = valid_point (add p1 p2)
+property addIsClosed k1 k2 = isValid (add p1 p2)
     where
         p1 = validPointFromK k1
         p2 = validPointFromK k2
@@ -219,7 +244,7 @@ property addIsClosed k1 k2 = valid_point (add p1 p2)
  * Double an elliptic curve point.
  *
  * Assumption: The `Point` passed as a parameter must be a valid EC point,
- * otherwise this operation makes no sense. Use `valid_point` to make sure
+ * otherwise this operation makes no sense. Use `isValid` to make sure
  * the input is valid before calling this function.
  */
 double : Point -> Point
@@ -232,7 +257,7 @@ double p = to_affine (ec_double (to_projective p))
  * :check doubleIsClosed
  * ```
  */
-property doubleIsClosed k = valid_point (double p)
+property doubleIsClosed k = isValid (double p)
     where
         p = validPointFromK k
 
@@ -240,7 +265,7 @@ property doubleIsClosed k = valid_point (double p)
  * Subtract one curve point from another.
  *
  * Assumption: The `Point`s passed as parameters must be valid EC points,
- * otherwise this operation makes no sense. Use `valid_point` to make sure
+ * otherwise this operation makes no sense. Use `isValid` to make sure
  * the inputs are valid before calling this function.
  */
 sub : Point -> Point -> Point
@@ -253,7 +278,7 @@ sub p1 p2 = to_affine (ec_full_sub (to_projective p1) (to_projective p2))
  * :check subIsClosed
  * ```
  */
-property subIsClosed k1 k2 = valid_point (sub p1 p2)
+property subIsClosed k1 k2 = isValid (sub p1 p2)
     where
         p1 = validPointFromK k1
         p2 = validPointFromK k2
@@ -270,7 +295,7 @@ property subIsClosed k1 k2 = valid_point (sub p1 p2)
  * In this implementation, we use a variant from [MATH-2008] (see `ec_mult`).
  *
  * Assumption: The `Point` passed as a parameter must be a valid EC point,
- * otherwise this operation makes no sense. Use `valid_point` to make sure
+ * otherwise this operation makes no sense. Use `isValid` to make sure
  * the input is valid before calling this function.
  */
 scmul : Integer -> Point -> Point
@@ -285,7 +310,7 @@ scmul k p = to_affine (ec_mult (fromInteger k) (to_projective p))
  * :check scmulIsClosed
  * ```
  */
-property scmulIsClosed m = valid_point (m ~* G)
+property scmulIsClosed m = isValid (m ~* G)
 
 /**
  * Scalar multiplication is commutative.
@@ -304,18 +329,14 @@ twin_mul c P d Q = to_affine (ec_twin_mult c' P' d' Q')
         [c', d'] = [fromInteger   x | x <- [c, d]]
         [P', Q'] = [to_projective p | p <- [P, Q]]
 
-
-
 /**
- * Convert the x-coordinate `Z P` value into a `Z n` value, if the point is not
- * the point at infinity.
- *
- * [SP-800-186] Appendix F.1.
+ * Extract the x-coordinate `Z P` value, if the point is not the point at
+ * infinity.
  */
-xCoordModOrder: Point -> Option (Z n)
-xCoordModOrder p = case p of
+xCoord: Point -> Option (Z P)
+xCoord p = case p of
     Infinity -> None
-    Affine x _ -> Some (fromInteger (fromZ x))
+    Affine x _ -> Some x
 
 
 private

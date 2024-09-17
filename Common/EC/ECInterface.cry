@@ -41,15 +41,55 @@ interface module Common::EC::ECInterface where
     type Point : *
 
     /**
-     * Order of the elliptic curve.
+     * Order of the base point `G` for the curve.
      */
     type n : #
     type constraint (fin n, prime n, n >= 1)
 
     /**
+     * Modulus of the field over which the curve is defined.
+     *
+     * The curve must be defined over a Galois fields `GF(q)` for some `q`
+     * (typically an odd prime or 2^m).
+     */
+    type q : #
+    type constraint (fin q, q >= 1)
+
+    /**
+     * Cofactor for the elliptic curve.
+     *
+     * The order of the curve is defined as `h * n`, where `h` is small
+     * and `n`, the order of the base point `G`, is prime. If `h` is not
+     * 1, then the base point does not generate the entire curve.
+     */
+    h : Integer
+
+    /**
      * Base point for the curve.
      */
     G : Point
+
+    /**
+     * Indicate whether a point is the point at infinity (also known as the
+     * identity).
+     */
+    isInfinity : Point -> Bool
+
+    /**
+     * Indicate whether a point is valid: either the point at infinity or
+     * another point on the curve.
+     *
+     * This should check the following:
+     * - The coordinates of the `Point` are correctly formed
+     * - The point is either on the curve (e.g. satisfies the curve equation)
+     *   OR is the point at infinity.
+     */
+    isValid : Point -> Bool
+
+    /**
+     * Indicate whether two points are the same.
+     */
+    pointEq : Point -> Point -> Bool
 
     /**
      * Addition of two points.
@@ -80,12 +120,7 @@ interface module Common::EC::ECInterface where
     twin_mul : Integer -> Point -> Integer -> Point -> Point
 
     /**
-     * ECDSA requires a routine to extract the x-coordinate of the affine
-     * representation of a `Point` and convert it from a field element an
-     * integer mod the order of the curve (`n`). This is not defined and
-     * returns `None` for the point at infinity.
-     *
-     * For NIST-standardized curves, this should match the conversion
-     * routine in [SP-800-186] Appendix F.1.
+     * Extract the x-coordinate of the affine representation of a `Point`,
+     * or `None` if it's the point at infinity.
      */
-    xCoordModOrder: Point -> Option (Z n)
+    xCoord: Point -> Option (Z q)

@@ -34,7 +34,7 @@ T = P192::Affine (BVtoZ 0xf22c4395213e9ebe67ddecdd87fdbd01be16fb059b9753a4)
  * :prove sAndTAreValid
  * ```
  */
-property sAndTAreValid = P192::valid_point S && P192::valid_point T
+property sAndTAreValid = P192::isValid S && P192::isValid T
 
 /**
  * ```repl

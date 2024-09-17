@@ -30,7 +30,7 @@ T = P521::Affine (BVtoZ 0x000000f411f2ac2eb971a267b80297ba67c322dba4bb21cec8b700
  * :prove sAndTAreValid
  * ```
  */
-property sAndTAreValid = P521::valid_point S && P521::valid_point T
+property sAndTAreValid = P521::isValid S && P521::isValid T
 
 /**
  * ```repl

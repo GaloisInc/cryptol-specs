@@ -1,0 +1,14 @@
+/*
+ * Instantiate cryptographic primitives for key establishment with curve P-256
+ * (also known as secp256p1).
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Asymmetric::Generation::ECDH::Instantiations::ECDH_P256 =
+    Primitive::Asymmetric::Generation::ECDH::Specification {
+        Common::EC::PrimeField::Instantiations::P256
+    }
+
+
+

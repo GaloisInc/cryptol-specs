@@ -1,0 +1,209 @@
+/**
+ * Specification for some of the cryptographic primitives used in pair-wise key
+ * establishment as defined in [SP-800-56Ar3].
+ *
+ * ⚠ Warning ⚠
+ * This file DOES NOT implement the complete specification in [SP-800-56Ar3]!
+ * It omits many components, including cryptographic elements and the larger
+ * key agreement schemes that combine those elements into secure protocols.
+ * These missing pieces are _necessary_ for secure key establishment! Use of
+ * the `ECC_CDH` primitive in this file does not constitute key agreement!
+ * - It DOES NOT enforce use of valid domain parameters! The architecture of
+ *   this module requires instantiation with an elliptic curve, but the EC
+ *   interface does not enforce that the parameters are valid or consistently
+ *   applied. Implementers must ensure that the EC instantiation they choose
+ *   is suitable. See [SP-800-56Ar3] Section 5.5.
+ * - It DOES NOT contain a complete model of keys! Keys are either static or
+ *   ephemeral; keys should be associated with the domain parameters used to
+ *   generate them, generated appropriately, protected from compromise (for
+ *   private / signing keys), and protected with integrity. Static keys must
+ *   also be associated with an identifier for the owner and must not be
+ *   reused for other applications. None of these requirements are described or
+ *   enforced in this file! See [SP-800-56Ar3] Section 5.6.1 (key generation),
+ *   Section 5.6.2 (context on calling the validation methods implemented
+ *   here), and Section 5.6.3 (key management).
+ * - It DOES NOT contain any key derivation methods! A key derivation method
+ *   must be used to derive a key from the shared secret; the secret cannot
+ *   be used as-is for keying material, nor can it ever be used as a key stream
+ *   for a stream cipher. See [SP-800-56Ar3] Section 5.8.
+ * - It DOES NOT contain any key confirmation methods! Key confirmation can be
+ *   used to provide assurance to one or both parties that both participants
+ *   have completed the protocol with the same key. See [SP-800-56Ar3] Section
+ *   5.9.
+ * - It DOES NOT implement any complete key establishment schemes! A complete
+ *   pair-wise key establishment protocol allows two parties to generate
+ *   matching keying material. These schemes combine all of the primitives in
+ *   [SP-800-56Ar3] into secure protocols. The primitive to compute a shared
+ *   secret that's provided in this file is inadequate! See [SP-800-56Ar3]
+ *   Section 6 (key establishment schemes) and Section 7 (selecting a key
+ *   establishment scheme).
+ *
+ * It also omits all of the components of [SP-800-56Ar3] that have to do with
+ * finite field cryptography and MQV-based schemes for key agreement.
+ *
+ * References:
+ * [SP-800-56Ar3]: Elaine Barker, LilyChen, Allen Roginsky, Apostol Vassilev,
+ *    Richard Davis. Recommendation for Pair-Wise Key-Establishment Schemes
+ *    Using Discrete Logarithm Cryptography. (National Institute of Standards
+ *    and Technology, Gaithersburg, MD), NIST Special Publication (SP) NIST
+ *    SP 800-56A Revision 3. April 2018.
+ *    @see https://doi.org/10.6028/NIST.SP.800-56Ar3
+ * [SP-800-186]: Lily Chen, Dustin Moody, Karen Randall, Andrew Regenscheid,
+ *    Angela Robinson. Recommendations for Discrete Logarithm-based Cryptography:
+ *    Elliptic Curve Domain Parameters. (National Institute of Standards and
+ *    Technology, Gaithersburg, MD), NIST Special Publication (SP) NIST SP
+ *    800-186. February 2023.
+ *    @see https://doi.org/10.6028/NIST.SP.800-186
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ *
+ */
+module Primitive::Asymmetric::Generation::ECDH::Specification where
+
+import Common::utils(ZtoBV)
+
+/**
+ * Secure key establishment depends on the arithmetic validity of the domain
+ * parameters used by the parties.
+ *
+ * ⚠ Warning ⚠
+ * Instantiation of this interface does not guarantee validity of the domain
+ * parameters! Implementors must ensure that they instantiate this interface
+ * with an approved curve as specified in [SP-800-186], and must also ensure
+ * that the implementation of that curve is correct.
+ * [SP-800-56Ar3] Section 5.5.2.
+ *
+ * Note: The specification [SP-800-56Ar3] uses the term "identity" to refer to
+ * the additive identity element of the elliptic curve group. For the approved
+ * curves, the identity point is always the special "point at infinity". These
+ * terms are used interchangeably in this documentation.
+ */
+import interface Common::EC::ECInterface as EC
+
+/**
+ * An ECC private, or signing, key.
+ *
+ * A valid private key is an integer that is randomly selected in the
+ * interval [1, n-1]. This type can be used to represent either static or
+ * ephemeral keys (as defined in [SP-800-56Ar3]).
+ *
+ * ⚠ Warning ⚠
+ * This must be generated with an approved method! This specification does
+ * not enforce correct generation.
+ *
+ * [SP-800-56Ar3] Section 5.6.1.2.
+ */
+type SigningKey = Z EC::n
+
+/**
+ * An ECC public, or verifying, key.
+ *
+ * A valid public key is a non-identity point on the curve, in the subgroup
+ * generated by the base point `G`. It must form a pair with a corresponding
+ * `SigningKey`.
+ *
+ * ⚠ Warning ⚠
+ * - This must be generated from a valid `SigningKey`! This specification does
+ * not enforce correct generation.
+ * - This type alone cannot enforce validity of the `VerifyingKey`.
+ * Implementors should use `verifyingKeyFullyValid` to check ensure validity
+ * before using a key for any key establishment schemes.
+ *
+ * [SP-800-56Ar3] Section 5.6.1.2.
+ */
+type VerifyingKey = EC::Point
+
+/**
+ * Get assurance of private-key validity.
+ *
+ * A valid private key is in the interval `[1, n-1]`, where `n` is the order
+ * of the base point for the curve.
+ * The upper bound is assured by the `SigningKey` type itself: the integer mod
+ * group in Cryptol consists of the integers in the range `[0, n-1]`.
+ *
+ * [SP-800-56Ar3] Section 5.6.2.1.2.
+ */
+signingKeyValid : SigningKey -> Bool
+signingKeyValid d = d != 0
+
+/**
+ * Check whether the verifying key is fully valid:
+ * - It must not be the point at infinity;
+ * - It must have the expected representation for an element in the underlying
+ *   field;
+ * - It must be a point on the correct curve; and
+ * - It must have the correct order.
+ *
+ * [SP-800-56Ar3] Section 5.6.2.3.3.
+ */
+verifyingKeyFullyValid : VerifyingKey -> Bool
+verifyingKeyFullyValid Q = verifyingKeyPartiallyValid Q && correctOrder where
+    correctOrder = EC::isInfinity (EC::scmul `EC::n Q)
+
+/**
+ * Partially check whether the verifying key is valid:
+ * - It must not be the point at infinity;
+ * - It must have the expected representation for an element in the underlying
+ *   field; and
+ * - It must be a point on the correct curve.
+ *
+ * ⚠ Warning ⚠
+ * This routine omits the validation that the point is in the subgroup
+ * generated by the base point `G`; it is usually faster than full validation.
+ * This should only be used for _ephemeral_ ECC public keys!
+ *
+ * [SP-800-56Ar3] Section 5.6.2.3.4.
+ */
+verifyingKeyPartiallyValid : VerifyingKey -> Bool
+verifyingKeyPartiallyValid Q = EC::isValid Q && ~(EC::isInfinity Q)
+
+/**
+ * The owner of a key pair needs to make sure it's consistent before using it
+ * for key establishment.
+ * [SP-800-56Ar3] Section 5.6.2.1.4.
+ */
+keyPairIsConsistent : SigningKey -> VerifyingKey -> Bool
+keyPairIsConsistent d Q = EC::pointEq expectedQ Q where
+    expectedQ = EC::scmul (fromZ d) EC::G
+
+/**
+ * Compute a shared secret `Z` using the domain parameters, the other party's
+ * public key (`QB`) and one's own private key (`dA`).
+ *
+ * ⚠ Warning: Deviation from the spec ⚠
+ * This deviates from the spec in one important way: All intermediate values,
+ * including `P` and `z`, should be destroyed (zeroized) before providing
+ * output. Cryptol cannot express this; implementors must manually verify that
+ * all potentially sensitive local data is destroyed.
+ * [SP-800-56Ar3] Section 5.7.1.2.
+ *
+ * ⚠ Warning: Usage ⚠
+ * This routine is not secure if used in isolation! It should be
+ * used as a component of one of the key agreement schemes described in
+ * [SP-800-56Ar3] Section 6. These schemes handle (input) key management and
+ * validation, (output) key derivation, and optional key confirmation.
+ * There are several obvious failure modes if this primitive is used in
+ * isolation:
+ * - Failure to use a valid key agreement scheme can compromise the security of
+ * the `SigningKey`s used in `ECC_CDH`! This routine does not validate the
+ * other party's public key. A malicious party can claim invalid curve points
+ * for her public key `QB` and collect residues to derive the honest party's
+ * private key!
+ * - The output of this method is a _shared secret_, not a key!
+ * It _must not_ be used directly as keying material. An approved key
+ * derivation method must be used to derive keying material from the shared
+ * secret. [SP-800-56Ar3] Section 5.8.
+ */
+ECC_CDH : SigningKey -> VerifyingKey -> Option ([(width EC::n) /^ 8][8])
+ECC_CDH dA QB = maybe_Z where
+    // Step 1. Compute P = h dA QB
+    P = EC::scmul EC::h (EC::scmul (fromZ dA) QB)
+    maybe_Z = case EC::xCoord P of
+        // Step 2.
+        // xCoord returns `None` if `P` is the point at infinity.
+        None -> None
+        // Step 3.
+        // The built-in Cryptol conversion methods produce the same output as the
+        // routine described in [SP-800-56Ar3] Appendix C.2.
+        Some z -> Some (split (ZtoBV z))

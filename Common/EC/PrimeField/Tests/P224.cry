@@ -30,7 +30,7 @@ T = P224::Affine (BVtoZ 0xb72b25aea5cb03fb88d7e842002969648e6ef23c5d39ac903826bd
  * :prove sAndTAreValid
  * ```
  */
-property sAndTAreValid = P224::valid_point S && P224::valid_point T
+property sAndTAreValid = P224::isValid S && P224::isValid T
 
 /**
  * ```repl

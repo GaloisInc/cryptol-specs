@@ -30,7 +30,7 @@ T = P384::Affine (BVtoZ 0xaacc05202e7fda6fc73d82f0a66220527da8117ee8f8330ead7d20
  * :prove sAndTAreValid
  * ```
  */
-property sAndTAreValid = P384::valid_point S && P384::valid_point T
+property sAndTAreValid = P384::isValid S && P384::isValid T
 
 /**
  * ```repl
