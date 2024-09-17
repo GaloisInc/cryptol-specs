@@ -1,34 +1,92 @@
+/*
+ * Instantiation of SHAKE128, a SHA-3 extendable-output function, as specified
+ * in [FIPS-202].
+ *
+ * [FIPS-202]: National Institute of Standards and Technology. SHA-3 Standard:
+ *     Permutation-Based Hash and Extendable-Output Functions. (Department of
+ *     Commerce, Washington, D.C.), Federal Information Processing Standards
+ *     Publication (FIPS) NIST FIPS 202. August 2015.
+ *     @see https://dx.doi.org/10.6028/NIST.FIPS.202
+ *
+ * @copyright Galois, Inc.
+ * @author Ajay Kumar Eeralla
+ * @editor Marcella Hastings <marcella@galois.com>
+ *
+ */
 module Primitive::Keyless::Hash::SHAKE::SHAKE128 where
-import Primitive::Keyless::Hash::keccak
+import Primitive::Keyless::Hash::keccak where
+    type b = 1600
+    type nr = 24
+    // The capacity is double the security level, so this provides a security
+    // level of 128 (as the name suggests).
+    type c = 256
 import Primitive::Keyless::Hash::utils (toBytes)
 
-type total = 1600
-type secBits = 128
+/**
+ * SHAKE128 extendable-output function.
+ * [FIPS-202] Section 6.2.
+ *
+ * This supports any output length `d`, including infinite length.
+ *
+ * Note that the specification of `c` is above, in the instantiation of the
+ * `keccak` module.
+ */
+shake128 : {d, m} (fin m) => [m] -> [d]
+shake128 M = Keccak (M # 0b1111)
 
-shake128 M = Keccak `{r = total - 2 * secBits, c = 2 * secBits } (M # 0b1111)
+/**
+ * Example showing how to call shake128 using a type parameter.
+ * ```repl
+ * :prove k1
+ * ```
+ */
+property k1 = join (toBytes (shake128`{512} [])) == expected_result where
+    expected_result = join [
+        0x7f9c2ba4e88f827d616045507605853e,
+        0xd73b8093f6efbc88eb1a6eacfa66ef26,
+        0x3cb1eea988004b93103cfb0aeefd2a68,
+        0x6e01fa4a58e8a3639ca8a1e3f9ae57e2
+    ]
 
-property k1 = join (toBytes (take`{512} (shake128 []))) == join [ 0x7f9c2ba4e88f827d616045507605853e
-                                                             , 0xd73b8093f6efbc88eb1a6eacfa66ef26
-                                                             , 0x3cb1eea988004b93103cfb0aeefd2a68
-                                                             , 0x6e01fa4a58e8a3639ca8a1e3f9ae57e2
-                                                             ]
+/**
+ * Example showing how to call shake128 using a type annotation.
+ * ```repl
+ * :prove k2
+ * ```
+ */
+property k2 = join (toBytes (shake128 0b0 : [512])) == expected_result where
+    expected_result = join [
+        0xe78b86559a9ccdc72288bf7bcf8e11d5,
+        0x74543a2922978913a02be149e89d03ca,
+        0xe63d2c36e2cf6906791b187d7e371d4f,
+        0x21ebe59dcfc249a510b82255a18250dd
+    ]
+/**
+ * Example showing how to call shake128 using an implicit output type.
+ * ```repl
+ * :prove k3
+ * ```
+ */
+property k3 = join (toBytes (shake128 0b11)) == expected_result where
+    expected_result = join [
+        0xf6b6c4093f0a2ceba61b9f2c2fea2ca2,
+        0x38ce9005edcd588c380405070532ddd0,
+        0x0cbd3a3a7448017d874c52c9e383fa3d,
+        0xb1c184e023181fcc8550f53ac92feca5
+    ]
 
-property k2 = join (toBytes (take`{512} (shake128 0b0))) == join [ 0xe78b86559a9ccdc72288bf7bcf8e11d5
-                                                              , 0x74543a2922978913a02be149e89d03ca
-                                                              , 0xe63d2c36e2cf6906791b187d7e371d4f
-                                                              , 0x21ebe59dcfc249a510b82255a18250dd
-                                                              ]
-property k3 = join (toBytes (take`{512} (shake128 0b11))) == join [ 0xf6b6c4093f0a2ceba61b9f2c2fea2ca2
-                                                               , 0x38ce9005edcd588c380405070532ddd0
-                                                               , 0x0cbd3a3a7448017d874c52c9e383fa3d
-                                                               , 0xb1c184e023181fcc8550f53ac92feca5
-                                                               ]
-
-property k4 = join (toBytes (take`{512} (shake128 (reverse 0b110)))) == join [ 0x178afb3be00c33b682f0c920520699e3
-                                                                          , 0xb7e4c360274fd8b41cdeaa8d3c675bdc
-                                                                          , 0x079be55d4513e7479aa903169430f0a0
-                                                                          , 0xbf60169becd0ff9ff3ff6be24bc6fd83
-                                                                          ]
+/**
+ * ```repl
+ * :prove k4
+ * ```
+ */
+property k4 = join (toBytes (shake128`{d=512} (reverse 0b110))) == expected_result where
+    expected_result = join [
+        0x178afb3be00c33b682f0c920520699e3,
+        0xb7e4c360274fd8b41cdeaa8d3c675bdc,
+        0x079be55d4513e7479aa903169430f0a0,
+        0xbf60169becd0ff9ff3ff6be24bc6fd83
+    ]
 
 
 
