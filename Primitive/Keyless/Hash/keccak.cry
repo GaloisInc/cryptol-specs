@@ -440,3 +440,45 @@ reverseBitOrdering msg
 reverseBitOrderingInvolutes : {m} (fin m) => [m] -> Bit
 property reverseBitOrderingInvolutes msg = reReverse == msg where
     reReverse = reverseBitOrdering (reverseBitOrdering msg)
+
+/**
+ * A hex digit is represented in Cryptol as a 4-bit vector.
+ */
+type HexDigit = 4
+
+/**
+ * Converts a hexadecimal string with an even number of digits into a SHA-3
+ * string.
+ *
+ * The bit ordering expected by Keccak has bytes in MSB order, and the bits in
+ * each byte in LSB order. (Cryptol's default interprets both bits and bytes
+ * in MSB order).
+ *
+ * [FIPS-202] Appendix B.1, Algorithm 10.
+ */
+h2b: {n, m} (fin m, m >= 1, n <= 8 * m) => [2 * m * HexDigit] -> [n]
+h2b msg = S where
+    // Step 1.
+    H = groupBy`{HexDigit} msg
+    // Type conversion: expand each 4-bit digit into an 8-bit vector to support
+    // subsequent operations.
+    H8 = map zext H : [2 * m][8]
+    // Step 2a.
+    hs = [16 * H8 @ (2 * i) + H8 @ (2 * i + 1) | i <- [0..m-1]]
+    // Step 2b.
+    // Cryptol defaults to MSB order; this step arranges the bits in LSB order.
+    bs = map reverse hs
+    // Step 3.
+    T = join bs
+    // Step 4.
+    S = take`{n} T
+
+/**
+ * This is the example in [FIPS-202] Appendix B, Table 5.
+ * ```repl
+ * :prove h2bExampleWorks
+ * ```
+ */
+property h2bExampleWorks = h2b`{14} H == S where
+    H = 0xA32E
+    S = 0b11000101011101
