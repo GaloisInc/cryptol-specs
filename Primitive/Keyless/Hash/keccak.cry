@@ -392,16 +392,27 @@ property flatten_correct s = unflatten (flatten s) == s
  *
  * For arbitrary-length strings, the conversion is symmetric. This can be used
  * to convert from SHA-3 strings into MSB strings, or from MSB strings into
- * SHA-3 strings. This function assumes there is no padding on the string.
+ * SHA-3 strings.
  *
- * This function does not have an explicit equivalent in the spec. [FIPS-202]
- * is not quite explicit about the ordering expected for for input and output
- * strings; Appendix B does reference a conversion between hexadecimal strings
- * and SHA-3 strings, but does not specify when to use it. This function is not
- * equivalent to the `h2b` or `b2h` functions in Appendix B. We took an
- * experimental approach; when we apply this function to the input and output
- * of our implementation, the CAVP test vectors pass (see individual
- * instantiations of the SHA-3 functions for details).
+ * This function does not have an explicit equivalent in the [FIPS-202]. It
+ * differs from the conversion functions in Appendix B.1 in several ways:
+ * - The h2b and b2h functions expect the non-SHA-3 bit vector to be a
+ *   hexadecimal string with an even number of digits. This function
+ *   can handle a non-SHA-3 bit vector of any length (including infinite
+ *   length).
+ * - The h2b and b2h functions take a separate parameter `n` specifying the
+ *   "actual" length of the non-SHA-3 bit vector. `h2b` truncates the SHA-3 bit
+ *   vector to exactly `n` bits; `b2h` pads the non-SHA-3 bit vector to a
+ *   multiple of 8 bits. This function assumes the input bit vector
+ *   has no padding and that the output bit vector is exactly the same length
+ *   as the input bit vector.
+ *
+ * [FIPS-202] does not specify when these conversion functions are expected to
+ * be used. The CAVP test vectors provided by NIST use the format consumed by
+ * `h2b` and `b2h` of hexadecimal strings with an even number of digits.
+ * However, we anticipate that many applications will produce exact-length
+ * messages to use with SHA-3 functions (e.g. they will not pad their inputs
+ * to a multiple of 8 bits).
  *
  * Sources:
  * A blog post with some references to other versions of the spec, explaining
@@ -422,6 +433,9 @@ reverseBitOrdering msg
 
 /**
  * The conversion between SHA-3 strings and MSB strings is its own inverse.
+ * ```repl
+ * :prove reverseBitOrderingInvolutes`{100}
+ * ```
  */
 reverseBitOrderingInvolutes : {m} (fin m) => [m] -> Bit
 property reverseBitOrderingInvolutes msg = reReverse == msg where
