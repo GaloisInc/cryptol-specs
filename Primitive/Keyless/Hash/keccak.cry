@@ -274,22 +274,27 @@ private
     /**
      * Keccak-f family of permutations.
      *
+     * This is implemented as defined in Section 3.4, but while `Keccak-p` isn't
+     * explicitly implemented, we "expanded" the `Keccak-p` implementation
+     * according to the parameters given in the definition of `Keccak-f`.
+     * Specifically, note the range of `ir`.
+     *
+     * The number of rounds is a parameter to this functor and not passed
+     * explicitly here.
+     *
      * [FIPS-202] Section 3.4.
      */
     Keccak_f : [b] -> [b]
     Keccak_f S = S'
         where
+            // The round transformation is defined in [FIPS-202] Section 3.3.
+            Rnd A ir = ι (χ (π (ρ (θ A)))) ir
+            // Step 1.
             A0 = unflatten S
-            rounds = [A0] # [ Round A ir | A <- rounds | ir <- [0..nr - 1]]
+            // Step 2.
+            rounds = [A0] # [ Rnd A ir | A <- rounds | ir <- [0..nr - 1]]
+            // Step 3.
             S' = flatten (rounds ! 0)
-
-
-    /**
-     * The round function for `Keccak-p`. Denoted `Rnd` in the spec.
-     * [FIPS-202] Section 3.3.
-     */
-    Round : State -> [8] -> State
-    Round A ir = ι (χ (π (ρ (θ A)))) ir
 
 /**
  * See https://keccak.team/files/Keccak-reference-3.0.pdf, Section 1.2
