@@ -208,22 +208,48 @@ private
      * [FIPS-202] Section 3.2.5, Algorithm 5.
      */
     rc : [8] -> Bit
-    rc t = if t % 255 == 0 then 1 // Step 1.
-        else Rs @ (t % 255) @0 // Step 4.
-        where
-            // Step 2 - 3.
-            Rs = [0b10000000] # [lfsr R | R <- Rs ]
+    rc t = if (t % 255) == 0 then 1 // Step 1.
+         else Rs @ (t % 255) @0 // Step 4.
+         where
+             // Step 2 - 3.
+             Rs = [0b10000000] # [lfsr R | R <- Rs ]
+             // Step 3. Linear feedback shift register.
+             // The truncation in step f is done manually in the return value.
+             lfsr : [8] -> [8]
+             lfsr Rin = [R0, R@1, R@2, R@3, R4, R5, R6, R@7]
+                 where
+                     R = 0b0 # Rin
+                     R0 = R@0 ^ R@8
+                     R4 = R@4 ^ R@8
+                     R5 = R@5 ^ R@8
+                     R6 = R@6 ^ R@8
 
-            // Step 3. Linear feedback shift register.
-            // The truncation in step f is done manually in the return value.
-            lfsr : [8] -> [8]
-            lfsr Rin = [R0, R@1, R@2, R@3, R4, R5, R6, R@7]
-                where
-                    R = 0b0 # Rin
-                    R0 = R@0 ^ R@8
-                    R4 = R@4 ^ R@8
-                    R5 = R@5 ^ R@8
-                    R6 = R@6 ^ R@8
+    /**
+     * Hardcode the round constant values.
+     *
+     * Since the `rc` function doesn't depend on any of the functor parameters,
+     * this hardcoded value is correct for all instantiations.
+     * We computed the value `constants` with:
+     * ```
+     * [rc i | i <- [0..255]]
+     * ```
+     *
+     * Equivalent to [FIPS-202] Section 3.2.5, Algorithm 5.
+     */
+    rc_hardcoded : [8] -> Bit
+    rc_hardcoded t = constants @ t where
+        constants = join [
+            0x80b1e87f90a7d57062b32fde6ee54a25,
+            0xa339e361175edf0d35b504ec9303a471
+        ]
+
+    /**
+     * Prove that the hardcoded round constants are correct.
+     * ```repl
+     * :prove round_constants_correctly_hardcoded
+     * ```
+     */
+    property round_constants_correctly_hardcoded t = rc_hardcoded t == rc t
 
     /**
      * One of the step mappings that's part of a round of Keccak-p.
@@ -241,7 +267,7 @@ private
         // Step 3. 0 is the identity for XOR, so we iteratively set the
         // `2^j-1`th element by XORing the previously-set bits of RC with the
         // correct value at the desired index.
-        RCs = [RC0] # [RC' ^ (zext`{w} [rc (j + 7 * ir)] << (2^^j - 1))
+        RCs = [RC0] # [RC' ^ (zext`{w} [rc_hardcoded (j + 7 * ir)] << (2^^j - 1))
             | RC' <- RCs
             | j <- [0..ell] ]
         RC = (RCs ! 0) : [w]
