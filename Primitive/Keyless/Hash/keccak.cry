@@ -189,13 +189,18 @@ private
     /**
      * One of the step mappings that's part of a round of Keccak-p.
      *
+     * The effect of this mapping is to XOR each bit with a non-linear function
+     * of two other bits in its row.
      * [FIPS-202] Section 3.2.4.
+     *
+     * Note: in the first line, XOR 1 on a single bit is equivalent to bitwise
+     * NOT. Since we operate over the whole slice defined by each z-coordinate,
+     * it's nicer to use `~`. You can see the NOT gates in Figure 6.
      */
     χ : State -> State
-    χ A = groupBy`{5} [ (A @ x @ y) ^ (~ A @ ((x + 1) % 5) @ y
-                                    && A @ ((x + 2) % 5) @ y)
-                    | (x:[8]) <- [0..4], (y:[8]) <- [0..4]
-                    ]
+    χ A = [[ A @x @y ^ (~A @((x + 1) % 5) @y && A @((x + 2) % 5) @y)
+        | y <- [0..4]]
+        | x <- [0..4]]
 
     /**
      * One of the step mappings that's part of a round of Keccak-p.
