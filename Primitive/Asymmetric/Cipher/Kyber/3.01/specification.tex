@@ -25,13 +25,13 @@
 \Kyber is an IND-CCA2-secure key-encapsulation mechanism (KEM),
 which has first been described in~\cite{BDK+18}.
 The security of \Kyber is based on the hardness of solving the learning-with-errors
-problem in module lattices (MLWE problem~\cite{DCC:LS15}). 
+problem in module lattices (MLWE problem~\cite{DCC:LS15}).
 The construction of \Kyber follows a two-stage approach: we first introduce
-an IND-CPA-secure public-key encryption scheme encrypting messages of a fixed length of 32 bytes, 
-which we call \KyberCPAPKE. We then use a slightly tweaked Fujisaki--Okamoto (FO) 
-transform~\cite{C:FujOka99} to construct the IND-CCA2-secure KEM. 
-Whenever we want to emphasize that we are speaking about the IND-CCA2-secure KEM, 
-we will refer to it as \KyberCCAKEM. 
+an IND-CPA-secure public-key encryption scheme encrypting messages of a fixed length of 32 bytes,
+which we call \KyberCPAPKE. We then use a slightly tweaked Fujisaki--Okamoto (FO)
+transform~\cite{C:FujOka99} to construct the IND-CCA2-secure KEM.
+Whenever we want to emphasize that we are speaking about the IND-CCA2-secure KEM,
+we will refer to it as \KyberCCAKEM.
 
 In Subsection~\ref{subsec:specification:prelim} we give preliminaries and fix notation.
 In Subsection~\ref{subsec:specification:cpaenc} we give a full specification of \KyberCPAPKE.
@@ -46,8 +46,8 @@ Subsection~\ref{subsec:specification:params} lists the parameters that we propos
 
 \subheading{Bytes and byte arrays.}
 Inputs and outputs to all API functions of \Kyber are byte arrays.
-To simplify notation, we denote by \Bytes the set $\{0,\dots,255\}$, i.e., 
-the set of $8$-bit unsigned integers (bytes). 
+To simplify notation, we denote by \Bytes the set $\{0,\dots,255\}$, i.e.,
+the set of $8$-bit unsigned integers (bytes).
 Consequently we denote by $\Bytes^k$ the set of byte arrays of length $k$
 and by $\Bytes^*$ the set of byte arrays of arbitrary length (or byte streams).
 For two byte arrays $a$ and $b$ we denote by $(a\cat b)$ the concatenation
@@ -58,15 +58,15 @@ For example, let $a$ by a byte array of length $\ell$, let $b$
 be another byte array and let $c = (a\cat b)$ be the concatenation
 of $a$ and $b$; then $b = a+\ell$.
 When it is more convenient to work with an array of bits than an
-array of bytes we make this conversion explicit via the $\mathsf{BytesToBits}$ 
+array of bytes we make this conversion explicit via the $\mathsf{BytesToBits}$
 function that takes as input an array of $\ell$ bytes and produces as
-output an array of $8\ell$ bits. Bit $\beta_i$ at position $i$ of the output bit array 
+output an array of $8\ell$ bits. Bit $\beta_i$ at position $i$ of the output bit array
 is obtained from byte $b_{i/8}$ at position $i/8$ of the input array
 by computing $\beta_i = \left((b_{i/8} / 2^{(i\mod 8)}) \mod 2\right)$.
 
 \begin{code}
   type Byte = [8]
-  
+
   BytesToBits : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
   BytesToBits input = join (map reverse input)
 
@@ -76,7 +76,7 @@ by computing $\beta_i = \left((b_{i/8} / 2^{(i\mod 8)}) \mod 2\right)$.
 
   BitToZ : {p} (fin p, p > 1) => Bit -> Z p
   BitToZ b = if b then 1 else 0
-  
+
   BitstoZ : {ell} (fin ell, ell > 0) => [ell] -> (Z q)
   BitstoZ betas = fromInteger (toInteger (reverse betas))
 
@@ -89,26 +89,26 @@ by computing $\beta_i = \left((b_{i/8} / 2^{(i\mod 8)}) \mod 2\right)$.
   // Cryptol's built-in operator for concatenation is #
   concatPlus : {x, y} (fin x, fin y) => [x]Byte -> [y]Byte -> [y]Byte
   concatPlus a b = plus`{x} (a#b)
-  
+
   concatPlusCorrect : {x, y} (fin y, fin x) => [x]Byte -> [y]Byte -> Bit
   property concatPlusCorrect a b = concatPlus a b == b
 \end{code}
 \subheading{Polynomial rings and vectors.}
-We denote by $R$ the ring $\Z[X]/(X^{n}+1)$ and by $R_q$ the ring $\Z_q[X]/(X^{n}+1)$, 
-where $n=2^{n'-1}$ such that $X^{n}+1$ is the $2^{n'}$-th cyclotomic polynomial. 
+We denote by $R$ the ring $\Z[X]/(X^{n}+1)$ and by $R_q$ the ring $\Z_q[X]/(X^{n}+1)$,
+where $n=2^{n'-1}$ such that $X^{n}+1$ is the $2^{n'}$-th cyclotomic polynomial.
 Throughout this document, the values of $n$, $n'$ and $q$ are fixed to $n=256$, $n'=9$, and $q=3329$.
-Regular font letters denote elements in $R$ or $R_q$ (which includes elements in $\Z$ and $\Z_q$) 
-and bold lower-case letters represent vectors with coefficients in $R$ or~$R_q$.  
-By default, all vectors will be column vectors. Bold upper-case letters are matrices. 
+Regular font letters denote elements in $R$ or $R_q$ (which includes elements in $\Z$ and $\Z_q$)
+and bold lower-case letters represent vectors with coefficients in $R$ or~$R_q$.
+By default, all vectors will be column vectors. Bold upper-case letters are matrices.
 For a vector $\vpo$ (or matrix $\Apo$), we denote by $\vpo^T$ (or~$\Apo^T$) its transpose.
 For a vector $\vpo$ we write $\vpo[i]$ to denote it's $i$-th entry (with indexing starting at zero);
-for a matrix $\Apo$ we write $\Apo[i][j]$ to denote the entry in row $i$, column $j$ 
+for a matrix $\Apo$ we write $\Apo[i][j]$ to denote the entry in row $i$, column $j$
 (again, with indexing starting at zero).
 
 \begin{code}
   type n = 256
 
-  // Z is a Cryptol primitive such that Z q represents integers mod q that are 
+  // Z is a Cryptol primitive such that Z q represents integers mod q that are
   // closed under arithmetic operations
   type R = [n]Integer
   type R_q = [n](Z q)
@@ -116,14 +116,14 @@ for a matrix $\Apo$ we write $\Apo[i][j]$ to denote the entry in row $i$, column
 
 
 \subheading{Modular reductions.}
-For an even (resp.\ odd) positive integer~$\alpha$, 
-we define $r'=r\modpm\, \alpha$ to be the unique element 
-$r'$ in the range $-\frac{\alpha}{2}<r'\leq\frac{\alpha}{2}$ 
-(resp. $-\frac{\alpha-1}{2}\leq r'\leq \frac{\alpha-1}{2}$) such that $r'=r\bmod \alpha$. 
-For any positive integer $\alpha$, 
-we define $r'=r\modp \alpha$ to be the unique element $r'$ 
-in the range $0\leq r'<\alpha$ such that $r'=r\bmod \alpha$. 
-When the exact representation is not important, we simply write $r\bmod \alpha$.  
+For an even (resp.\ odd) positive integer~$\alpha$,
+we define $r'=r\modpm\, \alpha$ to be the unique element
+$r'$ in the range $-\frac{\alpha}{2}<r'\leq\frac{\alpha}{2}$
+(resp. $-\frac{\alpha-1}{2}\leq r'\leq \frac{\alpha-1}{2}$) such that $r'=r\bmod \alpha$.
+For any positive integer $\alpha$,
+we define $r'=r\modp \alpha$ to be the unique element $r'$
+in the range $0\leq r'<\alpha$ such that $r'=r\bmod \alpha$.
+When the exact representation is not important, we simply write $r\bmod \alpha$.
 
 \begin{code}
   modpm : {alpha} (fin alpha, alpha > 0) => Z alpha -> Integer
@@ -132,7 +132,7 @@ When the exact representation is not important, we simply write $r\bmod \alpha$.
 \end{code}
 
 \subheading{Rounding.}
-For an element $x \in \mathbb{Q}$ we denote by $\lceil x \rfloor$ 
+For an element $x \in \mathbb{Q}$ we denote by $\lceil x \rfloor$
 rounding of $x$ to the closest integer with ties being rounded up.
 
 \begin{code}
@@ -141,16 +141,16 @@ rounding of $x$ to the closest integer with ties being rounded up.
 \end{code}
 
 \subheading{Sizes of elements.}
-For an element $w\in\Z_q$, we write $\|w\|_\infty$ to mean $|w\modpm\, q|$.  
-We now define the $\ell_\infty$ and $\ell_2$ norms for 
-$w=w_0+w_1X+\ldots +w_{n-1}X^{n-1}\in R$: 
-$$\|w\|_\infty=\max_{i}{\|w_i\|_\infty},\,\,\,\, \|w\|=\sqrt{\|w_0\|_\infty^2+\ldots+\|w_{n-1}\|_\infty^2}.$$   
-Similarly, for $\wpo=(w_1,\ldots,w_k)\in R^k$, we define 
+For an element $w\in\Z_q$, we write $\|w\|_\infty$ to mean $|w\modpm\, q|$.
+We now define the $\ell_\infty$ and $\ell_2$ norms for
+$w=w_0+w_1X+\ldots +w_{n-1}X^{n-1}\in R$:
+$$\|w\|_\infty=\max_{i}{\|w_i\|_\infty},\,\,\,\, \|w\|=\sqrt{\|w_0\|_\infty^2+\ldots+\|w_{n-1}\|_\infty^2}.$$
+Similarly, for $\wpo=(w_1,\ldots,w_k)\in R^k$, we define
 $$\|\wpo\|_\infty=\max_{i}{\|w_i\|_\infty},\,\,\,\, \|\wpo\|=\sqrt{\|w_1\|^2+\ldots+\|w_k\|^2}.$$
 
 \subheading{Sets and Distributions.}
-For a set $S$, we write $s\gets S$ to denote that $s$ is chosen uniformly at random from $S$.  
-If $S$ is a probability distribution, then this denotes that $s$ is chosen according to the distribution $S$.  
+For a set $S$, we write $s\gets S$ to denote that $s$ is chosen uniformly at random from $S$.
+If $S$ is a probability distribution, then this denotes that $s$ is chosen according to the distribution $S$.
 
 \begin{code}
   // Cryptol does not support sampling. Therefore, for every algorithm, we denote
@@ -164,7 +164,7 @@ where $d<\lceil \log_2(q) \rceil$. We furthermore define a function \KyberDecomp
 x' = \KyberDecompress\big(\KyberCompress(x,d),d\big)
 \end{equation}
 is an element close to $x$ -- more specifically
-\begin{equation}\label{eq:Bq} 
+\begin{equation}\label{eq:Bq}
 |x'-x\modpm\, q|\leq B_q\coloneqq \left\lceil \frac{q}{2^{d+1}}\right\rfloor\,.
 \end{equation}
 The functions satisfying these requirements are defined as:
@@ -178,7 +178,7 @@ The functions satisfying these requirements are defined as:
   Compress'' : {d} (d < lg2 q) => Z q -> [d]
   Compress'' x = fromInteger(roundAway(((2^^`d)/.`q) * fromInteger(fromZ(x))) % 2^^`d)
 
-  Decompress'' : {d} (d < lg2 q) => [d] -> Z q 
+  Decompress'' : {d} (d < lg2 q) => [d] -> Z q
   Decompress'' x = fromInteger(roundAway(((`q)/.(2^^`d))*fromInteger(toInteger(x))))
 
   B_q : {d} (d < lg2 q) => Integer
@@ -190,40 +190,40 @@ The functions satisfying these requirements are defined as:
     err = abs(modpm(x'-x))
 \end{code}
 
-When \KyberCompress or \KyberDecompress is used with $x \in R_q$ or $\xpo \in R_q^k$, 
+When \KyberCompress or \KyberDecompress is used with $x \in R_q$ or $\xpo \in R_q^k$,
 the procedure is applied to each coefficient individually.
 
 \begin{code}
   Compress' : {d} (d < lg2 q) => R_q -> [n][d]
   Compress' x = map Compress''`{d} x
-  
+
   Decompress' : {d} (d < lg2 q) => [n][d] -> R_q
   Decompress' x = map Decompress''`{d} x
 
   Compress : {d, k1} (d < lg2 q, fin k1) => [k1]R_q -> [k1][n][d]
   Compress x = map Compress'`{d} x
-  
+
   Decompress : {d, k1} (d < lg2 q, fin k1) => [k1][n][d] -> [k1]R_q
   Decompress x = map Decompress'`{d} x
 \end{code}
 
-The main reason for defining the \KyberCompress and \KyberDecompress 
-functions is to be able to discard some low-order bits in the ciphertext 
+The main reason for defining the \KyberCompress and \KyberDecompress
+functions is to be able to discard some low-order bits in the ciphertext
 which do not have much effect on the correctness probability of decryption -- thus reducing the
 size of ciphertexts.
 
-The \KyberCompress and \KyberDecompress are also used for a purpose other than compression -- namely to perform the usual LWE error correction during encryption and decryption. 
-More precisely, in line~\ref{line:kybercpa-enc:v} of the encryption procedure 
-(Algorithm~\ref{kybercpa-enc}) 
-the \KyberDecompress function is used to create error tolerance gaps 
-by sending the message bit $0$ to $0$ and $1$ to $\lceil q/2\rfloor$. 
-Later, on line~\ref{line:decrypt} of the decryption procedure (Algorithm~\ref{kybercpa-dec}), 
-the \KyberCompress function is used to decrypt to a $1$ if $v-\spo^T\upo$ is closer to $\lceil q/2\rfloor$ than to $0$, 
+The \KyberCompress and \KyberDecompress are also used for a purpose other than compression -- namely to perform the usual LWE error correction during encryption and decryption.
+More precisely, in line~\ref{line:kybercpa-enc:v} of the encryption procedure
+(Algorithm~\ref{kybercpa-enc})
+the \KyberDecompress function is used to create error tolerance gaps
+by sending the message bit $0$ to $0$ and $1$ to $\lceil q/2\rfloor$.
+Later, on line~\ref{line:decrypt} of the decryption procedure (Algorithm~\ref{kybercpa-dec}),
+the \KyberCompress function is used to decrypt to a $1$ if $v-\spo^T\upo$ is closer to $\lceil q/2\rfloor$ than to $0$,
 and decrypt to a $0$ otherwise.
 
 
 \subheading{Symmetric primitives.}
-The design of \Kyber makes use of 
+The design of \Kyber makes use of
 a pseudorandom function $\PRF\colon\Bytes^{32}\times \Bytes \rightarrow \Bytes^*$
 and of an extendable output function $\XOF\colon\Bytes^*\times\Bytes\times\Bytes \rightarrow \Bytes^*$.
 \Kyber also makes use of two hash functions $\ROH\colon\Bytes^* \rightarrow \Bytes^{32}$
@@ -243,8 +243,8 @@ a key-derivation function $\KDF\colon\Bytes^* \rightarrow \Bytes^*$.
 A very efficient way to perform multiplications in $R_q$ is via
 the so-called \emph{number-theoretic transform} (NTT).
 
-For our prime $q = 3329$ with $q - 1 = 2^8\cdot 13$, the base field $\Z_q$ contains primitive $256$-th roots of unity but not primitive $512$-th roots. Therefore, the defining polynomial $X^{256} + 1$ of $R$ factors into $128$ polynomials of degree $2$ modulo $q$ and the NTT of a polynomial $f \in R_q$ is a vector of $128$ polynomials of degree one. Simple in-place implementations of the NTT without reordering outputs these polynomials in bit-reversed order and we define the NTT in this way. Concretely, let $\zeta = 17$ be the first primitive $256$-th root of unity modulo $q$, and $\{\zeta,\zeta^3,\zeta^5,\ldots,\zeta^{255}\}$ the set of all the $256$-th roots of unity.  The polynomial $X^{256}+1$ can therefore be written as 
-$$X^{256}+1 = \prod\limits_{i=0}^{127} (X^2-\zeta^{2i+1}) = \prod\limits_{i=0}^{127} (X^2-\zeta^{2\brev_7(i)+1}),$$ where $\brev_7(i)$ for $i = 0, \dots, 127$ is the bit reversal of the unsigned $7$-bit integer $i$. This latter ordering of the factors is useful for compatibility with the idiosyncrasies of AVX instructions.  Then the NTT of $f \in R_q$ is given by 
+For our prime $q = 3329$ with $q - 1 = 2^8\cdot 13$, the base field $\Z_q$ contains primitive $256$-th roots of unity but not primitive $512$-th roots. Therefore, the defining polynomial $X^{256} + 1$ of $R$ factors into $128$ polynomials of degree $2$ modulo $q$ and the NTT of a polynomial $f \in R_q$ is a vector of $128$ polynomials of degree one. Simple in-place implementations of the NTT without reordering outputs these polynomials in bit-reversed order and we define the NTT in this way. Concretely, let $\zeta = 17$ be the first primitive $256$-th root of unity modulo $q$, and $\{\zeta,\zeta^3,\zeta^5,\ldots,\zeta^{255}\}$ the set of all the $256$-th roots of unity.  The polynomial $X^{256}+1$ can therefore be written as
+$$X^{256}+1 = \prod\limits_{i=0}^{127} (X^2-\zeta^{2i+1}) = \prod\limits_{i=0}^{127} (X^2-\zeta^{2\brev_7(i)+1}),$$ where $\brev_7(i)$ for $i = 0, \dots, 127$ is the bit reversal of the unsigned $7$-bit integer $i$. This latter ordering of the factors is useful for compatibility with the idiosyncrasies of AVX instructions.  Then the NTT of $f \in R_q$ is given by
 \begin{equation}\label{eq:NTTdef}
 (f \bmod X^2 - \zeta^{2\brev_7(0) + 1}, \dots, f \bmod X^2 - \zeta^{2\brev_7(127) + 1}).
 \end{equation}
@@ -269,7 +269,7 @@ $$X^{256}+1 = \prod\limits_{i=0}^{127} (X^2-\zeta^{2i+1}) = \prod\limits_{i=0}^{
 \intertext{with}
   \hat{f}_{2i} &= \sum_{j = 0}^{127} f_{2j}\zeta^{\left(2\brev_7(i) + 1\right)j},\label{eq:coeffeven} \\
   \hat{f}_{2i + 1} &= \sum_{j = 0}^{127} f_{2j + 1}\zeta^{\left(2\brev_7(i) + 1\right)j}.\label{eq:coeffodd}
-\end{align} 
+\end{align}
 
 \begin{code}
   ParametricNTT : R_q -> (Z q) -> R_q
@@ -284,15 +284,15 @@ $$X^{256}+1 = \prod\limits_{i=0}^{127} (X^2-\zeta^{2i+1}) = \prod\limits_{i=0}^{
 
   NTT' : R_q -> R_q
   NTT' f = ParametricNTT f zeta
-  
+
   NTTInv' : R_q -> R_q
   NTTInv' f = [term*(recip 128) | term <- ParametricNTTInv f (recip zeta)]
-  
+
   CorrectnessNTT : R_q -> Bit
   property CorrectnessNTT f =  NTTInv' (NTT' f) == f
 \end{code}
 
-We would like to stress that even though we write $\hat{f}$ as a polynomial in $R_q$, it has no algebraic meaning as such.  The natural algebraic representation of $\NTT(f) = \hat{f}$ is as $128$ polynomials of degree $1$ as in \eqref{eq:NTTdef} using the definitions for $\hat{f}_i$ from \eqref{eq:coeffeven} and \eqref{eq:coeffodd}.  That is, 
+We would like to stress that even though we write $\hat{f}$ as a polynomial in $R_q$, it has no algebraic meaning as such.  The natural algebraic representation of $\NTT(f) = \hat{f}$ is as $128$ polynomials of degree $1$ as in \eqref{eq:NTTdef} using the definitions for $\hat{f}_i$ from \eqref{eq:coeffeven} and \eqref{eq:coeffodd}.  That is,
 $$\NTT(f) = \hat{f} = (\hat{f}_0+\hat{f}_1X,\hat{f}_2+\hat{f}_3X,\ldots,\hat{f}_{254}+\hat{f}_{255}X).$$
 
 Using \NTT and its inverse \INVNTT we can compute the product $f\cdot g$ of
@@ -310,7 +310,7 @@ of linear polynomials.
     where
       r0 = a@1 * b@1 * root + a@0 * b@0
       r1 = a@0 * b@1 + a@1 * b@0
-  
+
   point2mul : R_q -> R_q -> R_q
   point2mul a b = join [base_mul (poly1 i) (poly2 i) (root i) | i : Byte <- [0 .. 127]]
     where
@@ -326,10 +326,10 @@ of linear polynomials.
   property TestMult = prod f f == fsq where
     f = [1, 1] # [0 | i <- [3 .. 256]]
     fsq = [1,2,1] # [0 | i <- [4 .. 256]]
-  
+
   dot : R_q -> R_q -> R_q
   dot f g = point2mul f  g
-  
+
   add : R_q -> R_q -> R_q
   add f g = f + g
 \end{code}
@@ -343,17 +343,17 @@ individually.
   NTTInv v = map NTTInv' v
 \end{code}
 
-When we apply $\pw$ to matrices or vectors it means that 
+When we apply $\pw$ to matrices or vectors it means that
 we perform a usual matrix multiplication, but that the individual products
 of entries are the above basecase multiplications.
 
 \begin{code}
   dotVecVec : {k1} (fin k1) => [k1]R_q -> [k1]R_q -> R_q
   dotVecVec v1 v2 = foldl add zero (zipWith dot v1 v2)
-  
+
   dotMatVec : {k1,k2} (fin k1, fin k2) => [k1][k2]R_q -> [k2]R_q -> [k1]R_q
   dotMatVec matrix vector = [dotVecVec v1 vector | v1 <- matrix]
-  
+
   dotMatMat :{k1,k2,k3} (fin k1, fin k2, fin k3) =>
     [k1][k2]R_q -> [k2][k3]R_q -> [k1][k3]R_q
   dotMatMat matrix1 matrix2 = transpose [dotMatVec matrix1 vector | vector <- m']
@@ -367,7 +367,7 @@ whenever we refer to the general technique.
 \subheading{Uniform sampling in $R_q$.}
 \Kyber uses a deterministic approach to sample elements in $R_q$
 that are statistically close to a uniformly random distribution.
-For this sampling we use a function $\Parse\colon\Bytes^* \rightarrow R_q$, 
+For this sampling we use a function $\Parse\colon\Bytes^* \rightarrow R_q$,
 which receives as input a byte stream $B = b_0, b_1, b_2, \dots$ and
 computes the NTT-representation $\hat{a} = \hat{a}_0 + \hat{a}_1 X + \dots + \hat{a}_{n-1}X^{n-1} \in R_q$ of $a \in R_q$. $\Parse$ is described in Algorithm~\ref{alg:parse} (note that this description assumes that $q=3329$).
 
@@ -375,7 +375,7 @@ computes the NTT-representation $\hat{a} = \hat{a}_0 + \hat{a}_1 X + \dots + \ha
   \caption{$\Parse\colon\Bytes^* \rightarrow R_q^n$}
   \label{alg:parse}
 \begin{algorithmic}
-  \Require Byte stream $B = b_0, b_1, b_2 \dots \in \Bytes^*$ 
+  \Require Byte stream $B = b_0, b_1, b_2 \dots \in \Bytes^*$
   \Ensure NTT-representation $\hat{a} \in R_q$ of $a \in R_q$
   \State $i \coloneqq 0$
   \State $j \coloneqq 0$
@@ -398,7 +398,7 @@ computes the NTT-representation $\hat{a} = \hat{a}_0 + \hat{a}_1 X + \dots + \ha
 
 \begin{code}
   // Since Cryptol does not natively support while loops, we approach this
-  // potentially infinite loop with recursion. We define ParseInf that 
+  // potentially infinite loop with recursion. We define ParseInf that
   // converts an infinite sequence of bytes to an infinite sequence of
   // elements in Z q. We then pick the first n elements for the result.
 
@@ -407,7 +407,7 @@ computes the NTT-representation $\hat{a} = \hat{a}_0 + \hat{a}_1 X + \dots + \ha
       where elements = ParseInf b
 
   // ParseInf implements a filter. It scans the input 3 by 3, calculates
-  // the elements d1 and d2 and finally returns the elements that satisfy 
+  // the elements d1 and d2 and finally returns the elements that satisfy
   // the conditions together with the result of itself when applied to the
   // tail.
 
@@ -430,8 +430,8 @@ computes the NTT-representation $\hat{a} = \hat{a}_0 + \hat{a}_1 X + \dots + \ha
 
 The intuition behind the function \Parse is that if the input byte array
 is statistically close to a uniformly random byte array, then the output
-polynomial is statistically close to a uniformly random element of $R_q$. 
-It represents a uniformly random polynomial in $R_q$ because $\NTT$ is bijective and thus maps polynomials with uniformly random coefficients to polynomials with again uniformly random coefficients. 
+polynomial is statistically close to a uniformly random element of $R_q$.
+It represents a uniformly random polynomial in $R_q$ because $\NTT$ is bijective and thus maps polynomials with uniformly random coefficients to polynomials with again uniformly random coefficients.
 
 %Note that in line~\ref{line:parse:bitrev} we bitreverse the index;
 %this ensures that when \Parse writes output as a consecutive stream,
@@ -447,9 +447,9 @@ for $\eta=2$ or $\eta=3$. We define $B_\eta$ as follows:
 When we write that a polynomial $f \in R_q$ or a vector of such polynomials
 is sampled from $B_\eta$, we mean that each coefficient is sampled from $B_\eta$.
 
-For the specification of \Kyber we need to define how a polynomial $f \in R_q$ 
+For the specification of \Kyber we need to define how a polynomial $f \in R_q$
 is sampled according to $B_\eta$ deterministically from $64\eta$ bytes of output of a
-pseudorandom function (we fix $n=256$ in this description). 
+pseudorandom function (we fix $n=256$ in this description).
 This is done by the function \CBD (for ``centered binomial distribution'')
 defined as described in Algorithm~\ref{alg:cbd}.
 
@@ -458,7 +458,7 @@ defined as described in Algorithm~\ref{alg:cbd}.
   }
   \label{alg:cbd}
   \begin{algorithmic}
-    \Require Byte array $B = (b_0, b_1, \dots ,b_{64\eta-1}) \in \Bytes^{64\eta}$ 
+    \Require Byte array $B = (b_0, b_1, \dots ,b_{64\eta-1}) \in \Bytes^{64\eta}$
     \Ensure Polynomial $f \in R_q$
     \State $(\beta_0,\dots,\beta_{512\eta-1}) \coloneqq \mathsf{BytesToBits}(B)$
     \For{$i$ from $0$ to $255$}
@@ -488,7 +488,7 @@ via the identity, so we need to define how we serialize and deserialize polynomi
   // We make this trivial serialization explicit, since it is not an identity in Cryptol.
   // Byte encoding and decoding involves regrouping 8-bit arrays into ell-bit arrays.
   regroup B = reverse (groupBy (join (reverse B)))
-  
+
   EncodeBytes' : {ell, c} (fin ell, ell > 0, fin c) => [c * 8][ell] -> [c * ell]Byte
   EncodeBytes' = regroup
 
@@ -497,7 +497,7 @@ via the identity, so we need to define how we serialize and deserialize polynomi
 
   CorrectnessEncodeBytes' : [n][2] -> Bit
   property CorrectnessEncodeBytes' B = DecodeBytes'(EncodeBytes' B) == B
-  
+
   EncodeBytes : {ell, k1, c} (fin ell, ell > 0, fin k1, fin c) =>
       [k1][c * 8][ell] -> [c * ell * k1]Byte
   EncodeBytes B = EncodeBytes' (join B)
@@ -505,16 +505,16 @@ via the identity, so we need to define how we serialize and deserialize polynomi
   DecodeBytes : {ell, k1, c} (fin ell, ell > 0, fin k1, fin c) =>
       [c * ell * k1]Byte -> [k1][c * 8][ell]
   DecodeBytes B = groupBy (DecodeBytes' B)
-  
+
   CorrectnessEncodeBytes : [k][n][2] -> Bit
   property CorrectnessEncodeBytes B = DecodeBytes(EncodeBytes B) == B
 \end{code}
 
 In Algorithm~\ref{alg:decode} we give a pseudocode description of the
 function $\Decode_\ell$, which deserializes an array of $32\ell$ bytes
-into a polynomial $f = f_0 + f_1X + \dots + f_{255}X^{255}$ 
+into a polynomial $f = f_0 + f_1X + \dots + f_{255}X^{255}$
 (we again fix $n=256$ in this description) with each
-coefficient $f_i$ in  $\{0,\dots,2^\ell-1\}$. 
+coefficient $f_i$ in  $\{0,\dots,2^\ell-1\}$.
 We define the function $\Encode_\ell$ as the inverse of $\Decode_\ell$.
 Whenever we apply $\Encode_\ell$ to a vector of polynomials we encode
 each polynomial individually and concatenate the output byte arrays.
@@ -525,7 +525,7 @@ each polynomial individually and concatenate the output byte arrays.
 
   Decode : {ell, k1} (fin ell, ell > 0, fin k1) => [32 * ell * k1]Byte -> [k1]R_q
   Decode BVec = map Decode'`{ell} (split BVec)
-  
+
   CorrectnessEncodeDecode : [k]R_q -> Bit
   property CorrectnessEncodeDecode fVec = all CorrectnessEncodeDecode' fVec
 \end{code}
@@ -535,7 +535,7 @@ each polynomial individually and concatenate the output byte arrays.
   }
   \label{alg:decode}
   \begin{algorithmic}
-    \Require Byte array $B \in \Bytes^{32\ell}$ 
+    \Require Byte array $B \in \Bytes^{32\ell}$
     \Ensure Polynomial $f \in R_q$
     \State $(\beta_0,\dots,\beta_{256\ell-1}) \coloneqq \mathsf{BytesToBits}(B)$
     \For{$i$ from $0$ to $255$}
@@ -559,10 +559,10 @@ each polynomial individually and concatenate the output byte arrays.
 
   DecodeEquiv : [32 * 12]Byte -> Bit
   property DecodeEquiv B = (Decode' B == DecodeSpec B)
-  
+
   Encode' : {ell} (fin ell, ell > 0) => R_q -> [32 * ell]Byte
   Encode' f = BitsToBytes (join (map ZtoBits`{ell} f))
-  
+
   CorrectnessEncodeDecode' : R_q -> Bit
   property CorrectnessEncodeDecode' f = Decode'`{12}(Encode'`{12} f) == f
 \end{code}
@@ -576,14 +576,14 @@ of~\cite{LPR10} at Eurocrypt 2010~\cite{Eurocrypt2010PeikertSlides};
 the description is also in the full version of the paper~\cite[Sec.~1.1]{lyubashevsky2013RLWE}.
 The roots of this scheme go back to the first LWE-based encryption scheme
 presented by Regev in~\cite{regev2005lattices,regev2009lwe}, with the main difference being that the underlying ring is not $\Z_q$ and both the secret and the error vectors have small coefficients.  The idea of using a polynomial ring (instead of $\Z_q$) goes back to the NTRU cryptosystem
-presented by Hoffstein, Pipher, and Silverman in~\cite{hoffstein1998ntru}, while the symmetry between the secret and the error was already employed in very similar cryptographic schemes in \cite{DBLP:conf/focs/Alekhnovich03,DBLP:conf/tcc/LyubashevskyPS10} with the security justification from \cite{DBLP:conf/crypto/ApplebaumCPS09}. 
+presented by Hoffstein, Pipher, and Silverman in~\cite{hoffstein1998ntru}, while the symmetry between the secret and the error was already employed in very similar cryptographic schemes in \cite{DBLP:conf/focs/Alekhnovich03,DBLP:conf/tcc/LyubashevskyPS10} with the security justification from \cite{DBLP:conf/crypto/ApplebaumCPS09}.
 
-The main difference from the LPR encryption scheme 
-is to use Module-LWE instead of Ring-LWE. 
+The main difference from the LPR encryption scheme
+is to use Module-LWE instead of Ring-LWE.
 Also, we adopt the approach taken by Alk{\i}m, Ducas, Pöppelmann and Schwabe in~\cite{ADPS16}
 for the generation of the public matrix $\Apo$.
 Furthermore, we shorten ciphertexts by rounding off
-the low bits as in learning-with-rounding-based schemes~\cite[Eq.~2.1]{banerjee2012pseudorandom}, 
+the low bits as in learning-with-rounding-based schemes~\cite[Eq.~2.1]{banerjee2012pseudorandom},
 which is a common technique for reducing ciphertext size also in LWE-based schemes (c.f. \cite{Pei09b,Poppelmann2013hwrlwe}).
 
 \subheading{Parameters.}
@@ -603,7 +603,7 @@ A more high-level view of these algorithms is given in the comments.
     \Ensure Secret key $\sk \in \Bytes^{12\cdot k\cdot n/8}$
     \Ensure Public key $\pk \in \Bytes^{12\cdot k\cdot n/8 + 32}$
     \State $d \gets \Bytes^{32}$                  \label{line:secretrandomness}
-    \State $(\rho, \sigma) \coloneqq \ROG(d)$ 
+    \State $(\rho, \sigma) \coloneqq \ROG(d)$
     \State $N \coloneqq 0$
     \For{$i$ from $0$ to $k-1$}           \Comment{Generate matrix $\hat{\Apo} \in R_q^{k\times k}$ in \NTT domain}
     \For{$j$ from $0$ to $k-1$}
@@ -654,7 +654,7 @@ A more high-level view of these algorithms is given in the comments.
     \State $\rho \coloneqq \pk+12\cdot k\cdot n/8$
     \For{$i$ from $0$ to $k-1$}           \Comment{Generate matrix $\hat{\Apo} \in R_q^{k\times k}$ in \NTT domain}
     \For{$j$ from $0$ to $k-1$}
-      \State $\hat{\Apo}^T[i][j] \coloneqq \Parse(\XOF(\rho, i, j))$     
+      \State $\hat{\Apo}^T[i][j] \coloneqq \Parse(\XOF(\rho, i, j))$
     \EndFor
     \EndFor
     \For{$i$ from $0$ to $k-1$}\label{line:kybercpa-enc:rpo}       \Comment{Sample $\rpo \in R_q^k$ from $B_{\eta_1}$}
@@ -715,8 +715,8 @@ A more high-level view of these algorithms is given in the comments.
     m = EncodeBytes'`{1}(Compress'`{1}(v - NTTInv' (dotVecVec s_hat (NTT u))))
 
   // Kyber is correct with probability 1-delta and not 1. As a result,
-  // running :prove Correctness will not succeed since there is a 
-  // fraction delta of seeds d,r that do not work. Therefore, we can 
+  // running :prove Correctness will not succeed since there is a
+  // fraction delta of seeds d,r that do not work. Therefore, we can
   // only run :check Correctness. Cryptol does not currently support counting.
 
   CorrectnessPKE : ([32]Byte, [32]Byte, [32]Byte) -> Bit
@@ -733,7 +733,7 @@ A more high-level view of these algorithms is given in the comments.
 
 We construct the \KyberCCAKEM IND-CCA2-secure KEM from the IND-CPA-secure
 public-key encryption scheme described in the previous subsection via a slightly
-tweaked Fujisaki--Okamoto transform~\cite{C:FujOka99}. 
+tweaked Fujisaki--Okamoto transform~\cite{C:FujOka99}.
 In Algorithms~\ref{alg:ccakeygen},~\ref{alg:ccaenc}, and~\ref{alg:ccadec}
 we define key generation, encapsulation, and decapsulation of \KyberCCAKEM.
 
@@ -800,7 +800,7 @@ we define key generation, encapsulation, and decapsulation of \KyberCCAKEM.
       \State \Return $K \coloneqq \KDF(\bar{K}'\cat \ROH(c))$
     \Else
       \State \Return $K \coloneqq \KDF(z\cat \ROH(c))$
-    \EndIf 
+    \EndIf
     \State \Return $K$
   \end{algorithmic}
 \end{algorithm}
@@ -835,17 +835,17 @@ The parameters are listed in Table~\ref{tab:params}. Note that the table also li
 derived parameter $\delta$, which is the probability that decapsulation of a valid
 \KyberCCAKEM ciphertext fails. The parameters were obtained via the following approach:
 \begin{itemize}
-  \item $n$ is set to $256$ because the goal is to encapsulate keys with $256$ bits of entropy 
+  \item $n$ is set to $256$ because the goal is to encapsulate keys with $256$ bits of entropy
     (i.e., use a plaintext size of $256$ bits in \KyberCPAPKE.\PKEEnc).
     Smaller values of $n$ would require to encode multiple key bits into one polynomial
     coefficient, which requires lower noise levels and therefore lowers security.
     Larger values of $n$ would reduce the capability to easily scale security via
     parameter $k$.
-  \item We choose $q$ as a small prime satisfying $n \mid (q-1)$; 
+  \item We choose $q$ as a small prime satisfying $n \mid (q-1)$;
     this is required to enable the fast \NTT-based multiplication.
     There are two smaller primes for which this property holds, namely
     $257$ and $769$. However, for those primes we would not be able
-    to achieve negligible failure probability required for CCA security, 
+    to achieve negligible failure probability required for CCA security,
     so we chose the next largest, i.e., $q=3329$.
   \item $k$ is selected to fix the lattice dimension as a multiple of $n$;
     changing $k$ is the main mechanism in \Kyber to scale security (and as a consequence,
@@ -854,11 +854,11 @@ derived parameter $\delta$, which is the probability that decapsulation of a val
     between security, ciphertext size,
     and failure probability. Note that all three parameter sets achieve a failure probability of $<2^{-128}$
     with some margin.
-  \item The parameter $\eta_1$ defines the noise of $\spo$ and $\epo$ in Algorithm~\ref{kybercpa-gen} and of $\rpo$ in Algorithm~\ref{kybercpa-enc}.  The parameter $\eta_2$ defines the noise of $\epo_1$ and $e_2$ in Algorithm~\ref{kybercpa-enc}. 
+  \item The parameter $\eta_1$ defines the noise of $\spo$ and $\epo$ in Algorithm~\ref{kybercpa-gen} and of $\rpo$ in Algorithm~\ref{kybercpa-enc}.  The parameter $\eta_2$ defines the noise of $\epo_1$ and $e_2$ in Algorithm~\ref{kybercpa-enc}.
 \end{itemize}
 
-The failure probability $\delta$ is computed with the help of the \verb_Kyber.py_ 
-Python script which is available online at 
+The failure probability $\delta$ is computed with the help of the \verb_Kyber.py_
+Python script which is available online at
 \url{https://github.com/pq-crystals/security-estimates}.
 For the theoretical background of that script see~\cite[Theorem~1]{BDK+18}.
 
@@ -909,16 +909,16 @@ as follows:
   import Primitive::Keyless::Hash::utils
   import Primitive::Keyless::Hash::SHAKE::SHAKE128
   XOF(rho, i, j) = groupBy`{8}(shake128((fromBytes(rho))# reverse i# reverse j))
-  
+
   import `Primitive::Keyless::Hash::SHA3::SHA3
   H M = toBytes(sha3 `{digest = 256} (fromBytes(M)))
-  
+
   G M = (result@0, result@1)
       where result = split`{2} (toBytes(sha3 `{digest = 512} (fromBytes(M))))
-  
+
   import Primitive::Keyless::Hash::SHAKE::SHAKE256
   PRF(s,b) = map reverse (take (groupBy`{8} (shake256(fromBytes(s)# reverse b))))
-  
+
   KDF input = groupBy`{8}(shake256 (fromBytes(input)))
 \end{code}
 
