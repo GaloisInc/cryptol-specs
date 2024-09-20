@@ -44,11 +44,11 @@ parameter
     type omega : #
     type constraint (fin omega, omega >= 64, omega <= 120)
 
-// To expose the parameters 
-type K = k 
-type L = l 
+// To expose the parameters
+type K = k
+type L = l
 ETA = eta
-BETA = beta 
+BETA = beta
 type Omega = omega
 
 // Integer polynomials; a superset of ring R referenced in specification
@@ -79,7 +79,7 @@ type CryptoPublicKeyBytes = SeedBytes + (K * PolT1SizePacked)
 type CryptoSecretKeyBytes = 2 * SeedBytes + (L + K) * PolEtaSizePacked + CrhBytes + K * PolT0SizePacked // 2800
 type SigSizePacked = L * PolZSizePacked + Omega + K + N/8 + 8 // 2044; also called crypto bytes
 
-// Generate public and private keys 
+// Generate public and private keys
 gen : [3 * SeedBytes * 8] -> (PublicKey, SecretKey)
 gen s = (pk, sk)
     where
@@ -102,7 +102,7 @@ gen s = (pk, sk)
 //    where
 //    (pk, sk) = gen (join testCase1.seed)
 
-// Generate signature for message M 
+// Generate signature for message M
 // Corresponds to crypto_sign_signature
 sign : { mbytes } (fin mbytes, mbytes >= 0) => SecretKey -> [mbytes * 8] -> (PolyVec L, PolyVec K, Poly)
 sign sk m = (finalState.z, h, nttInv finalState.cHat)
@@ -120,19 +120,19 @@ sign sk m = (finalState.z, h, nttInv finalState.cHat)
              , t0Hat = t0Hat
              , cHat = zero
              , w = zero
-             , w1 = zero 
+             , w1 = zero
              , s1Hat = s1Hat
              , s2Hat = s2Hat
              , cs2 = zero
              , key = sk.key
              , mu = mu
              , a = mat
-             , kappa = kappa 
+             , kappa = kappa
              }
       finalState = dowhile signCondition signBody init
       ct0        = map nttInv (nttVecConstMul finalState.cHat finalState.t0Hat)
       h          = makeHintPolyVec (polyVecSub zero ct0, polyVecAdd (polyVecSub finalState.w finalState.cs2) ct0)
-  
+
 type SignVarTypes = { z : PolyVec L
                     , r0  : IntPolyVec K
                     , r1  : IntPolyVec K
@@ -161,7 +161,7 @@ signCondition sv = fail1 \/ fail2
                     ct0   = map nttInv (nttVecConstMul sv.cHat sv.t0Hat)
                     // h := makeHintPolyVec(-ct0, w-cs2+ct0, 2γ2)
                     h     = makeHintPolyVec (polyVecSub zero ct0, polyVecAdd (polyVecSub sv.w sv.cs2) ct0)
-                                      
+
 signBody : SignVarTypes -> SignVarTypes
 signBody sv = { z = z
               , r0 = r0
@@ -172,7 +172,7 @@ signBody sv = { z = z
               , w1 = w1
               , s1Hat = sv.s1Hat
               , s2Hat = sv.s2Hat
-              , cs2 = cs2 
+              , cs2 = cs2
               , key = sv.key
               , mu = sv.mu
               , a = sv.a
@@ -216,7 +216,7 @@ verify pk m (z, h, c) = crit1 && crit2 && crit3
         crit2    = c == hash(mu,w1')
         cones    = sum (map (\x -> (map onesBv x)) h)
         crit3    = ( (foldl (+) 0 cones) > `Omega ) // number of 1's in h ≤ ω // TODO: fix this
-private 
+private
   onesBv : { n } (fin n, n >= 1) => [n] -> [n]
   onesBv xs =  l!0
       where l = [ 0 ] # [ (if xs@i then j + 1 else j):[n] | i <- [ 0..N - 1 ] | j <- l ]
@@ -242,7 +242,7 @@ packPolyEta p = join [ packCoeff (p@(2*i+0) % `Q) || ((packCoeff (p@(2*i+1) % `Q
 
 packPolyEtaVec : {m} (fin m, m >= 1) =>  PolyVec m -> [4 * N * m]
 packPolyEtaVec pv = join [ packPolyEta p | p <- pv ]
- 
+
 /*unpackPolyEta :  {m} (fin m, m >= 1) =>[m*PolEtaSizePacked][8] -> PolyVec m
 unpackPolyEta pvb =  [ elt a | a <- split pvb:[m][128][8] ]
       where
@@ -326,7 +326,7 @@ polyT1Unpack p = map (\x -> zext x) (join [unpack8 xs | xs <- (split p): [32][9]
 unpackT1 : [K][PolT1SizePacked][8] -> PolyVec K
 unpackT1  pv = [ (polyT1Unpack p) |  p <- pv]
 
-// Bit-packing public key pk = { rho, t1 } 
+// Bit-packing public key pk = { rho, t1 }
 packPk :  [SeedBytes][8] -> PolyVec K -> [CryptoPublicKeyBytes * 8]
 packPk rho t1 = (join rho) # (packT1 t1)
 
@@ -395,7 +395,7 @@ packSig (z, h, c) =  zero // s1 # s2
                         kUpdates3=[kUpdates2!0]#[(if (nzcoeffsIndcs@3)@i==True then ((update sig' i) i) else ((update sig' i) 0))| i <- [0..255]| sig' <- kUpdates3]
                         OmegaUpdates = (updates (kUpdates3!0) [`Omega+0, `Omega+1, `Omega+2, `Omega+3] [0, 1, 2, 3])
 */
-private 
+private
   encodec : Poly -> [(N/8+8)*8]
   encodec p = (join [ [ p@(8*i+j)!=0 | j <- [0..7] ] | i<- [0..(N/8)-1]])# (join sigSigns)
       where
@@ -465,13 +465,13 @@ hash (mu,w) = (sampleInBall ss samples)
     extByte x = x
     samples : [60][8]
     samples = take`{60} (randomsInRanges extByte [196..255] (drop`{64} randoms#zero))
-private 
+private
   sampleInBall : [60] -> [60][8] -> [256][QBits]
   sampleInBall signs jsamples = ys ! 0
                 where
                 ys = [ zero:[256][QBits]] #
                     [ if i==j then (if [s]==1 then (update y i (`Q-1)) else (update y i 1))  //((-1:Integer)^^(toInteger [s]))
-                      else (if [s]==1 then (updates y [j,i] [`Q-1,y@j]) else (updates y [j,i] [1,y@j]))  
+                      else (if [s]==1 then (updates y [j,i] [`Q-1,y@j]) else (updates y [j,i] [1,y@j]))
                     | i <- [196..255]
                     | j <- jsamples
                     | s <- signs
@@ -480,7 +480,7 @@ private
 
 expandMask : ([CrhBytes][8], [16]) -> PolyVec L
 expandMask  (rhop, kappa) = [ samplePoly rhop kappa i `L | i <- [0..(L - 1)] ]
-private 
+private
   samplePoly : [CrhBytes][8] -> [16] -> [width L] -> [width L] -> Poly
   //samplePoly K mu kappa i dim = (map (\x -> (`q+GAMMA1-1-(zero#x))) coeffs)
   samplePoly rhop kappa i dim = (map (\x -> mod_sub(`Q, mod_sub(`Q, GAMMA1, 1), zero#x)) coeffs)
@@ -506,7 +506,7 @@ crh seed = join (SHA3::toBytes (take`{CrhBytes*8} (SHA3::shake256 (join (SHA3::t
 // Fixed for round2 submission
 expandA : [SeedBytes][8] -> [K][L]NttPoly
 expandA rho = [ [ (matrixPoly (join rho) i j) | j <- [0..(L - 1)] ] |  i <- [0..(K - 1)] ]
-private 
+private
   matrixPoly : [SeedBytes * 8] -> [width K] -> [width L] -> NttPoly
   matrixPoly rho i j = take`{N} [drop`{1} elt | elt <- randomElts ]
               where
@@ -522,7 +522,7 @@ private
                     b2' = (2^^23-1) && b2 // Typo in paper; following C implementation
 
 /* Supporting Algorithms; see Figure 3 */
-// For finite field elt r, compute r0, r1 such that 
+// For finite field elt r, compute r0, r1 such that
 // r mod Q = r1 * 2^D + r0 with -2^{D-1} < r0 <= 2^{D-1}.
 power2Round : [QBits] -> ([QBits],[QBits])
 power2Round r = ((r' - r0)/2^^`D, r0) // (r1, r0)
@@ -535,7 +535,7 @@ polyPower2Round p = unzip [ power2Round r | r <- p ]
 power2RoundPolyVec : {dim} (fin dim, dim >= 1) => PolyVec dim -> ([dim]IntPoly,[dim]IntPoly)
 power2RoundPolyVec v = unzip (map polyPower2Round v)
 
-// For a finite field element r, returns (high bits, low bits). 
+// For a finite field element r, returns (high bits, low bits).
 decompose : [QBits] -> ([QBits],[QBits])
 decompose r = if (r' - r0) == (`Q - 1) then (0, r0 - 1)
                     else ((r' - r0) / ALPHA, r0)
@@ -564,7 +564,7 @@ decomposePoly p = unzip [ decompose x | x <- p ]
 decomposePolyVec : { n } (fin n, n >= 1) => PolyVec n  -> (PolyVec n, PolyVec n)
 decomposePolyVec r = unzip [ decomposePoly p | p <- r ]
 
-// Hint bit indicating whether the low bits of the input element overflow into the high bits. 
+// Hint bit indicating whether the low bits of the input element overflow into the high bits.
 makeHint : ([QBits], [QBits]) -> Bit
 makeHint (z, r) = r1 != v1
           where highBits c = (decompose c).0
@@ -610,7 +610,7 @@ useHintPolyVec (rv, hv) = [ useHintPoly hpoly rpoly
 ones bv = foldl (+) 0 bva
       where
       bva = map toInteger (split bv:[_][1]) */
-private 
+private
   centeredMod : [QBits] -> [QBits] -> [QBits]
   centeredMod x n = if r > (n / 2) then r - n else r
                 where r = x % n
@@ -700,8 +700,8 @@ nttVecConstMul c v = map (nttPolyMult c) v
 
 polyVecSum : { dim } (fin dim) => PolyVec dim -> PolyVec dim -> PolyVec dim
 polyVecSum v1 v2 = map nttInv (polyVecAdd (map ntt v1) (map ntt v2))
-    
-// Add polynomials 
+
+// Add polynomials
 polyAdd : Poly -> Poly -> Poly
 polyAdd p1 p2 = [ mod_add(`Q, x, y) | x <- p1 | y <- p2 ]
 
