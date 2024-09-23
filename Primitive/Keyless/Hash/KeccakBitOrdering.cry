@@ -46,6 +46,11 @@ fromBytes bs = reverse (join (reverse bs))
  *   multiple of 8 bits. This function assumes the input bit vector
  *   has no padding and that the output bit vector is exactly the same length
  *   as the input bit vector.
+ * - `b2h` and `h2b` require finite input. This function allows infinite input.
+ *   This isn't relevant for `h2b` since all the SHA3 functions take finite
+ *   input, but it allows callers of the extendable output SHAKE functions to
+ *   interact lazily with an infinite stream instead of specifying the output
+ *   length at call time.
  *
  * [FIPS-202] does not specify when these conversion functions are expected to
  * be used. The CAVP test vectors provided by NIST use the format consumed by
@@ -68,7 +73,7 @@ reverseBitOrdering msg
         // This is number of bits in the set of "complete" bytes in the input
         // There are `m % 8` bits remaining.
         type Bytes = 8 * (m / 8)
-        flipped_full_bytes = join (map reverse (groupBy`{each=8, parts=m /8} (take`{Bytes} msg)))
+        flipped_full_bytes = join (map reverse (groupBy`{each=8, parts=m / 8} (take`{Bytes} msg)))
         flipped_remainder = reverse (drop`{Bytes} msg)
 
 /**
@@ -82,6 +87,32 @@ property reverseBitOrderingInvolutes msg = reReverse == msg where
     reReverse = reverseBitOrdering (reverseBitOrdering msg)
 
 /**
+ * The `reverseBitOrdering` function is the same as `h2b` when:
+ * - there's no padding on the message (e.g. in `h2b`, the output length `n` is
+ *   the same as the input length `2 * m * HexDigit`); and
+ * - the input length is finite.
+ * ```repl
+ * :prove reverseMatchesh2b`{10}
+ * :prove reverseMatchesh2b`{100}
+ * ```
+ */
+reverseMatchesh2b : {m} (fin m, m > 0) => [2 * m * HexDigit] -> Bool
+property reverseMatchesh2b msg = h2b msg == reverseBitOrdering msg
+
+/**
+ * The `reverseBitOrdering` function is the same as `b2h` if:
+ * - there's no padding needed on the message (e.g. the message length `n`
+ *   divides evenly by 8 (an even number of hex digits)); and
+ * - the output length is finite.
+ * ```repl
+ * :prove reverseMatchesb2h`{10}
+ * :prove reverseMatchesb2h`{100}
+ * ```
+ */
+reverseMatchesb2h : {n} (fin n, n > 0) => [2 * n * HexDigit] -> Bool
+reverseMatchesb2h msg = b2h msg == reverseBitOrdering msg
+
+/*
  * A hex digit is represented in Cryptol as a 4-bit vector.
  */
 type HexDigit = 4
