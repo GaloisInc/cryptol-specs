@@ -1,3 +1,15 @@
+/**
+ * Functions for converting bit string representations used in Keccak.
+ *
+ * This has methods for converting between the standard bit ordering in Cryptol
+ * (big endian, or most significant bit first (MSB)) and the bit ordering
+ * used in Keccak (bytes in MSB order, but the bits in each byte are in
+ * least significant bit first (LSB) order).
+ *
+ * @copyright Galois, Inc.
+ * @author Ajay Kumar Eeralla
+ * @author Marcella Hastings <marcella@galois.com>
+ */
 module Primitive::Keyless::Hash::KeccakBitOrdering where
 /** Splits a list of bits into bytes, using little-endian bit order. **/
 toBytes : {n} (fin n) => [8*n] -> [n][8]

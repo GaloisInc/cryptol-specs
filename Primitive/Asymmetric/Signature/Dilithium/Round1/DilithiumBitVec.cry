@@ -1,12 +1,13 @@
 /*
-   This module implements the digital signature scheme Dilithium
-   submitted to the NIST post-quantum project.
-
-   See https://pq-crystals.org/dilithium/data/dilithium-specification.pdf
-
-   Copyright (c) 2018, Galois Inc.
-   www.cryptol.net
-*/
+ * This module implements the digital signature scheme Dilithium
+ * submitted to the NIST post-quantum project.
+ *
+ * See https://pq-crystals.org/dilithium/data/dilithium-specification.pdf
+ *
+ * @copyright Galois Inc. 2018
+ * @author Ajay Kumar Eeralla
+ * @editor Andrew Kent
+ */
 
 module Primitive::Asymmetric::Signature::Dilithium::Round1::DilithiumBitVec where
 

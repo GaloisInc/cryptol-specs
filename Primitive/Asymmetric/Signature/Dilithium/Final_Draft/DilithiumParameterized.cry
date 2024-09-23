@@ -2,6 +2,9 @@
  * This module implements FIPS204 ML-DSA Final Draft.
  *
  * This specification was developed in collaboration with MITRE.
+ *
+ * @copyright Galois Inc
+ * @author Brett Boston
  */
 module DilithiumParameterized where
 import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHA3 (shake128)

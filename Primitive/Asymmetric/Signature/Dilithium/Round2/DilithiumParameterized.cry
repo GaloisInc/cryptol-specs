@@ -1,11 +1,15 @@
 /*
-   This module implements the digital signature scheme Dilithium
-   submitted to the NIST post-quantum project.
-
-   See https://pq-crystals.org/dilithium/data/dilithium-specification.pdf
-   Copyright (c) 2018-2021, Galois Inc.
-   www.cryptol.net
-*/
+ * This module implements the digital signature scheme Dilithium
+ * submitted to the NIST post-quantum project.
+ *
+ * See https://pq-crystals.org/dilithium/data/dilithium-specification.pdf
+ *
+ * @copyright Galois Inc. 2018 - 2021
+ * @author Ajay Kumar Eeralla
+ * @author Aaron Tomb
+ * @editor Andrew Kent
+ *
+ */
 
 /* From now on, I follow the following naming conventions:
 * types, modules -- upper camel case
