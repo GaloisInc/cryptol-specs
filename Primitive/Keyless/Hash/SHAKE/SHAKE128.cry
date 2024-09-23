@@ -20,7 +20,7 @@ import Primitive::Keyless::Hash::keccak where
     // The capacity is double the security level, so this provides a security
     // level of 128 (as the name suggests).
     type c = 256
-import Primitive::Keyless::Hash::KeccakBitOrdering (reverseBitOrdering)
+import Primitive::Keyless::Hash::KeccakBitOrdering (reverseBitOrdering, truncate)
 
 /**
  * SHAKE128 extendable-output function.
@@ -35,17 +35,18 @@ shake128 : {d, m} (fin m) => [m] -> [d]
 shake128 M = reverseBitOrdering (Keccak ((reverseBitOrdering M) # 0b1111))
 
 /**
- * The CAVP test vectors provide input in MSB order as hex strings, and each
- * test is for a specific bit-length input.
- * By default, Cryptol reads hex-encoded literals as having a length that's a
- * multiple of 4 or 8. In order to get the correct-length input, we need to convert
- * to the Keccak bit ordering, truncate the tailing 0s, and convert back to MSB
- * bit ordering to use in our `shake128` call.
+ * The CAVP test vectors provide input in MSB order as hex strings with an
+ * even number of digits; each test is for a specific bit-length input.
+ * This aligns with the encoding scheme described in [FIPS-202] Appendix B.
+ *
+ * The SHAKE-128 API above does not require inputs to be encoded in that
+ * format. In order to use the above API, we need to truncate the "padding"
+ * bits that are used to extend the input into an even number of hex digits
+ * (e.g. a multiple of 8 bits).
  */
-computeCavpTestVector : {k, k', l} (fin k, fin l, k' >= k) => [k'] -> [l] -> Bool
+computeCavpTestVector : {k, l} (fin k, fin l) => [8 * (k /^ 8)] -> [l] -> Bool
 computeCavpTestVector msg expectedResult = result == expectedResult where
-    correctLengthInput = reverseBitOrdering (take`{k} (reverseBitOrdering msg))
-    result = shake128 correctLengthInput
+    result = shake128 (truncate`{k, 8 * (k /^ 8)} msg)
 
 /**
  * ```repl
@@ -65,7 +66,7 @@ property k0 = computeCavpTestVector`{0} [] expected_result where
  * :prove k1
  * ```
  */
-property k1 = computeCavpTestVector`{1} 0x0 expected_result where
+property k1 = computeCavpTestVector`{1} 0x00 expected_result where
     expected_result = join [
         0xe78b86559a9ccdc72288bf7bcf8e11d5,
         0x74543a2922978913a02be149e89d03ca,
@@ -77,7 +78,7 @@ property k1 = computeCavpTestVector`{1} 0x0 expected_result where
  * :prove k2
  * ```
  */
-property k2 = computeCavpTestVector`{2} 0x3 expected_result where
+property k2 = computeCavpTestVector`{2} 0x03 expected_result where
     expected_result = join [
         0xf6b6c4093f0a2ceba61b9f2c2fea2ca2,
         0x38ce9005edcd588c380405070532ddd0,
@@ -90,7 +91,7 @@ property k2 = computeCavpTestVector`{2} 0x3 expected_result where
  * :prove k3
  * ```
  */
-property k3 = computeCavpTestVector`{3} 0x6 expected_result where
+property k3 = computeCavpTestVector`{3} 0x06 expected_result where
     expected_result = join [
         0x178afb3be00c33b682f0c920520699e3,
         0xb7e4c360274fd8b41cdeaa8d3c675bdc,

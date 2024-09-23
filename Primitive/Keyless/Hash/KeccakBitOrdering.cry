@@ -87,10 +87,21 @@ property reverseBitOrderingInvolutes msg = reReverse == msg where
     reReverse = reverseBitOrdering (reverseBitOrdering msg)
 
 /**
+ * This computes the truncation step from `h2b`.
+ *
+ * This is designed to be used in applications where the input for a SHA-3
+ * function is provided in the even-number-of-hex-digits format described in
+ * [FIPS-202] Appendix B.1.
+ */
+truncate : {n, m} (fin m, fin n, m >= n, m % (2 * HexDigit) == 0) => [m] -> [n]
+truncate msg = reverseBitOrdering (take (reverseBitOrdering msg))
+
+/**
  * The `reverseBitOrdering` function is the same as `h2b` when:
  * - there's no padding on the message (e.g. in `h2b`, the output length `n` is
  *   the same as the input length `2 * m * HexDigit`); and
  * - the input length is finite.
+ *
  * ```repl
  * :prove reverseMatchesh2b`{10}
  * :prove reverseMatchesh2b`{100}
@@ -98,6 +109,25 @@ property reverseBitOrderingInvolutes msg = reReverse == msg where
  */
 reverseMatchesh2b : {m} (fin m, m > 0) => [2 * m * HexDigit] -> Bool
 property reverseMatchesh2b msg = h2b msg == reverseBitOrdering msg
+
+/**
+ * If there is padding on the message passed to `h2b`, truncating that input
+ * and passing to `reverseBitOrdering` is the same as passing directly to `h2b`.
+ *
+ * ```repl
+ * :prove truncateAndReverseMatchesh2b`{3, 17}
+ * :prove truncateAndReverseMatchesh2b`{3, 18}
+ * :prove truncateAndReverseMatchesh2b`{3, 19}
+ * :prove truncateAndReverseMatchesh2b`{3, 20}
+ * :prove truncateAndReverseMatchesh2b`{3, 21}
+ * :prove truncateAndReverseMatchesh2b`{3, 22}
+ * :prove truncateAndReverseMatchesh2b`{3, 23}
+ * :prove truncateAndReverseMatchesh2b`{3, 24}
+ */
+truncateAndReverseMatchesh2b : {m, n} (fin m, m > 0, n > 0, 2 * HexDigit * m >= n) => [2 * m * HexDigit] -> Bool
+property truncateAndReverseMatchesh2b msg = h2b_result == rt_result where
+    h2b_result = h2b`{n} msg
+    rt_result = reverseBitOrdering (truncate`{n} msg)
 
 /**
  * The `reverseBitOrdering` function is the same as `b2h` if:
@@ -111,6 +141,26 @@ property reverseMatchesh2b msg = h2b msg == reverseBitOrdering msg
  */
 reverseMatchesb2h : {n} (fin n, n > 0) => [2 * n * HexDigit] -> Bool
 reverseMatchesb2h msg = b2h msg == reverseBitOrdering msg
+
+/**
+ * If there is padding needed for the message produced by `b2h`, calling the
+ * `truncate` function on that output is the same as calling
+ * `reverseBitOrdering`.
+ *
+ * ```repl
+ * :prove reverseAndTruncateMatchesb2h`{17}
+ * :prove reverseAndTruncateMatchesb2h`{18}
+ * :prove reverseAndTruncateMatchesb2h`{19}
+ * :prove reverseAndTruncateMatchesb2h`{20}
+ * :prove reverseAndTruncateMatchesb2h`{21}
+ * :prove reverseAndTruncateMatchesb2h`{22}
+ * :prove reverseAndTruncateMatchesb2h`{23}
+ * :prove reverseAndTruncateMatchesb2h`{24}
+ */
+reverseAndTruncateMatchesb2h : {n} (fin n, n > 0) => [n] -> Bool
+property reverseAndTruncateMatchesb2h bits = b2h_result == rev_result where
+    b2h_result = truncate`{n} (b2h bits)
+    rev_result = reverseBitOrdering bits
 
 /*
  * A hex digit is represented in Cryptol as a 4-bit vector.
