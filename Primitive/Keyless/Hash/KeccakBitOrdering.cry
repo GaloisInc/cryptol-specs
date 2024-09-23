@@ -11,11 +11,17 @@
  * @author Marcella Hastings <marcella@galois.com>
  */
 module Primitive::Keyless::Hash::KeccakBitOrdering where
-/** Splits a list of bits into bytes, using little-endian bit order. **/
+/**
+ * Deprecated!!
+ * Splits a list of bits into bytes, using little-endian bit order.
+ */
 toBytes : {n} (fin n) => [8*n] -> [n][8]
 toBytes s = reverse (split (reverse s))
 
-/** Joins a list of bytes into a list of bits, using little-endian bit order. **/
+/**
+ * Deprecated!!
+ * Joins a list of bytes into a list of bits, using little-endian bit order.
+ */
 fromBytes : {n} (fin n) => [n][8] -> [8*n]
 fromBytes bs = reverse (join (reverse bs))
 
@@ -90,7 +96,7 @@ type HexDigit = 4
  *
  * [FIPS-202] Appendix B.1, Algorithm 10.
  */
-h2b: {n, m} (fin m, m >= 1, n <= 8 * m) => [2 * m * HexDigit] -> [n]
+h2b: {n, m} (fin m, m > 0, n > 0, n <= 8 * m) => [2 * m * HexDigit] -> [n]
 h2b msg = S where
     // Step 1.
     H = groupBy`{HexDigit} msg
@@ -116,3 +122,109 @@ h2b msg = S where
 property h2bExampleWorks = h2b`{14} H == S where
     H = 0xA32E
     S = 0b11000101011101
+
+/**
+ * Converts a SHA-3 string into a hexadecimal string with an even number of
+ * digits.
+ *
+ * [FIPS-202] Appendix B.1, Algorithm 11.
+ *
+ * Note that this is not a particularly efficient way to do this in Cryptol.
+ * Cryptol does not distinguish between bit vectors and hexadecimal strings,
+ * so some of the transformations in this function are a little arbitrary.
+ */
+b2h : {n} (fin n, n > 0) => [n] -> [2 * (n /^ 8) * HexDigit]
+b2h S = H where
+    // Step 1: we use Cryptol's `n syntax to get the value of the type.
+    // Step 2. See `zero_length_is_correct` for an explanation of the type.
+    T = S # (zero : [(8 - (n % 8)) % 8]) // Equivalently, -n % 8.
+    type m = n /^ 8
+    // Step 3.
+    b = [[ T@(8 * i + j) | j <- [0..7]] | i <- [0..m-1]]
+    // Step 4a.
+    h = [reverse bs | bs <- b]
+    // Step 4b.
+    Hs = [split`{2, HexDigit} hi | hi <- h]
+    H = join (join Hs)
+
+/**
+ * Helper property to prove the equivalence from b2h is correct.
+ * This exists because we can't use negative numbers in types.
+ * ```repl
+ * :prove zero_length_is_correct
+ * ```
+ */
+zero_length_is_correct : Integer -> Bool
+property zero_length_is_correct n = (-n) % 8 == (8 - (n % 8)) % 8
+
+/**
+ * Prove these things invert each other for inputs that "fill" the hex string.
+ * ```repl
+ * :prove h2bAndb2hInvert`{1}
+ * :prove h2bAndb2hInvert`{10}
+ * :prove h2bAndb2hInvert`{100}
+ * :prove h2bAndb2hInvert`{1000}
+ * ```
+ */
+h2bAndb2hInvert : {m} (fin m, m > 0) => [2 * m * HexDigit] -> Bool
+property h2bAndb2hInvert msg = b2h (h2b`{2 * m * HexDigit} msg) == msg
+
+/**
+ * Prove these things invert each other for inputs that are padded.
+ * In fact, they're not guaranteed to invert each other because there's no
+ * standard for the padding on h2b -- the "extra" bytes that are between `n`
+ * and `8m` get truncated in h2b, and are replaced specifically with 0s in b2h.
+ * So it's possible to have different hexadecimal strings that parse as the
+ * same SHA-3 strings.
+ *
+ * That said, it still seems useful to demonstrate that if the padding is all
+ * zeros, the input itself is still preserved between the two functions.
+ * So, we take inputs of a "short" length (e.g. a length that is not divisible
+ * by 8), then pad them to the correct length (`hexMsg`), then convert to bits
+ * and back.
+ *
+ * We pad the strings using our `reverseBitOrdering` function; the padding goes
+ * to the "inside" of the last byte. This matches the convention in the CAVP
+ * test vectors. E.g. if `-` is the actual message and `P` is the padding, a
+ * vector with 3 bits of padding looks like:
+ * `-------- -------- -------- PPP-----`
+ *
+ * The type parameters are:
+ * - `m`: the number of pairs of hex digits in the input string
+ * - `n`: the number of actual bits in the input string
+ *
+ * So, there are 8 potential padding lengths (0 through 7 bits of padding).
+ * Here's a set of tests checking all the padding lengths for a string of
+ * 3 pairs of hex digits:
+ * ```repl
+ * :prove h2bAndb2hInvertForShortStrings`{3, 17}
+ * :prove h2bAndb2hInvertForShortStrings`{3, 18}
+ * :prove h2bAndb2hInvertForShortStrings`{3, 19}
+ * :prove h2bAndb2hInvertForShortStrings`{3, 20}
+ * :prove h2bAndb2hInvertForShortStrings`{3, 21}
+ * :prove h2bAndb2hInvertForShortStrings`{3, 22}
+ * :prove h2bAndb2hInvertForShortStrings`{3, 23}
+ * :prove h2bAndb2hInvertForShortStrings`{3, 24}
+ * ```
+ */
+h2bAndb2hInvertForShortStrings : {m, n} (fin m, m > 0, n > 0, n /^ (2 * HexDigit) == m) => [n] -> Bool
+property h2bAndb2hInvertForShortStrings msg = b2h (h2b`{n} hexMsg) == hexMsg where
+    hexMsg = reverseBitOrdering ((reverseBitOrdering msg) # zero) : [2 * m * HexDigit]
+
+/**
+ * This is the arguably simpler version of `h2bAndb2hInvertForShortStrings`
+ * where we start on the bits side instead of the hex side...
+ *
+ * ```repl
+ * :prove b2hAndh2bInvert`{17}
+ * :prove b2hAndh2bInvert`{18}
+ * :prove b2hAndh2bInvert`{19}
+ * :prove b2hAndh2bInvert`{20}
+ * :prove b2hAndh2bInvert`{21}
+ * :prove b2hAndh2bInvert`{22}
+ * :prove b2hAndh2bInvert`{23}
+ * :prove b2hAndh2bInvert`{24}
+ * ```
+ */
+b2hAndh2bInvert: {n} (fin n, n > 0) => [n] -> Bool
+property b2hAndh2bInvert msg = h2b (b2h msg) == msg
