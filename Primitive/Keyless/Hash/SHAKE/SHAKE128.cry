@@ -70,6 +70,8 @@ xof M = KBO::reverseBitOrdering (Keccak ((KBO::reverseBitOrdering M) # 0b1111))
  * format. In order to use the above API, we need to truncate the "padding"
  * bits that are used to extend the input into an even number of hex digits
  * (e.g. a multiple of 8 bits).
+ *
+ * @see https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/shakebittestvectors.zip
  */
 computeCavpTestVector : {k, l} (fin k, fin l) => [8 * (k /^ 8)] -> [l] -> Bool
 computeCavpTestVector msg expectedResult = result == expectedResult where
