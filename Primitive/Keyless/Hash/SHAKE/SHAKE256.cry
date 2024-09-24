@@ -20,7 +20,7 @@ import Primitive::Keyless::Hash::keccak where
     // The capacity is double the security level, so this provides a security
     // level of 256 (as the name suggests).
     type c = 512
-import Primitive::Keyless::Hash::KeccakBitOrdering (toBytes)
+import Primitive::Keyless::Hash::KeccakBitOrdering as KBO
 
 /**
  * SHAKE256 extendable-output function.
@@ -30,16 +30,43 @@ import Primitive::Keyless::Hash::KeccakBitOrdering (toBytes)
  *
  * Note that the specification of `c` is above, in the instantiation of the
  * `keccak` module.
+ *
+ * This expects input and produces output in the bit ordering used by the
+ * `Keccak` spec, where bytes are in MSB order and the bits in each byte are
+ * in LSB order. Use the `KeccakBitOrdering::toBytes` function to transform
+ * the input and output to Cryptol-standard MSB order:
+ * ```repl
+ * join (KBO::toBytes (shake256 (join (KBO::toBytes 0x6ec9b3)))) == 0x0adc999bb92b9fdd0ce7664a06081ef8
+ * ```
  */
-shake256: {d, m} (fin m) => [m] -> [d]
+shake256 : {d, m} (fin m) => [m] -> [d]
 shake256 M = Keccak (M # 0b1111)
 
-/*
+/**
+ * SHAKE256 extendable-output function.
+ * [FIPS-202] Section 6.2.
+ *
+ * This supports any output length `d`, including infinite length.
+ *
+ * This expects input and output in MSB order. It handles conversion to and
+ * from the bit ordering expected by `Keccak`. If input is provided in the
+ * format described in [FIPS-202] Appendix B (a hex string with an even
+ * number of digits and an actual length `n`), use the `KOB::truncate` function
+ * to get the correct input:
+ * ```repl
+ * xof 0x6ec9b3 == 0x0adc999bb92b9fdd0ce7664a06081ef8
+ * xof (KBO::truncate`{23} 0x3a7339) == 0xfafa506e40f7a356507196677a7b4c82
+ * ```
+ */
+xof : {d, m} (fin m) => [m] -> [d]
+xof M = KBO::reverseBitOrdering (Keccak ((KBO::reverseBitOrdering M) # 0b1111))
+
+/**
  * ```repl
  * :prove k5
  * ```
  */
-property k5 = join (toBytes (shake256`{512} [])) == expected_result where
+property k5 = xof [] == expected_result where
     expected_result = join [
         0x46b9dd2b0ba88d13233b3feb743eeb24,
         0x3fcd52ea62b81b82b50c27646ed5762f,
@@ -47,12 +74,12 @@ property k5 = join (toBytes (shake256`{512} [])) == expected_result where
         0xfc821c49479ab48640292eacb3b7c4be
     ]
 
-/*
+/**
  * ```repl
  * :prove k6
  * ```
  */
-property k6 = join (toBytes (shake256 0b0)) == expected_result where
+property k6 = xof 0b0 == expected_result where
     expected_result = join [
         0x1e20b13f3bdb730d286913335c092bce,
         0xc0eb1aff2798c05736faa93bd665807a,
@@ -60,12 +87,12 @@ property k6 = join (toBytes (shake256 0b0)) == expected_result where
         0x55d30410d71b8e275a676545600f1c35
     ]
 
-/*
+/**
  * ```repl
  * :prove k7
  * ```
  */
-property k7 = join (toBytes (shake256 0b11 : [512])) == expected_result where
+property k7 = xof 0b11 == expected_result where
     expected_result = join [
         0x4f86b0eb85f7a9f6dc38b622706948ad,
         0xb2beb6dd6911b5e9d865fd1f9667b5c0,
@@ -73,15 +100,15 @@ property k7 = join (toBytes (shake256 0b11 : [512])) == expected_result where
         0x7c98f3948e6b7959a9b8950ffd6345d5
     ]
 
-/*
+/**
  * ```repl
  * :prove k8
  * ```
  */
-property k8 = join (toBytes (shake256`{d=512} (reverse 0b110))) == expected_result where
+property k8 = xof 0b110 == expected_result where
     expected_result = join [
         0x27b5f40b3645215e370472ebb06817ae,
         0xbddbe2cbd3a9a3ba3914da88e5853e70,
         0x83630e6d51d7a009017d8176c3067329,
         0xbec8e5f65591d65c5894c40132f1a2ab
-                                                                             ]
+    ]
