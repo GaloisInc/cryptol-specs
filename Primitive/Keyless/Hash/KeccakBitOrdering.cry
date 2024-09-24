@@ -64,6 +64,8 @@ fromBytes bs = reverse (join (reverse bs))
  * the overall bit ordering scheme:
  * @see https://cryptologie.net/article/387/byte-ordering-and-bit-numbering-in-keccak-and-sha-3/
  * The CAVP test vectors from NIST:
+ * @see https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing#sha3vsha3vss
+ * The CSAG examples and intermediate values from NIST:
  * @see https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values#Hashing
  */
 reverseBitOrdering : {m} [m] -> [m]
