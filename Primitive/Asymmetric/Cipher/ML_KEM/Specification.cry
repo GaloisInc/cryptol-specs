@@ -1,17 +1,62 @@
-/*
-ML-KEM cipher with a fast NTT implementation.
-
-@copyright Galois, Inc
-@author Marios Georgiou <marios@galois.com>
-
-@copyright Amazon.com or its affiliates.
-@author Rod Chapman <rodchap@amazon.com>
-*/
+/**
+ * ML-KEM cipher with a fast NTT implementation.
+ *
+ * @copyright Galois, Inc
+ * @author Marios Georgiou <marios@galois.com>
+ * @editor Marcella Hastings <marcella@galois.com>
+ *
+ * @copyright Amazon.com or its affiliates.
+ * @author Rod Chapman <rodchap@amazon.com>
+ *
+ * Sources:
+ * [FIPS-203]: National Institute of Standards and Technology. Module-Lattice-
+ *     Basead Key-Encapsulation Mechanism Standard. (Department of Commerce,
+ *     Washington, D.C.), Federal Information Processing Standards Publication
+ *     (FIPS) NIST FIPS 203. August 2024.
+ *     @see https://doi.org/10.6028/NIST.FIPS.203
+ */
 module Primitive::Asymmetric::Cipher::ML_KEM::Specification where
 
+/*
+ * [FIPS-203] Section 2.3.
+ */
+type n = 256
+/*
+ * [FIPS-203] Section 2.3.
+ */
 type q = 3329
-
+/**
+ * A primitive n-th root of unity modulo `q`.
+ * [FIPS-203] Section 2.3.
+ */
+zeta = 17 : Z q
+/*
+ * Defines the set {0, 1, ..., 255} of unsigned 8-bit integers.
+ * [FIPS-203] Section 2.3.
+ */
 type Byte = [8]
+
+/*
+ * Representation of an element in the ring `R_q` or in `T_q`.
+ *
+ * `R_q` is the ring `Z_q [X] / (X^n + 1)` with ring operations
+ * addition and multiplication modulo `X^n + 1`.
+ *
+ * [FIPS-203] Section 2.3 (definition of the ring).
+ * [FIPS-203] Section 2.4.4, Equation 2.5 (definition of the representation of
+ *     elements in the ring).
+ *
+ * `T_q` is the image of `R_q` under the number-theoretic transform. An
+ * element of `T_q` is the "NTT representation" of a polynomial in `R_q`.
+ *
+ * [FIPS-203] Section 2.3 (definition of the `T_q`).
+ * [FIPS-203] Section 2.4.4 Equation 2.7 (definition of the representation of
+ *     an element in `T_q`).
+
+ * Z is a Cryptol primitive such that Z q represents integers mod q that are
+ * closed under arithmetic operations
+ */
+type Z_q_256 = [n](Z q)
 
 BytesToBits : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
 BytesToBits input = join (map reverse input)
@@ -39,13 +84,6 @@ concatPlus a b = plus`{x} (a#b)
 concatPlusCorrect : {x, y} (fin y, fin x) => [x]Byte -> [y]Byte -> Bit
 property concatPlusCorrect a b = concatPlus a b == b
 
-
-
-type n = 256
-
-// Z is a Cryptol primitive such that Z q represents integers mod q that are
-// closed under arithmetic operations
-type Z_q_256 = [n](Z q)
 
 
 
@@ -104,9 +142,6 @@ J : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
 G : {ginl} (fin ginl) => [ginl]Byte -> ([32]Byte, [32]Byte)
 KDF : {kdfinl} (fin kdfinl, kdfinl > 0) => [kdfinl]Byte -> [inf]Byte
 
-
-
-zeta = 17 : Z q
 
 QMinusOne : Bit
 property QMinusOne = `q - 1 == 2^^8*13
