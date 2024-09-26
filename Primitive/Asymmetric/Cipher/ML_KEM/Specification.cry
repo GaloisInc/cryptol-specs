@@ -189,7 +189,126 @@ Compress x = map Compress'`{d} x
 Decompress : {d, k1} (d < lg2 q, fin k1) => [k1][n][d] -> [k1]Z_q_256
 Decompress x = map Decompress'`{d} x
 
+/*
+ * We make this trivial serialization explicit, since it is not an identity in Cryptol.
+ * Byte encoding and decoding involves regrouping 8-bit arrays into ell-bit arrays.
+ */
+regroup B = reverse (groupBy (join (reverse B)))
 
+/**
+ * This is used in some places where the `ByteEncode` function is required in
+ * the spec. It looks like a 2D version of it?
+ */
+EncodeBytes' : {ell, c} (fin ell, ell > 0, fin c) => [c * 8][ell] -> [c * ell]Byte
+EncodeBytes' = regroup
+
+/**
+ * This is used in some places where the `ByteDecode` function is required in
+ * the spec. It looks like a 3D version of it?
+ */
+DecodeBytes' : {ell, c} (fin ell, ell > 0, fin c) => [c * ell]Byte -> [c * 8][ell]
+DecodeBytes' = regroup
+
+/**
+ * Encoding and decoding bytes must be inverses in 2D.
+ * ```repl
+ * :prove CorrectnessEncodeBytes'
+ * ```
+ */
+CorrectnessEncodeBytes' : [n][2] -> Bit
+property CorrectnessEncodeBytes' B = DecodeBytes'(EncodeBytes' B) == B
+
+/**
+ * This is used in some places where the `ByteEncode` function is required in
+ * the spec. It's a 3D version of `EncodeBytes'`.
+ */
+EncodeBytes : {ell, k1, c} (fin ell, ell > 0, fin k1, fin c) =>
+    [k1][c * 8][ell] -> [c * ell * k1]Byte
+EncodeBytes B = EncodeBytes' (join B)
+
+/**
+ * This is used in some places where the `ByteDecode` function is required in
+ * the spec. It's a 3D version of `DecodeBytes'`.
+ */
+DecodeBytes : {ell, k1, c} (fin ell, ell > 0, fin k1, fin c) =>
+    [c * ell * k1]Byte -> [k1][c * 8][ell]
+DecodeBytes B = groupBy (DecodeBytes' B)
+
+/**
+ * Encoding and decoding bytes must be inverses in 3D.
+ * ```repl
+ * :prove CorrectnessEncodeBytes
+ * ```
+ */
+CorrectnessEncodeBytes : [k][n][2] -> Bit
+property CorrectnessEncodeBytes B = DecodeBytes(EncodeBytes B) == B
+
+/**
+ * Apply encoding to a vector applying `Encode` to each element, then
+ * concatenating the results.
+ * [FIPS-203] Section 2.4.8.
+ */
+Encode : {ell, k1} (fin ell, ell > 0, fin k1) => [k1]Z_q_256 -> [32 * ell * k1]Byte
+Encode fVec = join (map Encode'`{ell} fVec)
+
+/**
+ * Apply decoding to a vector by splitting the vector into appropriately-sized
+ * components and applying `Decode` to each element.
+ * [FIPS-203] Section 2.4.8.
+ */
+Decode : {ell, k1} (fin ell, ell > 0, fin k1) => [32 * ell * k1]Byte -> [k1]Z_q_256
+Decode BVec = map Decode'`{ell} (split BVec)
+
+/**
+ * Encode and decode must be inverses in 2D.
+ * ```repl
+ * :check CorrectnessEncodeDecode
+ * ```
+ */
+CorrectnessEncodeDecode : [k]Z_q_256 -> Bit
+property CorrectnessEncodeDecode fVec = all CorrectnessEncodeDecode' fVec
+
+/**
+ * Decode a byte array into an array of `d`-bit integers.
+ * [FIPS-203] Section 4.2.1, Algorithm 6.
+ */
+DecodeSpec : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> Z_q_256
+DecodeSpec B = [f i | i <- [0 .. 255]]
+    where betas = BytesToBits B : [256 * ell]
+          f i = sum [ BitToZ`{q}(betas@(i*`ell+j))*fromInteger(2^^j)
+                    | j <- [0 .. (ell-1)]]
+
+/**
+ * Decode a byte array into an array of `d`-bit integers, more efficiently than
+ * the version in the spec.
+ */
+Decode' : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> Z_q_256
+Decode' B = map BitstoZ`{ell} (split (BytesToBits B))
+
+/**
+ * Proof that the efficient decode function is the same as the spec version.
+ */
+DecodeEquiv : [32 * 12]Byte -> Bit
+property DecodeEquiv B = (Decode' B == DecodeSpec B)
+
+/**
+ * Encode an array of `d`-bit integers into a byte array, more efficiently than
+ * the version in the spec.
+ *
+ * This should be equivalent to [FIPS-203] Section 4.2.1, Algorithm 5.
+ */
+Encode' : {ell} (fin ell, ell > 0) => Z_q_256 -> [32 * ell]Byte
+Encode' f = BitsToBytes (join (map ZtoBits`{ell} f))
+
+/**
+ * Decoding must be the inverse of encoding.
+ * [FIPS-203] Section 4.2.1, "Encoding and decoding."
+ * ```repl
+ * :check CorrectnessEncodeDecode'
+ * ```
+ */
+CorrectnessEncodeDecode' : Z_q_256 -> Bit
+property CorrectnessEncodeDecode' f = Decode'`{12}(Encode'`{12} f) == f
 
 KDF : {kdfinl} (fin kdfinl, kdfinl > 0) => [kdfinl]Byte -> [inf]Byte
 KDF input = groupBy`{8}(shake256 (fromBytes(input)))
@@ -502,126 +621,6 @@ SamplePolyCBD B = [f i | i <- [0 .. 255]]
           y i = sum [BitToZ`{q} (betas@(2*i*`eta+`eta+j)) | j <- [0 .. (eta-1)]]
           f i = (x i) - (y i)
 
-/*
- * We make this trivial serialization explicit, since it is not an identity in Cryptol.
- * Byte encoding and decoding involves regrouping 8-bit arrays into ell-bit arrays.
- */
-regroup B = reverse (groupBy (join (reverse B)))
-
-/**
- * This is used in some places where the `ByteEncode` function is required in
- * the spec. It looks like a 2D version of it?
- */
-EncodeBytes' : {ell, c} (fin ell, ell > 0, fin c) => [c * 8][ell] -> [c * ell]Byte
-EncodeBytes' = regroup
-
-/**
- * This is used in some places where the `ByteDecode` function is required in
- * the spec. It looks like a 3D version of it?
- */
-DecodeBytes' : {ell, c} (fin ell, ell > 0, fin c) => [c * ell]Byte -> [c * 8][ell]
-DecodeBytes' = regroup
-
-/**
- * Encoding and decoding bytes must be inverses in 2D.
- * ```repl
- * :prove CorrectnessEncodeBytes'
- * ```
- */
-CorrectnessEncodeBytes' : [n][2] -> Bit
-property CorrectnessEncodeBytes' B = DecodeBytes'(EncodeBytes' B) == B
-
-/**
- * This is used in some places where the `ByteEncode` function is required in
- * the spec. It's a 3D version of `EncodeBytes'`.
- */
-EncodeBytes : {ell, k1, c} (fin ell, ell > 0, fin k1, fin c) =>
-    [k1][c * 8][ell] -> [c * ell * k1]Byte
-EncodeBytes B = EncodeBytes' (join B)
-
-/**
- * This is used in some places where the `ByteDecode` function is required in
- * the spec. It's a 3D version of `DecodeBytes'`.
- */
-DecodeBytes : {ell, k1, c} (fin ell, ell > 0, fin k1, fin c) =>
-    [c * ell * k1]Byte -> [k1][c * 8][ell]
-DecodeBytes B = groupBy (DecodeBytes' B)
-
-/**
- * Encoding and decoding bytes must be inverses in 3D.
- * ```repl
- * :prove CorrectnessEncodeBytes
- * ```
- */
-CorrectnessEncodeBytes : [k][n][2] -> Bit
-property CorrectnessEncodeBytes B = DecodeBytes(EncodeBytes B) == B
-
-/**
- * Apply encoding to a vector applying `Encode` to each element, then
- * concatenating the results.
- * [FIPS-203] Section 2.4.8.
- */
-Encode : {ell, k1} (fin ell, ell > 0, fin k1) => [k1]Z_q_256 -> [32 * ell * k1]Byte
-Encode fVec = join (map Encode'`{ell} fVec)
-
-/**
- * Apply decoding to a vector by splitting the vector into appropriately-sized
- * components and applying `Decode` to each element.
- * [FIPS-203] Section 2.4.8.
- */
-Decode : {ell, k1} (fin ell, ell > 0, fin k1) => [32 * ell * k1]Byte -> [k1]Z_q_256
-Decode BVec = map Decode'`{ell} (split BVec)
-
-/**
- * Encode and decode must be inverses in 2D.
- * ```repl
- * :check CorrectnessEncodeDecode
- * ```
- */
-CorrectnessEncodeDecode : [k]Z_q_256 -> Bit
-property CorrectnessEncodeDecode fVec = all CorrectnessEncodeDecode' fVec
-
-/**
- * Decode a byte array into an array of `d`-bit integers.
- * [FIPS-203] Section 4.2.1, Algorithm 6.
- */
-DecodeSpec : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> Z_q_256
-DecodeSpec B = [f i | i <- [0 .. 255]]
-    where betas = BytesToBits B : [256 * ell]
-          f i = sum [ BitToZ`{q}(betas@(i*`ell+j))*fromInteger(2^^j)
-                    | j <- [0 .. (ell-1)]]
-
-/**
- * Decode a byte array into an array of `d`-bit integers, more efficiently than
- * the version in the spec.
- */
-Decode' : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> Z_q_256
-Decode' B = map BitstoZ`{ell} (split (BytesToBits B))
-
-/**
- * Proof that the efficient decode function is the same as the spec version.
- */
-DecodeEquiv : [32 * 12]Byte -> Bit
-property DecodeEquiv B = (Decode' B == DecodeSpec B)
-
-/**
- * Encode an array of `d`-bit integers into a byte array, more efficiently than
- * the version in the spec.
- *
- * This should be equivalent to [FIPS-203] Section 4.2.1, Algorithm 5.
- */
-Encode' : {ell} (fin ell, ell > 0) => Z_q_256 -> [32 * ell]Byte
-Encode' f = BitsToBytes (join (map ZtoBits`{ell} f))
-
-/**
- * Decoding must be the inverse of encoding.
- * [FIPS-203] Section 4.2.1, "Encoding and decoding."
- * ```repl
- * :check CorrectnessEncodeDecode'
- * ```
- */
-CorrectnessEncodeDecode' : Z_q_256 -> Bit
-property CorrectnessEncodeDecode' f = Decode'`{12}(Encode'`{12} f) == f
 
 
 
