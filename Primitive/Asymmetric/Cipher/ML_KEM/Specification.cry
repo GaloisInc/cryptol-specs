@@ -366,19 +366,33 @@ SamplePolyCBD B = [f i | i <- [0 .. 255]]
           y i = sum [BitToZ`{q} (betas@(2*i*`eta+`eta+j)) | j <- [0 .. (eta-1)]]
           f i = (x i) - (y i)
 
+/**
+ * [FIPS-203] Section 4.3 "The mathematical structure of the NTT."
+ * ```repl
+ * :prove QisCorrectlyDefined
+ * ```
+ */
+QisCorrectlyDefined: Bit
+property QisCorrectlyDefined = `q == 2^^8 * 13 + 1
 
-KDF : {kdfinl} (fin kdfinl, kdfinl > 0) => [kdfinl]Byte -> [inf]Byte
-KDF input = groupBy`{8}(shake256 (fromBytes(input)))
-
-
-
-
-QMinusOne : Bit
-property QMinusOne = `q - 1 == 2^^8*13
+/**
+ * `zeta` is a primitive 256-th root of unity modulo `q`.
+ * [FIPS-203] Section 4.3 "The mathematical structure of the NTT."
+ *
+ * ```repl
+ * :prove zetaIsPrimitiveRoot
+ * ```
+ */
+property zetaIsPrimitiveRoot = zeta ^^ 128 == -1
 
 Is256thRootOfq : [lg2 q] -> Bit
 property Is256thRootOfq p = (p == 0) || (p >= 256) || (zeta^^p != 1)
 
+/**
+ * Reverse the unsigned 7-bit value corresponding to an input integer in
+ * `[0, ..., 127]`.
+ * [FIPS-203] Section 4.3 "The mathematical structure of the NTT."
+ */
 BitRev7 : [8] -> [8]
 BitRev7 = reverse
 
@@ -390,19 +404,42 @@ BitRev7 = reverse
 // proof of their equivalence
 //////////////////////////////////////////////////////////////
 
+/**
+ * Compute the NTT representation of the polynomial `f`.
+ *
+ * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 9.
+ */
 ParametricNTT : Z_q_256 -> (Z q) -> Z_q_256
 ParametricNTT f root = join[[f2i i, f2iPlus1 i] | i <- [0 .. 127]]
   where f2i i      = sum [f@(2*j)   * root ^^ ((2*(BitRev7 i >> 1)+1)*j) | j <- [0 .. 127]]
         f2iPlus1 i = sum [f@(2*j+1) * root ^^ ((2*(BitRev7 i >> 1)+1)*j) | j <- [0 .. 127]]
 
+/**
+ * Compute most of the polynomial that corresponds to the NTT representation
+ * `f`.
+ * (The last step 14 is in a separate function)
+ *
+ * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 10.
+ */
 ParametricNTTInv : Z_q_256 -> (Z q) -> Z_q_256
 ParametricNTTInv f root = join[[f2i i, f2iPlus1 i] | i <- [0 .. 127]]
   where f2i i      = sum [f@(2*j)   * root ^^ ((2*(BitRev7 j >> 1)+1)*i) | j <- [0 .. 127]]
         f2iPlus1 i = sum [f@(2*j+1) * root ^^ ((2*(BitRev7 j >> 1)+1)*i) | j <- [0 .. 127]]
 
+/**
+ * Number theoretic transform: converts elements in `R_q` to `T_q`.
+ *
+ * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 9.
+ */
 NaiveNTT : Z_q_256 -> Z_q_256
 NaiveNTT f = ParametricNTT f zeta
 
+/**
+ * Inverse of the number theoretic transform: converts elements in `T_q` to
+ * `R_q`.
+ *
+ * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 10.
+ */
 NaiveNTTInv : Z_q_256 -> Z_q_256
 NaiveNTTInv f = [term*(recip 128) | term <- ParametricNTTInv f (recip zeta)]
 
@@ -516,7 +553,7 @@ fast_invntt v = mul_recip128 (fast_invnttl v 1)
 //////////////////////////////////////////////////////////////
 
 /**
- * This property demonstrates that NaiveNTT is self-inverting
+ * This property demonstrates that NaiveNTT is self-inverting.
  * ```
  * :prove NaiveNTT_Inverts
  * ```
@@ -525,7 +562,7 @@ NaiveNTT_Inverts : Z_q_256 -> Bit
 property NaiveNTT_Inverts f =  NaiveNTTInv (NaiveNTT f) == f
 
 /**
- * This property demonstrates that NaiveNTTInv is self-inverting
+ * This property demonstrates that NaiveNTTInv is self-inverting.
  * ```
  * :prove NaiveNTTInv_Inverts
  * ```
@@ -591,17 +628,26 @@ NTTInv' f = fast_invntt f
 // Polynomial multiplication in the NTT domain
 //////////////////////////////////////////////////////////////
 
+/**
+ * Compute the product of two degree-one polynomials with respect to a
+ * quadratic modulus.
+ * [FIPS-203] Section 4.3.1 Algorithm 12.
+ */
 BaseCaseMultiply : [2] (Z q) -> [2] (Z q) -> (Z q) -> [2] (Z q)
-BaseCaseMultiply a b root = [r0, r1]
+BaseCaseMultiply a b root = [c0, c1]
   where
-    r0 = a@1 * b@1 * root + a@0 * b@0
-    r1 = a@0 * b@1 + a@1 * b@0
+    c0 = a@1 * b@1 * root + a@0 * b@0
+    c1 = a@0 * b@1 + a@1 * b@0
 
+/**
+ * Compute the product (in the ring `T_q`) of two NTT representations.
+ * [FIPS-203] Section 4.3.1 Algorithm 11.
+ */
 MultiplyNTTs : Z_q_256 -> Z_q_256 -> Z_q_256
-MultiplyNTTs a b = join [BaseCaseMultiply (poly1 i) (poly2 i) (root i) | i : Byte <- [0 .. 127]]
+MultiplyNTTs a b = join [BaseCaseMultiply (f_hat_i i) (g_hat_i i) (root i) | i : Byte <- [0 .. 127]]
   where
-    poly1 i = [a@(2*i),a@(2*i+1)]
-    poly2 i = [b@(2*i),b@(2*i+1)]
+    f_hat_i i = [a@(2*i),a@(2*i+1)]
+    g_hat_i i = [b@(2*i),b@(2*i+1)]
     root i = (zeta^^(reverse (64 + (i >> 1)) >> 1) * ((-1 : (Z q)) ^^ (i)))
 
 prod : Z_q_256 -> Z_q_256 -> Z_q_256
