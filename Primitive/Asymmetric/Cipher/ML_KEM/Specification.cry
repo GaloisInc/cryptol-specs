@@ -74,16 +74,6 @@ BitstoZ betas = fromInteger (toInteger (reverse betas))
 ZtoBits : {ell} (fin ell, ell > 0) => (Z q) -> [ell]
 ZtoBits fi = reverse (fromInteger (fromZ fi))
 
-plus : {x, y} (fin x) => [x+y]Byte -> [y]Byte
-plus = drop
-
-// Cryptol's built-in operator for concatenation is #
-concatPlus : {x, y} (fin x, fin y) => [x]Byte -> [y]Byte -> [y]Byte
-concatPlus a b = plus`{x} (a#b)
-
-concatPlusCorrect : {x, y} (fin y, fin x) => [x]Byte -> [y]Byte -> Bit
-property concatPlusCorrect a b = concatPlus a b == b
-
 
 
 
