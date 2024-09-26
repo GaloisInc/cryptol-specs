@@ -17,6 +17,12 @@
  */
 module Primitive::Asymmetric::Cipher::ML_KEM::Specification where
 
+import Primitive::Keyless::Hash::SHAKE::SHAKE256
+import Primitive::Keyless::Hash::SHAKE::SHAKE128
+import `Primitive::Keyless::Hash::SHA3::SHA3
+import Primitive::Keyless::Hash::utils
+
+
 /*
  * [FIPS-203] Section 2.3.
  */
@@ -58,12 +64,55 @@ type Byte = [8]
  */
 type Z_q_256 = [n](Z q)
 
-BytesToBits : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
-BytesToBits input = join (map reverse input)
+/**
+ * Pseudorandom function (PRF).
+ * [FIPS-203] Section 4.1, Equations 4.2 and 4.3.
+ */
+PRF : {prfeta} (fin prfeta, prfeta > 0) => ([32]Byte, Byte) -> [64 * prfeta]Byte
+PRF(s,b) = map reverse (take (groupBy`{8} (shake256 (fromBytes(s)# reverse b))))
 
-// The following helper functions are also used.
+/**
+ * One of the hash functions used in the protocol.
+ * [FIPS-203] Section 4.1, Equation 4.4.
+ */
+H : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
+H M = toBytes(sha3 `{digest = 256} (fromBytes(M)))
+
+/**
+ * One of the hash functions used in the protocol.
+ * [FIPS-203] Section 4.1, Equation 4.4.
+ */
+J : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
+J(s) = take(groupBy(shake256(fromBytes(s))))
+
+/**
+ * One of the hash functions used in the protocol.
+ * [FIPS-203] Section 4.1, Equation 4.5.
+ */
+G : {ginl} (fin ginl) => [ginl]Byte -> ([32]Byte, [32]Byte)
+G M = (result@0, result@1)
+    where result = split`{2} (toBytes(sha3 `{digest = 512} (fromBytes(M))))
+
+/**
+ * eXtendable-Output Function (XOF) wrapper.
+ * [FIPS-203] Section 4.1, Equation 4.6.
+ */
+XOF : ([34]Byte) -> [inf]Byte
+XOF(d) = groupBy`{8}(shake128(fromBytes(d)))
+
+/**
+ * Conversion from bit arrays to byte arrays.
+ * [FIPS-203] Section 4.2.1, Algorithm 3.
+ */
 BitsToBytes : {ell} (fin ell, ell > 0) => [ell*8]Bit -> [ell]Byte
 BitsToBytes input = map reverse (groupBy input)
+
+/**
+ * Conversion from byte arrays to bit arrays.
+ * [FIPS-203] Section 4.2.1, Algorithm 4.
+ */
+BytesToBits : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
+BytesToBits input = join (map reverse input)
 
 BitToZ : {p} (fin p, p > 1) => Bit -> Z p
 BitToZ b = if b then 1 else 0
@@ -74,63 +123,78 @@ BitstoZ betas = fromInteger (toInteger (reverse betas))
 ZtoBits : {ell} (fin ell, ell > 0) => (Z q) -> [ell]
 ZtoBits fi = reverse (fromInteger (fromZ fi))
 
-
-
-
-modpm : {alpha} (fin alpha, alpha > 0) => Z alpha -> Integer
-modpm r = if r' > (`alpha / 2) then r' - `alpha else r'
-  where r' = fromZ(r)
-
-
-
 // In Cryptol, rounding is computed via the built-in function roundAway
 property rounding = ((roundAway(1.5) == 2) && (roundAway(1.4) == 1))
 
-
-
-// Cryptol does not support sampling. Therefore, for every algorithm, we denote
-// its randomness as an explicit input value.
-
-
-
-// Since q is fixed but d varies, we parameterize by d instead of by q.
+/**
+ * Compression from an integer mod `q` to an integer mod `2^d`.
+ * [FIPS-203] Section 4.2.1, Equation 4.7.
+ */
 Compress'' : {d} (d < lg2 q) => Z q -> [d]
 Compress'' x = fromInteger(roundAway(((2^^`d)/.`q) * fromInteger(fromZ(x))) % 2^^`d)
 
+/**
+ * Decompression from an integer mod `2^d` to an integer mod `q`.
+ * [FIPS-203] Section 4.2.1, Equation 4.8.
+ */
 Decompress'' : {d} (d < lg2 q) => [d] -> Z q
 Decompress'' x = fromInteger(roundAway(((`q)/.(2^^`d))*fromInteger(toInteger(x))))
 
-B_q : {d} (d < lg2 q) => Integer
-B_q = roundAway((`q/.(2^^(`d+1))))
-
+/**
+ * When `d` is large, compression followed by decompression must not
+ * significantly alter the value.
+ * [FIPS-203] Section 4.2.1, "Compression and Decompression".
+ */
 CorrectnessCompress : Z q -> Bit
 property CorrectnessCompress x = err <= B_q`{d_u} where
-  x' = Decompress''`{d_u}(Compress''`{d_u}(x))
-  err = abs(modpm(x'-x))
+    x' = Decompress''`{d_u}(Compress''`{d_u}(x))
+    err = abs(modpm(x'-x))
 
+    B_q : {d} (d < lg2 q) => Integer
+    B_q = roundAway((`q/.(2^^(`d+1))))
 
+    modpm : {alpha} (fin alpha, alpha > 0) => Z alpha -> Integer
+    modpm r = if r' > (`alpha / 2) then r' - `alpha else r'
+          where r' = fromZ(r)
 
+/**
+ * Compression applied to a vector is equivalent to applying compression to
+ * each individual element.
+ * [FIPS-203] Section 2.4.8, Equation 2.15.
+ */
 Compress' : {d} (d < lg2 q) => Z_q_256 -> [n][d]
 Compress' x = map Compress''`{d} x
 
+/**
+ * Decompression applied to a vector is equivalent to applying decompression to
+ * each individual element.
+ * [FIPS-203] Section 2.4.8.
+ */
 Decompress' : {d} (d < lg2 q) => [n][d] -> Z_q_256
 Decompress' x = map Decompress''`{d} x
 
+/**
+ * Compression applied to an array is equivalent to applying compression to
+ * each individual element.
+ * [FIPS-203] Section 2.4.8.
+ */
 Compress : {d, k1} (d < lg2 q, fin k1) => [k1]Z_q_256 -> [k1][n][d]
 Compress x = map Compress'`{d} x
 
+/**
+ * Decompression applied to an array is equivalent to applying decompression to
+ * each individual element.
+ * [FIPS-203] Section 2.4.8.
+ */
 Decompress : {d, k1} (d < lg2 q, fin k1) => [k1][n][d] -> [k1]Z_q_256
 Decompress x = map Decompress'`{d} x
 
 
 
-// These types distinguish infinite from finite length
-PRF : {prfeta} (fin prfeta, prfeta > 0) => ([32]Byte, Byte) -> [64 * prfeta]Byte
-XOF : ([34]Byte) -> [inf]Byte
-H : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
-J : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
-G : {ginl} (fin ginl) => [ginl]Byte -> ([32]Byte, [32]Byte)
 KDF : {kdfinl} (fin kdfinl, kdfinl > 0) => [kdfinl]Byte -> [inf]Byte
+KDF input = groupBy`{8}(shake256 (fromBytes(input)))
+
+
 
 
 QMinusOne : Bit
@@ -608,19 +672,3 @@ parameter
   type constraint (fin d_v, d_v < 12, d_v > 0)
 
 
-
-import Primitive::Keyless::Hash::utils
-import Primitive::Keyless::Hash::SHAKE::SHAKE128
-XOF(d) = groupBy`{8}(shake128(fromBytes(d)))
-J(s) = take(groupBy(shake256(fromBytes(s))))
-
-import `Primitive::Keyless::Hash::SHA3::SHA3
-H M = toBytes(sha3 `{digest = 256} (fromBytes(M)))
-
-G M = (result@0, result@1)
-    where result = split`{2} (toBytes(sha3 `{digest = 512} (fromBytes(M))))
-
-import Primitive::Keyless::Hash::SHAKE::SHAKE256
-PRF(s,b) = map reverse (take (groupBy`{8} (shake256(fromBytes(s)# reverse b))))
-
-KDF input = groupBy`{8}(shake256 (fromBytes(input)))
