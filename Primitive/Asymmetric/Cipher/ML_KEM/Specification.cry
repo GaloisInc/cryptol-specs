@@ -310,6 +310,63 @@ Encode' f = BitsToBytes (join (map ZtoBits`{ell} f))
 CorrectnessEncodeDecode' : Z_q_256 -> Bit
 property CorrectnessEncodeDecode' f = Decode'`{12}(Encode'`{12} f) == f
 
+/**
+ * Uniformly sample NTT representations.
+ *
+ * This converts a stream `b` generated from a seed into a (pseudo)random
+ * polynomial in `T_q`.
+ *
+ * Since Cryptol does not natively support while loops, we approach this
+ * potentially infinite loop with recursion. `SampleNTTInf` converts an
+ * infinite sequence of bytes to an infinite sequence of elements in `Z q`.
+ * We then use the first `n` elements for the result.
+ *
+ * [FIPS-203] Section 4.2.2, Algorithm 7.
+ */
+SampleNTT : [inf]Byte -> Z_q_256
+SampleNTT b = take elements
+    where elements = SampleNTTInf b
+
+/**
+ * SampleNTTInf implements a filter. It scans the input 3 by 3, calculates
+ * the elements d1 and d2 and finally returns the elements that satisfy
+ * the conditions together with the result of itself when applied to the
+ * tail.
+ *
+ * This is an implementation of part of [FIPS-203] Section 4.2.2, Algorithm 7.
+ */
+SampleNTTInf: [inf]Byte -> [inf](Z q)
+SampleNTTInf ([bi,bi1,bi2] # tailS) =
+    if d1 < `q then
+        if d2 < `q then
+            [fromInteger(d1),fromInteger(d2)] # SampleNTTInf tailS
+        else
+            [fromInteger(d1)] # SampleNTTInf tailS
+    else
+        if d2 < `q then
+            [fromInteger(d2)] # SampleNTTInf tailS
+        else
+            SampleNTTInf tailS
+    where
+        d1 = toInteger(reverse bi) + 256 * (toInteger(reverse bi1) % 16)
+        d2 = floor(ratio (toInteger(reverse bi1)) 16) + 16 * toInteger(reverse bi2)
+
+/**
+ * Sample a special, centered distribution of polynomials in `R_q` with small
+ * coefficients.
+ *
+ * Requires that the input stream `B` is uniformly random bytes.
+ *
+ * [FIPS-203] Section 4.2.2, Algorithm 8.
+ */
+SamplePolyCBD: {eta} (fin eta, eta > 0) => [64 * eta]Byte -> Z_q_256
+SamplePolyCBD B = [f i | i <- [0 .. 255]]
+    where betas = BytesToBits B : [512 * eta]
+          x i = sum [BitToZ`{q} (betas@(2*i*`eta+j)) | j <- [0 .. (eta-1)]]
+          y i = sum [BitToZ`{q} (betas@(2*i*`eta+`eta+j)) | j <- [0 .. (eta-1)]]
+          f i = (x i) - (y i)
+
+
 KDF : {kdfinl} (fin kdfinl, kdfinl > 0) => [kdfinl]Byte -> [inf]Byte
 KDF input = groupBy`{8}(shake256 (fromBytes(input)))
 
@@ -580,62 +637,6 @@ dotMatMat :{k1,k2,k3} (fin k1, fin k2, fin k3) =>
 dotMatMat matrix1 matrix2 = transpose [dotMatVec matrix1 vector | vector <- m']
     where m' = transpose matrix2
 
-
-/**
- * Uniformly sample NTT representations.
- *
- * This converts a stream `b` generated from a seed into a (pseudo)random
- * polynomial in `T_q`.
- *
- * Since Cryptol does not natively support while loops, we approach this
- * potentially infinite loop with recursion. `SampleNTTInf` converts an
- * infinite sequence of bytes to an infinite sequence of elements in `Z q`.
- * We then use the first `n` elements for the result.
- *
- * [FIPS-203] Section 4.2.2, Algorithm 7.
- */
-SampleNTT : [inf]Byte -> Z_q_256
-SampleNTT b = take elements
-    where elements = SampleNTTInf b
-
-/**
- * SampleNTTInf implements a filter. It scans the input 3 by 3, calculates
- * the elements d1 and d2 and finally returns the elements that satisfy
- * the conditions together with the result of itself when applied to the
- * tail.
- *
- * This is an implementation of part of [FIPS-203] Section 4.2.2, Algorithm 7.
- */
-SampleNTTInf: [inf]Byte -> [inf](Z q)
-SampleNTTInf ([bi,bi1,bi2] # tailS) =
-    if d1 < `q then
-        if d2 < `q then
-            [fromInteger(d1),fromInteger(d2)] # SampleNTTInf tailS
-        else
-            [fromInteger(d1)] # SampleNTTInf tailS
-    else
-        if d2 < `q then
-            [fromInteger(d2)] # SampleNTTInf tailS
-        else
-            SampleNTTInf tailS
-    where
-        d1 = toInteger(reverse bi) + 256 * (toInteger(reverse bi1) % 16)
-        d2 = floor(ratio (toInteger(reverse bi1)) 16) + 16 * toInteger(reverse bi2)
-
-/**
- * Sample a special, centered distribution of polynomials in `R_q` with small
- * coefficients.
- *
- * Requires that the input stream `B` is uniformly random bytes.
- *
- * [FIPS-203] Section 4.2.2, Algorithm 8.
- */
-SamplePolyCBD: {eta} (fin eta, eta > 0) => [64 * eta]Byte -> Z_q_256
-SamplePolyCBD B = [f i | i <- [0 .. 255]]
-    where betas = BytesToBits B : [512 * eta]
-          x i = sum [BitToZ`{q} (betas@(2*i*`eta+j)) | j <- [0 .. (eta-1)]]
-          y i = sum [BitToZ`{q} (betas@(2*i*`eta+`eta+j)) | j <- [0 .. (eta-1)]]
-          f i = (x i) - (y i)
 
 K_PKE_KeyGen: ([32]Byte) -> ([384*k+32]Byte, [384*k]Byte)
 K_PKE_KeyGen(d) = (ekPKE, dkPKE) where
