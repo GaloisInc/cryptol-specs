@@ -683,7 +683,17 @@ dotMatMat :{k1,k2,k3} (fin k1, fin k2, fin k3) =>
 dotMatMat matrix1 matrix2 = transpose [dotMatVec matrix1 vector | vector <- m']
     where m' = transpose matrix2
 
-
+/**
+ * Key generation for the K-PKE component scheme.
+ *
+ * Warnings:
+ * - This scheme is not approved for use in a stand-alone fashion! It does not
+ *   do any input validation and should only be used as a subroutine of ML-KEM.
+ * - The seed `d` passed as input and the decryption key `dkPKE` returned from
+ *   this algorithm must be kept private!
+ *
+ * [FIPS-203] Section 5.1 Algorithm 13.
+ */
 K_PKE_KeyGen: ([32]Byte) -> ([384*k+32]Byte, [384*k]Byte)
 K_PKE_KeyGen(d) = (ekPKE, dkPKE) where
   (ρ,σ) = G(d # [`(k)])
@@ -696,8 +706,15 @@ K_PKE_KeyGen(d) = (ekPKE, dkPKE) where
   ekPKE = Encode`{12}(t_hat) # ρ
   dkPKE = Encode`{12}(s_hat)
 
-
-
+/**
+ * Encryption algorithm for the K-PKE component scheme.
+ *
+ * Warning: This scheme is not approved for use in a stand-alone fashion!
+ * It does not do any input validation and should only be used as a subroutine
+ * of ML-KEM.
+ *
+ * [FIPS-203] Section 5.2 Algorithm 14.
+ */
 K_PKE_Encrypt : ([384*k+32]Byte, [32]Byte, [32]Byte) -> [32*(d_u*k+d_v)]Byte
 K_PKE_Encrypt(ekPKE, m, r) = c where
   t_hat = Decode`{12} (ekPKE@@[0 .. 384*k - 1])
@@ -714,8 +731,15 @@ K_PKE_Encrypt(ekPKE, m, r) = c where
   c2 = EncodeBytes'`{d_v}(Compress'`{d_v}(v))
   c = c1#c2
 
-
-
+/**
+ * Decryption algorithm for the K-PKE component scheme.
+ *
+ * Warning: This scheme is not approved for use in a stand-alone fashion!
+ * It does not do any input validation and should only be used as a subroutine
+ * of ML-KEM.
+ *
+ * [FIPS-203] Section 5.3 Algorithm 15.
+ */
 K_PKE_Decrypt : ([384*k]Byte, [32*(d_u*k+d_v)]Byte) -> [32]Byte
 K_PKE_Decrypt(sk, c) = m where
   c1 = c@@[0 .. 32*d_u*k - 1]
@@ -726,11 +750,16 @@ K_PKE_Decrypt(sk, c) = m where
   w = v - NTTInv' (dotVecVec s_hat (NTT u))
   m = EncodeBytes'`{1}(Compress'`{1}(w))
 
-// Kyber is correct with probability 1-delta and not 1. As a result,
-// running :prove Correctness will not succeed since there is a
-// fraction delta of seeds d,r that do not work. Therefore, we can
-// only run :check Correctness. Cryptol does not currently support counting.
-
+/**
+ * The K-PKE scheme is correct with probability 1-delta and not 1. As a result,
+ * running `:prove CorrectnessPKE` will not succeed since there is a
+ * fraction delta of seeds `d`, `r` that do not work.
+ * Cryptol does not currently support counting.
+ * ```repl
+ * :set tests=3
+ * :check CorrectnessPKE
+ * ```
+ */
 CorrectnessPKE : ([32]Byte, [32]Byte, [32]Byte) -> Bit
 property CorrectnessPKE(d, m, r) = (m' == m) where
   (pk, sk) = K_PKE_KeyGen(d)
@@ -738,24 +767,47 @@ property CorrectnessPKE(d, m, r) = (m' == m) where
   m' = K_PKE_Decrypt(sk, c)
 
 
-
-// We make the randomness of K_PKE_KeyGen explicit
+/**
+ * Uses randomness to generate an encapsulation key and corresponding
+ * decapsulation key.
+ *
+ * The randomness here is passed explicitly as a parameter and is not checked
+ * for validity, so this actually corresponds to
+ * [FIPS-203] Section 6.1 Algorithm 16 (`ML_KEM.KeyGen_internal`).
+ *
+ * Note: This is not Algorithm 19 because:
+ * - The randomness is passed explicitly as a parameter;
+ * - It does not document / require input validation.
+ */
 ML_KEM_KeyGen : ([32]Byte,[32]Byte) -> ([384*k+32]Byte, [768*k+96]Byte)
 ML_KEM_KeyGen (z,d) = (ek, dk) where
   (ekPKE, dkPKE) = K_PKE_KeyGen(d)
   ek = ekPKE
   dk = dkPKE#ek#H(ek)#z
 
-
-
-// We make the random message m explicit.
+/**
+ * Uses the encapsulation key and randomness to generate a key and an
+ * associated ciphertext.
+ *
+ * [FIPS-203] Section 6.2 Algorithm 17 (`ML_KEM.Encaps_internal`).
+ *
+ * Note: This is not Algorithm 20 because:
+ * - The randomness is passed explicitly as a parameter;
+ * - It does not document / require input validation.
+ */
 ML_KEM_Encaps : ([384*k+32]Byte, [32]Byte) -> ([32]Byte, [32*(d_u*k+d_v)]Byte)
 ML_KEM_Encaps (ek, m) = (K, c) where
   (K, r) = G(m#H(ek))
   c = K_PKE_Encrypt(ek, m, r)
 
-
-
+/**
+ * Uses the decapsulation key to produce a shared secret key from a ciphertext.
+ *
+ * [FIPS-203] Section 6.3 Algorithm 18 (`ML_KEM.Decaps_internal`).
+ *
+ * Note: This is not Algorithm 21 because it does not document / require input
+ * validation.
+ */
 ML_KEM_Decaps : ([32*(d_u*k+d_v)]Byte, [768*k+96]Byte) -> [32]Byte
 ML_KEM_Decaps (c, dk) = K
   where
@@ -765,19 +817,27 @@ ML_KEM_Decaps (c, dk) = K
     z = dk@@[768*k + 64 .. 768*k + 96 - 1] // extract implicit rejection value
     m' = K_PKE_Decrypt(dkPKE, c) // decrypt ciphertext
     (K', r') = G(m'#h)
-    Kbar = J(z#c) : [32]Byte // Spec has a typo
+    Kbar = J(z#c) : [32]Byte
     c' = K_PKE_Encrypt(ekPKE, m', r')
     K = if (c != c') then Kbar // Suggestion to spec: Rename K' to K
                      else K'
 
 
+/**
+ * The ML-KEM scheme is correct with probability 1-delta and not 1. As a
+ * result, running `:prove CorrectnessPKE` will not succeed since there is a
+ * fraction delta of seeds `d`, `z`, `m` that do not work.
+ * Cryptol does not currently support counting.
+ * ```repl
+ * :set tests=3
+ * :check CorrectnessKEM
+ * ```
+ */
 CorrectnessKEM : ([32]Byte, [32]Byte, [32]Byte) -> Bit
 property CorrectnessKEM(z, d, m) = (K == K') where
   (pk, sk) = ML_KEM_KeyGen(z, d)
   (K, c) = ML_KEM_Encaps(pk, m)
   K' = ML_KEM_Decaps(c, sk)
-
-
 
 parameter
   type k : #
