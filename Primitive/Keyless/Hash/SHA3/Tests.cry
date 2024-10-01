@@ -3,23 +3,26 @@
  *
  * Test vectors drawn from the NIST Cryptographic Algorithm Validation Program.
  * This program includes test vectors that can be used to spot-check an
- * implementation.
+ * implementation. It includes tests for bitwise inputs (where the input length
+ * is any nonnegative integer) and for bytewise inputs (where the input length
+ * is a multiple of 8).
  * @see CAVP. https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing#sha3vsha3vss
- * @see CAVP test vectors. https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/sha-3bittestvectors.zip
+ * @see SHA3 bitwise test vectors. https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/sha-3bittestvectors.zip
+ * @see SHA3 bytewise test vectors. https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/sha-3bytetestvectors.zip
  *
- * Some of the tests in this file use the `KOP::truncate` function. The CAVP
- * vectors use the format described in [FIPS-202] Appendix B, where inputs to
- * SHA3 are provided as hex strings with an even number of digits and a length
- * parameter. The `h2b` function for processing such inputs has an implicit
- * truncation step. We've written the SHA3 spec to take arbitrary bit vectors,
- * but this assumes that the length of the input is its actual length. The
- * `truncate` function is written to support the even-hex-digit format and must
- * be called on an input before passing it to SHA3.
+ * Some of the bitwise tests in this file use the `KOP::truncate` function. The
+ * CAVP vectors use the format described in [FIPS-202] Appendix B, where inputs
+ * to SHA3 are provided as hex strings with an even number of digits and a
+ * length parameter. The `h2b` function for processing such inputs has an
+ * implicit truncation step. We've written the SHA3 spec to take arbitrary bit
+ * vectors, but this assumes that the length of the input is its actual length.
+ * The `truncate` function is written to support the even-hex-digit format and
+ * must be called on an input before passing it to SHA3.
  *
  * @copyright Galois Inc.
  * @author Ajay Kumar Eeralla
  * @editor Iavor Diatchki <diatchki@galois.com>
- * @editor Marcella Hastings <marcella@galois.com>
+ * @author Marcella Hastings <marcella@galois.com>
  */
 module Primitive::Keyless::Hash::SHA3::Tests where
 
@@ -33,6 +36,7 @@ submodule SHA3_224 where
     import Primitive::Keyless::Hash::SHA3::SHA3_224 as SHA3_224
 
     /**
+     * This is from the bitwise tests.
      * ```repl
      * :prove t1
      * ```
@@ -41,6 +45,7 @@ submodule SHA3_224 where
         0x6b4e03423667dbb73b6e15454f0eb1abd4597f9a1b078e3f5b5a6bc7
 
     /**
+     * This is from the bitwise tests.
      * ```repl
      * :prove t5
      * ```
@@ -49,6 +54,16 @@ submodule SHA3_224 where
         0x65ad282dcf9642a2facc1e7545c58f3b17523e795fee58e4d21b10bf
 
     /**
+     * This is from the bytewise tests.
+     * ```repl
+     * :prove t72
+     * ```
+     */
+    property t72 = SHA3_224::hash 0xb29373f6f8839bd498 == output where
+        output = 0xe02a13fa4770f824bcd69799284878f19bfdc833ac6d865f28b757d0
+
+    /**
+     * This is from the bitwise tests.
      * ```repl
      * :prove t512
      * ```
@@ -70,6 +85,7 @@ submodule SHA3_256 where
     import Primitive::Keyless::Hash::SHA3::SHA3_256 as SHA3_256
 
     /**
+     * This is from the bitwise tests.
      * ```repl
      * :prove t1
      * ```
@@ -78,6 +94,7 @@ submodule SHA3_256 where
         0xa7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
 
     /**
+     * This is from the bitwise tests.
      * ```repl
      * :prove t7
      * ```
@@ -86,6 +103,7 @@ submodule SHA3_256 where
         0x9e5f8c800689fa5168fc5fbfeca8bd5b3668ffd6f08143e2e396b9ae0f9b443e
 
     /**
+     * This is from the bitwise tests.
      * ```repl
      * :prove t8
      * ```
@@ -93,7 +111,18 @@ submodule SHA3_256 where
     property t8 = SHA3_256::hash 0x6a ==
         0xf35e560e05de779f2669b9f513c2a7ab81dfeb100e2f4ee1fb17354bfa2740ca
 
+
     /**
+     * This is from the bytewise tests.
+     * ```repl
+     * :prove t72
+     * ```
+     */
+    property t72 = SHA3_256::hash 0xfb8dfa3a132f9813ac ==
+        0xfd09b3501888445ffc8c3bb95d106440ceee469415fce1474743273094306e2e
+
+    /**
+     * This is from the bitwise tests.
      * ```repl
      * :prove t235
      * ```
@@ -116,6 +145,7 @@ submodule SHA3_384 where
     import Primitive::Keyless::Hash::SHA3::SHA3_384 as SHA3_384
 
     /**
+     * This is from the bitwise tests.
      * ```repl
      * :prove t1
      * ```
@@ -127,6 +157,7 @@ submodule SHA3_384 where
         ]
 
     /**
+     * This is from the bitwise tests.
      * ```repl
      * :prove t64
      * ```
@@ -137,6 +168,18 @@ submodule SHA3_384 where
             0x19068b1533eb485341a84a933f837d9abd65b62604936469
         ]
 
+    /**
+     * This is from the bytewise tests.
+     * ```repl
+     * :prove t72
+     * ```
+     */
+    property t72 = SHA3_384::hash 0xa36e5a59043b6333d7 == output where
+        output = join [
+            0xbd045661663436d07720ff3c8b6f922066dfe244456a56ca,
+            0x46dfb3f7e271116d932107c7b04cc7c60173e08d0c2e107c
+        ]
+
 /**
  * CAVP test vectors for SHA3-512. These are selected from the
  * `SHA3_512ShortMsg.rsp` file.
@@ -145,6 +188,7 @@ submodule SHA3_512 where
     import Primitive::Keyless::Hash::SHA3::SHA3_512 as SHA3_512
 
     /**
+     * This is from the bitwise tests.
      * ```repl
      * :prove t1
      * ```
@@ -156,6 +200,19 @@ submodule SHA3_512 where
         ]
 
     /**
+     * This is from the bytewise tests.
+     * ```repl
+     * :prove t72
+     * ```
+     */
+    property t72 = SHA3_512::hash 0x3d6093966950abd846 == output where
+        output = join [
+            0x53e30da8b74ae76abf1f65761653ebfbe87882e9ea0ea564addd7cfd5a652457,
+            0x8ad6be014d7799799ef5e15c679582b791159add823b95c91e26de62dcb74cfa
+        ]
+
+    /**
+     * This is from the bitwise tests.
      * ```repl
      * :prove t100
      * ```
