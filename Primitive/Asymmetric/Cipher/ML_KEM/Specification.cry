@@ -22,9 +22,6 @@ import Primitive::Keyless::Hash::SHAKE::SHAKE128
 import `Primitive::Keyless::Hash::SHA3::SHA3
 import Primitive::Keyless::Hash::utils
 
-
-
-
 /*
  * [FIPS-203] Section 2.3.
  */
@@ -289,6 +286,9 @@ Decode' B = map BitstoZ`{ell} (split (BytesToBits B))
 
 /**
  * Proof that the efficient decode function is the same as the spec version.
+ * ```repl
+ * :check DecodeEquiv
+ * ```
  */
 DecodeEquiv : [32 * 12]Byte -> Bit
 property DecodeEquiv B = (Decode' B == DecodeSpec B)
@@ -387,6 +387,12 @@ property QisCorrectlyDefined = `q == 2^^8 * 13 + 1
  */
 property zetaIsPrimitiveRoot = zeta ^^ 128 == -1
 
+/**
+ * Proves that `zeta` is correctly set to be the 256th root of `q`.
+ * ```repl
+ * :exhaust Is256thRootOfq
+ * ```
+ */
 Is256thRootOfq : [lg2 q] -> Bit
 property Is256thRootOfq p = (p == 0) || (p >= 256) || (zeta^^p != 1)
 
@@ -652,34 +658,65 @@ MultiplyNTTs a b = join [BaseCaseMultiply (f_hat_i i) (g_hat_i i) (root i) | i :
     g_hat_i i = [b@(2*i),b@(2*i+1)]
     root i = (zeta^^(reverse (64 + (i >> 1)) >> 1) * ((-1 : (Z q)) ^^ (i)))
 
-prod : Z_q_256 -> Z_q_256 -> Z_q_256
-prod f g = NTTInv' (MultiplyNTTs (NTT' f) (NTT' g))
-
-// Testing that (1+x)^2 = 1+2x+x^2
+/**
+ * Testing that (1+x)^2 = 1+2x+x^2
+ * ```repl
+ * :prove TestMult
+ * ```
+ */
 TestMult : Bit
 property TestMult = prod f f == fsq where
   f = [1, 1] # [0 | i <- [3 .. 256]]
   fsq = [1,2,1] # [0 | i <- [4 .. 256]]
 
+  prod : Z_q_256 -> Z_q_256 -> Z_q_256
+  prod a b = NTTInv' (MultiplyNTTs (NTT' a) (NTT' b))
+
+/**
+ * The cross product notation ×𝑇𝑞 is defined as the `MultiplyNTTs` function
+ * (also referred to as `T_q` multiplication).
+ * [FIPS-203] Section 2.4.5 Equation 2.8.
+ */
 dot : Z_q_256 -> Z_q_256 -> Z_q_256
 dot f g = MultiplyNTTs f  g
 
-add : Z_q_256 -> Z_q_256 -> Z_q_256
-add f g = f + g
-
-
-
+/**
+ * The notation `NTT` is overloaded to mean both a single application of `NTT`
+ * to an element of `R_q` and also `k` applications of `NTT` to every element
+ * of a `k`-length vector.
+ * [FIPS-203] Section 2.4.6 Equation 2.9.
+ */
 NTT v = map NTT' v
+
+/**
+ * The notation `NTTInv` is overloaded to mean both a single application of
+ * `NTTInv` to an element of `R_q` and also `k` applications of `NTTInv` to
+ * every element of a `k`-length vector.
+ * [FIPS-203] Section 2.4.6.
+ */
 NTTInv v = map NTTInv' v
 
-
-
+/**
+ * Overloaded `dot` function between two vectors is a standard dot-product
+ * functionality with `T_q` multiplication as the base operation.
+ * [FIPS-203] Section 2.4.7 Equation 2.14.
+ */
 dotVecVec : {k1} (fin k1) => [k1]Z_q_256 -> [k1]Z_q_256 -> Z_q_256
-dotVecVec v1 v2 = foldl add zero (zipWith dot v1 v2)
+dotVecVec v1 v2 = sum (zipWith dot v1 v2)
 
+/**
+ * Overloaded `dot` function between a matrix and a vector is standard matrix-
+ * vector multiplication with `T_q` multiplication as the base operation.
+ * [FIPS-203] Section 2.4.7 Equation 2.12 and 2.13.
+ */
 dotMatVec : {k1,k2} (fin k1, fin k2) => [k1][k2]Z_q_256 -> [k2]Z_q_256 -> [k1]Z_q_256
 dotMatVec matrix vector = [dotVecVec v1 vector | v1 <- matrix]
 
+/**
+ * Overloaded `dot` function between two matrices is standard matrix
+ * multiplication with `T_q` multiplication as the base operation.
+ * [FIPS-203] Section 2.4.7.
+ */
 dotMatMat :{k1,k2,k3} (fin k1, fin k2, fin k3) =>
   [k1][k2]Z_q_256 -> [k2][k3]Z_q_256 -> [k1][k3]Z_q_256
 dotMatMat matrix1 matrix2 = transpose [dotMatVec matrix1 vector | vector <- m']
@@ -848,10 +885,15 @@ parameter
      * encryption.
      * [FIPS-203] Section 8.
      *
-     * TODO: document where this constraint came from.
+     * The coonstraint on the width of `k` is drawn from `K-PKE-KeyGen`. In
+     * that function, the variable `N` varies from 0 to `2k` and is passed as
+     * the second parameter to the `PRF` function. `PRF` restricts the second
+     * parameter to be exactly 1 byte. Therefore, `2k` must fit into a byte.
+     * [FIPS-203] Section 5.1 Algorithm 13 (see lines 2 and 8-15) and Section
+     * 4.1 Equation 4.2.
      */
     type k : #
-    type constraint (width k > 0, width 2*k <= 8)
+    type constraint (width k > 0, width (2*k) <= 8)
 
     /*
      * The parameter `eta_1` specifies the distribution from which the secret
