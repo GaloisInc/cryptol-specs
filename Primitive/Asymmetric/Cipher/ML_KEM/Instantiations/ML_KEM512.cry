@@ -1,12 +1,13 @@
 /*
-@copyright Galois, Inc
-@author Marios Georgiou <marios@galois.com>
+ * @copyright Galois, Inc
+ * @author Marios Georgiou <marios@galois.com>
+ *
+ * @copyright Amazon.com or its affiliates.
+ * @editor Rod Chapman <rodchap@amazon.com>
+ */
 
-@copyright Amazon.com or its affiliates.
-@editor Rod Chapman <rodchap@amazon.com>
-*/
-
-module ml_kem512 = specification where
+module Primitive::Asymmetric::Cipher::ML_KEM::Instantiations::ML_KEM512 =
+    Primitive::Asymmetric::Cipher::ML_KEM::Specification where
 
 type k = 2
 type eta_1 = 3

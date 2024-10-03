@@ -1,4 +1,3 @@
 
-module ml_kem where
-
-import ml_kem512
+module Primitive::Asymmetric::Cipher::ML_KEM::Instantiations::ML_KEM where
+    import Primitive::Asymmetric::Cipher::ML_KEM::Instantiations::ML_KEM512
