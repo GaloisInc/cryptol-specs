@@ -1,6 +1,10 @@
 # Create a batch file from ML-KEM known answer tests
 # The input is the *.rsp file.
 # Example input file: https://raw.githubusercontent.com/post-quantum-cryptography/KAT/main/MLKEM/kat_MLKEM_512.rsp
+#
+# @copyright Galois, Inc
+# @author Marios Georgiou <marios@galois.com>
+#
 
 BEGIN { print ":load ml_kem.cry" }
 

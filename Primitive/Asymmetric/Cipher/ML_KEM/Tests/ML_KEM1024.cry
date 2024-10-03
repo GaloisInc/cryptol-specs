@@ -3,6 +3,9 @@
  *
  * These are sourced from the Post Quantum Cryptography KAT repo:
  * @see https://github.com/post-quantum-cryptography/KAT/tree/main/MLKEM
+ *
+ * @copyright Galois Inc
+ * @author Marcella Hastings <marcella@galois.com>
  */
 
 import Primitive::Asymmetric::Cipher::ML_KEM::Instantiations::ML_KEM1024 as ML_KEM
