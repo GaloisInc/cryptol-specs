@@ -7,7 +7,7 @@ ML-KEM cipher with a fast NTT implementation.
 @copyright Amazon.com or its affiliates.
 @author Rod Chapman <rodchap@amazon.com>
 */
-module specification where
+module Primitive::Asymmetric::Cipher::ML_KEM::Specification where
 
 type q = 3329
 
