@@ -106,12 +106,18 @@ XOF(d) = groupBy`{8}(shake128(fromBytes(d)))
 BitsToBytes : {ell} (fin ell, ell > 0) => [ell*8]Bit -> [ell]Byte
 BitsToBytes input = map reverse (groupBy input)
 
+BitsToBytesSpec : {ell} (fin ell, ell > 0) => [ell*8]Bit -> [ell]Byte
+BitsToBytesSpec = groupBy
+
 /**
  * Conversion from byte arrays to bit arrays.
  * [FIPS-203] Section 4.2.1, Algorithm 4.
  */
 BytesToBits : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
 BytesToBits input = join (map reverse input)
+
+BytesToBitsSpec : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
+BytesToBitsSpec = join
 
 BitToZ : {p} (fin p, p > 1) => Bit -> Z p
 BitToZ b = if b then 1 else 0
@@ -121,6 +127,32 @@ BitstoZ betas = fromInteger (toInteger (reverse betas))
 
 ZtoBits : {ell} (fin ell, ell > 0) => (Z q) -> [ell]
 ZtoBits fi = reverse (fromInteger (fromZ fi))
+
+/**
+ * The bit-array values in the bit / byte conversion functions are written in
+ * little-endian order.
+ * [FIPS-203] Section 4.2.1 "Converting between bits and bytes".
+ * ```repl
+ * :prove BitAndByteConversionsExample
+ * ```
+ */
+property BitAndByteConversionsExample = toBytesWorks && fromBytesWorks where
+    // Cryptol uses MSB as default, but this spec uses LSB format.
+    lsb139 = reverse 139
+    toBytesWorks = BitsToBytesSpec 0b11010001 == [lsb139]
+    fromBytesWorks = BytesToBitsSpec [lsb139] == 0b11010001
+
+/**
+ * The bit and byte conversion functions are each others inverses.
+ * [FIPS-203] Section 4.2.1. Algorithm 4 says it's the inverse of Algorithm 3.
+ * ```repl
+ * :prove BitToByteInvertsByteToBit`{10}
+ * :prove BitToByteInvertsByteToBit`{100}
+ * :prove BitToByteInvertsByteToBit`{1000}
+ * ```
+ */
+BitToByteInvertsByteToBit : {ell} (fin ell, ell > 0) => [ell * 8] -> Bit
+property BitToByteInvertsByteToBit bits = BytesToBitsSpec (BitsToBytesSpec bits) == bits
 
 // In Cryptol, rounding is computed via the built-in function roundAway
 property rounding = ((roundAway(1.5) == 2) && (roundAway(1.4) == 1))
