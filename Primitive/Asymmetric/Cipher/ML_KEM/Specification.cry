@@ -220,6 +220,24 @@ Compress x = map Compress'`{d} x
 Decompress : {d, k1} (d < lg2 q, fin k1) => [k1][n][d] -> [k1]Z_q_256
 Decompress x = map Decompress'`{d} x
 
+
+/**
+ * Encode an array of `d`-bit integers into a byte array.
+ */
+ByteEncode : {d} (1 <= d, d <= 12) => [256](Z (min (2^^d) q)) -> [32 * d]Byte
+ByteEncode F = x where
+    x = zero
+    i = 0
+    // First we compute pairs of b and a...
+    [
+    [(a, bidj) where
+        bidj = (fromZ a') % 2
+        a = (a' - bidj) / 2
+        | j <- [0..(d-1)]]
+    ]
+    // ...then we filter out the 'a's.
+
+
 /*
  * We make this trivial serialization explicit, since it is not an identity in Cryptol.
  * Byte encoding and decoding involves regrouping 8-bit arrays into ell-bit arrays.
