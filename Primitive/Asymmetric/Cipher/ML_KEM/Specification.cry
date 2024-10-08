@@ -1,24 +1,117 @@
-/*
-ML-KEM cipher with a fast NTT implementation.
-
-@copyright Galois, Inc
-@author Marios Georgiou <marios@galois.com>
-
-@copyright Amazon.com or its affiliates.
-@author Rod Chapman <rodchap@amazon.com>
-*/
+/**
+ * ML-KEM cipher with a fast NTT implementation.
+ *
+ * @copyright Galois, Inc
+ * @author Marios Georgiou <marios@galois.com>
+ * @editor Marcella Hastings <marcella@galois.com>
+ *
+ * @copyright Amazon.com or its affiliates.
+ * @author Rod Chapman <rodchap@amazon.com>
+ *
+ * Sources:
+ * [FIPS-203]: National Institute of Standards and Technology. Module-Lattice-
+ *     Basead Key-Encapsulation Mechanism Standard. (Department of Commerce,
+ *     Washington, D.C.), Federal Information Processing Standards Publication
+ *     (FIPS) NIST FIPS 203. August 2024.
+ *     @see https://doi.org/10.6028/NIST.FIPS.203
+ */
 module Primitive::Asymmetric::Cipher::ML_KEM::Specification where
 
-type q = 3329
+import Primitive::Keyless::Hash::SHAKE::SHAKE256
+import Primitive::Keyless::Hash::SHAKE::SHAKE128
+import `Primitive::Keyless::Hash::SHA3::SHA3
+import Primitive::Keyless::Hash::utils
 
+/*
+ * [FIPS-203] Section 2.3.
+ */
+type n = 256
+/*
+ * [FIPS-203] Section 2.3.
+ */
+type q = 3329
+/**
+ * A primitive n-th root of unity modulo `q`.
+ * [FIPS-203] Section 2.3.
+ */
+zeta = 17 : Z q
+/*
+ * Defines the set {0, 1, ..., 255} of unsigned 8-bit integers.
+ * [FIPS-203] Section 2.3.
+ */
 type Byte = [8]
 
-BytesToBits : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
-BytesToBits input = join (map reverse input)
+/*
+ * Representation of an element in the ring `R_q` or in `T_q`.
+ *
+ * `R_q` is the ring `Z_q [X] / (X^n + 1)` with ring operations
+ * addition and multiplication modulo `X^n + 1`.
+ *
+ * [FIPS-203] Section 2.3 (definition of the ring).
+ * [FIPS-203] Section 2.4.4, Equation 2.5 (definition of the representation of
+ *     elements in the ring).
+ *
+ * `T_q` is the image of `R_q` under the number-theoretic transform. An
+ * element of `T_q` is the "NTT representation" of a polynomial in `R_q`.
+ *
+ * [FIPS-203] Section 2.3 (definition of the `T_q`).
+ * [FIPS-203] Section 2.4.4 Equation 2.7 (definition of the representation of
+ *     an element in `T_q`).
 
-// The following helper functions are also used.
+ * Z is a Cryptol primitive such that Z q represents integers mod q that are
+ * closed under arithmetic operations
+ */
+type Z_q_256 = [n](Z q)
+
+/**
+ * Pseudorandom function (PRF).
+ * [FIPS-203] Section 4.1, Equations 4.2 and 4.3.
+ */
+PRF : {prfeta} (fin prfeta, prfeta > 0) => ([32]Byte, Byte) -> [64 * prfeta]Byte
+PRF(s,b) = map reverse (take (groupBy`{8} (shake256 (fromBytes(s)# reverse b))))
+
+/**
+ * One of the hash functions used in the protocol.
+ * [FIPS-203] Section 4.1, Equation 4.4.
+ */
+H : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
+H M = toBytes(sha3 `{digest = 256} (fromBytes(M)))
+
+/**
+ * One of the hash functions used in the protocol.
+ * [FIPS-203] Section 4.1, Equation 4.4.
+ */
+J : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
+J(s) = take(groupBy(shake256(fromBytes(s))))
+
+/**
+ * One of the hash functions used in the protocol.
+ * [FIPS-203] Section 4.1, Equation 4.5.
+ */
+G : {ginl} (fin ginl) => [ginl]Byte -> ([32]Byte, [32]Byte)
+G M = (result@0, result@1)
+    where result = split`{2} (toBytes(sha3 `{digest = 512} (fromBytes(M))))
+
+/**
+ * eXtendable-Output Function (XOF) wrapper.
+ * [FIPS-203] Section 4.1, Equation 4.6.
+ */
+XOF : ([34]Byte) -> [inf]Byte
+XOF(d) = groupBy`{8}(shake128(fromBytes(d)))
+
+/**
+ * Conversion from bit arrays to byte arrays.
+ * [FIPS-203] Section 4.2.1, Algorithm 3.
+ */
 BitsToBytes : {ell} (fin ell, ell > 0) => [ell*8]Bit -> [ell]Byte
 BitsToBytes input = map reverse (groupBy input)
+
+/**
+ * Conversion from byte arrays to bit arrays.
+ * [FIPS-203] Section 4.2.1, Algorithm 4.
+ */
+BytesToBits : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
+BytesToBits input = join (map reverse input)
 
 BitToZ : {p} (fin p, p > 1) => Bit -> Z p
 BitToZ b = if b then 1 else 0
@@ -29,91 +122,285 @@ BitstoZ betas = fromInteger (toInteger (reverse betas))
 ZtoBits : {ell} (fin ell, ell > 0) => (Z q) -> [ell]
 ZtoBits fi = reverse (fromInteger (fromZ fi))
 
-plus : {x, y} (fin x) => [x+y]Byte -> [y]Byte
-plus = drop
-
-// Cryptol's built-in operator for concatenation is #
-concatPlus : {x, y} (fin x, fin y) => [x]Byte -> [y]Byte -> [y]Byte
-concatPlus a b = plus`{x} (a#b)
-
-concatPlusCorrect : {x, y} (fin y, fin x) => [x]Byte -> [y]Byte -> Bit
-property concatPlusCorrect a b = concatPlus a b == b
-
-
-
-type n = 256
-
-// Z is a Cryptol primitive such that Z q represents integers mod q that are
-// closed under arithmetic operations
-type Z_q_256 = [n](Z q)
-
-
-
-modpm : {alpha} (fin alpha, alpha > 0) => Z alpha -> Integer
-modpm r = if r' > (`alpha / 2) then r' - `alpha else r'
-  where r' = fromZ(r)
-
-
-
 // In Cryptol, rounding is computed via the built-in function roundAway
 property rounding = ((roundAway(1.5) == 2) && (roundAway(1.4) == 1))
 
-
-
-// Cryptol does not support sampling. Therefore, for every algorithm, we denote
-// its randomness as an explicit input value.
-
-
-
-// Since q is fixed but d varies, we parameterize by d instead of by q.
+/**
+ * Compression from an integer mod `q` to an integer mod `2^d`.
+ * [FIPS-203] Section 4.2.1, Equation 4.7.
+ */
 Compress'' : {d} (d < lg2 q) => Z q -> [d]
 Compress'' x = fromInteger(roundAway(((2^^`d)/.`q) * fromInteger(fromZ(x))) % 2^^`d)
 
+/**
+ * Decompression from an integer mod `2^d` to an integer mod `q`.
+ * [FIPS-203] Section 4.2.1, Equation 4.8.
+ */
 Decompress'' : {d} (d < lg2 q) => [d] -> Z q
 Decompress'' x = fromInteger(roundAway(((`q)/.(2^^`d))*fromInteger(toInteger(x))))
 
-B_q : {d} (d < lg2 q) => Integer
-B_q = roundAway((`q/.(2^^(`d+1))))
-
+/**
+ * When `d` is large, compression followed by decompression must not
+ * significantly alter the value.
+ * [FIPS-203] Section 4.2.1, "Compression and Decompression".
+ */
 CorrectnessCompress : Z q -> Bit
 property CorrectnessCompress x = err <= B_q`{d_u} where
-  x' = Decompress''`{d_u}(Compress''`{d_u}(x))
-  err = abs(modpm(x'-x))
+    x' = Decompress''`{d_u}(Compress''`{d_u}(x))
+    err = abs(modpm(x'-x))
 
+    B_q : {d} (d < lg2 q) => Integer
+    B_q = roundAway((`q/.(2^^(`d+1))))
 
+    modpm : {alpha} (fin alpha, alpha > 0) => Z alpha -> Integer
+    modpm r = if r' > (`alpha / 2) then r' - `alpha else r'
+          where r' = fromZ(r)
 
+/**
+ * Compression applied to a vector is equivalent to applying compression to
+ * each individual element.
+ * [FIPS-203] Section 2.4.8, Equation 2.15.
+ */
 Compress' : {d} (d < lg2 q) => Z_q_256 -> [n][d]
 Compress' x = map Compress''`{d} x
 
+/**
+ * Decompression applied to a vector is equivalent to applying decompression to
+ * each individual element.
+ * [FIPS-203] Section 2.4.8.
+ */
 Decompress' : {d} (d < lg2 q) => [n][d] -> Z_q_256
 Decompress' x = map Decompress''`{d} x
 
+/**
+ * Compression applied to an array is equivalent to applying compression to
+ * each individual element.
+ * [FIPS-203] Section 2.4.8.
+ */
 Compress : {d, k1} (d < lg2 q, fin k1) => [k1]Z_q_256 -> [k1][n][d]
 Compress x = map Compress'`{d} x
 
+/**
+ * Decompression applied to an array is equivalent to applying decompression to
+ * each individual element.
+ * [FIPS-203] Section 2.4.8.
+ */
 Decompress : {d, k1} (d < lg2 q, fin k1) => [k1][n][d] -> [k1]Z_q_256
 Decompress x = map Decompress'`{d} x
 
+/*
+ * We make this trivial serialization explicit, since it is not an identity in Cryptol.
+ * Byte encoding and decoding involves regrouping 8-bit arrays into ell-bit arrays.
+ */
+regroup B = reverse (groupBy (join (reverse B)))
 
+/**
+ * This is used in some places where the `ByteEncode` function is required in
+ * the spec. It looks like a 2D version of it?
+ */
+EncodeBytes' : {ell, c} (fin ell, ell > 0, fin c) => [c * 8][ell] -> [c * ell]Byte
+EncodeBytes' = regroup
 
-// These types distinguish infinite from finite length
-PRF : {prfeta} (fin prfeta, prfeta > 0) => ([32]Byte, Byte) -> [64 * prfeta]Byte
-XOF : ([34]Byte) -> [inf]Byte
-H : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
-J : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
-G : {ginl} (fin ginl) => [ginl]Byte -> ([32]Byte, [32]Byte)
-KDF : {kdfinl} (fin kdfinl, kdfinl > 0) => [kdfinl]Byte -> [inf]Byte
+/**
+ * This is used in some places where the `ByteDecode` function is required in
+ * the spec. It looks like a 3D version of it?
+ */
+DecodeBytes' : {ell, c} (fin ell, ell > 0, fin c) => [c * ell]Byte -> [c * 8][ell]
+DecodeBytes' = regroup
 
+/**
+ * Encoding and decoding bytes must be inverses in 2D.
+ * ```repl
+ * :prove CorrectnessEncodeBytes'
+ * ```
+ */
+CorrectnessEncodeBytes' : [n][2] -> Bit
+property CorrectnessEncodeBytes' B = DecodeBytes'(EncodeBytes' B) == B
 
+/**
+ * This is used in some places where the `ByteEncode` function is required in
+ * the spec. It's a 3D version of `EncodeBytes'`.
+ */
+EncodeBytes : {ell, k1, c} (fin ell, ell > 0, fin k1, fin c) =>
+    [k1][c * 8][ell] -> [c * ell * k1]Byte
+EncodeBytes B = EncodeBytes' (join B)
 
-zeta = 17 : Z q
+/**
+ * This is used in some places where the `ByteDecode` function is required in
+ * the spec. It's a 3D version of `DecodeBytes'`.
+ */
+DecodeBytes : {ell, k1, c} (fin ell, ell > 0, fin k1, fin c) =>
+    [c * ell * k1]Byte -> [k1][c * 8][ell]
+DecodeBytes B = groupBy (DecodeBytes' B)
 
-QMinusOne : Bit
-property QMinusOne = `q - 1 == 2^^8*13
+/**
+ * Encoding and decoding bytes must be inverses in 3D.
+ * ```repl
+ * :prove CorrectnessEncodeBytes
+ * ```
+ */
+CorrectnessEncodeBytes : [k][n][2] -> Bit
+property CorrectnessEncodeBytes B = DecodeBytes(EncodeBytes B) == B
 
+/**
+ * Apply encoding to a vector applying `Encode` to each element, then
+ * concatenating the results.
+ * [FIPS-203] Section 2.4.8.
+ */
+Encode : {ell, k1} (fin ell, ell > 0, fin k1) => [k1]Z_q_256 -> [32 * ell * k1]Byte
+Encode fVec = join (map Encode'`{ell} fVec)
+
+/**
+ * Apply decoding to a vector by splitting the vector into appropriately-sized
+ * components and applying `Decode` to each element.
+ * [FIPS-203] Section 2.4.8.
+ */
+Decode : {ell, k1} (fin ell, ell > 0, fin k1) => [32 * ell * k1]Byte -> [k1]Z_q_256
+Decode BVec = map Decode'`{ell} (split BVec)
+
+/**
+ * Encode and decode must be inverses in 2D.
+ * ```repl
+ * :check CorrectnessEncodeDecode
+ * ```
+ */
+CorrectnessEncodeDecode : [k]Z_q_256 -> Bit
+property CorrectnessEncodeDecode fVec = all CorrectnessEncodeDecode' fVec
+
+/**
+ * Decode a byte array into an array of `d`-bit integers.
+ * [FIPS-203] Section 4.2.1, Algorithm 6.
+ */
+DecodeSpec : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> Z_q_256
+DecodeSpec B = [f i | i <- [0 .. 255]]
+    where betas = BytesToBits B : [256 * ell]
+          f i = sum [ BitToZ`{q}(betas@(i*`ell+j))*fromInteger(2^^j)
+                    | j <- [0 .. (ell-1)]]
+
+/**
+ * Decode a byte array into an array of `d`-bit integers, more efficiently than
+ * the version in the spec.
+ */
+Decode' : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> Z_q_256
+Decode' B = map BitstoZ`{ell} (split (BytesToBits B))
+
+/**
+ * Proof that the efficient decode function is the same as the spec version.
+ * ```repl
+ * :check DecodeEquiv
+ * ```
+ */
+DecodeEquiv : [32 * 12]Byte -> Bit
+property DecodeEquiv B = (Decode' B == DecodeSpec B)
+
+/**
+ * Encode an array of `d`-bit integers into a byte array, more efficiently than
+ * the version in the spec.
+ *
+ * This should be equivalent to [FIPS-203] Section 4.2.1, Algorithm 5.
+ */
+Encode' : {ell} (fin ell, ell > 0) => Z_q_256 -> [32 * ell]Byte
+Encode' f = BitsToBytes (join (map ZtoBits`{ell} f))
+
+/**
+ * Decoding must be the inverse of encoding.
+ * [FIPS-203] Section 4.2.1, "Encoding and decoding."
+ * ```repl
+ * :check CorrectnessEncodeDecode'
+ * ```
+ */
+CorrectnessEncodeDecode' : Z_q_256 -> Bit
+property CorrectnessEncodeDecode' f = Decode'`{12}(Encode'`{12} f) == f
+
+/**
+ * Uniformly sample NTT representations.
+ *
+ * This converts a stream `b` generated from a seed into a (pseudo)random
+ * polynomial in `T_q`.
+ *
+ * Since Cryptol does not natively support while loops, we approach this
+ * potentially infinite loop with recursion. `SampleNTTInf` converts an
+ * infinite sequence of bytes to an infinite sequence of elements in `Z q`.
+ * We then use the first `n` elements for the result.
+ *
+ * [FIPS-203] Section 4.2.2, Algorithm 7.
+ */
+SampleNTT : [inf]Byte -> Z_q_256
+SampleNTT b = take elements
+    where elements = SampleNTTInf b
+
+/**
+ * SampleNTTInf implements a filter. It scans the input 3 by 3, calculates
+ * the elements d1 and d2 and finally returns the elements that satisfy
+ * the conditions together with the result of itself when applied to the
+ * tail.
+ *
+ * This is an implementation of part of [FIPS-203] Section 4.2.2, Algorithm 7.
+ */
+SampleNTTInf: [inf]Byte -> [inf](Z q)
+SampleNTTInf ([bi,bi1,bi2] # tailS) =
+    if d1 < `q then
+        if d2 < `q then
+            [fromInteger(d1),fromInteger(d2)] # SampleNTTInf tailS
+        else
+            [fromInteger(d1)] # SampleNTTInf tailS
+    else
+        if d2 < `q then
+            [fromInteger(d2)] # SampleNTTInf tailS
+        else
+            SampleNTTInf tailS
+    where
+        d1 = toInteger(reverse bi) + 256 * (toInteger(reverse bi1) % 16)
+        d2 = floor(ratio (toInteger(reverse bi1)) 16) + 16 * toInteger(reverse bi2)
+
+/**
+ * Sample a special, centered distribution of polynomials in `R_q` with small
+ * coefficients.
+ *
+ * Requires that the input stream `B` is uniformly random bytes.
+ *
+ * [FIPS-203] Section 4.2.2, Algorithm 8.
+ */
+SamplePolyCBD: {eta} (fin eta, eta > 0) => [64 * eta]Byte -> Z_q_256
+SamplePolyCBD B = [f i | i <- [0 .. 255]]
+    where betas = BytesToBits B : [512 * eta]
+          x i = sum [BitToZ`{q} (betas@(2*i*`eta+j)) | j <- [0 .. (eta-1)]]
+          y i = sum [BitToZ`{q} (betas@(2*i*`eta+`eta+j)) | j <- [0 .. (eta-1)]]
+          f i = (x i) - (y i)
+
+/**
+ * [FIPS-203] Section 4.3 "The mathematical structure of the NTT."
+ * ```repl
+ * :prove QisCorrectlyDefined
+ * ```
+ */
+QisCorrectlyDefined: Bit
+property QisCorrectlyDefined = `q == 2^^8 * 13 + 1
+
+/**
+ * `zeta` is a primitive 256-th root of unity modulo `q`.
+ * [FIPS-203] Section 4.3 "The mathematical structure of the NTT."
+ *
+ * ```repl
+ * :prove zetaIsPrimitiveRoot
+ * ```
+ */
+property zetaIsPrimitiveRoot = zeta ^^ 128 == -1
+
+/**
+ * Proves that `zeta` is correctly set to be the 256th root of `q`.
+ * ```repl
+ * :exhaust Is256thRootOfq
+ * ```
+ */
 Is256thRootOfq : [lg2 q] -> Bit
 property Is256thRootOfq p = (p == 0) || (p >= 256) || (zeta^^p != 1)
 
+/**
+ * Reverse the unsigned 7-bit value corresponding to an input integer in
+ * `[0, ..., 127]`.
+ * [FIPS-203] Section 4.3 "The mathematical structure of the NTT."
+ */
 BitRev7 : [8] -> [8]
 BitRev7 = reverse
 
@@ -125,19 +412,42 @@ BitRev7 = reverse
 // proof of their equivalence
 //////////////////////////////////////////////////////////////
 
+/**
+ * Compute the NTT representation of the polynomial `f`.
+ *
+ * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 9.
+ */
 ParametricNTT : Z_q_256 -> (Z q) -> Z_q_256
 ParametricNTT f root = join[[f2i i, f2iPlus1 i] | i <- [0 .. 127]]
   where f2i i      = sum [f@(2*j)   * root ^^ ((2*(BitRev7 i >> 1)+1)*j) | j <- [0 .. 127]]
         f2iPlus1 i = sum [f@(2*j+1) * root ^^ ((2*(BitRev7 i >> 1)+1)*j) | j <- [0 .. 127]]
 
+/**
+ * Compute most of the polynomial that corresponds to the NTT representation
+ * `f`.
+ * (The last step 14 is in a separate function)
+ *
+ * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 10.
+ */
 ParametricNTTInv : Z_q_256 -> (Z q) -> Z_q_256
 ParametricNTTInv f root = join[[f2i i, f2iPlus1 i] | i <- [0 .. 127]]
   where f2i i      = sum [f@(2*j)   * root ^^ ((2*(BitRev7 j >> 1)+1)*i) | j <- [0 .. 127]]
         f2iPlus1 i = sum [f@(2*j+1) * root ^^ ((2*(BitRev7 j >> 1)+1)*i) | j <- [0 .. 127]]
 
+/**
+ * Number theoretic transform: converts elements in `R_q` to `T_q`.
+ *
+ * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 9.
+ */
 NaiveNTT : Z_q_256 -> Z_q_256
 NaiveNTT f = ParametricNTT f zeta
 
+/**
+ * Inverse of the number theoretic transform: converts elements in `T_q` to
+ * `R_q`.
+ *
+ * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 10.
+ */
 NaiveNTTInv : Z_q_256 -> Z_q_256
 NaiveNTTInv f = [term*(recip 128) | term <- ParametricNTTInv f (recip zeta)]
 
@@ -251,7 +561,7 @@ fast_invntt v = mul_recip128 (fast_invnttl v 1)
 //////////////////////////////////////////////////////////////
 
 /**
- * This property demonstrates that NaiveNTT is self-inverting
+ * This property demonstrates that NaiveNTT is self-inverting.
  * ```
  * :prove NaiveNTT_Inverts
  * ```
@@ -260,7 +570,7 @@ NaiveNTT_Inverts : Z_q_256 -> Bit
 property NaiveNTT_Inverts f =  NaiveNTTInv (NaiveNTT f) == f
 
 /**
- * This property demonstrates that NaiveNTTInv is self-inverting
+ * This property demonstrates that NaiveNTTInv is self-inverting.
  * ```
  * :prove NaiveNTTInv_Inverts
  * ```
@@ -326,154 +636,103 @@ NTTInv' f = fast_invntt f
 // Polynomial multiplication in the NTT domain
 //////////////////////////////////////////////////////////////
 
+/**
+ * Compute the product of two degree-one polynomials with respect to a
+ * quadratic modulus.
+ * [FIPS-203] Section 4.3.1 Algorithm 12.
+ */
 BaseCaseMultiply : [2] (Z q) -> [2] (Z q) -> (Z q) -> [2] (Z q)
-BaseCaseMultiply a b root = [r0, r1]
+BaseCaseMultiply a b root = [c0, c1]
   where
-    r0 = a@1 * b@1 * root + a@0 * b@0
-    r1 = a@0 * b@1 + a@1 * b@0
+    c0 = a@1 * b@1 * root + a@0 * b@0
+    c1 = a@0 * b@1 + a@1 * b@0
 
+/**
+ * Compute the product (in the ring `T_q`) of two NTT representations.
+ * [FIPS-203] Section 4.3.1 Algorithm 11.
+ */
 MultiplyNTTs : Z_q_256 -> Z_q_256 -> Z_q_256
-MultiplyNTTs a b = join [BaseCaseMultiply (poly1 i) (poly2 i) (root i) | i : Byte <- [0 .. 127]]
+MultiplyNTTs a b = join [BaseCaseMultiply (f_hat_i i) (g_hat_i i) (root i) | i : Byte <- [0 .. 127]]
   where
-    poly1 i = [a@(2*i),a@(2*i+1)]
-    poly2 i = [b@(2*i),b@(2*i+1)]
+    f_hat_i i = [a@(2*i),a@(2*i+1)]
+    g_hat_i i = [b@(2*i),b@(2*i+1)]
     root i = (zeta^^(reverse (64 + (i >> 1)) >> 1) * ((-1 : (Z q)) ^^ (i)))
 
-prod : Z_q_256 -> Z_q_256 -> Z_q_256
-prod f g = NTTInv' (MultiplyNTTs (NTT' f) (NTT' g))
-
-// Testing that (1+x)^2 = 1+2x+x^2
+/**
+ * Testing that (1+x)^2 = 1+2x+x^2
+ * ```repl
+ * :prove TestMult
+ * ```
+ */
 TestMult : Bit
 property TestMult = prod f f == fsq where
   f = [1, 1] # [0 | i <- [3 .. 256]]
   fsq = [1,2,1] # [0 | i <- [4 .. 256]]
 
+  prod : Z_q_256 -> Z_q_256 -> Z_q_256
+  prod a b = NTTInv' (MultiplyNTTs (NTT' a) (NTT' b))
+
+/**
+ * The cross product notation ×𝑇𝑞 is defined as the `MultiplyNTTs` function
+ * (also referred to as `T_q` multiplication).
+ * [FIPS-203] Section 2.4.5 Equation 2.8.
+ */
 dot : Z_q_256 -> Z_q_256 -> Z_q_256
 dot f g = MultiplyNTTs f  g
 
-add : Z_q_256 -> Z_q_256 -> Z_q_256
-add f g = f + g
-
-
-
+/**
+ * The notation `NTT` is overloaded to mean both a single application of `NTT`
+ * to an element of `R_q` and also `k` applications of `NTT` to every element
+ * of a `k`-length vector.
+ * [FIPS-203] Section 2.4.6 Equation 2.9.
+ */
 NTT v = map NTT' v
+
+/**
+ * The notation `NTTInv` is overloaded to mean both a single application of
+ * `NTTInv` to an element of `R_q` and also `k` applications of `NTTInv` to
+ * every element of a `k`-length vector.
+ * [FIPS-203] Section 2.4.6.
+ */
 NTTInv v = map NTTInv' v
 
-
-
+/**
+ * Overloaded `dot` function between two vectors is a standard dot-product
+ * functionality with `T_q` multiplication as the base operation.
+ * [FIPS-203] Section 2.4.7 Equation 2.14.
+ */
 dotVecVec : {k1} (fin k1) => [k1]Z_q_256 -> [k1]Z_q_256 -> Z_q_256
-dotVecVec v1 v2 = foldl add zero (zipWith dot v1 v2)
+dotVecVec v1 v2 = sum (zipWith dot v1 v2)
 
+/**
+ * Overloaded `dot` function between a matrix and a vector is standard matrix-
+ * vector multiplication with `T_q` multiplication as the base operation.
+ * [FIPS-203] Section 2.4.7 Equation 2.12 and 2.13.
+ */
 dotMatVec : {k1,k2} (fin k1, fin k2) => [k1][k2]Z_q_256 -> [k2]Z_q_256 -> [k1]Z_q_256
 dotMatVec matrix vector = [dotVecVec v1 vector | v1 <- matrix]
 
+/**
+ * Overloaded `dot` function between two matrices is standard matrix
+ * multiplication with `T_q` multiplication as the base operation.
+ * [FIPS-203] Section 2.4.7.
+ */
 dotMatMat :{k1,k2,k3} (fin k1, fin k2, fin k3) =>
   [k1][k2]Z_q_256 -> [k2][k3]Z_q_256 -> [k1][k3]Z_q_256
 dotMatMat matrix1 matrix2 = transpose [dotMatVec matrix1 vector | vector <- m']
     where m' = transpose matrix2
 
-
-
-// Since Cryptol does not natively support while loops, we approach this
-// potentially infinite loop with recursion. We define SampleNTTInf that
-// converts an infinite sequence of bytes to an infinite sequence of
-// elements in Z q. We then pick the first n elements for the result.
-
-SampleNTT : [inf]Byte -> Z_q_256
-SampleNTT b = take elements
-    where elements = SampleNTTInf b
-
-// SampleNTTInf implements a filter. It scans the input 3 by 3, calculates
-// the elements d1 and d2 and finally returns the elements that satisfy
-// the conditions together with the result of itself when applied to the
-// tail.
-
-SampleNTTInf: [inf]Byte -> [inf](Z q)
-SampleNTTInf ([bi,bi1,bi2] # tailS) =
-    if d1 < `q then
-        if d2 < `q then
-            [fromInteger(d1),fromInteger(d2)] # SampleNTTInf tailS
-        else
-            [fromInteger(d1)] # SampleNTTInf tailS
-    else
-        if d2 < `q then
-            [fromInteger(d2)] # SampleNTTInf tailS
-        else
-            SampleNTTInf tailS
-    where
-        d1 = toInteger(reverse bi) + 256 * (toInteger(reverse bi1) % 16)
-        d2 = floor(ratio (toInteger(reverse bi1)) 16) + 16 * toInteger(reverse bi2)
-
-
-
-SamplePolyCBD: {eta} (fin eta, eta > 0) => [64 * eta]Byte -> Z_q_256
-SamplePolyCBD B = [f i | i <- [0 .. 255]]
-    where betas = BytesToBits B : [512 * eta]
-          x i = sum [BitToZ`{q} (betas@(2*i*`eta+j)) | j <- [0 .. (eta-1)]]
-          y i = sum [BitToZ`{q} (betas@(2*i*`eta+`eta+j)) | j <- [0 .. (eta-1)]]
-          f i = (x i) - (y i)
-
-
-
-// We make this trivial serialization explicit, since it is not an identity in Cryptol.
-// Byte encoding and decoding involves regrouping 8-bit arrays into ell-bit arrays.
-regroup B = reverse (groupBy (join (reverse B)))
-
-EncodeBytes' : {ell, c} (fin ell, ell > 0, fin c) => [c * 8][ell] -> [c * ell]Byte
-EncodeBytes' = regroup
-
-DecodeBytes' : {ell, c} (fin ell, ell > 0, fin c) => [c * ell]Byte -> [c * 8][ell]
-DecodeBytes' = regroup
-
-CorrectnessEncodeBytes' : [n][2] -> Bit
-property CorrectnessEncodeBytes' B = DecodeBytes'(EncodeBytes' B) == B
-
-EncodeBytes : {ell, k1, c} (fin ell, ell > 0, fin k1, fin c) =>
-    [k1][c * 8][ell] -> [c * ell * k1]Byte
-EncodeBytes B = EncodeBytes' (join B)
-
-DecodeBytes : {ell, k1, c} (fin ell, ell > 0, fin k1, fin c) =>
-    [c * ell * k1]Byte -> [k1][c * 8][ell]
-DecodeBytes B = groupBy (DecodeBytes' B)
-
-CorrectnessEncodeBytes : [k][n][2] -> Bit
-property CorrectnessEncodeBytes B = DecodeBytes(EncodeBytes B) == B
-
-
-
-Encode : {ell, k1} (fin ell, ell > 0, fin k1) => [k1]Z_q_256 -> [32 * ell * k1]Byte
-Encode fVec = join (map Encode'`{ell} fVec)
-
-Decode : {ell, k1} (fin ell, ell > 0, fin k1) => [32 * ell * k1]Byte -> [k1]Z_q_256
-Decode BVec = map Decode'`{ell} (split BVec)
-
-CorrectnessEncodeDecode : [k]Z_q_256 -> Bit
-property CorrectnessEncodeDecode fVec = all CorrectnessEncodeDecode' fVec
-
-
-
-DecodeSpec : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> Z_q_256
-DecodeSpec B = [f i | i <- [0 .. 255]]
-    where betas = BytesToBits B : [256 * ell]
-          f i = sum [ BitToZ`{q}(betas@(i*`ell+j))*fromInteger(2^^j)
-                    | j <- [0 .. (ell-1)]]
-
-// We include a more efficient way to compute decoding
-// together with a property that it is equivalent.
-Decode' : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> Z_q_256
-Decode' B = map BitstoZ`{ell} (split (BytesToBits B))
-
-DecodeEquiv : [32 * 12]Byte -> Bit
-property DecodeEquiv B = (Decode' B == DecodeSpec B)
-
-Encode' : {ell} (fin ell, ell > 0) => Z_q_256 -> [32 * ell]Byte
-Encode' f = BitsToBytes (join (map ZtoBits`{ell} f))
-
-CorrectnessEncodeDecode' : Z_q_256 -> Bit
-property CorrectnessEncodeDecode' f = Decode'`{12}(Encode'`{12} f) == f
-
-
-
+/**
+ * Key generation for the K-PKE component scheme.
+ *
+ * Warnings:
+ * - This scheme is not approved for use in a stand-alone fashion! It does not
+ *   do any input validation and should only be used as a subroutine of ML-KEM.
+ * - The seed `d` passed as input and the decryption key `dkPKE` returned from
+ *   this algorithm must be kept private!
+ *
+ * [FIPS-203] Section 5.1 Algorithm 13.
+ */
 K_PKE_KeyGen: ([32]Byte) -> ([384*k+32]Byte, [384*k]Byte)
 K_PKE_KeyGen(d) = (ekPKE, dkPKE) where
   (ρ,σ) = G(d # [`(k)])
@@ -486,8 +745,15 @@ K_PKE_KeyGen(d) = (ekPKE, dkPKE) where
   ekPKE = Encode`{12}(t_hat) # ρ
   dkPKE = Encode`{12}(s_hat)
 
-
-
+/**
+ * Encryption algorithm for the K-PKE component scheme.
+ *
+ * Warning: This scheme is not approved for use in a stand-alone fashion!
+ * It does not do any input validation and should only be used as a subroutine
+ * of ML-KEM.
+ *
+ * [FIPS-203] Section 5.2 Algorithm 14.
+ */
 K_PKE_Encrypt : ([384*k+32]Byte, [32]Byte, [32]Byte) -> [32*(d_u*k+d_v)]Byte
 K_PKE_Encrypt(ekPKE, m, r) = c where
   t_hat = Decode`{12} (ekPKE@@[0 .. 384*k - 1])
@@ -504,8 +770,15 @@ K_PKE_Encrypt(ekPKE, m, r) = c where
   c2 = EncodeBytes'`{d_v}(Compress'`{d_v}(v))
   c = c1#c2
 
-
-
+/**
+ * Decryption algorithm for the K-PKE component scheme.
+ *
+ * Warning: This scheme is not approved for use in a stand-alone fashion!
+ * It does not do any input validation and should only be used as a subroutine
+ * of ML-KEM.
+ *
+ * [FIPS-203] Section 5.3 Algorithm 15.
+ */
 K_PKE_Decrypt : ([384*k]Byte, [32*(d_u*k+d_v)]Byte) -> [32]Byte
 K_PKE_Decrypt(sk, c) = m where
   c1 = c@@[0 .. 32*d_u*k - 1]
@@ -516,11 +789,16 @@ K_PKE_Decrypt(sk, c) = m where
   w = v - NTTInv' (dotVecVec s_hat (NTT u))
   m = EncodeBytes'`{1}(Compress'`{1}(w))
 
-// Kyber is correct with probability 1-delta and not 1. As a result,
-// running :prove Correctness will not succeed since there is a
-// fraction delta of seeds d,r that do not work. Therefore, we can
-// only run :check Correctness. Cryptol does not currently support counting.
-
+/**
+ * The K-PKE scheme is correct with probability 1-delta and not 1. As a result,
+ * running `:prove CorrectnessPKE` will not succeed since there is a
+ * fraction delta of seeds `d`, `r` that do not work.
+ * Cryptol does not currently support counting.
+ * ```repl
+ * :set tests=3
+ * :check CorrectnessPKE
+ * ```
+ */
 CorrectnessPKE : ([32]Byte, [32]Byte, [32]Byte) -> Bit
 property CorrectnessPKE(d, m, r) = (m' == m) where
   (pk, sk) = K_PKE_KeyGen(d)
@@ -528,24 +806,47 @@ property CorrectnessPKE(d, m, r) = (m' == m) where
   m' = K_PKE_Decrypt(sk, c)
 
 
-
-// We make the randomness of K_PKE_KeyGen explicit
+/**
+ * Uses randomness to generate an encapsulation key and corresponding
+ * decapsulation key.
+ *
+ * The randomness here is passed explicitly as a parameter and is not checked
+ * for validity, so this actually corresponds to
+ * [FIPS-203] Section 6.1 Algorithm 16 (`ML_KEM.KeyGen_internal`).
+ *
+ * Note: This is not Algorithm 19 because:
+ * - The randomness is passed explicitly as a parameter;
+ * - It does not document / require input validation.
+ */
 ML_KEM_KeyGen : ([32]Byte,[32]Byte) -> ([384*k+32]Byte, [768*k+96]Byte)
 ML_KEM_KeyGen (z,d) = (ek, dk) where
   (ekPKE, dkPKE) = K_PKE_KeyGen(d)
   ek = ekPKE
   dk = dkPKE#ek#H(ek)#z
 
-
-
-// We make the random message m explicit.
+/**
+ * Uses the encapsulation key and randomness to generate a key and an
+ * associated ciphertext.
+ *
+ * [FIPS-203] Section 6.2 Algorithm 17 (`ML_KEM.Encaps_internal`).
+ *
+ * Note: This is not Algorithm 20 because:
+ * - The randomness is passed explicitly as a parameter;
+ * - It does not document / require input validation.
+ */
 ML_KEM_Encaps : ([384*k+32]Byte, [32]Byte) -> ([32]Byte, [32*(d_u*k+d_v)]Byte)
 ML_KEM_Encaps (ek, m) = (K, c) where
   (K, r) = G(m#H(ek))
   c = K_PKE_Encrypt(ek, m, r)
 
-
-
+/**
+ * Uses the decapsulation key to produce a shared secret key from a ciphertext.
+ *
+ * [FIPS-203] Section 6.3 Algorithm 18 (`ML_KEM.Decaps_internal`).
+ *
+ * Note: This is not Algorithm 21 because it does not document / require input
+ * validation.
+ */
 ML_KEM_Decaps : ([32*(d_u*k+d_v)]Byte, [768*k+96]Byte) -> [32]Byte
 ML_KEM_Decaps (c, dk) = K
   where
@@ -555,47 +856,95 @@ ML_KEM_Decaps (c, dk) = K
     z = dk@@[768*k + 64 .. 768*k + 96 - 1] // extract implicit rejection value
     m' = K_PKE_Decrypt(dkPKE, c) // decrypt ciphertext
     (K', r') = G(m'#h)
-    Kbar = J(z#c) : [32]Byte // Spec has a typo
+    Kbar = J(z#c) : [32]Byte
     c' = K_PKE_Encrypt(ekPKE, m', r')
     K = if (c != c') then Kbar // Suggestion to spec: Rename K' to K
                      else K'
 
 
+/**
+ * The ML-KEM scheme is correct with probability 1-delta and not 1. As a
+ * result, running `:prove CorrectnessPKE` will not succeed since there is a
+ * fraction delta of seeds `d`, `z`, `m` that do not work.
+ * Cryptol does not currently support counting.
+ * ```repl
+ * :set tests=3
+ * :check CorrectnessKEM
+ * ```
+ */
 CorrectnessKEM : ([32]Byte, [32]Byte, [32]Byte) -> Bit
 property CorrectnessKEM(z, d, m) = (K == K') where
   (pk, sk) = ML_KEM_KeyGen(z, d)
   (K, c) = ML_KEM_Encaps(pk, m)
   K' = ML_KEM_Decaps(c, sk)
 
-
-
 parameter
-  type k : #
-  type constraint (width k > 0, width 2*k <= 8)
-  type eta_1 : #
-  type constraint (fin eta_1, eta_1 > 0)
-  type eta_2 : #
-  type constraint (fin eta_2, eta_2 > 0)
-  type d_u : #
-  // both d_u and d_v must be less than lg2 q = 12
-  type constraint (fin d_u, d_u < 12, d_u > 0)
-  type d_v : #
-  type constraint (fin d_v, d_v < 12, d_v > 0)
+    /*
+     * The parameter `k` determines the dimensions of the encryption key matrix
+     * and the secret and noise vectors created and used in key generation and
+     * encryption.
+     * [FIPS-203] Section 8.
+     *
+     * The coonstraint on the width of `k` is drawn from `K-PKE-KeyGen`. In
+     * that function, the variable `N` varies from 0 to `2k` and is passed as
+     * the second parameter to the `PRF` function. `PRF` restricts the second
+     * parameter to be exactly 1 byte. Therefore, `2k` must fit into a byte.
+     * [FIPS-203] Section 5.1 Algorithm 13 (see lines 2 and 8-15) and Section
+     * 4.1 Equation 4.2.
+     */
+    type k : #
+    type constraint (width k > 0, width (2*k) <= 8)
 
+    /*
+     * The parameter `eta_1` specifies the distribution from which the secret
+     * vectors are drawn in key generation and encryption.
+     * [FIPS-203] Section 8.
+     *
+     * eta_1 must be in the set {2, 3} for use in a PRF and to parameterize
+     * sampling from the centered binomial distribution.
+     * [FIPS-203] Section 4.1 "Pseudorandom Function" and Section 4.2.2
+     * "Sampling from the centered binomial distribution"
+     */
+    type eta_1 : #
+    type constraint (fin eta_1, 2 <= eta_1, eta_1 <= 3)
 
+    /*
+     * The parameter eta_2 is required to specify the distribution from which
+     * the noise vectors are drawn in encryption.
+     * [FIPS-203] Section 8.
+     *
+     * eta_2 must be in the set {2, 3} for use in a PRF and to parameterize
+     * sampling from the centered binomial distribution.
+     * [FIPS-203] Section 4.1 "Pseudorandom Function" and Section 4.2.2
+     * "Sampling from the centered binomial distribution"
+     */
+    type eta_2 : #
+    type constraint (fin eta_2, 2 <= eta_2, eta_2 <= 3)
 
-import Primitive::Keyless::Hash::utils
-import Primitive::Keyless::Hash::SHAKE::SHAKE128
-XOF(d) = groupBy`{8}(shake128(fromBytes(d)))
-J(s) = take(groupBy(shake256(fromBytes(s))))
+    /*
+     * The parameter `d_u` is a parameter and input for the compression and
+     * encoding functions.
+     * [FIPS-203] Section 8.
+     *
+     * For compression, `d_u` must be smaller than the bit length of `q` (fixed
+     * to 12).
+     * [FIPS-203] Section 4.2.1 "Compression and decompression".
+     * For encoding, the valid range of values for `d_u` is `1 ≤ d_u ≤ 12`.
+     * [FIPS-203] Section 4.2.1 "Encoding and decoding".
+     */
+    type d_u : #
+    type constraint (fin d_u, d_u < 12, d_u > 0)
 
-import `Primitive::Keyless::Hash::SHA3::SHA3
-H M = toBytes(sha3 `{digest = 256} (fromBytes(M)))
-
-G M = (result@0, result@1)
-    where result = split`{2} (toBytes(sha3 `{digest = 512} (fromBytes(M))))
-
-import Primitive::Keyless::Hash::SHAKE::SHAKE256
-PRF(s,b) = map reverse (take (groupBy`{8} (shake256(fromBytes(s)# reverse b))))
-
-KDF input = groupBy`{8}(shake256 (fromBytes(input)))
+    /*
+     * The parameter `d_v` is a parameter and input for the compression and
+     * encoding functions.
+     * [FIPS-203] Section 8.
+     *
+     * For compression, `d_v` must be smaller than the bit length of `q` (fixed
+     * to 12).
+     * [FIPS-203] Section 4.2.1 "Compression and decompression".
+     * For encoding, the valid range of values for `d_v` is `1 ≤ d_v ≤ 12`.
+     * [FIPS-203] Section 4.2.1 "Encoding and decoding".
+     */
+    type d_v : #
+    type constraint (fin d_v, d_v < 12, d_v > 0)
