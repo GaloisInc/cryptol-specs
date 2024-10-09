@@ -34,7 +34,7 @@ import Primitive::Keyless::Hash::utils (toBytes)
 shake256: {d, m} (fin m) => [m] -> [d]
 shake256 M = Keccak (M # 0b1111)
 
-/*
+/**
  * ```repl
  * :prove k5
  * ```
@@ -47,7 +47,7 @@ property k5 = join (toBytes (shake256`{512} [])) == expected_result where
         0xfc821c49479ab48640292eacb3b7c4be
     ]
 
-/*
+/**
  * ```repl
  * :prove k6
  * ```
@@ -60,7 +60,7 @@ property k6 = join (toBytes (shake256 0b0)) == expected_result where
         0x55d30410d71b8e275a676545600f1c35
     ]
 
-/*
+/**
  * ```repl
  * :prove k7
  * ```
@@ -73,7 +73,7 @@ property k7 = join (toBytes (shake256 0b11 : [512])) == expected_result where
         0x7c98f3948e6b7959a9b8950ffd6345d5
     ]
 
-/*
+/**
  * ```repl
  * :prove k8
  * ```

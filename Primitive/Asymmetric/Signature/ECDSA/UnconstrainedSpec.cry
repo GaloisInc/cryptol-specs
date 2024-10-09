@@ -208,6 +208,7 @@ publicKey d = EC::scmul (fromZ d) EC::G
  * [FIPS-186-5] Section 3.3.
  * ```repl
  * :check signAndVerifyIsCorrect`{64}
+ * ```
  */
 signAndVerifyIsCorrect : {m} (fin m, width m < 64) => [m] -> Z EC::n -> Z EC::n -> Bool
 property signAndVerifyIsCorrect M d k = verification
