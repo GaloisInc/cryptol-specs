@@ -1,8 +1,0 @@
-module Primitive::Keyless::Hash::utils where
-/** Splits a list of bits into bytes, using little-endian bit order. **/
-toBytes : {n} (fin n) => [8*n] -> [n][8]
-toBytes s = reverse (split (reverse s))
-
-/** Joins a list of bytes into a list of bits, using little-endian bit order. **/
-fromBytes : {n} (fin n) => [n][8] -> [8*n]
-fromBytes bs = reverse (join (reverse bs))

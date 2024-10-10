@@ -383,5 +383,3 @@ property unflatten_correct x y z p =
  * ```
  */
 property flatten_correct s = unflatten (flatten s) == s
-
-

@@ -20,7 +20,7 @@ module Primitive::Asymmetric::Cipher::ML_KEM::Specification where
 import Primitive::Keyless::Hash::SHAKE::SHAKE256
 import Primitive::Keyless::Hash::SHAKE::SHAKE128
 import `Primitive::Keyless::Hash::SHA3::SHA3
-import Primitive::Keyless::Hash::utils
+import Primitive::Keyless::Hash::KeccakBitOrdering
 
 /*
  * [FIPS-203] Section 2.3.
