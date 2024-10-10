@@ -67,8 +67,8 @@ type Z_q_256 = [n](Z q)
  * Pseudorandom function (PRF).
  * [FIPS-203] Section 4.1, Equations 4.2 and 4.3.
  */
-PRF : {prfeta} (fin prfeta, prfeta > 0) => ([32]Byte, Byte) -> [64 * prfeta]Byte
-PRF(s,b) = map reverse (take (groupBy`{8} (shake256 (fromBytes(s)# reverse b))))
+PRF : {prfeta} (fin prfeta, prfeta > 0) => [32]Byte -> Byte -> [64 * prfeta]Byte
+PRF s b = map reverse (take (groupBy`{8} (shake256 (fromBytes(s)# reverse b))))
 
 /**
  * One of the hash functions used in the protocol.
@@ -325,9 +325,10 @@ property CorrectnessEncodeDecode' f = Decode'`{12}(Encode'`{12} f) == f
  *
  * [FIPS-203] Section 4.2.2, Algorithm 7.
  */
-SampleNTT : [inf]Byte -> Z_q_256
-SampleNTT b = take elements
-    where elements = SampleNTTInf b
+SampleNTT : [34]Byte -> Z_q_256
+SampleNTT B = take elements where
+    C_stream = XOF(B)
+    elements = SampleNTTInf C_stream
 
 /**
  * SampleNTTInf implements a filter. It scans the input 3 by 3, calculates
@@ -746,15 +747,28 @@ submodule K_PKE where
      */
     KeyGen: ([32]Byte) -> ([384*k+32]Byte, [384*k]Byte)
     KeyGen(d) = (ekPKE, dkPKE) where
-      (ρ,σ) = G(d # [`(k)])
-      A_hat = [[SampleNTT (XOF(ρ # [j] # [i])) | j <- [0 .. k-1]] | i <- [0 .. k-1]] : [k][k]Z_q_256
-      s = [SamplePolyCBD`{eta_1}(PRF(σ,N)) | N <- [0 .. k-1]] : [k]Z_q_256
-      e = [SamplePolyCBD`{eta_1}(PRF(σ,N)) | N <- [k .. (2*k-1)]] : [k]Z_q_256
-      s_hat = NTT(s)
-      e_hat = NTT(e)
-      t_hat = (dotMatVec A_hat s_hat) + e_hat
-      ekPKE = Encode`{12}(t_hat) # ρ
-      dkPKE = Encode`{12}(s_hat)
+        // Step 1.
+        (ρ, σ) = G (d # [`(k)])
+        // Steps 3-7.
+        A_hat = [[ SampleNTT (ρ # [j] # [i])
+            | j <- [0 .. k-1]]
+            | i <- [0 .. k-1]]
+        // Steps 2, 8-11.
+        s = [SamplePolyCBD`{eta_1} (PRF σ N)
+            | N <- [0 .. k-1]]
+        // Steps 12 - 15.
+        e = [SamplePolyCBD`{eta_1} (PRF σ N)
+            | N <- [k .. 2 * k - 1]]
+        // Step 16.
+        s_hat = NTT s
+        // Step 17.
+        e_hat = NTT e
+        // Step 18.
+        t_hat = (dotMatVec A_hat s_hat) + e_hat
+        // Step 19.
+        ekPKE = (Encode`{12} t_hat) # ρ
+        // Step 20.
+        dkPKE = Encode`{12} (s_hat)
 
     /**
      * Encryption algorithm for the K-PKE component scheme.
@@ -765,21 +779,40 @@ submodule K_PKE where
      *
      * [FIPS-203] Section 5.2 Algorithm 14.
      */
-    Encrypt : ([384*k+32]Byte, [32]Byte, [32]Byte) -> [32*(d_u*k+d_v)]Byte
-    Encrypt(ekPKE, m, r) = c where
-      t_hat = Decode`{12} (ekPKE@@[0 .. 384*k - 1])
-      rho = ekPKE@@[384*k .. 384*k + 32 - 1]
-      A_hat = [[SampleNTT (XOF(rho # [j] # [i])) | j <- [0 .. k-1]] | i <- [0 .. k-1]] : [k][k]Z_q_256
-      yvec = [SamplePolyCBD`{eta_1}(PRF(r,N)) | N <- [0 .. k-1]] : [k]Z_q_256
-      e1 = [SamplePolyCBD`{eta_2}(PRF(r,N)) | N <- [k .. (2*k-1)]] : [k]Z_q_256
-      e2 = SamplePolyCBD`{eta_2}(PRF(r,2*`k)) : Z_q_256
-      yvechat = NTT yvec
-      u = NTTInv (dotMatVec (transpose A_hat) yvechat) + e1 : [k]Z_q_256
-      mu = Decompress'`{1}(DecodeBytes'`{1} m)
-      v = (NTTInv' (dotVecVec t_hat yvechat)) + e2 + mu
-      c1 = EncodeBytes`{d_u}(Compress`{d_u}(u))
-      c2 = EncodeBytes'`{d_v}(Compress'`{d_v}(v))
-      c = c1#c2
+    Encrypt : [384*k+32]Byte -> [32]Byte -> [32]Byte -> [32*(d_u*k+d_v)]Byte
+    Encrypt ekPKE m r = c where
+        // Step 2.
+        t_hat = Decode`{12} (ekPKE @@[0 .. 384*k - 1])
+        // Step 3.
+        rho = ekPKE @@[384*k .. 384*k + 32 - 1]
+        // Steps 4-8.
+        A_hat = [[ SampleNTT (rho # [j] # [i])
+            | j <- [0 .. k-1]]
+            | i <- [0 .. k-1]]
+        // Steps 1, 9-12.
+        y = [SamplePolyCBD`{eta_1} (PRF r N)
+            | N <- [0 .. k-1]]
+        // Steps 13-16.
+        e1 = [SamplePolyCBD`{eta_2} (PRF r N)
+            | N <- [k .. 2 * k - 1]]
+        // Step 17. In the spec, the second parameter is `N = 2k`. In this
+        // implementation, `N` itself is out of scope, so we use the fixed
+        // value instead.
+        e2 = SamplePolyCBD`{eta_2} (PRF r (2 * `k))
+        // Step 18.
+        y_hat = NTT y
+        // Step 19.
+        u = NTTInv (dotMatVec (transpose A_hat) y_hat) + e1
+        // Step 20.
+        mu = Decompress'`{1} (DecodeBytes'`{1} m)
+        // Step 21.
+        v = (NTTInv' (dotVecVec t_hat y_hat)) + e2 + mu
+        // Step 22.
+        c1 = EncodeBytes`{d_u} (Compress`{d_u} u)
+        // Step 23.
+        c2 = EncodeBytes'`{d_v} (Compress'`{d_v} v)
+        // Step 24.
+        c = c1 # c2
 
     /**
      * Decryption algorithm for the K-PKE component scheme.
@@ -790,15 +823,22 @@ submodule K_PKE where
      *
      * [FIPS-203] Section 5.3 Algorithm 15.
      */
-    Decrypt : ([384*k]Byte, [32*(d_u*k+d_v)]Byte) -> [32]Byte
-    Decrypt(sk, c) = m where
-      c1 = c@@[0 .. 32*d_u*k - 1]
-      c2 = c@@[32*d_u*k .. 32*(d_u*k+d_v) - 1]
-      u = Decompress`{d_u}(DecodeBytes`{d_u} c1)   : [k]Z_q_256
-      v = Decompress'`{d_v}(DecodeBytes'`{d_v} c2) : Z_q_256
-      s_hat = Decode`{12} sk : [k]Z_q_256
-      w = v - NTTInv' (dotVecVec s_hat (NTT u))
-      m = EncodeBytes'`{1}(Compress'`{1}(w))
+    Decrypt : [384*k]Byte -> [32*(d_u*k+d_v)]Byte -> [32]Byte
+    Decrypt dkPKE c = m where
+        // Step 1.
+        c1 = c @@[0 .. 32 * d_u * k - 1]
+        // Step 2.
+        c2 = c @@[32 * d_u * k .. 32 * (d_u * k + d_v) - 1]
+        // Step 3.
+        u' = Decompress`{d_u} (DecodeBytes`{d_u} c1)
+        // Step 4.
+        v' = Decompress'`{d_v} (DecodeBytes'`{d_v} c2)
+        // Step 5.
+        s_hat = Decode`{12} dkPKE
+        // Step 6.
+        w = v' - NTTInv' (dotVecVec s_hat (NTT u'))
+        // Step 7.
+        m = EncodeBytes'`{1} (Compress'`{1} w)
 
     /**
      * The K-PKE scheme is correct with probability 1-delta and not 1. As a result,
@@ -810,11 +850,11 @@ submodule K_PKE where
      * :check CorrectnessPKE
      * ```
      */
-    CorrectnessPKE : ([32]Byte, [32]Byte, [32]Byte) -> Bit
-    property CorrectnessPKE(d, m, r) = (m' == m) where
-      (pk, sk) = KeyGen(d)
-      c = Encrypt(pk, m, r)
-      m' = Decrypt(sk, c)
+    CorrectnessPKE : [32]Byte -> [32]Byte -> [32]Byte -> Bit
+    property CorrectnessPKE d m r = (m' == m) where
+        (pk, sk) = KeyGen d
+        c = Encrypt pk m r
+        m' = Decrypt sk c
 
 
 /**
@@ -848,7 +888,7 @@ ML_KEM_KeyGen (z,d) = (ek, dk) where
 ML_KEM_Encaps : ([384*k+32]Byte, [32]Byte) -> ([32]Byte, [32*(d_u*k+d_v)]Byte)
 ML_KEM_Encaps (ek, m) = (K, c) where
   (K, r) = G(m#H(ek))
-  c = K_PKE::Encrypt(ek, m, r)
+  c = K_PKE::Encrypt ek m r
 
 /**
  * Uses the decapsulation key to produce a shared secret key from a ciphertext.
@@ -865,10 +905,10 @@ ML_KEM_Decaps (c, dk) = K
     ekPKE = dk@@[384*k .. 768*k + 32 - 1] // extract PKE encryption key
     h = dk@@[768*k + 32 .. 768*k + 64 - 1] // extract hash of PKE encryption key
     z = dk@@[768*k + 64 .. 768*k + 96 - 1] // extract implicit rejection value
-    m' = K_PKE::Decrypt(dkPKE, c) // decrypt ciphertext
+    m' = K_PKE::Decrypt dkPKE c // decrypt ciphertext
     (K', r') = G(m'#h)
     Kbar = J(z#c) : [32]Byte
-    c' = K_PKE::Encrypt(ekPKE, m', r')
+    c' = K_PKE::Encrypt ekPKE m' r'
     K = if (c != c') then Kbar // Suggestion to spec: Rename K' to K
                      else K'
 
