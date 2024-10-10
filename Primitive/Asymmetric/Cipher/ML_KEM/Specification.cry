@@ -722,88 +722,89 @@ dotMatMat :{k1,k2,k3} (fin k1, fin k2, fin k3) =>
 dotMatMat matrix1 matrix2 = transpose [dotMatVec matrix1 vector | vector <- m']
     where m' = transpose matrix2
 
-/**
- * Key generation for the K-PKE component scheme.
- *
- * Warnings:
- * - This scheme is not approved for use in a stand-alone fashion! It does not
- *   do any input validation and should only be used as a subroutine of ML-KEM.
- * - The seed `d` passed as input and the decryption key `dkPKE` returned from
- *   this algorithm must be kept private!
- *
- * [FIPS-203] Section 5.1 Algorithm 13.
- */
-K_PKE_KeyGen: ([32]Byte) -> ([384*k+32]Byte, [384*k]Byte)
-K_PKE_KeyGen(d) = (ekPKE, dkPKE) where
-  (ρ,σ) = G(d # [`(k)])
-  A_hat = [[SampleNTT (XOF(ρ # [j] # [i])) | j <- [0 .. k-1]] | i <- [0 .. k-1]] : [k][k]Z_q_256
-  s = [SamplePolyCBD`{eta_1}(PRF(σ,N)) | N <- [0 .. k-1]] : [k]Z_q_256
-  e = [SamplePolyCBD`{eta_1}(PRF(σ,N)) | N <- [k .. (2*k-1)]] : [k]Z_q_256
-  s_hat = NTT(s)
-  e_hat = NTT(e)
-  t_hat = (dotMatVec A_hat s_hat) + e_hat
-  ekPKE = Encode`{12}(t_hat) # ρ
-  dkPKE = Encode`{12}(s_hat)
+submodule K_PKE where
+    /**
+     * Key generation for the K-PKE component scheme.
+     *
+     * Warnings:
+     * - This scheme is not approved for use in a stand-alone fashion! It does not
+     *   do any input validation and should only be used as a subroutine of ML-KEM.
+     * - The seed `d` passed as input and the decryption key `dkPKE` returned from
+     *   this algorithm must be kept private!
+     *
+     * [FIPS-203] Section 5.1 Algorithm 13.
+     */
+    KeyGen: ([32]Byte) -> ([384*k+32]Byte, [384*k]Byte)
+    KeyGen(d) = (ekPKE, dkPKE) where
+      (ρ,σ) = G(d # [`(k)])
+      A_hat = [[SampleNTT (XOF(ρ # [j] # [i])) | j <- [0 .. k-1]] | i <- [0 .. k-1]] : [k][k]Z_q_256
+      s = [SamplePolyCBD`{eta_1}(PRF(σ,N)) | N <- [0 .. k-1]] : [k]Z_q_256
+      e = [SamplePolyCBD`{eta_1}(PRF(σ,N)) | N <- [k .. (2*k-1)]] : [k]Z_q_256
+      s_hat = NTT(s)
+      e_hat = NTT(e)
+      t_hat = (dotMatVec A_hat s_hat) + e_hat
+      ekPKE = Encode`{12}(t_hat) # ρ
+      dkPKE = Encode`{12}(s_hat)
 
-/**
- * Encryption algorithm for the K-PKE component scheme.
- *
- * Warning: This scheme is not approved for use in a stand-alone fashion!
- * It does not do any input validation and should only be used as a subroutine
- * of ML-KEM.
- *
- * [FIPS-203] Section 5.2 Algorithm 14.
- */
-K_PKE_Encrypt : ([384*k+32]Byte, [32]Byte, [32]Byte) -> [32*(d_u*k+d_v)]Byte
-K_PKE_Encrypt(ekPKE, m, r) = c where
-  t_hat = Decode`{12} (ekPKE@@[0 .. 384*k - 1])
-  rho = ekPKE@@[384*k .. 384*k + 32 - 1]
-  A_hat = [[SampleNTT (XOF(rho # [j] # [i])) | j <- [0 .. k-1]] | i <- [0 .. k-1]] : [k][k]Z_q_256
-  yvec = [SamplePolyCBD`{eta_1}(PRF(r,N)) | N <- [0 .. k-1]] : [k]Z_q_256
-  e1 = [SamplePolyCBD`{eta_2}(PRF(r,N)) | N <- [k .. (2*k-1)]] : [k]Z_q_256
-  e2 = SamplePolyCBD`{eta_2}(PRF(r,2*`k)) : Z_q_256
-  yvechat = NTT yvec
-  u = NTTInv (dotMatVec (transpose A_hat) yvechat) + e1 : [k]Z_q_256
-  mu = Decompress'`{1}(DecodeBytes'`{1} m)
-  v = (NTTInv' (dotVecVec t_hat yvechat)) + e2 + mu
-  c1 = EncodeBytes`{d_u}(Compress`{d_u}(u))
-  c2 = EncodeBytes'`{d_v}(Compress'`{d_v}(v))
-  c = c1#c2
+    /**
+     * Encryption algorithm for the K-PKE component scheme.
+     *
+     * Warning: This scheme is not approved for use in a stand-alone fashion!
+     * It does not do any input validation and should only be used as a subroutine
+     * of ML-KEM.
+     *
+     * [FIPS-203] Section 5.2 Algorithm 14.
+     */
+    Encrypt : ([384*k+32]Byte, [32]Byte, [32]Byte) -> [32*(d_u*k+d_v)]Byte
+    Encrypt(ekPKE, m, r) = c where
+      t_hat = Decode`{12} (ekPKE@@[0 .. 384*k - 1])
+      rho = ekPKE@@[384*k .. 384*k + 32 - 1]
+      A_hat = [[SampleNTT (XOF(rho # [j] # [i])) | j <- [0 .. k-1]] | i <- [0 .. k-1]] : [k][k]Z_q_256
+      yvec = [SamplePolyCBD`{eta_1}(PRF(r,N)) | N <- [0 .. k-1]] : [k]Z_q_256
+      e1 = [SamplePolyCBD`{eta_2}(PRF(r,N)) | N <- [k .. (2*k-1)]] : [k]Z_q_256
+      e2 = SamplePolyCBD`{eta_2}(PRF(r,2*`k)) : Z_q_256
+      yvechat = NTT yvec
+      u = NTTInv (dotMatVec (transpose A_hat) yvechat) + e1 : [k]Z_q_256
+      mu = Decompress'`{1}(DecodeBytes'`{1} m)
+      v = (NTTInv' (dotVecVec t_hat yvechat)) + e2 + mu
+      c1 = EncodeBytes`{d_u}(Compress`{d_u}(u))
+      c2 = EncodeBytes'`{d_v}(Compress'`{d_v}(v))
+      c = c1#c2
 
-/**
- * Decryption algorithm for the K-PKE component scheme.
- *
- * Warning: This scheme is not approved for use in a stand-alone fashion!
- * It does not do any input validation and should only be used as a subroutine
- * of ML-KEM.
- *
- * [FIPS-203] Section 5.3 Algorithm 15.
- */
-K_PKE_Decrypt : ([384*k]Byte, [32*(d_u*k+d_v)]Byte) -> [32]Byte
-K_PKE_Decrypt(sk, c) = m where
-  c1 = c@@[0 .. 32*d_u*k - 1]
-  c2 = c@@[32*d_u*k .. 32*(d_u*k+d_v) - 1]
-  u = Decompress`{d_u}(DecodeBytes`{d_u} c1)   : [k]Z_q_256
-  v = Decompress'`{d_v}(DecodeBytes'`{d_v} c2) : Z_q_256
-  s_hat = Decode`{12} sk : [k]Z_q_256
-  w = v - NTTInv' (dotVecVec s_hat (NTT u))
-  m = EncodeBytes'`{1}(Compress'`{1}(w))
+    /**
+     * Decryption algorithm for the K-PKE component scheme.
+     *
+     * Warning: This scheme is not approved for use in a stand-alone fashion!
+     * It does not do any input validation and should only be used as a subroutine
+     * of ML-KEM.
+     *
+     * [FIPS-203] Section 5.3 Algorithm 15.
+     */
+    Decrypt : ([384*k]Byte, [32*(d_u*k+d_v)]Byte) -> [32]Byte
+    Decrypt(sk, c) = m where
+      c1 = c@@[0 .. 32*d_u*k - 1]
+      c2 = c@@[32*d_u*k .. 32*(d_u*k+d_v) - 1]
+      u = Decompress`{d_u}(DecodeBytes`{d_u} c1)   : [k]Z_q_256
+      v = Decompress'`{d_v}(DecodeBytes'`{d_v} c2) : Z_q_256
+      s_hat = Decode`{12} sk : [k]Z_q_256
+      w = v - NTTInv' (dotVecVec s_hat (NTT u))
+      m = EncodeBytes'`{1}(Compress'`{1}(w))
 
-/**
- * The K-PKE scheme is correct with probability 1-delta and not 1. As a result,
- * running `:prove CorrectnessPKE` will not succeed since there is a
- * fraction delta of seeds `d`, `r` that do not work.
- * Cryptol does not currently support counting.
- * ```repl
- * :set tests=3
- * :check CorrectnessPKE
- * ```
- */
-CorrectnessPKE : ([32]Byte, [32]Byte, [32]Byte) -> Bit
-property CorrectnessPKE(d, m, r) = (m' == m) where
-  (pk, sk) = K_PKE_KeyGen(d)
-  c = K_PKE_Encrypt(pk, m, r)
-  m' = K_PKE_Decrypt(sk, c)
+    /**
+     * The K-PKE scheme is correct with probability 1-delta and not 1. As a result,
+     * running `:prove CorrectnessPKE` will not succeed since there is a
+     * fraction delta of seeds `d`, `r` that do not work.
+     * Cryptol does not currently support counting.
+     * ```repl
+     * :set tests=3
+     * :check CorrectnessPKE
+     * ```
+     */
+    CorrectnessPKE : ([32]Byte, [32]Byte, [32]Byte) -> Bit
+    property CorrectnessPKE(d, m, r) = (m' == m) where
+      (pk, sk) = KeyGen(d)
+      c = Encrypt(pk, m, r)
+      m' = Decrypt(sk, c)
 
 
 /**
@@ -820,7 +821,7 @@ property CorrectnessPKE(d, m, r) = (m' == m) where
  */
 ML_KEM_KeyGen : ([32]Byte,[32]Byte) -> ([384*k+32]Byte, [768*k+96]Byte)
 ML_KEM_KeyGen (z,d) = (ek, dk) where
-  (ekPKE, dkPKE) = K_PKE_KeyGen(d)
+  (ekPKE, dkPKE) = K_PKE::KeyGen(d)
   ek = ekPKE
   dk = dkPKE#ek#H(ek)#z
 
@@ -837,7 +838,7 @@ ML_KEM_KeyGen (z,d) = (ek, dk) where
 ML_KEM_Encaps : ([384*k+32]Byte, [32]Byte) -> ([32]Byte, [32*(d_u*k+d_v)]Byte)
 ML_KEM_Encaps (ek, m) = (K, c) where
   (K, r) = G(m#H(ek))
-  c = K_PKE_Encrypt(ek, m, r)
+  c = K_PKE::Encrypt(ek, m, r)
 
 /**
  * Uses the decapsulation key to produce a shared secret key from a ciphertext.
@@ -854,10 +855,10 @@ ML_KEM_Decaps (c, dk) = K
     ekPKE = dk@@[384*k .. 768*k + 32 - 1] // extract PKE encryption key
     h = dk@@[768*k + 32 .. 768*k + 64 - 1] // extract hash of PKE encryption key
     z = dk@@[768*k + 64 .. 768*k + 96 - 1] // extract implicit rejection value
-    m' = K_PKE_Decrypt(dkPKE, c) // decrypt ciphertext
+    m' = K_PKE::Decrypt(dkPKE, c) // decrypt ciphertext
     (K', r') = G(m'#h)
     Kbar = J(z#c) : [32]Byte
-    c' = K_PKE_Encrypt(ekPKE, m', r')
+    c' = K_PKE::Encrypt(ekPKE, m', r')
     K = if (c != c') then Kbar // Suggestion to spec: Rename K' to K
                      else K'
 
