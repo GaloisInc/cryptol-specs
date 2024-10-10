@@ -1,4 +1,4 @@
-module Primitive::Keyless::Hash::utils where
+module Primitive::Keyless::Hash::KeccakBitOrdering where
 /** Splits a list of bits into bytes, using little-endian bit order. **/
 toBytes : {n} (fin n) => [8*n] -> [n][8]
 toBytes s = reverse (split (reverse s))

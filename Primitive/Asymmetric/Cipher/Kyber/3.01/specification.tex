@@ -906,7 +906,7 @@ as follows:
 \end{itemize}
 
 \begin{code}
-  import Primitive::Keyless::Hash::utils
+  import Primitive::Keyless::Hash::KeccakBitOrdering
   import Primitive::Keyless::Hash::SHAKE::SHAKE128
   XOF(rho, i, j) = groupBy`{8}(shake128((fromBytes(rho))# reverse i# reverse j))
 

@@ -12,7 +12,7 @@
  */
 module Primitive::Keyless::Hash::SHA3::Tests where
 
-import Primitive::Keyless::Hash::utils
+import Primitive::Keyless::Hash::KeccakBitOrdering
 
 submodule SHA3_224 where
   import Primitive::Keyless::Hash::SHA3::SHA3_224

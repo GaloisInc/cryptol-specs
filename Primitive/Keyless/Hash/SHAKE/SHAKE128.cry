@@ -20,7 +20,7 @@ import Primitive::Keyless::Hash::keccak where
     // The capacity is double the security level, so this provides a security
     // level of 128 (as the name suggests).
     type c = 256
-import Primitive::Keyless::Hash::utils (toBytes)
+import Primitive::Keyless::Hash::KeccakBitOrdering (reverseBitOrdering)
 
 /**
  * SHAKE128 extendable-output function.
