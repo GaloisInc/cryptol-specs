@@ -19,11 +19,11 @@ repository are listed below.
 
 |                            | Primitive                                                                              | Synthesis | Verification |
 |----------------------------|----------------------------------------------------------------------------------------|-----------|--------------|
-| **Block Cipher**           | [AES](Primitive/Symmetric/Cipher/Block/AES.cry)                                        |           |              |
+| **Block Cipher**           | [AES](Primitive/Symmetric/Cipher/Block/AES)                                            |           |              |
 |                            | [Triple DES](Primitive/Symmetric/Cipher/Block/TripleDES.cry)                           |           |              |
 | **Stream Cipher**          | [ChaCha20-Poly1305](Primitive/Symmetric/Cipher/Authenticated/ChaChaPolyCryptolIETF.md) |           |              |
 | **Message Authentication** | [HMAC](Primitive/Symmetric/MAC/HMAC.cry)                                               |           |              |
-| **Digital Signature**      | [ECDSA](Primitive/Asymmetric/Signature/ecdsa.cry)                                      |           |              |
+| **Digital Signature**      | [ECDSA](Primitive/Asymmetric/Signature/ECDSA)                                          |           |              |
 |                            | [SPHINCS+](Primitive/Asymmetric/Signature/SphincsPlus/)                                |           |              |
 |                            | [FALCON](Primitive/Asymmetric/Signature/FALCON/1.2/)                                   |           |              |
 |                            | [CRYSTALS Dilithium](Primitive/Asymmetric/Signature/Dilithium/)                        |           |              |
