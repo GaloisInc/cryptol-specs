@@ -278,16 +278,17 @@ property h2bAndb2hInvert msg = b2h (h2b`{2 * m * HexDigit} msg) == msg
  *
  * So, there are 8 potential padding lengths (0 through 7 bits of padding).
  * Here's a set of tests checking all the padding lengths for a string of
- * 3 pairs of hex digits:
+ * 3 pairs of hex digits; it will work for any number of pairs.
  * ```repl
- * :prove h2bAndb2hInvertForShortStrings`{3, 17}
- * :prove h2bAndb2hInvertForShortStrings`{3, 18}
- * :prove h2bAndb2hInvertForShortStrings`{3, 19}
- * :prove h2bAndb2hInvertForShortStrings`{3, 20}
- * :prove h2bAndb2hInvertForShortStrings`{3, 21}
- * :prove h2bAndb2hInvertForShortStrings`{3, 22}
- * :prove h2bAndb2hInvertForShortStrings`{3, 23}
- * :prove h2bAndb2hInvertForShortStrings`{3, 24}
+ * type pairs = 3
+ * :prove h2bAndb2hInvertForShortStrings`{pairs, 8 * pairs - 7}
+ * :prove h2bAndb2hInvertForShortStrings`{pairs, 8 * pairs - 6}
+ * :prove h2bAndb2hInvertForShortStrings`{pairs, 8 * pairs - 5}
+ * :prove h2bAndb2hInvertForShortStrings`{pairs, 8 * pairs - 4}
+ * :prove h2bAndb2hInvertForShortStrings`{pairs, 8 * pairs - 3}
+ * :prove h2bAndb2hInvertForShortStrings`{pairs, 8 * pairs - 2}
+ * :prove h2bAndb2hInvertForShortStrings`{pairs, 8 * pairs - 1}
+ * :prove h2bAndb2hInvertForShortStrings`{pairs, 8 * pairs - 0}
  * ```
  */
 h2bAndb2hInvertForShortStrings : {m, n} (fin m, m > 0, n > 0, n /^ (2 * HexDigit) == m) => [n] -> Bool
@@ -299,14 +300,15 @@ property h2bAndb2hInvertForShortStrings msg = b2h (h2b`{n} hexMsg) == hexMsg whe
  * where we start on the bits side instead of the hex side...
  *
  * ```repl
- * :prove b2hAndh2bInvert`{17}
- * :prove b2hAndh2bInvert`{18}
- * :prove b2hAndh2bInvert`{19}
- * :prove b2hAndh2bInvert`{20}
- * :prove b2hAndh2bInvert`{21}
- * :prove b2hAndh2bInvert`{22}
- * :prove b2hAndh2bInvert`{23}
- * :prove b2hAndh2bInvert`{24}
+ * type pairs = 3
+ * :prove b2hAndh2bInvert`{8 * pairs - 7}
+ * :prove b2hAndh2bInvert`{8 * pairs - 6}
+ * :prove b2hAndh2bInvert`{8 * pairs - 5}
+ * :prove b2hAndh2bInvert`{8 * pairs - 4}
+ * :prove b2hAndh2bInvert`{8 * pairs - 3}
+ * :prove b2hAndh2bInvert`{8 * pairs - 2}
+ * :prove b2hAndh2bInvert`{8 * pairs - 1}
+ * :prove b2hAndh2bInvert`{8 * pairs - 0}
  * ```
  */
 b2hAndh2bInvert: {n} (fin n, n > 0) => [n] -> Bool
