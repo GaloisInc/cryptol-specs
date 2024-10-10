@@ -722,11 +722,21 @@ dotMatMat :{k1,k2,k3} (fin k1, fin k2, fin k3) =>
 dotMatMat matrix1 matrix2 = transpose [dotMatVec matrix1 vector | vector <- m']
     where m' = transpose matrix2
 
+/**
+ * The K-PKE component scheme.
+ *
+ * ⚠️ This scheme is not approved for stand-alone use! ⚠️
+ * K-PKE is an encryption scheme consisting of three algorithms `(KeyGen,
+ * Encrypt, Decrypt)`, which are used to instantiate the approved ML-KEM
+ * scheme. It's not secure as a standalone scheme; it doesn't do any input
+ * checking.
+ * [FIPS-203] Section 5.
+ */
 submodule K_PKE where
     /**
      * Key generation for the K-PKE component scheme.
      *
-     * Warnings:
+     * ⚠️ Warnings ⚠️
      * - This scheme is not approved for use in a stand-alone fashion! It does not
      *   do any input validation and should only be used as a subroutine of ML-KEM.
      * - The seed `d` passed as input and the decryption key `dkPKE` returned from
@@ -749,7 +759,7 @@ submodule K_PKE where
     /**
      * Encryption algorithm for the K-PKE component scheme.
      *
-     * Warning: This scheme is not approved for use in a stand-alone fashion!
+     * ⚠️ Warning ⚠️ This scheme is not approved for use in a stand-alone fashion!
      * It does not do any input validation and should only be used as a subroutine
      * of ML-KEM.
      *
@@ -774,7 +784,7 @@ submodule K_PKE where
     /**
      * Decryption algorithm for the K-PKE component scheme.
      *
-     * Warning: This scheme is not approved for use in a stand-alone fashion!
+     * ⚠️ Warning ⚠️ This scheme is not approved for use in a stand-alone fashion!
      * It does not do any input validation and should only be used as a subroutine
      * of ML-KEM.
      *
