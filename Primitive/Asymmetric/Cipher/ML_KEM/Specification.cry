@@ -68,8 +68,8 @@ type Z_q_256 = [n](Z q)
  * Pseudorandom function (PRF).
  * [FIPS-203] Section 4.1, Equations 4.2 and 4.3.
  */
-PRF : {prfeta} (fin prfeta, prfeta > 0) => [32]Byte -> Byte -> [64 * prfeta]Byte
-PRF s b = map reverse (take (groupBy`{8} (shake256 (fromBytes(s)# reverse b))))
+PRF : {eta} (2 <= eta, eta <= 3) => [32]Byte -> Byte -> [64 * eta]Byte
+PRF s b = map reverse (take (groupBy`{8} (shake256 (fromBytes s # reverse b))))
 
 /**
  * One of the hash functions used in the protocol.
