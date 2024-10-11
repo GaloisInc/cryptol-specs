@@ -17,8 +17,8 @@
  */
 module Primitive::Asymmetric::Cipher::ML_KEM::Specification where
 
-import Primitive::Keyless::Hash::SHAKE::SHAKE256
-import Primitive::Keyless::Hash::SHAKE::SHAKE128
+import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHAKE256
+import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHAKE128
 import Primitive::Keyless::Hash::SHA3::SHA3_256 as SHA3_256
 import Primitive::Keyless::Hash::SHA3::SHA3_512 as SHA3_512
 import Primitive::Keyless::Hash::KeccakBitOrdering
@@ -67,38 +67,53 @@ type Z_q_256 = [n](Z q)
 /**
  * Pseudorandom function (PRF).
  * [FIPS-203] Section 4.1, Equations 4.2 and 4.3.
+ *
+ * The SHA3 API operates over bit streams; the `groupBy` and `join` calls
+ * convert to and from our byte arrays.
  */
 PRF : {eta} (2 <= eta, eta <= 3) => [32]Byte -> Byte -> [64 * eta]Byte
-PRF s b = map reverse (take (groupBy`{8} (shake256 (fromBytes s # reverse b))))
+PRF s b = groupBy`{8} (SHAKE256::xof (join s # b))
 
 /**
  * One of the hash functions used in the protocol.
  * [FIPS-203] Section 4.1, Equation 4.4.
+ *
+ * The SHA3 API operates over bit streams; the `groupBy` and `join` calls
+ * convert to and from our byte arrays.
  */
 H : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
-H M = toBytes (SHA3_256::sha3 (fromBytes M))
+H M = groupBy (SHA3_256::hash (join M))
 
 /**
  * One of the hash functions used in the protocol.
  * [FIPS-203] Section 4.1, Equation 4.4.
+ *
+ * The SHA3 API operates over bit streams; the `groupBy` and `join` calls
+ * convert to and from our byte arrays.
  */
 J : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
-J(s) = take(groupBy(shake256(fromBytes(s))))
+J s = groupBy (SHAKE256::xof (join s))
 
 /**
  * One of the hash functions used in the protocol.
  * [FIPS-203] Section 4.1, Equation 4.5.
+ *
+ * The SHA3 API operates over bit streams; the `groupBy` and `join` calls
+ * convert to and from our byte arrays.
  */
 G : {ginl} (fin ginl) => [ginl]Byte -> ([32]Byte, [32]Byte)
-G M = (result@0, result@1)
-    where result = split`{2} (toBytes (SHA3_512::sha3 (fromBytes M)))
+G M = (a, b) where
+    [a, b] = split`{2} (groupBy`{8} (SHA3_512::hash (join M)))
 
 /**
  * eXtendable-Output Function (XOF) wrapper.
  * [FIPS-203] Section 4.1, Equation 4.6.
+ *
+ * The SHA3 API operates over bit streams; the `groupBy` and `join` calls
+ * convert to and from our byte arrays.
  */
 XOF : ([34]Byte) -> [inf]Byte
-XOF(d) = groupBy`{8}(shake128(fromBytes(d)))
+XOF(d) = groupBy (SHAKE128::xof (join d))
 
 /**
  * Conversion from bit arrays to byte arrays.
@@ -352,8 +367,8 @@ SampleNTTInf ([bi,bi1,bi2] # tailS) =
         else
             SampleNTTInf tailS
     where
-        d1 = toInteger(reverse bi) + 256 * (toInteger(reverse bi1) % 16)
-        d2 = floor(ratio (toInteger(reverse bi1)) 16) + 16 * toInteger(reverse bi2)
+        d1 = toInteger(bi) + 256 * (toInteger(bi1) % 16)
+        d2 = floor(ratio (toInteger(bi1)) 16) + 16 * toInteger(bi2)
 
 /**
  * Sample a special, centered distribution of polynomials in `R_q` with small
