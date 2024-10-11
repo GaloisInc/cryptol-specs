@@ -129,7 +129,7 @@ BitsToBytes input = map reverse (groupBy input)
 BytesToBits : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
 BytesToBits input = join (map reverse input)
 
-BitToZ : {p} (fin p, p > 1) => Bit -> Z p
+BitToZ : Bit -> Z q
 BitToZ b = if b then 1 else 0
 
 BitstoZ : {ell} (fin ell, ell > 0) => [ell] -> (Z q)
@@ -290,7 +290,7 @@ property CorrectnessEncodeDecode fVec = all CorrectnessEncodeDecode' fVec
 DecodeSpec : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> Z_q_256
 DecodeSpec B = [f i | i <- [0 .. 255]]
     where betas = BytesToBits B : [256 * ell]
-          f i = sum [ BitToZ`{q}(betas@(i*`ell+j))*fromInteger(2^^j)
+          f i = sum [ BitToZ (betas@(i*`ell+j))*fromInteger(2^^j)
                     | j <- [0 .. (ell-1)]]
 
 /**
@@ -398,16 +398,26 @@ SampleNTT B = a_hat' where
  * Sample a special, centered distribution of polynomials in `R_q` with small
  * coefficients.
  *
- * Requires that the input stream `B` is uniformly random bytes.
+ * The input stream `B` must be uniformly random bytes!
  *
  * [FIPS-203] Section 4.2.2, Algorithm 8.
  */
-SamplePolyCBD: {eta} (fin eta, eta > 0) => [64 * eta]Byte -> Z_q_256
-SamplePolyCBD B = [f i | i <- [0 .. 255]]
-    where betas = BytesToBits B : [512 * eta]
-          x i = sum [BitToZ`{q} (betas@(2*i*`eta+j)) | j <- [0 .. (eta-1)]]
-          y i = sum [BitToZ`{q} (betas@(2*i*`eta+`eta+j)) | j <- [0 .. (eta-1)]]
-          f i = (x i) - (y i)
+SamplePolyCBD: {eta} (2 <= eta, eta <= 3) => [64 * eta]Byte -> Z_q_256
+SamplePolyCBD B = f where
+    // Step 1.
+    b = BytesToBits B
+    // This conversion is implicit in the implementation. Convert each bit into
+    // an element of Z q.
+    b' = map BitToZ b
+
+    // Step 3.
+    x i = sum [b'@(2 * i * `eta + j) | j <- [0 .. (eta-1)]]
+    // Step 4.
+    y i = sum [b'@(2 * i * `eta + `eta + j) | j <- [0 .. (eta-1)]]
+
+    // Steps 2, 5. The `mod q` is not explicit here because `x` and `y`
+    // return elements of `Z q`.
+    f = [(x i) - (y i) | i <- [0 .. 255]]
 
 /**
  * [FIPS-203] Section 4.3 "The mathematical structure of the NTT."
