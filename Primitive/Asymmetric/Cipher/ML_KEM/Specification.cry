@@ -19,7 +19,8 @@ module Primitive::Asymmetric::Cipher::ML_KEM::Specification where
 
 import Primitive::Keyless::Hash::SHAKE::SHAKE256
 import Primitive::Keyless::Hash::SHAKE::SHAKE128
-import `Primitive::Keyless::Hash::SHA3::SHA3
+import Primitive::Keyless::Hash::SHA3::SHA3_256 as SHA3_256
+import Primitive::Keyless::Hash::SHA3::SHA3_512 as SHA3_512
 import Primitive::Keyless::Hash::KeccakBitOrdering
 
 /*
@@ -75,7 +76,7 @@ PRF s b = map reverse (take (groupBy`{8} (shake256 (fromBytes(s)# reverse b))))
  * [FIPS-203] Section 4.1, Equation 4.4.
  */
 H : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
-H M = toBytes(sha3 `{digest = 256} (fromBytes(M)))
+H M = toBytes (SHA3_256::sha3 (fromBytes M))
 
 /**
  * One of the hash functions used in the protocol.
@@ -90,7 +91,7 @@ J(s) = take(groupBy(shake256(fromBytes(s))))
  */
 G : {ginl} (fin ginl) => [ginl]Byte -> ([32]Byte, [32]Byte)
 G M = (result@0, result@1)
-    where result = split`{2} (toBytes(sha3 `{digest = 512} (fromBytes(M))))
+    where result = split`{2} (toBytes (SHA3_512::sha3 (fromBytes M)))
 
 /**
  * eXtendable-Output Function (XOF) wrapper.
