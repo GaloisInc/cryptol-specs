@@ -331,44 +331,68 @@ property CorrectnessEncodeDecode' f = Decode'`{12}(Encode'`{12} f) == f
 /**
  * Uniformly sample NTT representations.
  *
- * This converts a stream `b` generated from a seed into a (pseudo)random
- * polynomial in `T_q`.
- *
- * Since Cryptol does not natively support while loops, we approach this
- * potentially infinite loop with recursion. `SampleNTTInf` converts an
- * infinite sequence of bytes to an infinite sequence of elements in `Z q`.
- * We then use the first `n` elements for the result.
+ * This uses a seed `B` to generate a pseudorandom stream, which is parsed into
+ * a polynomial in `T_q` drawn from a distribution indistinguishable from the
+ * uniform distribution.
  *
  * [FIPS-203] Section 4.2.2, Algorithm 7.
  */
 SampleNTT : [34]Byte -> Z_q_256
-SampleNTT B = take elements where
-    C_stream = XOF(B)
-    elements = SampleNTTInf C_stream
+SampleNTT B = a_hat' where
+    // Steps 1-2, 5.
+    // We (lazily) take an infinite stream from the XOF and remove only as
+    // many bytes as are needed to compute the function. See [FIPS-203]
+    // Section 4.1 Equation 4.6 for a discussion of the equivalence of this
+    // form to the one in Algorithm 7.
+    ctx0 = XOF B
 
-/**
- * SampleNTTInf implements a filter. It scans the input 3 by 3, calculates
- * the elements d1 and d2 and finally returns the elements that satisfy
- * the conditions together with the result of itself when applied to the
- * tail.
- *
- * This is an implementation of part of [FIPS-203] Section 4.2.2, Algorithm 7.
- */
-SampleNTTInf: [inf]Byte -> [inf](Z q)
-SampleNTTInf ([bi,bi1,bi2] # tailS) =
-    if d1 < `q then
-        if d2 < `q then
-            [fromInteger(d1),fromInteger(d2)] # SampleNTTInf tailS
-        else
-            [fromInteger(d1)] # SampleNTTInf tailS
-    else
-        if d2 < `q then
-            [fromInteger(d2)] # SampleNTTInf tailS
-        else
-            SampleNTTInf tailS
-    where
-        d1 = toInteger(bi) + 256 * (toInteger(bi1) % 16)
-        d2 = floor(ratio (toInteger(bi1)) 16) + 16 * toInteger(bi2)
+    // Step 3. Since Cryptol is not imperative, we implement this loop using
+    // recursion. The `j` counter is not made explicit; instead we lazily
+    // generate an infinite stream of coefficients in `T_q` and `take` the
+    // correct length in the next line.
+
+    // Step 4-16. `take` fulfills the `j < 256` condition in Steps 4 and 12.
+    a_hat = take`{256} (filter ctx0)
+
+    // `filter` parses an infinite stream from the XOF, computing
+    // potential elements `d1` and `d2` from the first 3 bytes in the stream
+    // and adding them to the output if they are valid elements in `Z q`.
+    filter: [inf]Byte -> [inf][12]
+    filter XOFSqueeze = a_hat_j where
+        // Step 5.
+        (C # ctx) = XOFSqueeze
+
+        // The conversion from 8-bit to 12-bit vectors (with the same value!)
+        // is implicit in the spec -- see notes on Step 5 and 6/7. In Cryptol,
+        // we need to convert manually to do the subsequent computations.
+        [C0, C1, C2] = map zext`{12} C
+
+        // Step 6.
+        d1 = C0 + 256 * (C1 % 16)
+
+        // Step 7. Cryptol uses integer division; it always takes the floor of
+        // the result.
+        d2 = (C1 / 16) + 16 * C2
+
+        // Steps 4, 8 - 15.
+        // Add `d1` and/or `d2` to the sampled vector `a_hat` if they are valid
+        // elements in `Z q`.
+        // The `while` loop in Step 4 is equivalent to the recursive call to
+        // `filter` in each condition.
+        a_hat_j = if (d1 < `q) && (d2 < `q) then
+                [d1, d2] # filter ctx
+            else if d1 < `q then
+                [d1] # filter ctx
+            else if d2 < `q then
+                [d2] # filter ctx
+            else filter ctx
+
+    // This conversion is implicit in the implementation -- see the notes on
+    // Step 6/7 and 9.
+    toZq : [12] -> Z q
+    toZq x = fromInteger (toInteger x)
+
+    a_hat' = map toZq a_hat
 
 /**
  * Sample a special, centered distribution of polynomials in `R_q` with small
