@@ -699,11 +699,11 @@ submodule NTT where
     // Here, we can choose to call either the naive or fast NTT
     //////////////////////////////////////////////////////////////
 
-    NTT' : Rq -> Tq
-    NTT' = fast_ntt
+    NTT : Rq -> Tq
+    NTT = fast_ntt
 
-    NTTInv' : Tq -> Rq
-    NTTInv' = fast_invntt
+    NTTInv : Tq -> Rq
+    NTTInv = fast_invntt
 
     /**
      * The notation `NTT` is overloaded to mean both a single application of `NTT`
@@ -711,7 +711,7 @@ submodule NTT where
      * of a `k`-length vector.
      * [FIPS-203] Section 2.4.6 Equation 2.9.
      */
-    NTT v = map NTT' v
+    NTT_Vec v = map NTT v
 
     /**
      * The notation `NTTInv` is overloaded to mean both a single application of
@@ -719,7 +719,7 @@ submodule NTT where
      * every element of a `k`-length vector.
      * [FIPS-203] Section 2.4.6.
      */
-    NTTInv v = map NTTInv' v
+    NTTInv_Vec v = map NTTInv v
 
 //////////////////////////////////////////////////////////////
 // Polynomial multiplication in the NTT domain
@@ -759,7 +759,7 @@ property TestMult = prod f f == fsq where
   fsq = [1,2,1] # [0 | i <- [4 .. 256]]
 
   prod : Rq -> Rq -> Rq
-  prod a b = NTTInv' (MultiplyNTTs (NTT' a) (NTT' b))
+  prod a b = NTTInv (MultiplyNTTs (NTT a) (NTT b))
 
 /**
  * The cross product notation ×𝑇𝑞 is defined as the `MultiplyNTTs` function
@@ -844,9 +844,9 @@ private submodule K_PKE where
         e = [SamplePolyCBD`{eta_1} (PRF σ N)
             | N <- [k .. 2 * k - 1]]
         // Step 16.
-        s_hat = NTT s
+        s_hat = NTT_Vec s
         // Step 17.
-        e_hat = NTT e
+        e_hat = NTT_Vec e
         // Step 18.
         t_hat = (dotMatVec A_hat s_hat) + e_hat
         // Step 19.
@@ -884,13 +884,13 @@ private submodule K_PKE where
         // value instead.
         e2 = SamplePolyCBD`{eta_2} (PRF r (2 * `k))
         // Step 18.
-        y_hat = NTT y
+        y_hat = NTT_Vec y
         // Step 19.
-        u = NTTInv (dotMatVec (transpose A_hat) y_hat) + e1
+        u = NTTInv_Vec (dotMatVec (transpose A_hat) y_hat) + e1
         // Step 20.
         mu = Decompress'`{1} (DecodeBytes'`{1} m)
         // Step 21.
-        v = (NTTInv' (dotVecVec t_hat y_hat)) + e2 + mu
+        v = (NTTInv (dotVecVec t_hat y_hat)) + e2 + mu
         // Step 22.
         c1 = EncodeBytes`{d_u} (Compress`{d_u} u)
         // Step 23.
@@ -920,7 +920,7 @@ private submodule K_PKE where
         // Step 5.
         s_hat = Decode`{12} dkPKE
         // Step 6.
-        w = v' - NTTInv' (dotVecVec s_hat (NTT u'))
+        w = v' - NTTInv (dotVecVec s_hat (NTT_Vec u'))
         // Step 7.
         m = EncodeBytes'`{1} (Compress'`{1} w)
 
