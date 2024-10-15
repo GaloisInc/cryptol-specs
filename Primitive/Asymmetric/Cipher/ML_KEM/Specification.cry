@@ -733,7 +733,7 @@ dotMatMat matrix1 matrix2 = transpose [dotMatVec matrix1 vector | vector <- m']
  * checking.
  * [FIPS-203] Section 5.
  */
-submodule K_PKE where
+private submodule K_PKE where
     // Encryption key for the K_PKE component scheme.
     // [FIPS-203] Section 5 Algorithm 13. See "Output".
     type EncryptionKey = [384 * k + 32]Byte
