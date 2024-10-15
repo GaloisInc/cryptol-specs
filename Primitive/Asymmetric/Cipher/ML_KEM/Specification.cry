@@ -486,7 +486,13 @@ BitRev7 = reverse
  * This section specifies the number-theoretic transform (NTT).
  *
  * It includes the version from [FIPS-203] Section 4.3 as well
- * as a faster O(N log N) version, and a  proof of their equivalence.
+ * as a faster O(N log N) version, and a proof of their equivalence.
+ *
+ * This is explicitly allowed by the spec: "For every computational procedure
+ * [...] a conforming implementation may replace the given set of steps with
+ * any mathematically equivalent set of steps". The equivalence properties
+ * prove mathematical equivalence.
+ * [FIPS-203] Introduction, "7. Implementations".
  */
 import submodule NTT
 submodule NTT where
@@ -693,15 +699,20 @@ submodule NTT where
         naive_fast_invntt_equiv : Tq -> Bit
         property naive_fast_invntt_equiv f =  NaiveNTTInv f == fast_invntt f
 
-    //////////////////////////////////////////////////////////////
-    // NTT "dispatcher"
-    //
-    // Here, we can choose to call either the naive or fast NTT
-    //////////////////////////////////////////////////////////////
-
+    /**
+     * The Number-Theoretic Transform (NTT) is used to improve the efficiency
+     * of multiplication in the ring `R_q`. We choose to use the fast version
+     * of NTT, which is equivalent to the version described in the spec.
+     */
     NTT : Rq -> Tq
     NTT = fast_ntt
 
+    /**
+     * The inverse of the Number-Theoretic Transform (NTT) is used to improve
+     * the efficiency of multiplication in the ring `R_q`. We choose to use
+     * the fast version of inverse function, which is equivalent to the version
+     * described in the spec.
+     */
     NTTInv : Tq -> Rq
     NTTInv = fast_invntt
 
