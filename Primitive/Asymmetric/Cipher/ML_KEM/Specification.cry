@@ -647,7 +647,7 @@ submodule NTT where
 
         /**
          * This property demonstrates that NaiveNTT is self-inverting.
-         * ```
+         * ```repl
          * :prove NaiveNTT_Inverts
          * ```
          */
@@ -656,7 +656,7 @@ submodule NTT where
 
         /**
          * This property demonstrates that NaiveNTTInv is self-inverting.
-         * ```
+         * ```repl
          * :prove NaiveNTTInv_Inverts
          * ```
          */
@@ -665,7 +665,7 @@ submodule NTT where
 
         /**
          * This property demonstrates that `fast_ntt` is the inverse of `fast_invntt`.
-         * ```
+         * ```repl
          * :prove fast_ntt_inverts
          * ```
          */
@@ -674,7 +674,7 @@ submodule NTT where
 
         /**
          * This property demonstrates that `fast_invntt` is the inverse of `fast_ntt`.
-         * ```
+         * ```repl
          * :prove fast_invntt_inverts
          * ```
          */
@@ -683,7 +683,7 @@ submodule NTT where
 
         /**
          * This property demonstrates that `naive_ntt` is equivalent to `fast_ntt`.
-         * ```
+         * ```repl
          * :prove naive_fast_ntt_equiv
          * ```
          */
@@ -692,7 +692,7 @@ submodule NTT where
 
         /**
          * This property demonstrates that `naive_invntt` is equivalent to `fast_invntt`.
-         * ```
+         * ```repl
          * :prove naive_fast_invntt_equiv
          * ```
          */
@@ -759,7 +759,7 @@ MultiplyNTTs a b = join [BaseCaseMultiply (f_hat_i i) (g_hat_i i) (root i) | i :
     root i = (zeta^^(reverse (64 + (i >> 1)) >> 1) * ((-1 : (Z q)) ^^ (i)))
 
 /**
- * Testing that (1+x)^2 = 1+2x+x^2
+ * Testing that (1+x)^2 = 1+2x+x^2.
  * ```repl
  * :prove TestMult
  * ```
