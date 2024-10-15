@@ -455,232 +455,250 @@ BitRev7 : [8] -> [8]
 BitRev7 = reverse
 
 
-//////////////////////////////////////////////////////////////
-// This section specifies a naive O(N**2) NTT and Inverse NTT
-//
-// A "fast" O(N log N) version is below, followed by a
-// proof of their equivalence
-//////////////////////////////////////////////////////////////
-
 /**
- * Compute the NTT representation of the polynomial `f`.
+ * This section specifies the number-theoretic transform (NTT).
  *
- * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 9.
+ * It includes the version from [FIPS-203] Section 4.3 as well
+ * as a faster O(N log N) version, and a  proof of their equivalence.
  */
-ParametricNTT : Z_q_256 -> (Z q) -> Z_q_256
-ParametricNTT f root = join[[f2i i, f2iPlus1 i] | i <- [0 .. 127]]
-  where f2i i      = sum [f@(2*j)   * root ^^ ((2*(BitRev7 i >> 1)+1)*j) | j <- [0 .. 127]]
-        f2iPlus1 i = sum [f@(2*j+1) * root ^^ ((2*(BitRev7 i >> 1)+1)*j) | j <- [0 .. 127]]
+import submodule NTT
+submodule NTT where
+    private
+        /**
+         * Compute the NTT representation of the polynomial `f`.
+         *
+         * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 9.
+         */
+        ParametricNTT : Z_q_256 -> (Z q) -> Z_q_256
+        ParametricNTT f root = join[[f2i i, f2iPlus1 i] | i <- [0 .. 127]]
+          where f2i i      = sum [f@(2*j)   * root ^^ ((2*(BitRev7 i >> 1)+1)*j) | j <- [0 .. 127]]
+                f2iPlus1 i = sum [f@(2*j+1) * root ^^ ((2*(BitRev7 i >> 1)+1)*j) | j <- [0 .. 127]]
 
-/**
- * Compute most of the polynomial that corresponds to the NTT representation
- * `f`.
- * (The last step 14 is in a separate function)
- *
- * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 10.
- */
-ParametricNTTInv : Z_q_256 -> (Z q) -> Z_q_256
-ParametricNTTInv f root = join[[f2i i, f2iPlus1 i] | i <- [0 .. 127]]
-  where f2i i      = sum [f@(2*j)   * root ^^ ((2*(BitRev7 j >> 1)+1)*i) | j <- [0 .. 127]]
-        f2iPlus1 i = sum [f@(2*j+1) * root ^^ ((2*(BitRev7 j >> 1)+1)*i) | j <- [0 .. 127]]
+        /**
+         * Compute most of the polynomial that corresponds to the NTT representation
+         * `f`.
+         * (The last step 14 is in a separate function)
+         *
+         * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 10.
+         */
+        ParametricNTTInv : Z_q_256 -> (Z q) -> Z_q_256
+        ParametricNTTInv f root = join[[f2i i, f2iPlus1 i] | i <- [0 .. 127]]
+          where f2i i      = sum [f@(2*j)   * root ^^ ((2*(BitRev7 j >> 1)+1)*i) | j <- [0 .. 127]]
+                f2iPlus1 i = sum [f@(2*j+1) * root ^^ ((2*(BitRev7 j >> 1)+1)*i) | j <- [0 .. 127]]
 
-/**
- * Number theoretic transform: converts elements in `R_q` to `T_q`.
- *
- * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 9.
- */
-NaiveNTT : Z_q_256 -> Z_q_256
-NaiveNTT f = ParametricNTT f zeta
+        /**
+         * Number theoretic transform: converts elements in `R_q` to `T_q`.
+         *
+         * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 9.
+         */
+        NaiveNTT : Z_q_256 -> Z_q_256
+        NaiveNTT f = ParametricNTT f zeta
 
-/**
- * Inverse of the number theoretic transform: converts elements in `T_q` to
- * `R_q`.
- *
- * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 10.
- */
-NaiveNTTInv : Z_q_256 -> Z_q_256
-NaiveNTTInv f = [term*(recip 128) | term <- ParametricNTTInv f (recip zeta)]
+        /**
+         * Inverse of the number theoretic transform: converts elements in `T_q` to
+         * `R_q`.
+         *
+         * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 10.
+         */
+        NaiveNTTInv : Z_q_256 -> Z_q_256
+        NaiveNTTInv f = [term*(recip 128) | term <- ParametricNTTInv f (recip zeta)]
 
-//////////////////////////////////////////////////////////////
-// This section specifies fast O(N log N) NTT and Inverse NTT
-//
-// A readable explanation of the derivation of this form of
-// the NTT is in "A Complete Beginner Guide to the Number
-// Theoretic Transform (NTT)" by Ardianto Satriawan,
-// Rella Mareta, and Hanho Lee. Available from:
-//    https://eprint.iacr.org/2024/585
-//
-// This section Copyright Amazon.com, Inc. or its affiliates.
-//////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////
+        // This section specifies fast O(N log N) NTT and Inverse NTT
+        //
+        // A readable explanation of the derivation of this form of
+        // the NTT is in "A Complete Beginner Guide to the Number
+        // Theoretic Transform (NTT)" by Ardianto Satriawan,
+        // Rella Mareta, and Hanho Lee. Available from:
+        //    https://eprint.iacr.org/2024/585
+        //
+        // This section Copyright Amazon.com, Inc. or its affiliates.
+        //////////////////////////////////////////////////////////////
 
-// Simple lookup table for Zeta value given K
-zeta_expc  : [128](Z q)
-zeta_expc = [ 1, 1729, 2580, 3289, 2642, 630, 1897, 848,
-              1062, 1919, 193, 797, 2786, 3260, 569, 1746,
-              296, 2447, 1339, 1476, 3046, 56, 2240, 1333,
-              1426, 2094, 535, 2882, 2393, 2879, 1974, 821,
-              289, 331, 3253, 1756, 1197, 2304, 2277, 2055,
-              650, 1977, 2513, 632, 2865, 33, 1320, 1915,
-              2319, 1435, 807, 452, 1438, 2868, 1534, 2402,
-              2647, 2617, 1481, 648, 2474, 3110, 1227, 910,
-              17, 2761, 583, 2649, 1637, 723, 2288, 1100,
-              1409, 2662, 3281, 233, 756, 2156, 3015, 3050,
-              1703, 1651, 2789, 1789, 1847, 952, 1461, 2687,
-              939, 2308, 2437, 2388, 733, 2337, 268, 641,
-              1584, 2298, 2037, 3220, 375, 2549, 2090, 1645,
-              1063, 319, 2773, 757, 2099, 561, 2466, 2594,
-              2804, 1092, 403, 1026, 1143, 2150, 2775, 886,
-              1722, 1212, 1874, 1029, 2110, 2935, 885, 2154 ]
+        // Simple lookup table for Zeta value given K
+        zeta_expc  : [128](Z q)
+        zeta_expc = [ 1, 1729, 2580, 3289, 2642, 630, 1897, 848,
+                      1062, 1919, 193, 797, 2786, 3260, 569, 1746,
+                      296, 2447, 1339, 1476, 3046, 56, 2240, 1333,
+                      1426, 2094, 535, 2882, 2393, 2879, 1974, 821,
+                      289, 331, 3253, 1756, 1197, 2304, 2277, 2055,
+                      650, 1977, 2513, 632, 2865, 33, 1320, 1915,
+                      2319, 1435, 807, 452, 1438, 2868, 1534, 2402,
+                      2647, 2617, 1481, 648, 2474, 3110, 1227, 910,
+                      17, 2761, 583, 2649, 1637, 723, 2288, 1100,
+                      1409, 2662, 3281, 233, 756, 2156, 3015, 3050,
+                      1703, 1651, 2789, 1789, 1847, 952, 1461, 2687,
+                      939, 2308, 2437, 2388, 733, 2337, 268, 641,
+                      1584, 2298, 2037, 3220, 375, 2549, 2090, 1645,
+                      1063, 319, 2773, 757, 2099, 561, 2466, 2594,
+                      2804, 1092, 403, 1026, 1143, 2150, 2775, 886,
+                      1722, 1212, 1874, 1029, 2110, 2935, 885, 2154 ]
 
-// Fast recursive CT-NTT
-ct_butterfly :
-    {m, hm}
-    (m >= 2, m <= 8, hm >= 1, hm <= 7, hm == m - 1) =>
-    [2^^m](Z q) -> (Z q) -> [2^^m](Z q)
-ct_butterfly v z = new_v
-  where
-    halflen = 2^^`hm
-    lower, upper : [2^^hm](Z q)
-    lower@x = v@x + z * v@(x + halflen)
-    upper@x = v@x - z * v@(x + halflen)
-    new_v = lower # upper
+        // Fast recursive CT-NTT
+        ct_butterfly :
+            {m, hm}
+            (m >= 2, m <= 8, hm >= 1, hm <= 7, hm == m - 1) =>
+            [2^^m](Z q) -> (Z q) -> [2^^m](Z q)
+        ct_butterfly v z = new_v
+          where
+            halflen = 2^^`hm
+            lower, upper : [2^^hm](Z q)
+            lower@x = v@x + z * v@(x + halflen)
+            upper@x = v@x - z * v@(x + halflen)
+            new_v = lower # upper
 
-fast_nttl :
-    {lv}  // Length of v is a member of {256,128,64,32,16,8,4}
-    (lv >= 2, lv <= 8) =>
-    [2^^lv](Z q) -> [8] -> [2^^lv](Z q)
-fast_nttl v k
-  // Base case. lv==2 so just compute the butterfly and return
-  | lv == 2 => ct_butterfly`{lv,lv-1} v (zeta_expc@k)
+        fast_nttl :
+            {lv}  // Length of v is a member of {256,128,64,32,16,8,4}
+            (lv >= 2, lv <= 8) =>
+            [2^^lv](Z q) -> [8] -> [2^^lv](Z q)
+        fast_nttl v k
+          // Base case. lv==2 so just compute the butterfly and return
+          | lv == 2 => ct_butterfly`{lv,lv-1} v (zeta_expc@k)
 
-  // Recursive case. Butterfly what we have, then recurse on each half,
-  // concatenate the results and return.
-  | lv  > 2 => (fast_nttl`{lv-1} s0 (k * 2)) #
-               (fast_nttl`{lv-1} s1 (k * 2 + 1))
-                where
-                  t = ct_butterfly`{lv,lv-1} v (zeta_expc@k)
-                  // Split t into two halves s0 and s1
-                  [s0, s1] = split t
+          // Recursive case. Butterfly what we have, then recurse on each half,
+          // concatenate the results and return.
+          | lv  > 2 => (fast_nttl`{lv-1} s0 (k * 2)) #
+                       (fast_nttl`{lv-1} s1 (k * 2 + 1))
+                        where
+                          t = ct_butterfly`{lv,lv-1} v (zeta_expc@k)
+                          // Split t into two halves s0 and s1
+                          [s0, s1] = split t
 
-// Top level entry point - start with lv=256, k=1
-fast_ntt : Z_q_256 -> Z_q_256
-fast_ntt v = fast_nttl v 1
+        // Top level entry point - start with lv=256, k=1
+        fast_ntt : Z_q_256 -> Z_q_256
+        fast_ntt v = fast_nttl v 1
 
-// Fast recursive GS-Inverse-NTT
-gs_butterfly :
-    {m, hm}
-    (m >= 2, m <= 8, hm >= 1, hm <= 7, hm == m - 1) =>
-    [2^^m](Z q) -> (Z q) -> [2^^m](Z q)
-gs_butterfly v z = new_v
-  where
-    halflen = 2^^`hm
-    lower, upper : [2^^hm](Z q)
-    lower@x = v@x  + v@(x + halflen)
-    upper@x = z * (v@(x + halflen) - v@x)
-    new_v = lower # upper
+        // Fast recursive GS-Inverse-NTT
+        gs_butterfly :
+            {m, hm}
+            (m >= 2, m <= 8, hm >= 1, hm <= 7, hm == m - 1) =>
+            [2^^m](Z q) -> (Z q) -> [2^^m](Z q)
+        gs_butterfly v z = new_v
+          where
+            halflen = 2^^`hm
+            lower, upper : [2^^hm](Z q)
+            lower@x = v@x  + v@(x + halflen)
+            upper@x = z * (v@(x + halflen) - v@x)
+            new_v = lower # upper
 
-fast_invnttl :
-    {lv}  // Length of v is a member of {256,128,64,32,16,8,4}
-    (lv >= 2, lv <= 8) =>
-    [2^^lv](Z q) -> [8] -> [2^^lv](Z q)
+        fast_invnttl :
+            {lv}  // Length of v is a member of {256,128,64,32,16,8,4}
+            (lv >= 2, lv <= 8) =>
+            [2^^lv](Z q) -> [8] -> [2^^lv](Z q)
 
-fast_invnttl v k
-  // Base case. lv==2 so just compute the butterfly and return
-  | lv == 2 => gs_butterfly`{lv,lv-1} v (zeta_expc@k)
+        fast_invnttl v k
+          // Base case. lv==2 so just compute the butterfly and return
+          | lv == 2 => gs_butterfly`{lv,lv-1} v (zeta_expc@k)
 
-  // Recursive case. Recurse on each half,
-  // concatenate the results, butterfly that, and return.
-  | lv  > 2 => gs_butterfly`{lv,lv-1} t (zeta_expc@k)
-                where
-                  // Split t into two halves s0 and s1
-                  [s0, s1] = split v
-                  t = (fast_invnttl`{lv-1} s0 (k * 2 + 1)) #
-                      (fast_invnttl`{lv-1} s1 (k * 2))
+          // Recursive case. Recurse on each half,
+          // concatenate the results, butterfly that, and return.
+          | lv  > 2 => gs_butterfly`{lv,lv-1} t (zeta_expc@k)
+                        where
+                          // Split t into two halves s0 and s1
+                          [s0, s1] = split v
+                          t = (fast_invnttl`{lv-1} s0 (k * 2 + 1)) #
+                              (fast_invnttl`{lv-1} s1 (k * 2))
 
-// Multiply all elements of v by the reciprocal of 128 (modulo q)
-recip_128_modq = (recip 128) : (Z q)
-mul_recip128 : Z_q_256 -> Z_q_256
-mul_recip128 v = [ v@x * recip_128_modq | x <- [0 .. <n] ]
+        // Multiply all elements of v by the reciprocal of 128 (modulo q)
+        recip_128_modq = (recip 128) : (Z q)
+        mul_recip128 : Z_q_256 -> Z_q_256
+        mul_recip128 v = [ v@x * recip_128_modq | x <- [0 .. <n] ]
 
-// Top level entry point - start with lv=256, k=1
-fast_invntt : Z_q_256 -> Z_q_256
-fast_invntt v = mul_recip128 (fast_invnttl v 1)
+        // Top level entry point - start with lv=256, k=1
+        fast_invntt : Z_q_256 -> Z_q_256
+        fast_invntt v = mul_recip128 (fast_invnttl v 1)
 
-//////////////////////////////////////////////////////////////
-// Properties and proofs of Naive and Fast NTT
-//////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////
+        // Properties and proofs of Naive and Fast NTT
+        //////////////////////////////////////////////////////////////
 
-/**
- * This property demonstrates that NaiveNTT is self-inverting.
- * ```
- * :prove NaiveNTT_Inverts
- * ```
- */
-NaiveNTT_Inverts : Z_q_256 -> Bit
-property NaiveNTT_Inverts f =  NaiveNTTInv (NaiveNTT f) == f
+        /**
+         * This property demonstrates that NaiveNTT is self-inverting.
+         * ```
+         * :prove NaiveNTT_Inverts
+         * ```
+         */
+        NaiveNTT_Inverts : Z_q_256 -> Bit
+        property NaiveNTT_Inverts f =  NaiveNTTInv (NaiveNTT f) == f
 
-/**
- * This property demonstrates that NaiveNTTInv is self-inverting.
- * ```
- * :prove NaiveNTTInv_Inverts
- * ```
- */
-NaiveNTTInv_Inverts : Z_q_256 -> Bit
-property NaiveNTTInv_Inverts f =  NaiveNTT (NaiveNTTInv f) == f
+        /**
+         * This property demonstrates that NaiveNTTInv is self-inverting.
+         * ```
+         * :prove NaiveNTTInv_Inverts
+         * ```
+         */
+        NaiveNTTInv_Inverts : Z_q_256 -> Bit
+        property NaiveNTTInv_Inverts f =  NaiveNTT (NaiveNTTInv f) == f
 
-/**
- * This property demonstrates that `fast_ntt` is the inverse of `fast_invntt`.
- * ```
- * :prove fast_ntt_inverts
- * ```
- */
-fast_ntt_inverts    : Z_q_256 -> Bit
-property fast_ntt_inverts    f =  fast_invntt (fast_ntt f)    == f
+        /**
+         * This property demonstrates that `fast_ntt` is the inverse of `fast_invntt`.
+         * ```
+         * :prove fast_ntt_inverts
+         * ```
+         */
+        fast_ntt_inverts    : Z_q_256 -> Bit
+        property fast_ntt_inverts    f =  fast_invntt (fast_ntt f)    == f
 
-/**
- * This property demonstrates that `fast_invntt` is the inverse of `fast_ntt`.
- * ```
- * :prove fast_invntt_inverts
- * ```
- */
-fast_invntt_inverts : Z_q_256 -> Bit
-property fast_invntt_inverts f =  fast_ntt    (fast_invntt f) == f
+        /**
+         * This property demonstrates that `fast_invntt` is the inverse of `fast_ntt`.
+         * ```
+         * :prove fast_invntt_inverts
+         * ```
+         */
+        fast_invntt_inverts : Z_q_256 -> Bit
+        property fast_invntt_inverts f =  fast_ntt    (fast_invntt f) == f
 
-/**
- * This property demonstrates that `naive_ntt` is equivalent to `fast_ntt`.
- * ```
- * :prove naive_fast_ntt_equiv
- * ```
- */
-naive_fast_ntt_equiv : Z_q_256 -> Bit
-property naive_fast_ntt_equiv f =  NaiveNTT f == fast_ntt f
+        /**
+         * This property demonstrates that `naive_ntt` is equivalent to `fast_ntt`.
+         * ```
+         * :prove naive_fast_ntt_equiv
+         * ```
+         */
+        naive_fast_ntt_equiv : Z_q_256 -> Bit
+        property naive_fast_ntt_equiv f =  NaiveNTT f == fast_ntt f
 
-/**
- * This property demonstrates that `naive_invntt` is equivalent to `fast_invntt`.
- * ```
- * :prove naive_fast_invntt_equiv
- * ```
- */
-naive_fast_invntt_equiv : Z_q_256 -> Bit
-property naive_fast_invntt_equiv f =  NaiveNTTInv f == fast_invntt f
+        /**
+         * This property demonstrates that `naive_invntt` is equivalent to `fast_invntt`.
+         * ```
+         * :prove naive_fast_invntt_equiv
+         * ```
+         */
+        naive_fast_invntt_equiv : Z_q_256 -> Bit
+        property naive_fast_invntt_equiv f =  NaiveNTTInv f == fast_invntt f
 
-//////////////////////////////////////////////////////////////
-// NTT "dispatcher"
-//
-// Here, we can choose to call either the naive or fast NTT
-//////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////
+    // NTT "dispatcher"
+    //
+    // Here, we can choose to call either the naive or fast NTT
+    //////////////////////////////////////////////////////////////
 
-NTT' : Z_q_256 -> Z_q_256
-// fast
-NTT' f = fast_ntt f
-// slow
-//NTT' f = NaiveNTT f
+    NTT' : Z_q_256 -> Z_q_256
+    // fast
+    NTT' f = fast_ntt f
+    // slow
+    //NTT' f = NaiveNTT f
 
-NTTInv' : Z_q_256 -> Z_q_256
-// fast
-NTTInv' f = fast_invntt f
-// slow
-//NTTInv' f = NaiveNTTInv f
+    NTTInv' : Z_q_256 -> Z_q_256
+    // fast
+    NTTInv' f = fast_invntt f
+    // slow
+    //NTTInv' f = NaiveNTTInv f
+
+    /**
+     * The notation `NTT` is overloaded to mean both a single application of `NTT`
+     * to an element of `R_q` and also `k` applications of `NTT` to every element
+     * of a `k`-length vector.
+     * [FIPS-203] Section 2.4.6 Equation 2.9.
+     */
+    NTT v = map NTT' v
+
+    /**
+     * The notation `NTTInv` is overloaded to mean both a single application of
+     * `NTTInv` to an element of `R_q` and also `k` applications of `NTTInv` to
+     * every element of a `k`-length vector.
+     * [FIPS-203] Section 2.4.6.
+     */
+    NTTInv v = map NTTInv' v
 
 //////////////////////////////////////////////////////////////
 // Polynomial multiplication in the NTT domain
@@ -729,22 +747,6 @@ property TestMult = prod f f == fsq where
  */
 dot : Z_q_256 -> Z_q_256 -> Z_q_256
 dot f g = MultiplyNTTs f  g
-
-/**
- * The notation `NTT` is overloaded to mean both a single application of `NTT`
- * to an element of `R_q` and also `k` applications of `NTT` to every element
- * of a `k`-length vector.
- * [FIPS-203] Section 2.4.6 Equation 2.9.
- */
-NTT v = map NTT' v
-
-/**
- * The notation `NTTInv` is overloaded to mean both a single application of
- * `NTTInv` to an element of `R_q` and also `k` applications of `NTTInv` to
- * every element of a `k`-length vector.
- * [FIPS-203] Section 2.4.6.
- */
-NTTInv v = map NTTInv' v
 
 /**
  * Overloaded `dot` function between two vectors is a standard dot-product
