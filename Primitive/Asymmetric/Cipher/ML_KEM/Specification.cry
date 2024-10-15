@@ -757,8 +757,8 @@ private submodule K_PKE where
      *
      * [FIPS-203] Section 5.1 Algorithm 13.
      */
-    KeyGen: ([32]Byte) -> (EncryptionKey, DecryptionKey)
-    KeyGen(d) = (ekPKE, dkPKE) where
+    KeyGen: [32]Byte -> (EncryptionKey, DecryptionKey)
+    KeyGen d = (ekPKE, dkPKE) where
         // Step 1.
         (ρ, σ) = G (d # [`(k)])
         // Steps 3-7.
@@ -853,10 +853,11 @@ private submodule K_PKE where
         m = EncodeBytes'`{1} (Compress'`{1} w)
 
     /**
-     * The K-PKE scheme is correct with probability 1-delta and not 1. As a result,
-     * running `:prove CorrectnessPKE` will not succeed since there is a
-     * fraction delta of seeds `d`, `r` that do not work.
-     * Cryptol does not currently support counting.
+     * The K-PKE scheme must satisfy the basic properties of an encryption
+     * scheme.
+     * This must be `:check`ed because K-PKE is correct with probability
+     * 1-delta and not 1. It is not provably correct because there is a
+     * (very small!) fraction of seeds `d, r` that don't work.
      * ```repl
      * :set tests=3
      * :check CorrectnessPKE
@@ -882,7 +883,7 @@ private submodule K_PKE where
  */
 ML_KEM_KeyGen : ([32]Byte,[32]Byte) -> ([384*k+32]Byte, [768*k+96]Byte)
 ML_KEM_KeyGen (z,d) = (ek, dk) where
-  (ekPKE, dkPKE) = K_PKE::KeyGen(d)
+  (ekPKE, dkPKE) = K_PKE::KeyGen d
   ek = ekPKE
   dk = dkPKE#ek#H(ek)#z
 
