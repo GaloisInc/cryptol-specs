@@ -511,43 +511,29 @@ import submodule NTT
 submodule NTT where
     private
         /**
-         * Compute the NTT representation of the polynomial `f`.
+         * Number theoretic transform: compute the "NTT representation" in
+         * `T_q` of a polynomial in `R_q`.
          *
-         * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 9.
-         */
-        ParametricNTT : Rq -> (Z q) -> Tq
-        ParametricNTT f root = join[[f2i i, f2iPlus1 i] | i <- [0 .. 127]]
-          where f2i i      = sum [f@(2*j)   * root ^^ ((2*(BitRev7 i)+1)*j) | j <- [0 .. 127]]
-                f2iPlus1 i = sum [f@(2*j+1) * root ^^ ((2*(BitRev7 i)+1)*j) | j <- [0 .. 127]]
-
-        /**
-         * Compute most of the polynomial that corresponds to the NTT representation
-         * `f`.
-         * (The last step 14 is in a separate function)
-         *
-         * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 10.
-         */
-        ParametricNTTInv : Tq -> (Z q) -> Rq
-        ParametricNTTInv f root = join[[f2i i, f2iPlus1 i] | i <- [0 .. 127]]
-          where f2i i      = sum [f@(2*j)   * root ^^ ((2*(BitRev7 j)+1)*i) | j <- [0 .. 127]]
-                f2iPlus1 i = sum [f@(2*j+1) * root ^^ ((2*(BitRev7 j)+1)*i) | j <- [0 .. 127]]
-
-        /**
-         * Number theoretic transform: converts elements in `R_q` to `T_q`.
-         *
-         * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 9.
+         * [FIPS-203] Section 4.3, Algorithm 9.
          */
         NaiveNTT : Rq -> Tq
-        NaiveNTT f = ParametricNTT f zeta
+        NaiveNTT f = join [[f2i i, f2iPlus1 i] | i <- [0 .. 127]] where
+            f2i i = sum [f @(2*j) * zeta_term i j | j <- [0 .. 127]]
+            f2iPlus1 i = sum [f @(2*j+1) * zeta_term i j | j <- [0 .. 127]]
+            zeta_term i j = zeta ^^ ((2 * BitRev7 i + 1) * j)
 
         /**
-         * Inverse of the number theoretic transform: converts elements in `T_q` to
-         * `R_q`.
+         * Inverse of the number theoretic transform: converts from the "NTT
+         * representation" in `T_q` to a polynomial in `R_q`.
          *
-         * This roughly corresponds to [FIPS-203] Section 4.3, Algorithm 10.
+         * [FIPS-203] Section 4.3, Algorithm 10.
          */
         NaiveNTTInv : Tq -> Rq
-        NaiveNTTInv f = [term*(recip 128) | term <- ParametricNTTInv f (recip zeta)]
+        NaiveNTTInv f_hat = [f_i * 3303 | f_i <- f] where
+            f = join [[f2i i, f2iPlus1 i] | i <- [0 .. 127]]
+            f2i i = sum [f_hat @(2*j) * zeta_term i j | j <- [0 .. 127]]
+            f2iPlus1 i = sum [f_hat @(2*j+1) * zeta_term i j | j <- [0 .. 127]]
+            zeta_term i j = (recip zeta) ^^ ((2 * BitRev7 j + 1) * i)
 
         //////////////////////////////////////////////////////////////
         // This section specifies fast O(N log N) NTT and Inverse NTT
