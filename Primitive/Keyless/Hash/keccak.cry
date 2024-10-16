@@ -115,16 +115,64 @@ private
     /**
      * Convert a string into a state array.
      * [FIPS-202] Section 3.1.2.
+     *
+     * Note: The spec describes this in terms of all three coordinates
+     * `(x, y, z)`. Since the lanes determined by a pair `(x, y)` are composed
+     * of consecutive bits, we don't index into them separately; instead, we
+     * separate `S` into 25 lanes of length `w` and then place those lanes in
+     * the correct order according to the `(x, y)` coordinates.
+     * For ease of implementation of the subsequent step mappings, the bits of
+     * each lane are reversed.
      */
     unflatten : [b] -> State
-    unflatten p = transpose (groupBy`{5} (reverse (groupBy`{w} (reverse p))))
+    unflatten S = [[ Lanes@((5 * y + x))
+        | y <- [0..4]]
+        | x <- [0..4]] where
+        Lanes = map reverse (split`{25} S)
+
+    /**
+     * Convert a string into a state array, but without indexing.
+     * Equivalent to [FIPS-202] Section 3.1.2.
+     */
+    unflatten_noindex : [b] -> State
+    unflatten_noindex S = transpose (groupBy (reverse (groupBy`{w} (reverse S))))
+
+    /**
+     * ```repl
+     * :prove unflattens_match
+     * ```
+     */
+    property unflattens_match S = unflatten S == unflatten_noindex S
 
     /**
      * Convert a state array into a string.
      * [FIPS-202] Section 3.1.3.
      */
-    flatten : State -> [5 * 5 * w]
-    flatten A = reverse (join (reverse (join (transpose A))))
+    flatten : State -> [b]
+    flatten A = S where
+        // No explicit appending or joining is needed to compute the Lanes.
+        // But we do need to accomodate the lane reversal that happened in the
+        // inverse `unflatten` function.
+        Lanes = [[ reverse (A@i@j)
+            | j <- [0..4]]
+            | i <- [0..4]]
+        Planes = [ Lanes@0@j # Lanes@1@j # Lanes@2@j # Lanes@3@j # Lanes@4@j
+            | j <- [0..4]]
+        S = join Planes
+
+    /**
+     * Convert a state array into a string, but without indexing.
+     * Equivalent to [FIPS-202] Section 3.1.3.
+     */
+    flatten_noindex : State -> [b]
+    flatten_noindex A = reverse (join (reverse (join (transpose A))))
+
+    /**
+     * ```repl
+     * :prove flattens_match
+     * ```
+     */
+    property flattens_match A = flatten A == flatten_noindex A
 
     /**
      * One of the step mappings that's part of a round of Keccak-p.
@@ -144,7 +192,6 @@ private
         A' = [[ A@x@y ^ D@x
             | y <- [0..4]]
             | x <- [0..4] ]
-
 
     /**
      * One of the step mappings that's part of a round of Keccak-p.
@@ -359,11 +406,11 @@ private
             // The round transformation is defined in [FIPS-202] Section 3.3.
             Rnd A ir = ι (χ (π (ρ_hardcoded (θ A)))) ir
             // Step 1.
-            A0 = unflatten S
+            A0 = unflatten_noindex S
             // Step 2.
             rounds = [A0] # [ Rnd A ir | A <- rounds | ir <- [0..nr - 1]]
             // Step 3.
-            S' = flatten (rounds ! 0)
+            S' = flatten_noindex (rounds ! 0)
 
 /**
  * See https://keccak.team/files/Keccak-reference-3.0.pdf, Section 1.2
