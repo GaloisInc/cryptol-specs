@@ -13,7 +13,7 @@
  */
 module Primitive::Keyless::Hash::SHA3::SHA3 where
 import Primitive::Keyless::Hash::KeccakBitOrdering as KBO
-import Primitive::Keyless::Hash::keccak where
+import Primitive::Keyless::Hash::Keccak where
     type b = 1600
     type nr = 24
     type c = 2 * digest
@@ -27,7 +27,7 @@ parameter
  * [FIPS-202] Section 6.1.
  *
  * Note that the specification of `c` is above, in the instantiation of the
- * `keccak` module.
+ * `Keccak` module.
  *
  * This expects input and produces output in the bit ordering used by the
  * `Keccak` spec, where bytes are in MSB order and the bits in each byte are
