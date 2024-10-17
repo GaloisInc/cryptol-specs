@@ -295,7 +295,7 @@ private
      *
      * [FIPS-202] Section 3.2.5, Algorithm 5.
      */
-    rc : [8] -> Bit
+    rc : Integer -> Bit
     rc t = if (t % 255) == 0 then 1 // Step 1.
          else Rs @ (t % 255) @0 // Step 4.
          where
@@ -326,8 +326,8 @@ private
      *
      * Equivalent to [FIPS-202] Section 3.2.5, Algorithm 5.
      */
-    rc_hardcoded : [8] -> Bit
-    rc_hardcoded t = constants @ t where
+    rc_hardcoded : Integer -> Bit
+    rc_hardcoded t = constants @ (t % 255) where
         constants = join [
             0x80b1e87f90a7d57062b32fde6ee54a25,
             0xa339e361175edf0d35b504ec9303a471
@@ -348,7 +348,7 @@ private
      * `(0, 0)` according to the round index.
      * [FIPS-202] Section 3.2.5, Algorithm 6.
      */
-    ι : State -> [8] -> State
+    ι : State -> Integer -> State
     ι A ir = A'' where
         // Step 1.
         A' = A
@@ -357,7 +357,7 @@ private
         // Step 3. 0 is the identity for XOR, so we iteratively set the
         // `2^j-1`th element by XORing the previously-set bits of RC with the
         // correct value at the desired index.
-        RCs = [RC0] # [RC' ^ (zext`{w} [rc_hardcoded (j + 7 * ir)] << (2^^j - 1))
+        RCs = [RC0] # [RC' ^ (zext`{w} [rc_hardcoded (toInteger j + 7 * ir)] << (2^^j - 1))
             | RC' <- RCs
             | j <- [0..ell] ]
         RC = (RCs ! 0) : [w]
