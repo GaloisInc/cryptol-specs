@@ -14,7 +14,7 @@
  *
  */
 module Primitive::Keyless::Hash::SHAKE::SHAKE256 where
-import Primitive::Keyless::Hash::keccak where
+import Primitive::Keyless::Hash::Keccak where
     type b = 1600
     type nr = 24
     // The capacity is double the security level, so this provides a security
