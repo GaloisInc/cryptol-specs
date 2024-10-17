@@ -1,8 +1,6 @@
 /**
  * Specification of the Keccak (SHA-3) hash function.
  *
- *
- *
  * [FIPS-202]: National Institute of Standards and Technology. SHA-3 Standard:
  *     Permutation-Based Hash and Extendable-Output Functions. (Department of
  *     Commerce, Washington, D.C.), Federal Information Processing Standards
@@ -31,23 +29,12 @@ parameter
     type constraint (fin b, b % 25 == 0, b <= 1600, (2 ^^ (lg2 (b / 25))) * 25 == b)
 
     /**
-     * Rounds: the number of iterations of an internal transformation.
+     * Rounds: the number of iterations of an internal transformation (any
+     * positive integer).
      * [FIPS-202] Section 3 (intro).
-     *
-     * Note: this is currently specialized to a fixed value relative to `b`.
-     * This limitation matches the `Keccak-f` requirement, but is not
-     * necessary for the more generic `Keccak-p`permutation.
-     * For the standardized SHA3 parameter sets, only `Keccak-f` is required.
-     * [FIPS-202] Section 3.4.
-     *
-     * @design Marcella Hastings <marcella@galois.com>. I intend to refactor
-     * this and the RC functions to allow the fully generic `Keccak-p`
-     * implementation; right now it's restricted to this specific function of
-     * `b`, as is required by `Keccak-f`; this is enough to support the
-     * standardized SHA3 functions but not the fully generic specification.
      */
     type nr : #
-    type constraint (fin nr, nr > 0, nr == 12 + 2 * (lg2 ( b / 25)))
+    type constraint (fin nr, nr > 0)
 
     /**
      * Capacity parameter for the sponge construction.
@@ -78,12 +65,12 @@ Keccak M = digest where
     // Step 5.
     S = zero : [b]
     // Step 6. We create a list `Ss` instead of overwriting the variable `S`.
-    Ss = [S] # [Keccak_f (S' ^ (Pi # (zero : [c]))) | Pi <- Ps | S' <- Ss]
+    Ss = [S] # [Keccak_p (S' ^ (Pi # (zero : [c]))) | Pi <- Ps | S' <- Ss]
     // Steps 7 - 10. This step is sometimes known as "squeeze".
     // The truncation in Step 8 is handled here with `take`{r}`
     // The truncation in Step 9 is below with `take`{front=d, back=inf}`.
     extend : [b] -> [inf]
-    extend Z = (take`{r} Z) # extend (Keccak_f Z)
+    extend Z = (take`{r} Z) # extend (Keccak_p Z)
     digest = take`{front=d, back=inf} (extend (Ss ! 0))
 
 private
@@ -388,29 +375,36 @@ private
     pad = [1] # zero # [1]
 
     /**
+     * The Keccak-p[b, nr] permutation.
+     * [FIPS-202] Section 3.3, Algorithm 7.
+     */
+    Keccak_p : [b] -> [b]
+    Keccak_p S = S' where
+        // The round transformation is defined in [FIPS-202] Section 3.3.
+        Rnd A ir = ι (χ (π (ρ_hardcoded (θ A)))) ir
+
+        // Step 1.
+        A0 = unflatten_noindex S
+        // Step 2.
+        // The round index `ir` is allowed to be negative, but Cryptol types
+        // must be non-negative. Thus we iterate over the number of rounds and
+        // compute the round index as a value, rather than a type.
+        As = [A0] # [ Rnd A ir where
+                ir = 12 + 2 * `ell - r
+            | A <- As
+            | r <- [nr, nr - 1 .. 1]]
+        // Step 3.
+        S' = flatten_noindex (As ! 0)
+
+    /**
      * Keccak-f family of permutations.
      *
-     * This is implemented as defined in Section 3.4, but while `Keccak-p` isn't
-     * explicitly implemented, we "expanded" the `Keccak-p` implementation
-     * according to the parameters given in the definition of `Keccak-f`.
-     * Specifically, note the range of `ir`.
-     *
-     * The number of rounds is a parameter to this functor and not passed
-     * explicitly here.
-     *
+     * This specializes `Keccak-p` to the case where `nr = 12 + 2*ell`; we
+     * enforce this in the type constraint on this function.
      * [FIPS-202] Section 3.4.
      */
-    Keccak_f : [b] -> [b]
-    Keccak_f S = S'
-        where
-            // The round transformation is defined in [FIPS-202] Section 3.3.
-            Rnd A ir = ι (χ (π (ρ_hardcoded (θ A)))) ir
-            // Step 1.
-            A0 = unflatten_noindex S
-            // Step 2.
-            rounds = [A0] # [ Rnd A ir | A <- rounds | ir <- [0..nr - 1]]
-            // Step 3.
-            S' = flatten_noindex (rounds ! 0)
+    Keccak_f : (nr == 12 + 2 * ell) => [b] -> [b]
+    Keccak_f = Keccak_p
 
 /**
  * See https://keccak.team/files/Keccak-reference-3.0.pdf, Section 1.2
