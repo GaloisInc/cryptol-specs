@@ -17,10 +17,10 @@
  */
 module Primitive::Asymmetric::Cipher::ML_KEM::Specification where
 
-import Primitive::Keyless::Hash::SHAKE::SHAKE256
-import Primitive::Keyless::Hash::SHAKE::SHAKE128
-import `Primitive::Keyless::Hash::SHA3::SHA3
-import Primitive::Keyless::Hash::KeccakBitOrdering
+import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHAKE256
+import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHAKE128
+import Primitive::Keyless::Hash::SHA3::SHA3_256 as SHA3_256
+import Primitive::Keyless::Hash::SHA3::SHA3_512 as SHA3_512
 
 /*
  * [FIPS-203] Section 2.3.
@@ -66,38 +66,53 @@ type Z_q_256 = [n](Z q)
 /**
  * Pseudorandom function (PRF).
  * [FIPS-203] Section 4.1, Equations 4.2 and 4.3.
+ *
+ * The SHA3 API operates over bit streams; the `groupBy` and `join` calls
+ * convert to and from our byte arrays.
  */
-PRF : {prfeta} (fin prfeta, prfeta > 0) => [32]Byte -> Byte -> [64 * prfeta]Byte
-PRF s b = map reverse (take (groupBy`{8} (shake256 (fromBytes(s)# reverse b))))
+PRF : {eta} (2 <= eta, eta <= 3) => [32]Byte -> Byte -> [64 * eta]Byte
+PRF s b = groupBy`{8} (SHAKE256::xof (join s # b))
 
 /**
  * One of the hash functions used in the protocol.
  * [FIPS-203] Section 4.1, Equation 4.4.
+ *
+ * The SHA3 API operates over bit streams; the `groupBy` and `join` calls
+ * convert to and from our byte arrays.
  */
 H : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
-H M = toBytes(sha3 `{digest = 256} (fromBytes(M)))
+H M = groupBy (SHA3_256::hash (join M))
 
 /**
  * One of the hash functions used in the protocol.
  * [FIPS-203] Section 4.1, Equation 4.4.
+ *
+ * The SHA3 API operates over bit streams; the `groupBy` and `join` calls
+ * convert to and from our byte arrays.
  */
 J : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
-J(s) = take(groupBy(shake256(fromBytes(s))))
+J s = groupBy (SHAKE256::xof (join s))
 
 /**
  * One of the hash functions used in the protocol.
  * [FIPS-203] Section 4.1, Equation 4.5.
+ *
+ * The SHA3 API operates over bit streams; the `groupBy` and `join` calls
+ * convert to and from our byte arrays.
  */
 G : {ginl} (fin ginl) => [ginl]Byte -> ([32]Byte, [32]Byte)
-G M = (result@0, result@1)
-    where result = split`{2} (toBytes(sha3 `{digest = 512} (fromBytes(M))))
+G M = (a, b) where
+    [a, b] = split`{2} (groupBy`{8} (SHA3_512::hash (join M)))
 
 /**
  * eXtendable-Output Function (XOF) wrapper.
  * [FIPS-203] Section 4.1, Equation 4.6.
+ *
+ * The SHA3 API operates over bit streams; the `groupBy` and `join` calls
+ * convert to and from our byte arrays.
  */
 XOF : ([34]Byte) -> [inf]Byte
-XOF(d) = groupBy`{8}(shake128(fromBytes(d)))
+XOF(d) = groupBy (SHAKE128::xof (join d))
 
 /**
  * Conversion from bit arrays to byte arrays.
@@ -113,7 +128,7 @@ BitsToBytes input = map reverse (groupBy input)
 BytesToBits : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
 BytesToBits input = join (map reverse input)
 
-BitToZ : {p} (fin p, p > 1) => Bit -> Z p
+BitToZ : Bit -> Z q
 BitToZ b = if b then 1 else 0
 
 BitstoZ : {ell} (fin ell, ell > 0) => [ell] -> (Z q)
@@ -274,7 +289,7 @@ property CorrectnessEncodeDecode fVec = all CorrectnessEncodeDecode' fVec
 DecodeSpec : {ell} (fin ell, ell > 0) => [32 * ell]Byte -> Z_q_256
 DecodeSpec B = [f i | i <- [0 .. 255]]
     where betas = BytesToBits B : [256 * ell]
-          f i = sum [ BitToZ`{q}(betas@(i*`ell+j))*fromInteger(2^^j)
+          f i = sum [ BitToZ (betas@(i*`ell+j))*fromInteger(2^^j)
                     | j <- [0 .. (ell-1)]]
 
 /**
@@ -315,59 +330,93 @@ property CorrectnessEncodeDecode' f = Decode'`{12}(Encode'`{12} f) == f
 /**
  * Uniformly sample NTT representations.
  *
- * This converts a stream `b` generated from a seed into a (pseudo)random
- * polynomial in `T_q`.
- *
- * Since Cryptol does not natively support while loops, we approach this
- * potentially infinite loop with recursion. `SampleNTTInf` converts an
- * infinite sequence of bytes to an infinite sequence of elements in `Z q`.
- * We then use the first `n` elements for the result.
+ * This uses a seed `B` to generate a pseudorandom stream, which is parsed into
+ * a polynomial in `T_q` drawn from a distribution indistinguishable from the
+ * uniform distribution.
  *
  * [FIPS-203] Section 4.2.2, Algorithm 7.
  */
 SampleNTT : [34]Byte -> Z_q_256
-SampleNTT B = take elements where
-    C_stream = XOF(B)
-    elements = SampleNTTInf C_stream
+SampleNTT B = a_hat' where
+    // Steps 1-2, 5.
+    // We (lazily) take an infinite stream from the XOF and remove only as
+    // many bytes as are needed to compute the function. See [FIPS-203]
+    // Section 4.1 Equation 4.6 for a discussion of the equivalence of this
+    // form to the one in Algorithm 7.
+    ctx0 = XOF B
 
-/**
- * SampleNTTInf implements a filter. It scans the input 3 by 3, calculates
- * the elements d1 and d2 and finally returns the elements that satisfy
- * the conditions together with the result of itself when applied to the
- * tail.
- *
- * This is an implementation of part of [FIPS-203] Section 4.2.2, Algorithm 7.
- */
-SampleNTTInf: [inf]Byte -> [inf](Z q)
-SampleNTTInf ([bi,bi1,bi2] # tailS) =
-    if d1 < `q then
-        if d2 < `q then
-            [fromInteger(d1),fromInteger(d2)] # SampleNTTInf tailS
-        else
-            [fromInteger(d1)] # SampleNTTInf tailS
-    else
-        if d2 < `q then
-            [fromInteger(d2)] # SampleNTTInf tailS
-        else
-            SampleNTTInf tailS
-    where
-        d1 = toInteger(reverse bi) + 256 * (toInteger(reverse bi1) % 16)
-        d2 = floor(ratio (toInteger(reverse bi1)) 16) + 16 * toInteger(reverse bi2)
+    // Step 3. Since Cryptol is not imperative, we implement this loop using
+    // recursion. The `j` counter is not made explicit; instead we lazily
+    // generate an infinite stream of coefficients in `T_q` and `take` the
+    // correct length in the next line.
+
+    // Step 4-16. `take` fulfills the `j < 256` condition in Steps 4 and 12.
+    a_hat = take`{256} (filter ctx0)
+
+    // `filter` parses an infinite stream from the XOF, computing
+    // potential elements `d1` and `d2` from the first 3 bytes in the stream
+    // and adding them to the output if they are valid elements in `Z q`.
+    filter: [inf]Byte -> [inf][12]
+    filter XOFSqueeze = a_hat_j where
+        // Step 5.
+        (C # ctx) = XOFSqueeze
+
+        // The conversion from 8-bit to 12-bit vectors (with the same value!)
+        // is implicit in the spec -- see notes on Step 5 and 6/7. In Cryptol,
+        // we need to convert manually to do the subsequent computations.
+        [C0, C1, C2] = map zext`{12} C
+
+        // Step 6.
+        d1 = C0 + 256 * (C1 % 16)
+
+        // Step 7. Cryptol uses integer division; it always takes the floor of
+        // the result.
+        d2 = (C1 / 16) + 16 * C2
+
+        // Steps 4, 8 - 15.
+        // Add `d1` and/or `d2` to the sampled vector `a_hat` if they are valid
+        // elements in `Z q`.
+        // The `while` loop in Step 4 is equivalent to the recursive call to
+        // `filter` in each condition.
+        a_hat_j = if (d1 < `q) && (d2 < `q) then
+                [d1, d2] # filter ctx
+            else if d1 < `q then
+                [d1] # filter ctx
+            else if d2 < `q then
+                [d2] # filter ctx
+            else filter ctx
+
+    // This conversion is implicit in the implementation -- see the notes on
+    // Step 6/7 and 9.
+    toZq : [12] -> Z q
+    toZq x = fromInteger (toInteger x)
+
+    a_hat' = map toZq a_hat
 
 /**
  * Sample a special, centered distribution of polynomials in `R_q` with small
  * coefficients.
  *
- * Requires that the input stream `B` is uniformly random bytes.
+ * The input stream `B` must be uniformly random bytes!
  *
  * [FIPS-203] Section 4.2.2, Algorithm 8.
  */
-SamplePolyCBD: {eta} (fin eta, eta > 0) => [64 * eta]Byte -> Z_q_256
-SamplePolyCBD B = [f i | i <- [0 .. 255]]
-    where betas = BytesToBits B : [512 * eta]
-          x i = sum [BitToZ`{q} (betas@(2*i*`eta+j)) | j <- [0 .. (eta-1)]]
-          y i = sum [BitToZ`{q} (betas@(2*i*`eta+`eta+j)) | j <- [0 .. (eta-1)]]
-          f i = (x i) - (y i)
+SamplePolyCBD: {eta} (2 <= eta, eta <= 3) => [64 * eta]Byte -> Z_q_256
+SamplePolyCBD B = f where
+    // Step 1.
+    b = BytesToBits B
+    // This conversion is implicit in the implementation. Convert each bit into
+    // an element of Z q.
+    b' = map BitToZ b
+
+    // Step 3.
+    x i = sum [b'@(2 * i * `eta + j) | j <- [0 .. (eta-1)]]
+    // Step 4.
+    y i = sum [b'@(2 * i * `eta + `eta + j) | j <- [0 .. (eta-1)]]
+
+    // Steps 2, 5. The `mod q` is not explicit here because `x` and `y`
+    // return elements of `Z q`.
+    f = [(x i) - (y i) | i <- [0 .. 255]]
 
 /**
  * [FIPS-203] Section 4.3 "The mathematical structure of the NTT."
