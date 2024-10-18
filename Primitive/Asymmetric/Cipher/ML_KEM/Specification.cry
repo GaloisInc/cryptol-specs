@@ -21,7 +21,6 @@ import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHAKE256
 import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHAKE128
 import Primitive::Keyless::Hash::SHA3::SHA3_256 as SHA3_256
 import Primitive::Keyless::Hash::SHA3::SHA3_512 as SHA3_512
-import Primitive::Keyless::Hash::KeccakBitOrdering
 
 /*
  * [FIPS-203] Section 2.3.
