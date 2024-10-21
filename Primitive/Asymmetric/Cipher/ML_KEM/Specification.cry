@@ -226,6 +226,13 @@ ByteEncode F = B where
     B = BitsToBytes b
 
 /**
+ * Encode a vector of `k` `d`-bit integers into a byte array.
+ * [FIPS-203] Section 2.4.8.
+ */
+ByteEncode_Vec : {d} (fin d, 1 <= d, d < 12) => [k][256][d] -> [k * 32 * d]Byte
+ByteEncode_Vec F_vec = join (map ByteEncode F_vec)
+
+/**
  * The subtract-and-divide algorithm applied to `a` in `ByteEncode` is the
  * same as shifting right.
  * Note: The type constraint for `d` does not allow `1` because `% 2` is not a
@@ -283,6 +290,13 @@ ByteDecode B = F where
             | bidj <- bid
             | j <- [0..d-1]]
         | bid <- split`{256} b]
+
+/**
+ * Decode `k` arrays of `d`-bit integers into a byte array.
+ * [FIPS-203] Section 2.4.8.
+ */
+ByteDecode_Vec : {d} (1 <= d, d < 12) => [k * 32 * d]Byte -> [k][256][d]
+ByteDecode_Vec B_vec = map ByteDecode (split B_vec)
 
 ByteDecode12 : [32 * 12]Byte -> [256](Z q)
 ByteDecode12 B = undefined
@@ -976,13 +990,13 @@ private submodule K_PKE where
         // Step 19.
         u = NTTInv (dotMatVec (transpose A_hat) y_hat) + e1
         // Step 20.
-        mu = Decompress'`{1} (DecodeBytes'`{1} m)
+        mu = Decompress'`{1} (ByteDecode`{1} m)
         // Step 21.
         v = (NTTInv' (dotVecVec t_hat y_hat)) + e2 + mu
         // Step 22.
-        c1 = EncodeBytes`{d_u} (Compress`{d_u} u)
+        c1 = ByteEncode_Vec`{d_u} (Compress`{d_u} u)
         // Step 23.
-        c2 = EncodeBytes'`{d_v} (Compress'`{d_v} v)
+        c2 = ByteEncode`{d_v} (Compress'`{d_v} v)
         // Step 24.
         c = c1 # c2
 
@@ -1001,16 +1015,16 @@ private submodule K_PKE where
         c1 = c @@[0 .. 32 * d_u * k - 1]
         // Step 2.
         c2 = c @@[32 * d_u * k .. 32 * (d_u * k + d_v) - 1]
-        // Step 3.
-        u' = Decompress`{d_u} (DecodeBytes`{d_u} c1)
+        // Step 3.j
+        u' = Decompress`{d_u} (ByteDecode_Vec`{d_u} c1)
         // Step 4.
-        v' = Decompress'`{d_v} (DecodeBytes'`{d_v} c2)
+        v' = Decompress'`{d_v} (ByteDecode`{d_v} c2)
         // Step 5.
         s_hat = Decode`{12} dkPKE
         // Step 6.
         w = v' - NTTInv' (dotVecVec s_hat (NTT u'))
         // Step 7.
-        m = EncodeBytes'`{1} (Compress'`{1} w)
+        m = ByteEncode`{1} (Compress'`{1} w)
 
     /**
      * The K-PKE scheme must satisfy the basic properties of an encryption
