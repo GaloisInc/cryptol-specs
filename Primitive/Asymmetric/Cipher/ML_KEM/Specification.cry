@@ -260,6 +260,59 @@ property mod2IsFinalBit a = a % 2 == zext [a ! 0]
 ByteEncode12 : [256](Z q) -> [32 * 12]Byte
 ByteEncode12 F = undefined
 
+/**
+ * Decode a byte array into an array of `d`-bit integers, for `d < 12`.
+ * [FIPS-203] Section 4.2.1 Algorithm 6.
+ *
+ * Note: In this implementation, we treat the `d < 12` case separately from
+ * `d == 12` because it allows us to better express the different integer
+ * types. For `d < 12`, we use the bit vector type.
+ * See `ByteDecode12` for the `d = 12` case.
+ */
+ByteDecode : {d} (1 <= d, d < 12) => [32 * d]Byte -> [256][d]
+ByteDecode B = F where
+    // Step 1.
+    b = BytesToBits B
+    // Steps 2-4. The `mod m` is implicit in the type because the `[d]` type
+    // always operates `mod 2^d`.
+    // In a bit vector, multiplying by `2^j` is the same as left shift (see
+    // mul2jIsShiftL`).
+    // `bidj` is a single Bit; we convert to a `d`-length bit vector (with
+    // zeros in the higher-order bits) to support subsequent operations.
+    F = [ sum [ (zext [bidj]) << j
+            | bidj <- bid
+            | j <- [0..d-1]]
+        | bid <- split`{256} b]
+
+ByteDecode12 : [32 * 12]Byte -> [256](Z q)
+ByteDecode12 B = undefined
+
+/**
+ * Multiplying a value by `2^^j` is the same as bit-shifting it left by `j`
+ * bits.
+ * Note: The type constraint does not allow `d == 1` because the hard-coded
+ * `2` does not fit in a single bit, but the property is trivial:
+ * `j` can only be 0. On the left, `b * 2^0 == b * 1 == b`. On the right,
+ * `b << 0 == b`.
+ * ```repl
+ * :prove mul2jIsShiftL`{2}
+ * :prove mul2jIsShiftL`{7}
+ * :prove mul2jIsShiftL`{12}
+ * ```
+ */
+mul2jIsShiftL : {d} (fin d, 1 < d) => [d] -> Bit
+property mul2jIsShiftL b = and [( b * (2^^j)) == (b << j) | j <- [0..d-1]]
+
+/**
+ * When `d < 12`, the byte encoding and decoding functions should be
+ * one-to-one inverses of each other.
+ * [FIPS-203] Section 4.2.1 "Encoding and decoding", first point.
+ */
+ByteEncodeInvertsByteDecode : {d} (fin d, 1 <= d, d < 12) => [256][d] -> Bit
+property ByteEncodeInvertsByteDecode bits = left && right where
+    left = ByteDecode (ByteEncode bits) == bits
+    bytes = split (join bits)
+    right = ByteEncode (ByteDecode bytes) == bytes
 
 /*
  * We make this trivial serialization explicit, since it is not an identity in Cryptol.
