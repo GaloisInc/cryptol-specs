@@ -268,8 +268,8 @@ ByteEncode12_Vec F_vec = join (map ByteEncode12 F_vec)
  * legal operation on 1-bit vectors (since 2 cannot be represented as a 1-bit
  * vector.)
  * ```repl
- * :prove subAndDivIsShiftR`{2}
- * :prove subAndDivIsShiftR`{7}
+ * :prove subAndDivIsShiftR`{d_u}
+ * :prove subAndDivIsShiftR`{d_v}
  * :prove subAndDivIsShiftR`{12}
  * ```
  */
@@ -285,8 +285,8 @@ property subAndDivIsShiftR a = take (sad a) == shift a where
  * legal operation on 1-bit vectors (since 2 cannot be represented as a 1-bit
  * vector.) It's trivially true, though.
  * ```repl
- * :prove mod2IsFinalBit`{2}
- * :prove mod2IsFinalBit`{7}
+ * :prove mod2IsFinalBit`{d_u}
+ * :prove mod2IsFinalBit`{d_v}
  * :prove mod2IsFinalBit`{12}
  * ```
  */
@@ -363,8 +363,8 @@ ByteDecode12_Vec B = map ByteDecode12 (split B)
  * `j` can only be 0. On the left, `b * 2^0 == b * 1 == b`. On the right,
  * `b << 0 == b`.
  * ```repl
- * :prove mul2jIsShiftL`{2}
- * :prove mul2jIsShiftL`{7}
+ * :prove mul2jIsShiftL`{d_u}
+ * :prove mul2jIsShiftL`{d_v}
  * :prove mul2jIsShiftL`{12}
  * ```
  */
@@ -377,9 +377,8 @@ property mul2jIsShiftL b = and [( b * (2^^j)) == (b << j) | j <- [0..d-1]]
  * [FIPS-203] Section 4.2.1 "Encoding and decoding", first point.
  * ```repl
  * :prove ByteEncodeInvertsByteDecode`{1}
- * :prove ByteEncodeInvertsByteDecode`{2}
- * :prove ByteEncodeInvertsByteDecode`{7}
- * :prove ByteEncodeInvertsByteDecode`{11}
+ * :prove ByteEncodeInvertsByteDecode`{d_u}
+ * :prove ByteEncodeInvertsByteDecode`{d_v}
  * ```
  */
 ByteEncodeInvertsByteDecode : {d} (fin d, 1 <= d, d < 12) => [256][d] -> Bit
