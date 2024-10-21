@@ -226,14 +226,14 @@ ByteEncode F = B where
     B = BitsToBytes b
 
 /**
- * Encode a vector of `k` `d`-bit integers into a byte array.
+ * Encode `k` vectors of `d`-bit integers into a byte array.
  * [FIPS-203] Section 2.4.8.
  */
 ByteEncode_Vec : {d} (fin d, 1 <= d, d < 12) => [k][256][d] -> [k * 32 * d]Byte
 ByteEncode_Vec F_vec = join (map ByteEncode F_vec)
 
 /**
- * Encode an array of 12-bit vectors into a byte array.
+ * Encode an array of integers mod `q` into a byte array.
  * [FIPS-203] Section 4.2.1 Algorithm 5.
  *
  * Note: In this implementation, we treat the `d < 12` case separately from
@@ -256,10 +256,10 @@ ByteEncode12 F = B where
     B = BitsToBytes b
 
 /**
- * Encode a `k`-element array of 12-bit vectors into a byte array.
+ * Encode a set of `k` vectors of integers mod `q` into a byte array.
  */
 ByteEncode12_Vec : [k][256](Z q) -> [k * 32 * 12]Byte
-ByteEncode12_Vec F = join (map ByteEncode12 F)
+ByteEncode12_Vec F_vec = join (map ByteEncode12 F_vec)
 
 /**
  * The subtract-and-divide algorithm applied to `a` in `ByteEncode` is the
@@ -283,7 +283,7 @@ property subAndDivIsShiftR a = take (sad a) == shift a where
  * significant) bit.
  * Note: The type constraint for `d` does not allow `1` because `% 2` is not a
  * legal operation on 1-bit vectors (since 2 cannot be represented as a 1-bit
- * vector.)
+ * vector.) It's trivially true, though.
  * ```repl
  * :prove mod2IsFinalBit`{2}
  * :prove mod2IsFinalBit`{7}
@@ -324,6 +324,15 @@ ByteDecode B = F where
 ByteDecode_Vec : {d} (1 <= d, d < 12) => [k * 32 * d]Byte -> [k][256][d]
 ByteDecode_Vec B_vec = map ByteDecode (split B_vec)
 
+/**
+ * Decode a byte array into an array of integers mod `q`.
+ * [FIPS-203] Section 4.2.1 Algorithm 6.
+ *
+ * Note: In this implementation, we treat the `d < 12` case separately from
+ * `d == 12` because it allows us to better express the different integer
+ * types. For `d = 12`, we use the integers-mod (`Z`) type.
+ * See `ByteDecode` for the `d < 12` case.
+ */
 ByteDecode12 : [32 * 12]Byte -> [256](Z q)
 ByteDecode12 B = F' where
     type d = 12
@@ -374,16 +383,18 @@ property mul2jIsShiftL b = and [( b * (2^^j)) == (b << j) | j <- [0..d-1]]
  * ```
  */
 ByteEncodeInvertsByteDecode : {d} (fin d, 1 <= d, d < 12) => [256][d] -> Bit
-property ByteEncodeInvertsByteDecode bits = left && right where
-    left = ByteDecode (ByteEncode bits) == bits
+property ByteEncodeInvertsByteDecode bits =
+    decode_encode_works && encode_decode_works where
+    decode_encode_works = ByteDecode (ByteEncode bits) == bits
+    // Rearrange random input to be valid for the decode function
     bytes = split (join bits)
-    right = ByteEncode (ByteDecode bytes) == bytes
+    encode_decode_works = ByteEncode (ByteDecode bytes) == bytes
 
 /**
  * Byte decoding is the inverse of byte decoding for `d = 12`.
  * [FIPS-203] Section 4.2.1 "Encoding and decoding", second point.
  *
- * Note that the reverse property (Encode (Decode (b)) == b) is not true!
+ * Note that the reverse property (decoding, then encoding) is not true!
  * ```repl
  * :check ByteDecode12InvertsByteEncode12
  * ```
