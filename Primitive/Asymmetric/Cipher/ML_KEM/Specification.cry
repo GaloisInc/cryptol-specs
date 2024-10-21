@@ -256,6 +256,12 @@ ByteEncode12 F = B where
     B = BitsToBytes b
 
 /**
+ * Encode a `k`-element array of 12-bit vectors into a byte array.
+ */
+ByteEncode12_Vec : [k][256](Z q) -> [k * 32 * 12]Byte
+ByteEncode12_Vec F = join (map ByteEncode12 F)
+
+/**
  * The subtract-and-divide algorithm applied to `a` in `ByteEncode` is the
  * same as shifting right.
  * Note: The type constraint for `d` does not allow `1` because `% 2` is not a
@@ -333,6 +339,12 @@ ByteDecode12 B = F' where
     // convert each integer from a 12-bit array to an integer mod `q`.
     toZq f = fromInteger (toInteger f)
     F' = map toZq F
+
+/**
+ * Decode `k` joined byte arrays into `k` arrays of integers mod `q`.
+ */
+ByteDecode12_Vec : [k * 32 * 12]Byte -> [k][256](Z q)
+ByteDecode12_Vec B = map ByteDecode12 (split B)
 
 /**
  * Multiplying a value by `2^^j` is the same as bit-shifting it left by `j`
@@ -1003,9 +1015,9 @@ private submodule K_PKE where
         // Step 18.
         t_hat = (dotMatVec A_hat s_hat) + e_hat
         // Step 19.
-        ekPKE = (Encode`{12} t_hat) # ρ
+        ekPKE = (ByteEncode12_Vec t_hat) # ρ
         // Step 20.
-        dkPKE = Encode`{12} (s_hat)
+        dkPKE = ByteEncode12_Vec s_hat
 
     /**
      * Encryption algorithm for the K-PKE component scheme.
@@ -1019,7 +1031,7 @@ private submodule K_PKE where
     Encrypt : EncryptionKey -> [32]Byte -> [32]Byte -> Ciphertext
     Encrypt ekPKE m r = c where
         // Step 2.
-        t_hat = Decode`{12} (ekPKE @@[0 .. 384*k - 1])
+        t_hat = ByteDecode12_Vec (ekPKE @@[0 .. 384*k - 1])
         // Step 3.
         rho = ekPKE @@[384*k .. 384*k + 32 - 1]
         // Steps 4-8.
@@ -1071,7 +1083,7 @@ private submodule K_PKE where
         // Step 4.
         v' = Decompress'`{d_v} (ByteDecode`{d_v} c2)
         // Step 5.
-        s_hat = Decode`{12} dkPKE
+        s_hat = ByteDecode12_Vec dkPKE
         // Step 6.
         w = v' - NTTInv' (dotVecVec s_hat (NTT u'))
         // Step 7.
