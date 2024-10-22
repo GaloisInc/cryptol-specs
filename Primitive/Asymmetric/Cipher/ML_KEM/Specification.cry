@@ -141,8 +141,8 @@ property roundingWorks y = y >= 0 ==> roundUpWorks && roundDownWorks where
  * Compress an integer mod `q` into an integer mod `2^d`.
  * [FIPS-203] Section 4.2.1, Equation 4.7.
  */
-Compress'' : {d} (d < width q) => Z q -> [d]
-Compress'' x = y where
+Compress : {d} (d < width q) => Z q -> [d]
+Compress x = y where
     // Convert from an integer mod `q` to a rational number.
     x' = fromInteger (fromZ x) : Rational
     // Compress. Note that `/.` denotes division of rationals.
@@ -154,8 +154,8 @@ Compress'' x = y where
  * Decompress an integer mod `2^d` into an integer mod `q`.
  * [FIPS-203] Section 4.2.1, Equation 4.8.
  */
-Decompress'' : {d} (d < width q) => [d] -> Z q
-Decompress'' y = x where
+Decompress : {d} (d < width q) => [d] -> Z q
+Decompress y = x where
     // Convert from a d-length bit vector to a rational number.
     y' = fromInteger (toInteger y) : Rational
     // Decompress! As before, `/.` is division of rationals.
@@ -173,7 +173,7 @@ Decompress'' y = x where
  * ```
  */
 CompressInvertsDecompress : {d} (d < width q) => [d] -> Bit
-property CompressInvertsDecompress y = Compress'' (Decompress'' y) == y
+property CompressInvertsDecompress y = Compress (Decompress y) == y
 
 /**
  * When `d` is large, compression followed by decompression must not
@@ -187,7 +187,7 @@ property CompressInvertsDecompress y = Compress'' (Decompress'' y) == y
  */
 DecompressMostlyInvertsCompress : Z q -> Bit
 property DecompressMostlyInvertsCompress x = errIsSmallEnough where
-    x' = Decompress''`{d_u} (Compress''`{d_u} x)
+    x' = Decompress`{d_u} (Compress`{d_u} x)
     err = abs (modpm (x' - x))
     errIsSmallEnough = err <= B_q`{d_u}
 
@@ -207,32 +207,32 @@ property DecompressMostlyInvertsCompress x = errIsSmallEnough where
  * each individual element.
  * [FIPS-203] Section 2.4.8, Equation 2.15.
  */
-Compress' : {d} (d < lg2 q) => Z_q_256 -> [n][d]
-Compress' x = map Compress''`{d} x
+Compress_Vec : {d} (d < lg2 q) => Z_q_256 -> [n][d]
+Compress_Vec x = map Compress`{d} x
 
 /**
  * Decompression applied to a vector is equivalent to applying decompression to
  * each individual element.
  * [FIPS-203] Section 2.4.8.
  */
-Decompress' : {d} (d < lg2 q) => [n][d] -> Z_q_256
-Decompress' x = map Decompress''`{d} x
+Decompress_Vec : {d} (d < lg2 q) => [n][d] -> Z_q_256
+Decompress_Vec x = map Decompress`{d} x
 
 /**
- * Compression applied to an array is equivalent to applying compression to
+ * Compression applied to a matrix is equivalent to applying compression to
  * each individual element.
  * [FIPS-203] Section 2.4.8.
  */
-Compress : {d, k1} (d < lg2 q, fin k1) => [k1]Z_q_256 -> [k1][n][d]
-Compress x = map Compress'`{d} x
+Compress_Mat : {d, k1} (d < lg2 q, fin k1) => [k1]Z_q_256 -> [k1][n][d]
+Compress_Mat x = map Compress_Vec`{d} x
 
 /**
- * Decompression applied to an array is equivalent to applying decompression to
+ * Decompression applied to a matrix is equivalent to applying decompression to
  * each individual element.
  * [FIPS-203] Section 2.4.8.
  */
-Decompress : {d, k1} (d < lg2 q, fin k1) => [k1][n][d] -> [k1]Z_q_256
-Decompress x = map Decompress'`{d} x
+Decompress_Mat : {d, k1} (d < lg2 q, fin k1) => [k1][n][d] -> [k1]Z_q_256
+Decompress_Mat x = map Decompress_Vec`{d} x
 
 private
     /**
@@ -1004,13 +1004,13 @@ private submodule K_PKE where
         // Step 19.
         u = NTTInv (dotMatVec (transpose A_hat) y_hat) + e1
         // Step 20.
-        mu = Decompress'`{1} (ByteDecode`{1} m)
+        mu = Decompress_Vec`{1} (ByteDecode`{1} m)
         // Step 21.
         v = (NTTInv' (dotVecVec t_hat y_hat)) + e2 + mu
         // Step 22.
-        c1 = ByteEncode_Vec`{d_u} (Compress`{d_u} u)
+        c1 = ByteEncode_Vec`{d_u} (Compress_Mat`{d_u} u)
         // Step 23.
-        c2 = ByteEncode`{d_v} (Compress'`{d_v} v)
+        c2 = ByteEncode`{d_v} (Compress_Vec`{d_v} v)
         // Step 24.
         c = c1 # c2
 
@@ -1030,15 +1030,15 @@ private submodule K_PKE where
         // Step 2.
         c2 = c @@[32 * d_u * k .. 32 * (d_u * k + d_v) - 1]
         // Step 3.j
-        u' = Decompress`{d_u} (ByteDecode_Vec`{d_u} c1)
+        u' = Decompress_Mat`{d_u} (ByteDecode_Vec`{d_u} c1)
         // Step 4.
-        v' = Decompress'`{d_v} (ByteDecode`{d_v} c2)
+        v' = Decompress_Vec`{d_v} (ByteDecode`{d_v} c2)
         // Step 5.
         s_hat = ByteDecode12_Vec dkPKE
         // Step 6.
         w = v' - NTTInv' (dotVecVec s_hat (NTT u'))
         // Step 7.
-        m = ByteEncode`{1} (Compress'`{1} w)
+        m = ByteEncode`{1} (Compress_Vec`{1} w)
 
     /**
      * The K-PKE scheme must satisfy the basic properties of an encryption
