@@ -30,7 +30,7 @@ repository are listed below.
 | **Hash**                   | [SHA1](Primitive/Keyless/Hash/SHA1.cry)                                                |           |              |
 |                            | [SHA256](Primitive/Keyless/Hash/SHA2/Instantiations/SHA256.cry)                        |           |              |
 |                            | [SHA2](Primitive/Keyless/Hash/SHA2/)                                                   |           |              |
-|                            | [SHA3](Primitive/Keyless/Hash/SHA3/)                                                   |           |              | 
+|                            | [SHA3](Primitive/Keyless/Hash/SHA3/)                                                   |           |              |
 | **Asymmetric Encryption**  | [CRYSTALS Kyber](Primitive/Asymmetric/Cipher/Kyber/3.01/)                              |           |              |
 |                            | [RSA](Primitive/Asymmetric/Cipher/RSA.cry)                                             |           |              |
 
@@ -44,7 +44,7 @@ The repository contains Cryptol implementations of the selected cryptographic sc
 | Type          | PKE/KEM                                                   | Signature                                                       |
 |---------------|-----------------------------------------------------------|-----------------------------------------------------------------|
 | Lattice-based | [CRYSTALS Kyber](Primitive/Asymmetric/Cipher/Kyber/3.01/) | [CRYSTALS Dilithium](Primitive/Asymmetric/Signature/Dilithium/) |
-|               | [ML-KEM](Primitive/Asymmetric/Cipher/ML-KEM/)             |                                                                 |
+|               | [ML-KEM](Primitive/Asymmetric/Cipher/ML_KEM/)             |                                                                 |
 |               |                                                           | [FALCON](Primitive/Asymmetric/Signature/FALCON/1.2/)            |
 | Hash-based    |                                                           | [SPHINCS+](Primitive/Asymmetric/Signature/SphincsPlus/)         |
 
