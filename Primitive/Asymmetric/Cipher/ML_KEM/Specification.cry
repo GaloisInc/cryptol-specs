@@ -115,18 +115,55 @@ XOF : ([34]Byte) -> [inf]Byte
 XOF(d) = groupBy (SHAKE128::xof (join d))
 
 /**
- * Conversion from bit arrays to byte arrays.
+ * Conversion from little-endian bit arrays to byte arrays.
  * [FIPS-203] Section 4.2.1, Algorithm 3.
  */
-BitsToBytes : {ell} (fin ell, ell > 0) => [ell*8]Bit -> [ell]Byte
-BitsToBytes input = map reverse (groupBy input)
+BitsToBytes : {ell} (fin ell) => [8 * ell]Bit -> [ell]Byte
+BitsToBytes b
+    | ell == 0 => zero
+    | ell > 0 => B where
+        // Group the bits into the B[⌊i / 8⌋] sets; pad them to support
+        // subsequent operations, and correlate each bit with its index `i`.
+        b' = groupBy`{8} [(zext [bi], i)
+            | bi <- b
+            | i <- [0..8 * ell - 1]]
+
+        // Steps 2-4.
+        B = [sum [bi * (2 ^^ (i % 8))
+                | (bi, i) <- bi8]
+            | bi8 <- b']
 
 /**
  * Conversion from byte arrays to bit arrays.
  * [FIPS-203] Section 4.2.1, Algorithm 4.
  */
-BytesToBits : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
-BytesToBits input = join (map reverse input)
+BytesToBits : {ell} (fin ell) => [ell]Byte -> [ell*8]Bit
+BytesToBits C
+    | ell == 0 => []
+    | ell > 0 => join [[ b8ij where
+            // Step 4. Taking the last bit is the same as modding by 2.
+            b8ij = Ci' ! 0
+            // Step 5. Shifting right is the same as the iterative
+            // division (see `div2IsShiftR`). This accounts for all the
+            // divisions "up to this point" (e.g. none when `j = 0`), which
+            // is why we use `Ci'` to evaluate `b8ij` above.
+            Ci' = Ci >> j
+        // Step 3.
+        | j <- [0..7]]
+        // Step 2. We iterate over `C` directly instead of indexing into it.
+        | Ci <- C ]
+
+/**
+ * The iterative division by 2 in `BytesToBits` is the same as shifting right.
+ * ```repl
+ * :prove div2IsShiftR
+ * ```
+ */
+div2IsShiftR : Byte -> Bit
+div2IsShiftR C = take (d2 C) == shl where
+    // Note: division here is floor'd by default.
+    d2 c = [c] # d2 (c / 2)
+    shl = [C >> j | j <- [0..7]]
 
 /**
  * The conversions between bits and bytes are each others' inverses.
@@ -147,14 +184,11 @@ B2B2BInverts bits = bitsWorks && bytesWorks where
  * This currently fails due to endianness issues!
  * Check the example given in the spec for converting between bits and bytes.
  * [FIPS-203] Section 4.2.1 "Converting between bits and bytes."
- *
- * Note: The `reverse` here is needed because Cryptol's default representation
- * for byte arrays, including literal values like "139", is big-endian.
  * ```repl
  * :prove B2BExampleWorks
  * ```
  */
- B2BExampleWorks = BitsToBytes 0b11010001 == [reverse 139]
+B2BExampleWorks = BitsToBytes 0b11010001 == [139]
 
 /**
  * In Cryptol, rounding is computed via the built-in function `roundAway`.
