@@ -128,15 +128,6 @@ BitsToBytes input = map reverse (groupBy input)
 BytesToBits : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
 BytesToBits input = join (map reverse input)
 
-BitToZ : Bit -> Z q
-BitToZ b = if b then 1 else 0
-
-BitstoZ : {ell} (fin ell, ell > 0) => [ell] -> (Z q)
-BitstoZ betas = fromInteger (toInteger (reverse betas))
-
-ZtoBits : {ell} (fin ell, ell > 0) => (Z q) -> [ell]
-ZtoBits fi = reverse (fromInteger (fromZ fi))
-
 // In Cryptol, rounding is computed via the built-in function roundAway
 property rounding = ((roundAway(1.5) == 2) && (roundAway(1.4) == 1))
 
@@ -481,6 +472,8 @@ SamplePolyCBD B = f where
     b = BytesToBits B
     // This conversion is implicit in the implementation. Convert each bit into
     // an element of Z q.
+    BitToZ : Bit -> Z q
+    BitToZ bit = if bit then 1 else 0
     b' = map BitToZ b
 
     // Step 3.
