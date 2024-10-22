@@ -129,6 +129,34 @@ BytesToBits : {ell} (fin ell, ell > 0) => [ell]Byte -> [ell*8]Bit
 BytesToBits input = join (map reverse input)
 
 /**
+ * The conversions between bits and bytes are each others' inverses.
+ * [FIPS-203] Section 4.2.1 (see description on Algorithm 4).
+ * The sample `ell` values here are a subset of the possible values in the spec.
+ * ```repl
+ * :prove B2B2BInverts`{32}
+ * :prove B2B2BInverts`{192}
+ * :prove B2B2BInverts`{384}
+ * ```
+ */
+B2B2BInverts : {ell} (fin ell, ell > 0) => [ell * 8] -> Bit
+B2B2BInverts bits = bitsWorks && bytesWorks where
+    bitsWorks = BytesToBits (BitsToBytes bits) == bits
+    bytesWorks = BitsToBytes (BytesToBits (split bits)) == split bits
+
+/**
+ * This currently fails due to endianness issues!
+ * Check the example given in the spec for converting between bits and bytes.
+ * [FIPS-203] Section 4.2.1 "Converting between bits and bytes."
+ *
+ * Note: The `reverse` here is needed because Cryptol's default representation
+ * for byte arrays, including literal values like "139", is big-endian.
+ * ```repl
+ * :prove B2BExampleWorks
+ * ```
+ */
+ B2BExampleWorks = BitsToBytes 0b11010001 == [reverse 139]
+
+/**
  * In Cryptol, rounding is computed via the built-in function `roundAway`.
  * [FIPS-203] Section 2.3.
  */
