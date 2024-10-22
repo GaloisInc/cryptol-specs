@@ -138,18 +138,30 @@ property roundingWorks y = y >= 0 ==> roundUpWorks && roundDownWorks where
     roundDownWorks = roundAway (y' + 0.4) == y
 
 /**
- * Compression from an integer mod `q` to an integer mod `2^d`.
+ * Compress an integer mod `q` into an integer mod `2^d`.
  * [FIPS-203] Section 4.2.1, Equation 4.7.
  */
-Compress'' : {d} (d < lg2 q) => Z q -> [d]
-Compress'' x = fromInteger(roundAway(((2^^`d)/.`q) * fromInteger(fromZ(x))) % 2^^`d)
+Compress'' : {d} (d < 12) => Z q -> [d]
+Compress'' x = y where
+    // Convert from an integer mod `q` to a rational number.
+    x' = fromInteger (fromZ x) : Rational
+    // Compress. Note that `/.` denotes division of rationals.
+    y' = roundAway (((2^^`d) /. `q) * x')
+    // mod 2^^d (by converting from an integer to a d-bit vector).
+    y = (fromInteger y') : [d]
 
 /**
- * Decompression from an integer mod `2^d` to an integer mod `q`.
+ * Decompress an integer mod `2^d` into an integer mod `q`.
  * [FIPS-203] Section 4.2.1, Equation 4.8.
  */
 Decompress'' : {d} (d < lg2 q) => [d] -> Z q
-Decompress'' x = fromInteger(roundAway(((`q)/.(2^^`d))*fromInteger(toInteger(x))))
+Decompress'' y = x where
+    // Convert from a d-length bit vector to a rational number.
+    y' = fromInteger (toInteger y) : Rational
+    // Decompress! As before, `/.` is division of rationals.
+    x' = roundAway((`q /. (2^^`d)) * y')
+    // Convert from an integer to an integer mod `q`.
+    x = (fromInteger x') : Z q
 
 /**
  * When `d` is large, compression followed by decompression must not
