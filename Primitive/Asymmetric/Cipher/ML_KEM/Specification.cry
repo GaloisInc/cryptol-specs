@@ -137,8 +137,14 @@ BitstoZ betas = fromInteger (toInteger (reverse betas))
 ZtoBits : {ell} (fin ell, ell > 0) => (Z q) -> [ell]
 ZtoBits fi = reverse (fromInteger (fromZ fi))
 
-// In Cryptol, rounding is computed via the built-in function roundAway
-property rounding = ((roundAway(1.5) == 2) && (roundAway(1.4) == 1))
+/**
+ * In Cryptol, rounding is computed via the built-in function `roundAway`.
+ * [FIPS-203] Section 2.3.
+ */
+property roundingWorks y = y >= 0 ==> roundUpWorks && roundDownWorks where
+    y' = fromInteger y
+    roundUpWorks = roundAway (y' + 0.5) == (y + 1)
+    roundDownWorks = roundAway (y' + 0.4) == y
 
 /**
  * Compression from an integer mod `q` to an integer mod `2^d`.
