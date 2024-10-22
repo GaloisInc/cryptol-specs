@@ -141,7 +141,7 @@ property roundingWorks y = y >= 0 ==> roundUpWorks && roundDownWorks where
  * Compress an integer mod `q` into an integer mod `2^d`.
  * [FIPS-203] Section 4.2.1, Equation 4.7.
  */
-Compress'' : {d} (d < 12) => Z q -> [d]
+Compress'' : {d} (d < width q) => Z q -> [d]
 Compress'' x = y where
     // Convert from an integer mod `q` to a rational number.
     x' = fromInteger (fromZ x) : Rational
@@ -154,7 +154,7 @@ Compress'' x = y where
  * Decompress an integer mod `2^d` into an integer mod `q`.
  * [FIPS-203] Section 4.2.1, Equation 4.8.
  */
-Decompress'' : {d} (d < lg2 q) => [d] -> Z q
+Decompress'' : {d} (d < width q) => [d] -> Z q
 Decompress'' y = x where
     // Convert from a d-length bit vector to a rational number.
     y' = fromInteger (toInteger y) : Rational
@@ -164,21 +164,43 @@ Decompress'' y = x where
     x = (fromInteger x') : Z q
 
 /**
+ * Compression inverts decompression for all inputs and bit lengths.
+ * We'll prove it for the bit lengths found in the
+ * ```repl
+ * :prove CompressInvertsDecompress`{1}
+ * :prove CompressInvertsDecompress`{d_u}
+ * :prove CompressInvertsDecompress`{d_v}
+ * ```
+ */
+CompressInvertsDecompress : {d} (d < width q) => [d] -> Bit
+property CompressInvertsDecompress y = Compress'' (Decompress'' y) == y
+
+/**
  * When `d` is large, compression followed by decompression must not
  * significantly alter the value.
+ * This sets `d = d_u`, which is the largest value for `d` used in the
+ * spec.
  * [FIPS-203] Section 4.2.1, "Compression and Decompression".
+ * ```repl
+ * :prove DecompressMostlyInvertsCompress
+ * ```
  */
-CorrectnessCompress : Z q -> Bit
-property CorrectnessCompress x = err <= B_q`{d_u} where
-    x' = Decompress''`{d_u}(Compress''`{d_u}(x))
-    err = abs(modpm(x'-x))
+DecompressMostlyInvertsCompress : Z q -> Bit
+property DecompressMostlyInvertsCompress x = errIsSmallEnough where
+    x' = Decompress''`{d_u} (Compress''`{d_u} x)
+    err = abs (modpm (x' - x))
+    errIsSmallEnough = err <= B_q`{d_u}
 
+    // The spec doesn't describe formally what "not significantly altered"
+    // means; we use this equation.
     B_q : {d} (d < lg2 q) => Integer
     B_q = roundAway((`q/.(2^^(`d+1))))
 
-    modpm : {alpha} (fin alpha, alpha > 0) => Z alpha -> Integer
-    modpm r = if r' > (`alpha / 2) then r' - `alpha else r'
-          where r' = fromZ(r)
+    // Convert an integer mod `q` to a representation centered around 0
+    // (and represented as an `Integer`).
+    modpm : Z q -> Integer
+    modpm r = if r' > (`q / 2) then r' - `q else r'
+        where r' = fromZ r
 
 /**
  * Compression applied to a vector is equivalent to applying compression to
