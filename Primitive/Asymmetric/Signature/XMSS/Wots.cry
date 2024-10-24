@@ -52,6 +52,12 @@ parameter
 type Byte = [8]
 
 /**
+ * A word is a 32-bit sequence used to define hash addresses.
+ * [RFC-8391] Section 2.5.
+ */
+type Word = [32]
+
+/**
  * A length value.
  * [RFC-8391] Section 3.1.1.
  */
@@ -67,3 +73,61 @@ type len_2 = (lg2 (len_1 * (w - 1)) / (lg2 w)) + 1
  * [RFC-8391] Section 3.1.1.
  */
 type len = len_1 + len_2
+
+/**
+ * Address scheme for randomizing hash function calls in the OTS scheme.
+ * [RFC-8391] Section 2.5.
+ *
+ * The address breaks down 7 components, each 1 word long unless specified.
+ * 1. Layer address
+ * 2-3. Tree address (2 Words)
+ * 4. Type (fixed at 0)
+ * 5. OTS address
+ * 6. Chain address
+ * 7. Hash address
+ * 8. keyAndMask
+ *
+ * Note that this isn't defined in terms of the `Word` type because it's
+ * operated on by things that require arrays of bytes.
+ */
+type OTSHashAddress = [8 * 4]Byte
+
+private
+
+    /**
+     * Set the hash address word (in the 5th position) in an `OTSHashAddress`.
+     * This setter is defined implicitly in the spec.
+     * [RFC-8391] Section 2.7.
+     */
+    setHashAddress : OTSHashAddress -> Word -> OTSHashAddress
+    setHashAddress address value =
+        take`{6 * 4} address # (split value) # drop`{7 * 4} address
+
+    /**
+     * Set the `keyAndMask` word (the last position) in an `OTSHashAddress`.
+     * This setter is defined implicitly in the spec.
+     * [RFC-8391] Section 2.7.
+     */
+    setKeyAndMask : OTSHashAddress -> Word -> OTSHashAddress
+    setKeyAndMask address value = take`{7 * 4} address # split value
+
+    /**
+     * Chaining function that iterates `F` on the input `X`, `s` times.
+     */
+    chain : [n]Byte -> Word -> Word -> [n]Byte -> OTSHashAddress -> [n]Byte
+    chain X i s SEED ADRS = return where
+        return = if s == 0 then
+                X
+            else if i + s > `w - 1 then
+                error "Invalid `s` and `i` parameters passed to `chain`"
+            else
+                tmp'
+        tmp = chain X i (s - 1) SEED ADRS
+
+        ADRS' = setHashAddress ADRS (i + s - 1)
+        ADRS'' = setKeyAndMask ADRS' 0
+        KEY = PRF SEED ADRS''
+        ADRS''' = setKeyAndMask ADRS'' 1
+        BM = PRF SEED ADRS'''
+
+        tmp' = F KEY (tmp ^ BM)
