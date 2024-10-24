@@ -52,6 +52,12 @@ parameter
 type Byte = [8]
 
 /**
+ * A word is a 32-bit sequence used to define hash addresses.
+ * [RFC-8391] Section 2.5.
+ */
+type Word = [32]
+
+/**
  * A length value.
  * [RFC-8391] Section 3.1.1.
  */
@@ -67,3 +73,28 @@ type len_2 = (lg2 (len_1 * (w - 1)) / (lg2 w)) + 1
  * [RFC-8391] Section 3.1.1.
  */
 type len = len_1 + len_2
+
+/**
+ * Address scheme for randomizing hash function calls in the OTS scheme.
+ * [RFC-8391] Section 2.5.
+ *
+ * The address breaks down 7 components, each 1 word long unless specified.
+ * - Layer address
+ * - Tree address (2 Words)
+ * - Type (fixed at 0)
+ * - OTS address
+ * - Chain address
+ * - Hash address
+ * - keyAndMask
+ */
+type OTSHashAddress = [8]Word
+
+private
+    /**
+     *
+     * We have that `i + s` is less than `w - 1`. Since the maximum value of `w` is 16,
+     * we know that `i` and `s` can both fit into 4 bits.
+     */
+    chain : [n]Byte -> [4] -> [4] -> [n] -> OTSHashAddress -> Option ([n]Byte)
+    chain X i s SEED ADRS = tmp where
+        tmp = if s == 0
