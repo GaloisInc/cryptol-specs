@@ -248,6 +248,7 @@ ByteEncode12 F = B where
 
 /**
  * Encode a set of `k` vectors of integers mod `q` into a byte array.
+ * [FIPS-203] Section 2.4.8.
  */
 ByteEncode12_Vec : [k][256](Z q) -> [k * 32 * 12]Byte
 ByteEncode12_Vec F_vec = join (map ByteEncode12 F_vec)
@@ -255,9 +256,18 @@ ByteEncode12_Vec F_vec = join (map ByteEncode12 F_vec)
 /**
  * The subtract-and-divide algorithm applied to `a` in `ByteEncode` is the
  * same as shifting right.
+ *
+ * This is in reference to [FIPS-203] Section 4.2.1 Algorithm 5, Step 4-5.
+ * That algorithm converts an integer repesentation `a` into a bitwise
+ * representation `b`, and needs to iteratively update `a` to discard each bit
+ * that it has already retrieved for `b`.
+ *
  * Note: The type constraint for `d` does not allow `1` because `% 2` is not a
  * legal operation on 1-bit vectors (since 2 cannot be represented as a 1-bit
- * vector.)
+ * vector). It remains true, though (with a result of 0).
+ *
+ * These tests use the values of `d` that are actually used in the algorithm.
+ * `d_u` and `d_v` are functor parameters for this module.
  * ```repl
  * :prove subAndDivIsShiftR`{d_u}
  * :prove subAndDivIsShiftR`{d_v}
@@ -266,15 +276,24 @@ ByteEncode12_Vec F_vec = join (map ByteEncode12 F_vec)
  */
 subAndDivIsShiftR : {d} (fin d, d > 1) => [d] -> Bit
 property subAndDivIsShiftR a = take (sad a) == shift a where
+    // Recursive definition of Step 4-5 (step 4 is inline here)
     sad x = [x] # sad ((x - (x % 2)) / 2)
-    shift x = [x >> i | i <- [0..(d-1)]]
+    shift x = [x >> i | i <- [0..d-1]]
 
 /**
  * Computing a bit vector mod 2 is the same as taking its final (least
  * significant) bit.
+ *
+ * This is in reference to [FIPS-203] Section 4.2.1 Algorithm 5, Step 4.
+ * That algorithm converts the integer representation of `a` into a bitwise
+ * representation `b` and uses `mod` to iteratively get bits out of `a`.
+ *
  * Note: The type constraint for `d` does not allow `1` because `% 2` is not a
  * legal operation on 1-bit vectors (since 2 cannot be represented as a 1-bit
  * vector.) It's trivially true, though.
+ *
+ * These tests use the values of `d` that are actually used in the algorithm.
+ * `d_u` and `d_v` are functor parameters for this module.
  * ```repl
  * :prove mod2IsFinalBit`{d_u}
  * :prove mod2IsFinalBit`{d_v}
@@ -297,12 +316,16 @@ ByteDecode : {d} (1 <= d, d < 12) => [32 * d]Byte -> [256][d]
 ByteDecode B = F where
     // Step 1.
     b = BytesToBits B
-    // Steps 2-4. The `mod m` is implicit in the type because the `[d]` type
-    // always operates `mod 2^d`.
-    // In a bit vector, multiplying by `2^j` is the same as left shift (see
-    // mul2jIsShiftL`).
-    // `bidj` is a single Bit; we convert to a `d`-length bit vector (with
-    // zeros in the higher-order bits) to support subsequent operations.
+    // Steps 2-4.
+    // - In FIPS 203, these operations are taken `mod m`, where `m = 2^d`. The
+    //   `mod` is implicit here because computations on the `[d]` type are
+    //   `mod 2^d` by definition.
+    // - In a bit vector, multiplying by `2^j` is the same as left shift (see
+    //   mul2jIsShiftL`).
+    // - `bidj` is a single Bit; we use `zext` to convert to a `d`-length bit
+    //   vector (with zeros in the higher-order bits) to support subsequent
+
+    //   operations.
     F = [ sum [ (zext [bidj]) << j
             | bidj <- bid
             | j <- [0..d-1]]
@@ -347,12 +370,15 @@ ByteDecode12_Vec : [k * 32 * 12]Byte -> [k][256](Z q)
 ByteDecode12_Vec B = map ByteDecode12 (split B)
 
 /**
- * Multiplying a value by `2^^j` is the same as bit-shifting it left by `j`
+ * Multiplying a value by `2^j` is the same as bit-shifting it left by `j`
  * bits.
  * Note: The type constraint does not allow `d == 1` because the hard-coded
  * `2` does not fit in a single bit, but the property is trivial:
  * `j` can only be 0. On the left, `b * 2^0 == b * 1 == b`. On the right,
  * `b << 0 == b`.
+ *
+ * These tests use the values of `d` that are actually used in the algorithm.
+ * `d_u` and `d_v` are functor parameters for this module.
  * ```repl
  * :prove mul2jIsShiftL`{d_u}
  * :prove mul2jIsShiftL`{d_v}
@@ -366,6 +392,9 @@ property mul2jIsShiftL b = and [( b * (2^^j)) == (b << j) | j <- [0..d-1]]
  * When `d < 12`, the byte encoding and decoding functions should be
  * one-to-one inverses of each other.
  * [FIPS-203] Section 4.2.1 "Encoding and decoding", first point.
+ *
+ * These tests use the values of `d` that are actually used in the algorithm.
+ * `d_u` and `d_v` are functor parameters for this module.
  * ```repl
  * :prove ByteEncodeInvertsByteDecode`{1}
  * :prove ByteEncodeInvertsByteDecode`{d_u}
