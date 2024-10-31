@@ -194,232 +194,235 @@ Compress x = map Compress'`{d} x
 Decompress : {d, k1} (d < lg2 q, fin k1) => [k1][n][d] -> [k1]Z_q_256
 Decompress x = map Decompress'`{d} x
 
-/**
- * Encode an array of `d`-bit integers into a byte array, for `d < 12`.
- * [FIPS-203] Section 4.2.1 Algorithm 5.
- *
- * Note: In this implementation, we treat the `d < 12` case separately from
- * `d == 12` because it allows us to better express the different integer
- * types. For `d < 12`, we use the bit vector type.
- * See `ByteEncode12` for the `d = 12` case.
- */
-ByteEncode : {d} (1 <= d, d < 12) => [256][d] -> [32 * d]Byte
-ByteEncode F = B where
-    // Step 1-3, 5.
-    // We iterate over `F` directly, instead of indexing into it with `i`.
-    // In a bit vector, iteratively subtracting the last bit and dividing by 2
-    // is the same as bit-shifting to the right (see `subAndDivIsShift`).
-    as = [[ a >> j | j <- [0..d-1]] | a <- F]
-    // Step 4. In a bit vector, taking the value `% 2` is the same as taking
-    // the final bit. See `mod2IsFinalBit`.
-    b = join [ [ a ! 0 | a <- ajs] | ajs <- as]
-    // Step 8.
-    B = BitsToBytes b
+private
+    /**
+     * Encode an array of `d`-bit integers into a byte array, for `d < 12`.
+     * [FIPS-203] Section 4.2.1 Algorithm 5.
+     *
+     * Note: In this implementation, we treat the `d < 12` case separately from
+     * `d == 12` because it allows us to better express the different integer
+     * types. For `d < 12`, we use the bit vector type.
+     * See `ByteEncode12` for the `d = 12` case.
+     */
+    ByteEncode : {d} (1 <= d, d < 12) => [256][d] -> [32 * d]Byte
+    ByteEncode F = B where
+        // Step 1-3, 5.
+        // We iterate over `F` directly, instead of indexing into it with `i`.
+        // In a bit vector, iteratively subtracting the last bit and dividing
+        // by 2 is the same as bit-shifting to the right (see
+        // `subAndDivIsShift`).
+        as = [[ a >> j | j <- [0..d-1]] | a <- F]
+        // Step 4. In a bit vector, taking the value `% 2` is the same as taking
+        // the final bit. See `mod2IsFinalBit`.
+        b = join [ [ a ! 0 | a <- ajs] | ajs <- as]
+        // Step 8.
+        B = BitsToBytes b
 
-/**
- * Encode `k` vectors of `d`-bit integers into a byte array.
- * [FIPS-203] Section 2.4.8.
- */
-ByteEncode_Vec : {d} (fin d, 1 <= d, d < 12) => [k][256][d] -> [k * 32 * d]Byte
-ByteEncode_Vec F_vec = join (map ByteEncode F_vec)
+    /**
+     * Encode `k` vectors of `d`-bit integers into a byte array.
+     * [FIPS-203] Section 2.4.8.
+     */
+    ByteEncode_Vec : {d} (fin d, 1 <= d, d < 12) => [k][256][d] -> [k * 32 * d]Byte
+    ByteEncode_Vec F_vec = join (map ByteEncode F_vec)
 
-/**
- * Encode an array of integers mod `q` into a byte array.
- * [FIPS-203] Section 4.2.1 Algorithm 5.
- *
- * Note: In this implementation, we treat the `d < 12` case separately from
- * `d == 12` because it allows us to better express the different integer
- * types. For `d == 12`, we use the integers-mod (`Z`) type.
- * See `ByteEncode` for the `d < 12` case.
- */
-ByteEncode12 : [256](Z q) -> [32 * 12]Byte
-ByteEncode12 F = B where
-    type d = 12
+    /**
+     * Encode an array of integers mod `q` into a byte array.
+     * [FIPS-203] Section 4.2.1 Algorithm 5.
+     *
+     * Note: In this implementation, we treat the `d < 12` case separately from
+     * `d == 12` because it allows us to better express the different integer
+     * types. For `d == 12`, we use the integers-mod (`Z`) type.
+     * See `ByteEncode` for the `d < 12` case.
+     */
+    ByteEncode12 : [256](Z q) -> [32 * 12]Byte
+    ByteEncode12 F = B where
+        type d = 12
 
-    // We need to explicitly convert from integers mod `q` to 12-bit vectors.
-    toBitVec : Z q -> [d]
-    toBitVec f = fromInteger (fromZ f)
-    F' = map toBitVec F
+        // We need to explicitly convert from integers mod `q` to 12-bit
+        // vectors.
+        toBitVec : Z q -> [d]
+        toBitVec f = fromInteger (fromZ f)
+        F' = map toBitVec F
 
-    // The following is the same as in `ByteEncode`. See notes above.
-    as = [[ a >> j | j <- [0..d-1]] | a <- F' ]
-    b = join [ [ a ! 0 | a <- ajs] | ajs <- as]
-    B = BitsToBytes b
+        // The following is the same as in `ByteEncode`. See notes above.
+        as = [[ a >> j | j <- [0..d-1]] | a <- F' ]
+        b = join [ [ a ! 0 | a <- ajs] | ajs <- as]
+        B = BitsToBytes b
 
-/**
- * Encode a set of `k` vectors of integers mod `q` into a byte array.
- * [FIPS-203] Section 2.4.8.
- */
-ByteEncode12_Vec : [k][256](Z q) -> [k * 32 * 12]Byte
-ByteEncode12_Vec F_vec = join (map ByteEncode12 F_vec)
+    /**
+     * Encode a set of `k` vectors of integers mod `q` into a byte array.
+     * [FIPS-203] Section 2.4.8.
+     */
+    ByteEncode12_Vec : [k][256](Z q) -> [k * 32 * 12]Byte
+    ByteEncode12_Vec F_vec = join (map ByteEncode12 F_vec)
 
-/**
- * The subtract-and-divide algorithm applied to `a` in `ByteEncode` is the
- * same as shifting right.
- *
- * This is in reference to [FIPS-203] Section 4.2.1 Algorithm 5, Step 4-5.
- * That algorithm converts an integer repesentation `a` into a bitwise
- * representation `b`, and needs to iteratively update `a` to discard each bit
- * that it has already retrieved for `b`.
- *
- * Note: The type constraint for `d` does not allow `1` because `% 2` is not a
- * legal operation on 1-bit vectors (since 2 cannot be represented as a 1-bit
- * vector). It remains true, though (with a result of 0).
- *
- * These tests use the values of `d` that are actually used in the algorithm.
- * `d_u` and `d_v` are functor parameters for this module.
- * ```repl
- * :prove subAndDivIsShiftR`{d_u}
- * :prove subAndDivIsShiftR`{d_v}
- * :prove subAndDivIsShiftR`{12}
- * ```
- */
-subAndDivIsShiftR : {d} (fin d, d > 1) => [d] -> Bit
-property subAndDivIsShiftR a = take (sad a) == shift a where
-    // Recursive definition of Step 4-5 (step 4 is inline here)
-    sad x = [x] # sad ((x - (x % 2)) / 2)
-    shift x = [x >> i | i <- [0..d-1]]
+    /**
+     * The subtract-and-divide algorithm applied to `a` in `ByteEncode` is the
+     * same as shifting right.
+     *
+     * This is in reference to [FIPS-203] Section 4.2.1 Algorithm 5, Step 4-5.
+     * That algorithm converts an integer repesentation `a` into a bitwise
+     * representation `b`, and needs to iteratively update `a` to discard each
+     * bit that it has already retrieved for `b`.
+     *
+     * Note: The type constraint for `d` does not allow `1` because `% 2` is
+     * not a legal operation on 1-bit vectors (since 2 cannot be represented
+     * as a 1-bit vector). It remains true, though (with a result of 0).
+     *
+     * These tests use the values of `d` that are actually used in the
+     * algorithm. `d_u` and `d_v` are functor parameters for this module.
+     * ```repl
+     * :prove subAndDivIsShiftR`{d_u}
+     * :prove subAndDivIsShiftR`{d_v}
+     * :prove subAndDivIsShiftR`{12}
+     * ```
+     */
+    subAndDivIsShiftR : {d} (fin d, d > 1) => [d] -> Bit
+    property subAndDivIsShiftR a = take (sad a) == shift a where
+        // Recursive definition of Step 4-5 (step 4 is inline here)
+        sad x = [x] # sad ((x - (x % 2)) / 2)
+        shift x = [x >> i | i <- [0..d-1]]
 
-/**
- * Computing a bit vector mod 2 is the same as taking its final (least
- * significant) bit.
- *
- * This is in reference to [FIPS-203] Section 4.2.1 Algorithm 5, Step 4.
- * That algorithm converts the integer representation of `a` into a bitwise
- * representation `b` and uses `mod` to iteratively get bits out of `a`.
- *
- * Note: The type constraint for `d` does not allow `1` because `% 2` is not a
- * legal operation on 1-bit vectors (since 2 cannot be represented as a 1-bit
- * vector.) It's trivially true, though.
- *
- * These tests use the values of `d` that are actually used in the algorithm.
- * `d_u` and `d_v` are functor parameters for this module.
- * ```repl
- * :prove mod2IsFinalBit`{d_u}
- * :prove mod2IsFinalBit`{d_v}
- * :prove mod2IsFinalBit`{12}
- * ```
- */
-mod2IsFinalBit : {d} (fin d, d > 1) => [d] -> Bit
-property mod2IsFinalBit a = a % 2 == zext [a ! 0]
+    /**
+     * Computing a bit vector mod 2 is the same as taking its final (least
+     * significant) bit.
+     *
+     * This is in reference to [FIPS-203] Section 4.2.1 Algorithm 5, Step 4.
+     * That algorithm converts the integer representation of `a` into a bitwise
+     * representation `b` and uses `mod` to iteratively get bits out of `a`.
+     *
+     * Note: The type constraint for `d` does not allow `1` because `% 2` is
+     * not a legal operation on 1-bit vectors (since 2 cannot be represented
+     * as a 1-bit vector.) It's trivially true, though.
+     *
+     * These tests use the values of `d` that are actually used in the
+     * algorithm. `d_u` and `d_v` are functor parameters for this module.
+     * ```repl
+     * :prove mod2IsFinalBit`{d_u}
+     * :prove mod2IsFinalBit`{d_v}
+     * :prove mod2IsFinalBit`{12}
+     * ```
+     */
+    mod2IsFinalBit : {d} (fin d, d > 1) => [d] -> Bit
+    property mod2IsFinalBit a = a % 2 == zext [a ! 0]
 
-/**
- * Decode a byte array into an array of `d`-bit integers, for `d < 12`.
- * [FIPS-203] Section 4.2.1 Algorithm 6.
- *
- * Note: In this implementation, we treat the `d < 12` case separately from
- * `d == 12` because it allows us to better express the different integer
- * types. For `d < 12`, we use the bit vector type.
- * See `ByteDecode12` for the `d = 12` case.
- */
-ByteDecode : {d} (1 <= d, d < 12) => [32 * d]Byte -> [256][d]
-ByteDecode B = F where
-    // Step 1.
-    b = BytesToBits B
-    // Steps 2-4.
-    // - In FIPS 203, these operations are taken `mod m`, where `m = 2^d`. The
-    //   `mod` is implicit here because computations on the `[d]` type are
-    //   `mod 2^d` by definition.
-    // - In a bit vector, multiplying by `2^j` is the same as left shift (see
-    //   mul2jIsShiftL`).
-    // - `bidj` is a single Bit; we use `zext` to convert to a `d`-length bit
-    //   vector (with zeros in the higher-order bits) to support subsequent
+    /**
+     * Decode a byte array into an array of `d`-bit integers, for `d < 12`.
+     * [FIPS-203] Section 4.2.1 Algorithm 6.
+     *
+     * Note: In this implementation, we treat the `d < 12` case separately from
+     * `d == 12` because it allows us to better express the different integer
+     * types. For `d < 12`, we use the bit vector type.
+     * See `ByteDecode12` for the `d = 12` case.
+     */
+    ByteDecode : {d} (1 <= d, d < 12) => [32 * d]Byte -> [256][d]
+    ByteDecode B = F where
+        // Step 1.
+        b = BytesToBits B
+        // Steps 2-4.
+        // - In FIPS 203, these operations are taken `mod m`, where `m = 2^d`.
+        //   The `mod` is implicit here because computations on the `[d]` type
+        //   are `mod 2^d` by definition.
+        // - In a bit vector, multiplying by `2^j` is the same as left shift
+        //   (see mul2jIsShiftL`).
+        // - `bidj` is a single Bit; we use `zext` to convert to a `d`-length
+        //   bit vector (with zeros in the higher-order bits) to support
+        //   subsequentoperations.
+        F = [ sum [ (zext [bidj]) << j
+                | bidj <- bid
+                | j <- [0..d-1]]
+            | bid <- split`{256} b]
 
-    //   operations.
-    F = [ sum [ (zext [bidj]) << j
-            | bidj <- bid
-            | j <- [0..d-1]]
-        | bid <- split`{256} b]
+    /**
+     * Decode `k` arrays of `d`-bit integers into a byte array.
+     * [FIPS-203] Section 2.4.8.
+     */
+    ByteDecode_Vec : {d} (1 <= d, d < 12) => [k * 32 * d]Byte -> [k][256][d]
+    ByteDecode_Vec B_vec = map ByteDecode (split B_vec)
 
-/**
- * Decode `k` arrays of `d`-bit integers into a byte array.
- * [FIPS-203] Section 2.4.8.
- */
-ByteDecode_Vec : {d} (1 <= d, d < 12) => [k * 32 * d]Byte -> [k][256][d]
-ByteDecode_Vec B_vec = map ByteDecode (split B_vec)
+    /**
+     * Decode a byte array into an array of integers mod `q`.
+     * [FIPS-203] Section 4.2.1 Algorithm 6.
+     *
+     * Note: In this implementation, we treat the `d < 12` case separately from
+     * `d == 12` because it allows us to better express the different integer
+     * types. For `d = 12`, we use the integers-mod (`Z`) type.
+     * See `ByteDecode` for the `d < 12` case.
+     */
+    ByteDecode12 : [32 * 12]Byte -> [256](Z q)
+    ByteDecode12 B = F' where
+        type d = 12
+        // These steps are the same as in `ByteDecode`. See that function for
+        // notes.
+        b = BytesToBits B
+        F = [ sum [ (zext`{d} [bidj]) << j
+                | bidj <- bid
+                | j <- [0..d-1]]
+            | bid <- split`{256} b]
 
-/**
- * Decode a byte array into an array of integers mod `q`.
- * [FIPS-203] Section 4.2.1 Algorithm 6.
- *
- * Note: In this implementation, we treat the `d < 12` case separately from
- * `d == 12` because it allows us to better express the different integer
- * types. For `d = 12`, we use the integers-mod (`Z`) type.
- * See `ByteDecode` for the `d < 12` case.
- */
-ByteDecode12 : [32 * 12]Byte -> [256](Z q)
-ByteDecode12 B = F' where
-    type d = 12
-    // These steps are the same as in `ByteDecode`. See that function for
-    // notes.
-    b = BytesToBits B
-    F = [ sum [ (zext`{d} [bidj]) << j
-            | bidj <- bid
-            | j <- [0..d-1]]
-        | bid <- split`{256} b]
+        // In this case, since `m = q` (and not `2^12`), we need to explicitly
+        // convert each integer from a 12-bit array to an integer mod `q`.
+        toZq f = fromInteger (toInteger f)
+        F' = map toZq F
 
-    // In this case, since `m = q` (and not `2^12`), we need to explicitly
-    // convert each integer from a 12-bit array to an integer mod `q`.
-    toZq f = fromInteger (toInteger f)
-    F' = map toZq F
+    /**
+     * Decode `k` joined byte arrays into `k` arrays of integers mod `q`.
+     */
+    ByteDecode12_Vec : [k * 32 * 12]Byte -> [k][256](Z q)
+    ByteDecode12_Vec B = map ByteDecode12 (split B)
 
-/**
- * Decode `k` joined byte arrays into `k` arrays of integers mod `q`.
- */
-ByteDecode12_Vec : [k * 32 * 12]Byte -> [k][256](Z q)
-ByteDecode12_Vec B = map ByteDecode12 (split B)
+    /**
+     * Multiplying a value by `2^j` is the same as bit-shifting it left by `j`
+     * bits.
+     * Note: The type constraint does not allow `d == 1` because the hard-coded
+     * `2` does not fit in a single bit, but the property is trivial:
+     * `j` can only be 0. On the left, `b * 2^0 == b * 1 == b`. On the right,
+     * `b << 0 == b`.
+     *
+     * These tests use the values of `d` that are actually used in the
+     * algorithm. `d_u` and `d_v` are functor parameters for this module.
+     * ```repl
+     * :prove mul2jIsShiftL`{d_u}
+     * :prove mul2jIsShiftL`{d_v}
+     * :prove mul2jIsShiftL`{12}
+     * ```
+     */
+    mul2jIsShiftL : {d} (fin d, 1 < d) => [d] -> Bit
+    property mul2jIsShiftL b = and [( b * (2^^j)) == (b << j) | j <- [0..d-1]]
 
-/**
- * Multiplying a value by `2^j` is the same as bit-shifting it left by `j`
- * bits.
- * Note: The type constraint does not allow `d == 1` because the hard-coded
- * `2` does not fit in a single bit, but the property is trivial:
- * `j` can only be 0. On the left, `b * 2^0 == b * 1 == b`. On the right,
- * `b << 0 == b`.
- *
- * These tests use the values of `d` that are actually used in the algorithm.
- * `d_u` and `d_v` are functor parameters for this module.
- * ```repl
- * :prove mul2jIsShiftL`{d_u}
- * :prove mul2jIsShiftL`{d_v}
- * :prove mul2jIsShiftL`{12}
- * ```
- */
-mul2jIsShiftL : {d} (fin d, 1 < d) => [d] -> Bit
-property mul2jIsShiftL b = and [( b * (2^^j)) == (b << j) | j <- [0..d-1]]
+    /**
+     * When `d < 12`, the byte encoding and decoding functions should be
+     * one-to-one inverses of each other.
+     * [FIPS-203] Section 4.2.1 "Encoding and decoding", first point.
+     *
+     * These tests use the values of `d` that are actually used in the
+     * algorithm. `d_u` and `d_v` are functor parameters for this module.
+     * ```repl
+     * :prove ByteEncodeInvertsByteDecode`{1}
+     * :prove ByteEncodeInvertsByteDecode`{d_u}
+     * :prove ByteEncodeInvertsByteDecode`{d_v}
+     * ```
+     */
+    ByteEncodeInvertsByteDecode : {d} (fin d, 1 <= d, d < 12) => [256][d] -> Bit
+    property ByteEncodeInvertsByteDecode bits =
+        decode_encode_works && encode_decode_works where
+        decode_encode_works = ByteDecode (ByteEncode bits) == bits
+        // Rearrange random input to be valid for the decode function
+        bytes = split (join bits)
+        encode_decode_works = ByteEncode (ByteDecode bytes) == bytes
 
-/**
- * When `d < 12`, the byte encoding and decoding functions should be
- * one-to-one inverses of each other.
- * [FIPS-203] Section 4.2.1 "Encoding and decoding", first point.
- *
- * These tests use the values of `d` that are actually used in the algorithm.
- * `d_u` and `d_v` are functor parameters for this module.
- * ```repl
- * :prove ByteEncodeInvertsByteDecode`{1}
- * :prove ByteEncodeInvertsByteDecode`{d_u}
- * :prove ByteEncodeInvertsByteDecode`{d_v}
- * ```
- */
-ByteEncodeInvertsByteDecode : {d} (fin d, 1 <= d, d < 12) => [256][d] -> Bit
-property ByteEncodeInvertsByteDecode bits =
-    decode_encode_works && encode_decode_works where
-    decode_encode_works = ByteDecode (ByteEncode bits) == bits
-    // Rearrange random input to be valid for the decode function
-    bytes = split (join bits)
-    encode_decode_works = ByteEncode (ByteDecode bytes) == bytes
-
-/**
- * Byte decoding is the inverse of byte decoding for `d = 12`.
- * [FIPS-203] Section 4.2.1 "Encoding and decoding", second point.
- *
- * Note that the reverse property (decoding, then encoding) is not true!
- * ```repl
- * :check ByteDecode12InvertsByteEncode12
- * ```
- */
-ByteDecode12InvertsByteEncode12 : [256](Z q) -> Bit
-ByteDecode12InvertsByteEncode12 bits = ByteDecode12 (ByteEncode12 bits) == bits
+    /**
+     * Byte decoding is the inverse of byte decoding for `d = 12`.
+     * [FIPS-203] Section 4.2.1 "Encoding and decoding", second point.
+     *
+     * Note that the reverse property (decoding, then encoding) is not true!
+     * ```repl
+     * :check ByteDecode12InvertsByteEncode12
+     * ```
+     */
+    ByteDecode12InvertsByteEncode12 : [256](Z q) -> Bit
+    ByteDecode12InvertsByteEncode12 bits =
+        ByteDecode12 (ByteEncode12 bits) == bits
 
 /**
  * Uniformly sample NTT representations.
