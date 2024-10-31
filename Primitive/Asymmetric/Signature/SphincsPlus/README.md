@@ -8,16 +8,15 @@ The original .tex files were obtained via communication with the SPHINCS+ author
 
 # Requirements
 
-- Cryptol Version: 2.12
+- Cryptol Version: 2.12+
 - Environment variable CRYPTOLPATH should contain the path to the Cryptol specs repo.
 - A LaTeX distribution (e.g. TeX Live, MiKTeX) installed on the system.
 
 # Getting Started
-To load the specs simply run
+To load the specs simply run the following from the top level `cryptol-specs` directory.
 
 ```
-$ cd 3.1
-$ cryptol sphincs.tex
+$ cryptol Primitive/Asymmetric/Signature/SphincsPlus/3.1/sphincs.tex
 ```
 
 # Known Issues
