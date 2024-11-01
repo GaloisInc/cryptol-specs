@@ -143,7 +143,6 @@ genPK sk ADRS SEED = pk where
         | i <- [0..len-1]
         | ski <- sk]
 
-
 private
     /**
      * Set the chain address word (in the 6th position) in an `OTSHashAddress`.
@@ -173,6 +172,7 @@ private
 
     /**
      * Chaining function that iterates `F` on the input `X`, `s` times.
+     * [RFC-8391] Section 3.1.2, Algorithm 2.
      */
     chain : [n]Byte -> Word -> Word -> [n]Byte -> OTSHashAddress -> [n]Byte
     chain X i s SEED ADRS = return where
@@ -191,3 +191,85 @@ private
         BM = PRF SEED ADRS'''
 
         tmp' = F KEY (tmp ^ BM)
+
+private
+
+    /**
+     * Convert a byte string into a set of base-`w` numbers.
+     *
+     * This uses the manual bit-shifting algorithm described in the spec. The
+     * spec is not very particular about bit widths of the helper variables or
+     * the output; we made the following choices:
+     * - `total`: holds each byte of the input, so `[8]`
+     * - `in`: holds the index showing where we are in the input. We use an
+     *   `Integer`, although this could also be `[width len_X]`.
+     * - `bits`: holds the number of bits processed in the current byte. This is
+     *   never larger than 8, but due to the way we've defined the type
+     *   constraint on `w`, it's easier to leave some extra space, so `[8]`.
+     * - `basew`: The output of this function is eventually used as a parameter
+     *   to `chain`, so we pad each base-`w` number to be a `Word` (`[32]`).
+     *
+     * [RFC-8391] Section 2.6, Algorithm 1.
+     */
+    base_w : {out_len, len_X} (
+            fin len_X,
+            out_len <= 8 * len_X / lg2 w)
+        => [len_X]Byte -> [out_len]Word
+    base_w X = basew where
+        // Steps 8 - 13. Define how the helper variables (`total`, `in`, `bits`)
+        // are updated in each round.
+        update_helpers : ([8], Integer, [8]) -> ([8], Integer, [8])
+        update_helpers (total, in, bits) =
+            if bits == 0 then (
+                X@in,
+                in + 1,
+                8 - lg2 `w )
+            else (total, in, bits - lg2 `w)
+
+        // Step 7. Define the number of iterations we need.
+        type consumed = out_len
+
+        // Step 14. Compute the set of base-`w` numbers. `zext` converts an
+        // 8-bit value to a `Word`.
+        basew = take`{consumed} [ zext ((total >> bits) && (`w - 1))
+            // Steps 1-5. Initialize helper variables (and update them for each
+            // round). The first element is dropped because the first variable
+            // update happens before computing any output values.
+            | (total, in, bits) <- drop`{1} (iterate update_helpers (0, 0, 0))]
+
+    /**
+     * As a point of interest, we also implement the `base_w` function using
+     * built-in Cryptol functions, just regrouping the bits into the desired
+     * arrangement.
+     */
+    base_w_cryptol : {out_len, len_X} (
+        fin len_X,
+        out_len <= 8 * len_X / lg2 w)
+        => [len_X]Byte -> [out_len]Word
+    base_w_cryptol X = map zext (groupBy`{lg2 w} (take (join X)))
+
+    /**
+     * Proof that the "Cryptollish" version matches the spec.
+     * Parameter sets are chosen based on the instantiations that appear in
+     * the spec (Algorithms 5 and 6).
+     * ```repl
+     * :prove base_wsMatch`{len_1, n * 8}
+     * type len_2_bytes = len_2 * lg2 w /^ 8
+     * :prove base_wsMatch`{len_2, len_2_bytes}
+     * ```
+     */
+    base_wsMatch : {O, L} (fin L, O <= 8 * L / lg2 w) => [L]Byte -> Bit
+    property base_wsMatch X = base_w`{O, L} X == base_w_cryptol X
+
+    /**
+     * The spec provides several examples when `w = 16`.
+     * [RFC-8391] Section 2.6.
+     * ```repl
+     * :prove base_wExamplesWork`{}
+     * ```
+     */
+    base_wExamplesWork : (w == 16) => Bit
+    property base_wExamplesWork = test4 && test3 && test2 where
+        test4 = base_w`{4} [0x12, 0x34] == [1, 2, 3, 4]
+        test3 = base_w`{3} [0x12, 0x34] == [1, 2, 3]
+        test2 = base_w`{2} [0x12, 0x34] == [1, 2]
