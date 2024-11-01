@@ -141,7 +141,8 @@ BytesToBits : {ell} (fin ell) => [ell]Byte -> [ell*8]Bit
 BytesToBits C
     | ell == 0 => []
     | ell > 0 => join [[ b8ij where
-            // Step 4. Taking the last bit is the same as modding by 2.
+            // Step 4. Taking the last bit is the same as modding by 2. (See
+            // `mod2IsFinalBit`).
             b8ij = Ci' ! 0
             // Step 5. Shifting right is the same as the iterative
             // division (see `div2IsShiftR`). This accounts for all the
