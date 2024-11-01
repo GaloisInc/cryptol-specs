@@ -230,8 +230,8 @@ Decompress y = x where
  * We'll prove it for the bit lengths found in the
  * ```repl
  * :prove CompressInvertsDecompress`{1}
- * :prove CompressInvertsDecompress`{d_u}
- * :prove CompressInvertsDecompress`{d_v}
+ * :exhaust CompressInvertsDecompress`{d_u}
+ * :exhaust CompressInvertsDecompress`{d_v}
  * ```
  */
 CompressInvertsDecompress : {d} (d < width q) => [d] -> Bit
@@ -244,7 +244,7 @@ property CompressInvertsDecompress y = Compress (Decompress y) == y
  * spec.
  * [FIPS-203] Section 4.2.1, "Compression and Decompression".
  * ```repl
- * :prove DecompressMostlyInvertsCompress
+ * :exhaust DecompressMostlyInvertsCompress
  * ```
  */
 DecompressMostlyInvertsCompress : Z q -> Bit
