@@ -331,3 +331,33 @@ WOTS_sign M sk ADRS SEED = sig where
         | i <- [0..len-1]
         | sk_i <- sk
         | msg_i <- msg' ]
+
+/**
+ * Compute a WOTS+ public key from a message and its signature.
+ * [RFC-8391] Section 3.1.6, Algorithm 6.
+ *
+ * The result of this function must be compared to the given public key. If
+ * the values are not equal, the signature MUST be rejected. This algorithm
+ * does not actually reject any signatures!!
+ */
+WOTS_pkFromSig : {len_2_bytes} (
+    len_2_bytes == (len_2 * lg2 w) /^ 8,
+    4 <= len_2_bytes
+) => [n]Byte -> Signature -> OTSHashAddress -> [n]Byte -> PublicKey
+WOTS_pkFromSig M sig ADRS SEED = tmp_pk where
+    // Convert message to base `w`.
+    msg = base_w`{len_1} M
+
+    // Compute checksum.
+    csum = sum [ `w - 1 - msg_i | msg_i <- msg ]
+
+    // Convert csum to base `w`.
+    csum' = csum << (8 - (`(len_2 * lg2 w) % 8))
+    // `len_2_bytes` is defined in the type signature.
+    msg' = msg # base_w`{len_2} (toByte`{len_2_bytes} csum')
+    tmp_pk = [tmp_pk_i where
+            ADRS_i = setChainAddress ADRS i
+            tmp_pk_i = chain sig_i msg_i (`w - 1 - msg_i) SEED ADRS_i
+        | i <- [0..len-1]
+        | sig_i <- sig
+        | msg_i <- msg' ]
