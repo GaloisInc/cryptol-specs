@@ -238,11 +238,11 @@ private
      *
      * [RFC-8391] Section 2.6, Algorithm 1.
      */
-    base_w : {out_len, len_X} (
+    base_w_spec : {out_len, len_X} (
             fin len_X,
             out_len <= 8 * len_X / lg2 w)
         => [len_X]Byte -> [out_len]Word
-    base_w X = basew where
+    base_w_spec X = basew where
         // Steps 8 - 13. Define how the helper variables (`total`, `in`, `bits`)
         // are updated in each round.
         update_helpers : ([8], Integer, [8]) -> ([8], Integer, [8])
@@ -269,11 +269,11 @@ private
      * built-in Cryptol functions, just regrouping the bits into the desired
      * arrangement.
      */
-    base_w_cryptol : {out_len, len_X} (
+    base_w : {out_len, len_X} (
         fin len_X,
         out_len <= 8 * len_X / lg2 w)
         => [len_X]Byte -> [out_len]Word
-    base_w_cryptol X = map zext (groupBy`{lg2 w} (take (join X)))
+    base_w X = map zext (groupBy`{lg2 w} (take (join X)))
 
     /**
      * Proof that the "Cryptollish" version matches the spec.
@@ -286,7 +286,7 @@ private
      * ```
      */
     base_wsMatch : {O, L} (fin L, O <= 8 * L / lg2 w) => [L]Byte -> Bit
-    property base_wsMatch X = base_w`{O, L} X == base_w_cryptol X
+    property base_wsMatch X = base_w_spec`{O, L} X == base_w X
 
     /**
      * The spec provides several examples when `w = 16`.
