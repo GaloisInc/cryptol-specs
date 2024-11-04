@@ -46,6 +46,26 @@ parameter
     PRF : [n][8] -> [32][8] -> [n][8]
 
     /**
+     * A length value (fixed with respect to `n` and `w`).
+     * [RFC-8391] Section 3.1.1.
+     */
+    type len_1 = (8 * n) /^ (lg2 w)
+
+    /**
+     * A length value (fixed with respect to `n` and `w`).
+     * [RFC-8391] Section 3.1.1.
+     */
+
+    type len_2 = lg2 (len_1 * (w - 1)) / lg2 w + 1
+
+    /**
+     * The number of `n`-byte string elements in a WOTS+ private key, public key,
+     * and signature.
+     * [RFC-8391] Section 3.1.1.
+     */
+    type len = len_1 + len_2
+
+    /**
      * The `len` parameter fits in 32 bits.
      *
      * This implicit fact about our inputs is hard for Cryptol to infer, so we
@@ -59,8 +79,7 @@ parameter
      * This can also be observed from the computed `len` values from the valid
      * parameter sets in Section 5.2.
      */
-    type constraint (32 >= width ((8 * n) /^ (lg2 w)
-        + lg2 (((8 * n) /^ (lg2 w)) * (w - 1)) / lg2 w + 1))
+    type constraint (32 >= width len)
 
 /**
  * A byte is a sequence of 8 bits using big-endian representation.
@@ -74,22 +93,6 @@ type Byte = [8]
  */
 type Word = [32]
 
-/**
- * A length value.
- * [RFC-8391] Section 3.1.1.
- */
-type len_1 = (8 * n) /^ (lg2 w)
-/**
- * A length value.
- * [RFC-8391] Section 3.1.1.
- */
-type len_2 = lg2 (len_1 * (w - 1)) / lg2 w + 1
-/**
- * The number of `n`-byte string elements in a WOTS+ private key, public key,
- * and signature.
- * [RFC-8391] Section 3.1.1.
- */
-type len = len_1 + len_2
 
 /**
  * Address scheme for randomizing hash function calls in the OTS scheme.
@@ -191,8 +194,6 @@ private
         BM = PRF SEED ADRS'''
 
         tmp' = F KEY (tmp ^ BM)
-
-private
 
     /**
      * Convert a byte string into a set of base-`w` numbers.
