@@ -54,8 +54,12 @@ parameter
     /**
      * A length value (fixed with respect to `n` and `w`).
      * [RFC-8391] Section 3.1.1.
+     *
+     * The type constraint is drawn from Algorithm 5, where a computed
+     * checksum of length `len_1 * (w - 1) * 2^8` must fit in 32 bits.
      */
     type len_1 = (8 * n) /^ (lg2 w)
+    type constraint (width (len_1 * (w - 1) * 2^^8) <= 32)
 
     /**
      * A length value (fixed with respect to `n` and `w`).
@@ -63,6 +67,13 @@ parameter
      */
 
     type len_2 = lg2 (len_1 * (w - 1)) / lg2 w + 1
+
+    /**
+     * This type is used in Algorithms 5 and 6; it's the padded length of a
+     * checksum. The checksum has an upper bound of 32 bits, so the padding
+     * must be at least 32 bits.
+     */
+    type len_2_bytes = (len_2 * lg2 w) /^ 8
 
     /**
      * The number of `n`-byte string elements in a WOTS+ private key, public key,
@@ -98,8 +109,10 @@ type Byte = [8]
  * byte order.
  * [RFC-8391] Section 2.4.
  */
-toByte : {y, m} (fin y, y * 8 >= m) => [m] -> [y]Byte
-toByte x = split (zext x)
+toByte : {y, m} (fin y, y > 0) => [m] -> [y]Byte
+toByte x
+    | m <= 8 * y => split (zext x)
+    | m > 8 * y => split (take x)
 
 /**
  * A word is a 32-bit sequence used to define hash addresses.
@@ -303,17 +316,7 @@ type Signature = [len][n]Byte
  * using a constraint in the type signature; it will always be true for the
  * approved parameter sets.
  */
-WOTS_sign : {len_2_bytes} (
-    // The checksum must fit in 32 bits.
-    width (len_1 * (w - 1) * 2^^8) <= 32,
-
-    // The checksum is padded to this length...
-    len_2_bytes == (len_2 * lg2 w) /^ 8,
-    // ...so this length must be at least 32 bits / 4 bytes.
-    // This will always be true for the approved parameter sets, but Cryptol
-    // can't infer it in general.
-    4 <= len_2_bytes
-) => [n]Byte -> PrivateKey -> OTSHashAddress -> [n]Byte -> Signature
+WOTS_sign : [n]Byte -> PrivateKey -> OTSHashAddress -> [n]Byte -> Signature
 WOTS_sign M sk ADRS SEED = sig where
     // Convert message to base `w`.
     msg = base_w`{len_1} M
@@ -323,7 +326,7 @@ WOTS_sign M sk ADRS SEED = sig where
 
     // Convert `csum` to base `w`.
     csum' = csum << (8 - (`(len_2 * lg2 w) % 8))
-    // `len_2_bytes` is defined in the type signature.
+    // `len_2_bytes` is defined at the top level in the `parameter` block.
     msg' = msg # base_w`{len_2} (toByte`{len_2_bytes} csum')
     sig = [sig_i where
             ADRS_i = setChainAddress ADRS i
@@ -340,10 +343,7 @@ WOTS_sign M sk ADRS SEED = sig where
  * the values are not equal, the signature MUST be rejected. This algorithm
  * does not actually reject any signatures!!
  */
-WOTS_pkFromSig : {len_2_bytes} (
-    len_2_bytes == (len_2 * lg2 w) /^ 8,
-    4 <= len_2_bytes
-) => [n]Byte -> Signature -> OTSHashAddress -> [n]Byte -> PublicKey
+WOTS_pkFromSig : [n]Byte -> Signature -> OTSHashAddress -> [n]Byte -> PublicKey
 WOTS_pkFromSig M sig ADRS SEED = tmp_pk where
     // Convert message to base `w`.
     msg = base_w`{len_1} M
@@ -353,7 +353,7 @@ WOTS_pkFromSig M sig ADRS SEED = tmp_pk where
 
     // Convert csum to base `w`.
     csum' = csum << (8 - (`(len_2 * lg2 w) % 8))
-    // `len_2_bytes` is defined in the type signature.
+    // `len_2_bytes` is defined at the top level in the `parameter` block.
     msg' = msg # base_w`{len_2} (toByte`{len_2_bytes} csum')
     tmp_pk = [tmp_pk_i where
             ADRS_i = setChainAddress ADRS i
@@ -361,3 +361,16 @@ WOTS_pkFromSig M sig ADRS SEED = tmp_pk where
         | i <- [0..len-1]
         | sig_i <- sig
         | msg_i <- msg' ]
+
+/**
+ * Each function takes about 50 seconds to run, so a single execution of this
+ * property takes ~3 minutes.
+ * ```repl
+ * :set tests = 1
+ * :check WOTSisCorrect
+ * ```
+ */
+property WOTSisCorrect M sk ADRS SEED = tmp_pk == pk where
+    pk = genPK sk ADRS SEED
+    sig = WOTS_sign M sk ADRS SEED
+    tmp_pk = WOTS_pkFromSig M sig ADRS SEED
