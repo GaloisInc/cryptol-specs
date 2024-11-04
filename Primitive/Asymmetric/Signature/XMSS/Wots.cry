@@ -7,9 +7,15 @@
  * Warning: If a private key is used to sign two different messages, the scheme
  * becomes insecure! Cryptol cannot protect against this failure mode!
  *
+ * Instantiation warnings
+ * - The WOTS+ signature scheme includes a checksum. Per [RFC-8391], the
+ *   checksum can fit in 32 bits _when instantiated with an approved parameter
+ *   set_. This must not be instantiated with any parameter set for which the
+ *   checksum does not fit in 32 bits. [RFC-8391] Section 3.1.5.
+ *
  * References:
  * [RFC-8391]: Andreas Huelsing, Denis Butin, Stefan-Lukas Gazdag, Joost
- *     Rijneveld, and Aziz Mohaisen. XMSS: eXtended Merkle Signatuer Scheme.
+ *     Rijneveld, and Aziz Mohaisen. XMSS: eXtended Merkle Signature Scheme.
  *     Internet Requests for Comments (RFC) 8391. May 2018.
  *     @see https://datatracker.ietf.org/doc/rfc8391
  */
@@ -88,11 +94,18 @@ parameter
 type Byte = [8]
 
 /**
+ * Convert a non-negative integer to a binary representation in big-endian
+ * byte order.
+ * [RFC-8391] Section 2.4.
+ */
+toByte : {y, m} (fin y, y * 8 >= m) => [m] -> [y]Byte
+toByte x = split (zext x)
+
+/**
  * A word is a 32-bit sequence used to define hash addresses.
  * [RFC-8391] Section 2.5.
  */
 type Word = [32]
-
 
 /**
  * Address scheme for randomizing hash function calls in the OTS scheme.
@@ -274,3 +287,47 @@ private
         test4 = base_w`{4} [0x12, 0x34] == [1, 2, 3, 4]
         test3 = base_w`{3} [0x12, 0x34] == [1, 2, 3]
         test2 = base_w`{2} [0x12, 0x34] == [1, 2]
+
+
+/**
+ * A WOTS+ signature.
+ * [RFC-8391] Section 3.1.5.
+ */
+type Signature = [len][n]Byte
+
+/**
+ * Generate a signature from a private key and a message.
+ * [RFC-8391] Section 3.1.5, Algorithm 5.
+ *
+ * The checksum in the signature algorithm must fit in 32 bits; we enforce this
+ * using a constraint in the type signature; it will always be true for the
+ * approved parameter sets.
+ */
+WOTS_sign : {len_2_bytes} (
+    // The checksum must fit in 32 bits.
+    width (len_1 * (w - 1) * 2^^8) <= 32,
+
+    // The checksum is padded to this length...
+    len_2_bytes == (len_2 * lg2 w) /^ 8,
+    // ...so this length must be at least 32 bits / 4 bytes.
+    // This will always be true for the approved parameter sets, but Cryptol
+    // can't infer it in general.
+    4 <= len_2_bytes
+) => [n]Byte -> PrivateKey -> OTSHashAddress -> [n]Byte -> Signature
+WOTS_sign M sk ADRS SEED = sig where
+    // Convert message to base `w`.
+    msg = base_w`{len_1} M
+
+    // Compute checksum.
+    csum = sum [ `w - 1 - msg_i | msg_i <- msg ]
+
+    // Convert `csum` to base `w`.
+    csum' = csum << (8 - (`(len_2 * lg2 w) % 8))
+    // `len_2_bytes` is defined in the type signature.
+    msg' = msg # base_w`{len_2} (toByte`{len_2_bytes} csum')
+    sig = [sig_i where
+            ADRS_i = setChainAddress ADRS i
+            sig_i = chain sk_i 0 msg_i SEED ADRS_i
+        | i <- [0..len-1]
+        | sk_i <- sk
+        | msg_i <- msg' ]
