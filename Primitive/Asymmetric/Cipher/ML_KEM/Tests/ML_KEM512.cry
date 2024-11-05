@@ -17,10 +17,10 @@ import Primitive::Asymmetric::Cipher::ML_KEM::Instantiations::ML_KEM512 as ML_KE
  * ```
  */
 property t0 = keygenWorks && encapsWorks && decapsWorks where
-    keygenWorks = ML_KEM::ML_KEM_KeyGen (z, d) == (pk, sk)
-    encapsWorks = ML_KEM::ML_KEM_Encaps (pk, msg) == (ss, ct)
-    decapsWorks = ML_KEM::ML_KEM_Decaps (ct, sk) == ss
-    decapsFailsCorrectly = ML_KEM::ML_KEM_Decaps (ct_n, sk) == ss_n
+    keygenWorks = ML_KEM::KeyGen_internal (z, d) == (pk, sk)
+    encapsWorks = ML_KEM::Encaps_internal (pk, msg) == (ss, ct)
+    decapsWorks = ML_KEM::Decaps_internal (ct, sk) == ss
+    decapsFailsCorrectly = ML_KEM::Decaps_internal (ct_n, sk) == ss_n
 
     z = split 0xf696484048ec21f96cf50a56d0759c448f3779752f0383d37449690694cf7a68
     d = split 0x6dbbc4375136df3b07f7c70e639e223e177e7fd53b161b3f4d57791794f12624

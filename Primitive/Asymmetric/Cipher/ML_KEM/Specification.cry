@@ -1167,17 +1167,13 @@ private submodule K_PKE where
 /**
  * Uses randomness to generate an encapsulation key and corresponding
  * decapsulation key.
+ * [FIPS-203] Section 6.1 Algorithm 16.
  *
- * The randomness here is passed explicitly as a parameter and is not checked
- * for validity, so this actually corresponds to
- * [FIPS-203] Section 6.1 Algorithm 16 (`ML_KEM.KeyGen_internal`).
- *
- * Note: This is not Algorithm 19 because:
- * - The randomness is passed explicitly as a parameter;
- * - It does not document / require input validation.
+ * Warning: This function does not validate input and should not be used
+ * externally!
  */
-ML_KEM_KeyGen : ([32]Byte,[32]Byte) -> ([384*k+32]Byte, [768*k+96]Byte)
-ML_KEM_KeyGen (z,d) = (ek, dk) where
+KeyGen_internal : ([32]Byte,[32]Byte) -> ([384*k+32]Byte, [768*k+96]Byte)
+KeyGen_internal (z,d) = (ek, dk) where
   (ekPKE, dkPKE) = K_PKE::KeyGen d
   ek = ekPKE
   dk = dkPKE#ek#H(ek)#z
@@ -1185,28 +1181,25 @@ ML_KEM_KeyGen (z,d) = (ek, dk) where
 /**
  * Uses the encapsulation key and randomness to generate a key and an
  * associated ciphertext.
+ * [FIPS-203] Section 6.2 Algorithm 17.
  *
- * [FIPS-203] Section 6.2 Algorithm 17 (`ML_KEM.Encaps_internal`).
- *
- * Note: This is not Algorithm 20 because:
- * - The randomness is passed explicitly as a parameter;
- * - It does not document / require input validation.
+ * Warning: This function does not validate input and should not be used
+ * externally!
  */
-ML_KEM_Encaps : ([384*k+32]Byte, [32]Byte) -> ([32]Byte, [32*(d_u*k+d_v)]Byte)
-ML_KEM_Encaps (ek, m) = (K, c) where
+Encaps_internal : ([384*k+32]Byte, [32]Byte) -> ([32]Byte, [32*(d_u*k+d_v)]Byte)
+Encaps_internal (ek, m) = (K, c) where
   (K, r) = G(m#H(ek))
   c = K_PKE::Encrypt ek m r
 
 /**
  * Uses the decapsulation key to produce a shared secret key from a ciphertext.
+ * [FIPS-203] Section 6.3 Algorithm 18.
  *
- * [FIPS-203] Section 6.3 Algorithm 18 (`ML_KEM.Decaps_internal`).
- *
- * Note: This is not Algorithm 21 because it does not document / require input
- * validation.
+ * Warning: This function does not validate input and should not be used
+ * externally!
  */
-ML_KEM_Decaps : ([32*(d_u*k+d_v)]Byte, [768*k+96]Byte) -> [32]Byte
-ML_KEM_Decaps (c, dk) = K
+Decaps_internal : ([32*(d_u*k+d_v)]Byte, [768*k+96]Byte) -> [32]Byte
+Decaps_internal (c, dk) = K
   where
     dkPKE = dk@@[0 .. 384*k - 1] // extract (from KEM decaps key) the PKE decryption key
     ekPKE = dk@@[384*k .. 768*k + 32 - 1] // extract PKE encryption key
@@ -1232,9 +1225,9 @@ ML_KEM_Decaps (c, dk) = K
  */
 CorrectnessKEM : ([32]Byte, [32]Byte, [32]Byte) -> Bit
 property CorrectnessKEM(z, d, m) = (K == K') where
-  (pk, sk) = ML_KEM_KeyGen(z, d)
-  (K, c) = ML_KEM_Encaps(pk, m)
-  K' = ML_KEM_Decaps(c, sk)
+  (pk, sk) = KeyGen_internal(z, d)
+  (K, c) = Encaps_internal(pk, m)
+  K' = Decaps_internal(c, sk)
 
 parameter
     /*
