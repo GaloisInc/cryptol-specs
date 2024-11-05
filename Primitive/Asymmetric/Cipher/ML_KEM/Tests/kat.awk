@@ -26,6 +26,6 @@ $1 == "ss" { print "let K_expected =", "0x" $3 }
 
 $1 == "ss" { print "let (ek_actual, dk_actual) = KeyGen (Some (groupBy d)) (Some (groupBy z))"
              print "let (K, c_actual) = Encaps ek_actual (Some (groupBy msg))"
-             print "let K_actual = Decaps_internal(c_actual, dk_actual)"
+             print "let K_actual = Decaps dk_actual c_actual"
              print "(ek_expected == join ek_actual) && (dk_expected == join dk_actual) && (c_expected == join c_actual) && (K_expected == join K_actual)"
            }
