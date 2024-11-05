@@ -1172,11 +1172,11 @@ private submodule K_PKE where
  * Warning: This function does not validate input and should not be used
  * externally!
  */
-KeyGen_internal : ([32]Byte, [32]Byte) -> (EncapsulationKey, DecapsulationKey)
-KeyGen_internal (z,d) = (ek, dk) where
+KeyGen_internal : [32]Byte -> [32]Byte -> (EncapsulationKey, DecapsulationKey)
+KeyGen_internal d z = (ek, dk) where
   (ekPKE, dkPKE) = K_PKE::KeyGen d
   ek = ekPKE
-  dk = dkPKE#ek#H(ek)#z
+  dk = dkPKE # ek # (H ek) # z
 
 /**
  * Uses the encapsulation key and randomness to generate a key and an
@@ -1222,9 +1222,9 @@ Decaps_internal (c, dk) = K
  * :check CorrectnessKEM
  * ```
  */
-CorrectnessKEM : ([32]Byte, [32]Byte, [32]Byte) -> Bit
-property CorrectnessKEM(z, d, m) = (K == K') where
-  (pk, sk) = KeyGen_internal(z, d)
+CorrectnessKEM : [32]Byte -> [32]Byte -> [32]Byte -> Bit
+property CorrectnessKEM z d m = (K == K') where
+  (pk, sk) = KeyGen_internal d z
   (K, c) = Encaps_internal(pk, m)
   K' = Decaps_internal(c, sk)
 
@@ -1257,6 +1257,31 @@ type SharedSecretKey = [32]Byte
  * shared secret key.
  */
 type Ciphertext = [32 * (d_u * k + d_v)]Byte
+
+/**
+ * Generate an encapsulation key and a corresponding decapsulation key.
+ * [FIPS-203] Section 7.1, Algorithm 19.
+ *
+ * This differs from the spec: it takes the randomness `d` and `z` as
+ * parameters instead of generating them internally (because Cryptol
+ * cannot generate randomness).
+ *
+ * The decapsulation key produced from this function MUST remain private. The
+ * seed `(d, z)` produced (or in this case, passed as input) is sensitive data
+ * and MUST be treated with the same safeguards as the decapsulation key.
+ */
+KeyGen : Option ([32]Byte) -> Option ([32]Byte) -> (EncapsulationKey, DecapsulationKey)
+KeyGen d z = (ek, dk) where
+    // Steps 1 and 2 are skipped because Cryptol cannot generate randomness.
+    // Step 3 - 5.
+    d' = case d of
+        None -> error "Random bit generation failed; `d` not initialized."
+        Some _d -> _d
+    z' = case z of
+        None -> error "Random bit generation failed; `z` not initialized."
+        Some _z -> _z
+    // Step 6.
+    (ek, dk) = KeyGen_internal d' z'
 
 
 parameter
