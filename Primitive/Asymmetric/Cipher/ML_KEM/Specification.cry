@@ -1174,71 +1174,74 @@ private
      * Warning: This function does not validate input and should not be used
      * externally!
      */
-    KeyGen_internal : [32]Byte -> [32]Byte -> (EncapsulationKey, DecapsulationKey)
+    KeyGen_internal : [32]Byte -> [32]Byte
+        -> (EncapsulationKey, DecapsulationKey)
     KeyGen_internal d z = (ek, dk) where
       (ekPKE, dkPKE) = K_PKE::KeyGen d
       ek = ekPKE
       dk = dkPKE # ek # (H ek) # z
 
-/**
- * Uses the encapsulation key and randomness to generate a key and an
- * associated ciphertext.
- * [FIPS-203] Section 6.2 Algorithm 17.
- *
- * Warning: This function does not validate input and should not be used
- * externally!
- */
-Encaps_internal : EncapsulationKey -> [32]Byte -> (SharedSecretKey, Ciphertext)
-Encaps_internal ek m = (K, c) where
-  (K, r) = G (m # (H ek))
-  c = K_PKE::Encrypt ek m r
+    /**
+     * Uses the encapsulation key and randomness to generate a key and an
+     * associated ciphertext.
+     * [FIPS-203] Section 6.2 Algorithm 17.
+     *
+     * Warning: This function does not validate input and should not be used
+     * externally!
+     */
+    Encaps_internal : EncapsulationKey -> [32]Byte
+        -> (SharedSecretKey, Ciphertext)
+    Encaps_internal ek m = (K, c) where
+      (K, r) = G (m # (H ek))
+      c = K_PKE::Encrypt ek m r
 
-/**
- * Uses the decapsulation key to produce a shared secret key from a ciphertext.
- * [FIPS-203] Section 6.3 Algorithm 18.
- *
- * Warning: This function does not validate input and should not be used
- * externally!
- */
-Decaps_internal : DecapsulationKey -> Ciphertext -> SharedSecretKey
-Decaps_internal dk c = K where
-    // Step 1. Extract (from KEM decaps key) the PKE decryption key.
-    dkPKE = dk @@ [0 .. 384*k - 1]
-    // Step 2. Extract PKE encryption key.
-    ekPKE = dk @@ [384*k .. 768*k + 32 - 1]
-    // Step 3. Extract hash of PKE encryption key.
-    h = dk @@ [768*k + 32 .. 768*k + 64 - 1]
-    // Step 4. Extract implicit rejection value.
-    z = dk @@ [768*k + 64 .. 768*k + 96 - 1]
-    // Step 5. Decrypt ciphertext.
-    m' = K_PKE::Decrypt dkPKE c
-    // Step 6.
-    (K', r') = G (m' # h)
-    // Step 7.
-    Kbar = J (z # c)
-    // Step 8. Re-encrypt using the derived randomness `r'`.
-    c' = K_PKE::Encrypt ekPKE m' r'
-    // Step 9 - 11. If ciphertextx do not match, "implicitly reject".
-    K = if (c != c') then
-            Kbar
-        else
-            K'
+    /**
+     * Uses the decapsulation key to produce a shared secret key from a
+     * ciphertext.
+     * [FIPS-203] Section 6.3 Algorithm 18.
+     *
+     * Warning: This function does not validate input and should not be used
+     * externally!
+     */
+    Decaps_internal : DecapsulationKey -> Ciphertext -> SharedSecretKey
+    Decaps_internal dk c = K where
+        // Step 1. Extract (from KEM decaps key) the PKE decryption key.
+        dkPKE = dk @@ [0 .. 384*k - 1]
+        // Step 2. Extract PKE encryption key.
+        ekPKE = dk @@ [384*k .. 768*k + 32 - 1]
+        // Step 3. Extract hash of PKE encryption key.
+        h = dk @@ [768*k + 32 .. 768*k + 64 - 1]
+        // Step 4. Extract implicit rejection value.
+        z = dk @@ [768*k + 64 .. 768*k + 96 - 1]
+        // Step 5. Decrypt ciphertext.
+        m' = K_PKE::Decrypt dkPKE c
+        // Step 6.
+        (K', r') = G (m' # h)
+        // Step 7.
+        Kbar = J (z # c)
+        // Step 8. Re-encrypt using the derived randomness `r'`.
+        c' = K_PKE::Encrypt ekPKE m' r'
+        // Step 9 - 11. If ciphertextx do not match, "implicitly reject".
+        K = if (c != c') then
+                Kbar
+            else
+                K'
 
-/**
- * The ML-KEM scheme is correct with probability 1-delta and not 1. As a
- * result, running `:prove CorrectnessPKE` will not succeed since there is a
- * fraction delta of seeds `d`, `z`, `m` that do not work.
- * Cryptol does not currently support counting.
- * ```repl
- * :set tests=3
- * :check CorrectnessKEM
- * ```
- */
-CorrectnessKEM : [32]Byte -> [32]Byte -> [32]Byte -> Bit
-property CorrectnessKEM z d m = (K == K') where
-  (ek, dk) = KeyGen_internal d z
-  (K, c) = Encaps_internal ek m
-  K' = Decaps_internal dk c
+    /**
+     * The ML-KEM scheme is correct with probability 1-delta and not 1. As a
+     * result, running `:prove CorrectnessPKE` will not succeed since there is a
+     * fraction delta of seeds `d`, `z`, `m` that do not work.
+     * Cryptol does not currently support counting.
+     * ```repl
+     * :set tests=3
+     * :check CorrectnessKEM
+     * ```
+     */
+    CorrectnessKEM : [32]Byte -> [32]Byte -> [32]Byte -> Bit
+    property CorrectnessKEM z d m = (K == K') where
+        (ek, dk) = KeyGen_internal d z
+        (K, c) = Encaps_internal ek m
+        K' = Decaps_internal dk c
 
 /*
  * Type of an encapsulation key used in the public ML-KEM API.
