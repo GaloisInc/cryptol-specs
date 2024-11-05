@@ -1188,9 +1188,9 @@ private
  * Warning: This function does not validate input and should not be used
  * externally!
  */
-Encaps_internal : (EncapsulationKey, [32]Byte) -> (SharedSecretKey, Ciphertext)
-Encaps_internal (ek, m) = (K, c) where
-  (K, r) = G(m#H(ek))
+Encaps_internal : EncapsulationKey -> [32]Byte -> (SharedSecretKey, Ciphertext)
+Encaps_internal ek m = (K, c) where
+  (K, r) = G (m # (H ek))
   c = K_PKE::Encrypt ek m r
 
 /**
@@ -1227,7 +1227,7 @@ Decaps_internal (c, dk) = K
 CorrectnessKEM : [32]Byte -> [32]Byte -> [32]Byte -> Bit
 property CorrectnessKEM z d m = (K == K') where
   (pk, sk) = KeyGen_internal d z
-  (K, c) = Encaps_internal(pk, m)
+  (K, c) = Encaps_internal pk m
   K' = Decaps_internal(c, sk)
 
 /*
@@ -1284,6 +1284,32 @@ KeyGen d z = (ek, dk) where
         Some _z -> _z
     // Step 6.
     (ek, dk) = KeyGen_internal d' z'
+
+/**
+ * Use the encapsulation key to generate a shared secret an an associated
+ * ciphertext.
+ * [FIPS-203] Section 7.1, Algorithm 20.
+ *
+ * This differs from the spec: it takes the randomness `m` as a parameter
+ * instead of generating it internally (because Cryptol cannot generate
+ * randomness).
+ *
+ * The encapsulation key passed as a parameter MUST be checked before use! The
+ * caller must have assurance that the encapsulation key is valid.
+ * @todo Marcella Hastings: once the validation function is written, add link.
+ */
+Encaps : EncapsulationKey -> Option ([32]Byte) -> (SharedSecretKey, Ciphertext)
+Encaps ek m = (K, c) where
+    // Step 1 is skipped because Cryptol cannot generate randomness.
+    // Step 2 - 4.
+    m' = case m of
+        None -> error "Random bit generation failed; `m` not initialized."
+        Some _m -> _m
+    // Step 5.
+    (K, c) = Encaps_internal ek m'
+
+
+
 
 
 parameter

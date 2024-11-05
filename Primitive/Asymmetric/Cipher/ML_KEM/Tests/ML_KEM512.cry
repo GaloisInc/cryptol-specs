@@ -18,7 +18,7 @@ import Primitive::Asymmetric::Cipher::ML_KEM::Instantiations::ML_KEM512 as ML_KE
  */
 property t0 = keygenWorks && encapsWorks && decapsWorks where
     keygenWorks = ML_KEM::KeyGen (Some d) (Some z) == (pk, sk)
-    encapsWorks = ML_KEM::Encaps_internal (pk, msg) == (ss, ct)
+    encapsWorks = ML_KEM::Encaps pk (Some msg) == (ss, ct)
     decapsWorks = ML_KEM::Decaps_internal (ct, sk) == ss
     decapsFailsCorrectly = ML_KEM::Decaps_internal (ct_n, sk) == ss_n
 
