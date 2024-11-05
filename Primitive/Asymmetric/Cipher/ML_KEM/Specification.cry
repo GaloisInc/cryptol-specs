@@ -1164,19 +1164,21 @@ private submodule K_PKE where
         c = Encrypt pk m r
         m' = Decrypt sk c
 
-/**
- * Uses randomness to generate an encapsulation key and corresponding
- * decapsulation key.
- * [FIPS-203] Section 6.1 Algorithm 16.
- *
- * Warning: This function does not validate input and should not be used
- * externally!
- */
-KeyGen_internal : [32]Byte -> [32]Byte -> (EncapsulationKey, DecapsulationKey)
-KeyGen_internal d z = (ek, dk) where
-  (ekPKE, dkPKE) = K_PKE::KeyGen d
-  ek = ekPKE
-  dk = dkPKE # ek # (H ek) # z
+
+private
+    /**
+     * Uses randomness to generate an encapsulation key and corresponding
+     * decapsulation key.
+     * [FIPS-203] Section 6.1 Algorithm 16.
+     *
+     * Warning: This function does not validate input and should not be used
+     * externally!
+     */
+    KeyGen_internal : [32]Byte -> [32]Byte -> (EncapsulationKey, DecapsulationKey)
+    KeyGen_internal d z = (ek, dk) where
+      (ekPKE, dkPKE) = K_PKE::KeyGen d
+      ek = ekPKE
+      dk = dkPKE # ek # (H ek) # z
 
 /**
  * Uses the encapsulation key and randomness to generate a key and an
