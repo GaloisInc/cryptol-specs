@@ -20,7 +20,7 @@
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
  */
-module Primitive::Asymmetric::Signature::XMSS::Instantiations::WOTS_256 =
+module Primitive::Asymmetric::Signature::XMSS::Instantiations::WOTSP_SHA2_256 =
     Primitive::Asymmetric::Signature::XMSS::Wots where
         import Primitive::Keyless::Hash::SHA2::Instantiations::SHA256 as SHA256
 
