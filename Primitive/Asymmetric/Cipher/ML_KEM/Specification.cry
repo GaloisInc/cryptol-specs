@@ -1327,6 +1327,17 @@ keyPairCheck ek dk maybe_seed m =
     K' = Decaps_internal dk c
 
 /**
+ * A properly produced output of the `KeyGen` function should always pass the
+ * key pair checks.
+ * ```repl
+ * :set tests=3
+ * :check KeyGenProducesValidKeys
+ * ```
+ */
+KeyGenProducesValidKeys d z m = keyPairCheck ek dk (Some (d, z)) m where
+    (ek, dk) = KeyGen (Some d) (Some z)
+
+/**
  * Perform checks on a candidate encapsulation key.
  *
  * The type check is implicit; if this function compiles with a given `ek`,
