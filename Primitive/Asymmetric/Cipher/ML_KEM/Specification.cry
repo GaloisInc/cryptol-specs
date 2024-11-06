@@ -1,6 +1,21 @@
 /**
  * ML-KEM cipher with a fast NTT implementation.
  *
+ * This implements the final version of ML-KEM as standardized in [FIPS-203].
+ * The executable spec differs from the spec in several important ways:
+ * - In the spec, two ML-KEM functions (`KeyGen` and `Encaps`) require the
+ *   generation of randomness. In the exectable spec, this
+ *   randomness is passed as input, because Cryptol cannot generate randomness.
+ *   Implementors must manually verify that their functions generate randomness
+ *   using an approved RBG with a suitable security strength for their chosen
+ *   parameter set, and that the sampling of random values is performed by the
+ *   cryptographic module.
+ * - The spec requires that intermediate values must be destroyed prior to the
+ *   termination of each algorithm, with two exceptions (see Section 3.3
+ *   "Destruction of intermediate values.") Cryptol cannot express this
+ *   requirement. Implementors must manually verify that intermediate data is
+ *   destroyed as soon as it is no longer needed.
+ *
  * @copyright Galois, Inc
  * @author Marios Georgiou <marios@galois.com>
  * @editor Marcella Hastings <marcella@galois.com>
@@ -1360,7 +1375,7 @@ encapsulationKeyCheck ek = modulusCheck where
  * instead of generating it internally (because Cryptol cannot generate
  * randomness).
  *
- * Warning!
+ * ⚠️ Warning ⚠️
  * The encapsulation key passed as a parameter MUST be checked before use with
  * `encapsulationKeyCheck`! The caller must have assurance that the
  * encapsulation key is valid.
@@ -1411,7 +1426,7 @@ private
  * Use the decapsulation key to produce a shared secret from a ciphertext.
  * [FIPS-203] Section 7.3, Algorithm 21.
  *
- * Warning!
+ * ⚠️ Warning ⚠️
  * The decapsulation key and the ciphertext MUST be checked before use with
  * `decapsulationInputCheck`! The caller must have assurance that the
  * decapsulation key and ciphertext are valid.
