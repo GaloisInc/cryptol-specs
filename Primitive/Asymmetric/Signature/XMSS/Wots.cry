@@ -268,9 +268,16 @@ private
             | (total, in, bits) <- drop`{1} (iterate update_helpers (0, 0, 0))]
 
     /**
-     * As a point of interest, we also implement the `base_w` function using
-     * built-in Cryptol functions, just regrouping the bits into the desired
-     * arrangement.
+     * Convert a byte string into a set of base-`w` numbers.
+     *
+     * This uses standard built-in Cryptol functions to achieve the same
+     * functionality as the spec version; rather than manually bit shifting, it
+     * regroups the bits into the desired arrangement. This is about 5x faster
+     * than the spec version.
+     *
+     * Note that this depends on the top-level type constraint restricting `w`
+     * to either 4 or 16. I am not sure the grouping would work as well if we
+     * were working in a base that was not a power of 2.
      */
     base_w : {out_len, len_X} (
         fin len_X,
@@ -279,9 +286,10 @@ private
     base_w X = map zext (groupBy`{lg2 w} (take (join X)))
 
     /**
-     * Proof that the "Cryptollish" version matches the spec.
-     * Parameter sets are chosen based on the instantiations that appear in
-     * the spec (Algorithms 5 and 6).
+     * Proof that the Cryptol-ish version of `base_w` matches the spec version.
+     *
+     * Parameter for the following tests are chosen based on the instantiations
+     * that appear in the spec (Algorithms 5 and 6).
      * ```repl
      * :prove base_wsMatch`{len_1, n * 8}
      * type len_2_bytes = len_2 * lg2 w /^ 8
@@ -354,7 +362,7 @@ WOTS_pkFromSig M sig ADRS SEED = tmp_pk where
     // Compute checksum.
     csum = sum [ `w - 1 - msg_i | msg_i <- msg ]
 
-    // Convert csum to base `w`.
+    // Convert `csum` to base `w`.
     csum' = csum << (8 - (`(len_2 * lg2 w) % 8))
     // `len_2_bytes` is defined at the top level in the `parameter` block.
     msg' = msg # base_w`{len_2} (toByte`{len_2_bytes} csum')
@@ -366,8 +374,7 @@ WOTS_pkFromSig M sig ADRS SEED = tmp_pk where
         | msg_i <- msg' ]
 
 /**
- * Each function takes about 50 seconds to run, so a single execution of this
- * property takes ~3 minutes.
+ * A single execution of this property takes ~2 minutes.
  * ```repl
  * :set tests = 1
  * :check WOTSisCorrect
