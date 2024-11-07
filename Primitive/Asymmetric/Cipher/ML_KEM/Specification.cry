@@ -207,7 +207,6 @@ private
         bytesWorks = BitsToBytes (BytesToBits (split bits)) == split bits
 
     /**
-     * This currently fails due to endianness issues!
      * Check the example given in the spec for converting between bits and
      * bytes.
      * [FIPS-203] Section 4.2.1 "Converting between bits and bytes."
@@ -984,8 +983,7 @@ submodule NTT where
      * (also referred to as `T_q` multiplication).
      * [FIPS-203] Section 2.4.5 Equation 2.8.
      */
-    dot : Tq -> Tq -> Tq
-    dot f g = MultiplyNTTs f  g
+    (×) = MultiplyNTTs
 
     /**
      * Overloaded `dot` function between two vectors is a standard dot-product
@@ -993,7 +991,7 @@ submodule NTT where
      * [FIPS-203] Section 2.4.7 Equation 2.14.
      */
     dotVecVec : {k1} (fin k1) => [k1]Tq -> [k1]Tq -> Tq
-    dotVecVec v1 v2 = sum (zipWith dot v1 v2)
+    dotVecVec v1 v2 = sum (zipWith (×) v1 v2)
 
     /**
      * Overloaded `dot` function between a matrix and a vector is standard
