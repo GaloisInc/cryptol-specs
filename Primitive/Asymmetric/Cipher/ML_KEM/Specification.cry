@@ -56,28 +56,6 @@ zeta = 17 : Z q
  */
 type Byte = [8]
 
-/*
- * Representation of an element in the ring `R_q` or in `T_q`.
- *
- * `R_q` is the ring `Z_q [X] / (X^n + 1)` with ring operations
- * addition and multiplication modulo `X^n + 1`.
- *
- * [FIPS-203] Section 2.3 (definition of the ring).
- * [FIPS-203] Section 2.4.4, Equation 2.5 (definition of the representation of
- *     elements in the ring).
- *
- * `T_q` is the image of `R_q` under the number-theoretic transform. An
- * element of `T_q` is the "NTT representation" of a polynomial in `R_q`.
- *
- * [FIPS-203] Section 2.3 (definition of the `T_q`).
- * [FIPS-203] Section 2.4.4 Equation 2.7 (definition of the representation of
- *     an element in `T_q`).
-
- * Z is a Cryptol primitive such that Z q represents integers mod q that are
- * closed under arithmetic operations
- */
-type Z_q_256 = [n](Z q)
-
 /**
  * An element in the ring `R_q`.
  *
@@ -312,7 +290,7 @@ property DecompressMostlyInvertsCompress x = errIsSmallEnough where
  * each individual element.
  * [FIPS-203] Section 2.4.8, Equation 2.15.
  */
-Compress_Vec : {d} (d < lg2 q) => Z_q_256 -> [n][d]
+Compress_Vec : {d} (d < lg2 q) => [n](Z q) -> [n][d]
 Compress_Vec x = map Compress`{d} x
 
 /**
@@ -320,7 +298,7 @@ Compress_Vec x = map Compress`{d} x
  * each individual element.
  * [FIPS-203] Section 2.4.8.
  */
-Decompress_Vec : {d} (d < lg2 q) => [n][d] -> Z_q_256
+Decompress_Vec : {d} (d < lg2 q) => [n][d] -> [n](Z q)
 Decompress_Vec x = map Decompress`{d} x
 
 /**
@@ -328,7 +306,7 @@ Decompress_Vec x = map Decompress`{d} x
  * each individual element.
  * [FIPS-203] Section 2.4.8.
  */
-Compress_Mat : {d, k1} (d < lg2 q, fin k1) => [k1]Z_q_256 -> [k1][n][d]
+Compress_Mat : {d, k1} (d < lg2 q, fin k1) => [k1][n](Z q) -> [k1][n][d]
 Compress_Mat x = map Compress_Vec`{d} x
 
 /**
@@ -336,7 +314,7 @@ Compress_Mat x = map Compress_Vec`{d} x
  * each individual element.
  * [FIPS-203] Section 2.4.8.
  */
-Decompress_Mat : {d, k1} (d < lg2 q, fin k1) => [k1][n][d] -> [k1]Z_q_256
+Decompress_Mat : {d, k1} (d < lg2 q, fin k1) => [k1][n][d] -> [k1][n](Z q)
 Decompress_Mat x = map Decompress_Vec`{d} x
 
 private
