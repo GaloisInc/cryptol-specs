@@ -59,7 +59,7 @@
  * @author Marcella Hastings <marcella@galois.com>
  *
  */
-module Primitive::Asymmetric::Generation::ECDH::Specification where
+module Primitive::Asymmetric::KEM::ECDH::Specification where
 
 import Common::utils(ZtoBV)
 

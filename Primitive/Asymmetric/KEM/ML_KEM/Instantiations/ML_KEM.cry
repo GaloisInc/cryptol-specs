@@ -2,5 +2,5 @@
  * @copyright Galois Inc
  * @author Marios Georgiou <marios@galois.com>
  */
-module Primitive::Asymmetric::Cipher::ML_KEM::Instantiations::ML_KEM where
-    import Primitive::Asymmetric::Cipher::ML_KEM::Instantiations::ML_KEM512
+module Primitive::Asymmetric::KEM::ML_KEM::Instantiations::ML_KEM where
+    import Primitive::Asymmetric::KEM::ML_KEM::Instantiations::ML_KEM512

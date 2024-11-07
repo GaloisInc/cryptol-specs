@@ -6,8 +6,8 @@
  * @editor Rod Chapman <rodchap@amazon.com>
  */
 
-module Primitive::Asymmetric::Cipher::ML_KEM::Instantiations::ML_KEM512 =
-    Primitive::Asymmetric::Cipher::ML_KEM::Specification where
+module Primitive::Asymmetric::KEM::ML_KEM::Instantiations::ML_KEM512 =
+    Primitive::Asymmetric::KEM::ML_KEM::Specification where
 
 type k = 2
 type eta_1 = 3

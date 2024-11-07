@@ -53,7 +53,7 @@
  *     (FIPS) NIST FIPS 203. August 2024.
  *     @see https://doi.org/10.6028/NIST.FIPS.203
  */
-module Primitive::Asymmetric::Cipher::ML_KEM::Specification where
+module Primitive::Asymmetric::KEM::ML_KEM::Specification where
 
 import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHAKE256
 import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHAKE128
