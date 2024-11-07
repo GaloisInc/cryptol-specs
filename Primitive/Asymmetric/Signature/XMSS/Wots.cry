@@ -72,13 +72,6 @@ parameter
     type len_2 = lg2 (len_1 * (w - 1)) / lg2 w + 1
 
     /**
-     * This type is used in Algorithms 5 and 6; it's the padded length of a
-     * checksum. The checksum has an upper bound of 32 bits, so the padding
-     * must be at least 32 bits.
-     */
-    type len_2_bytes = (len_2 * lg2 w) /^ 8
-
-    /**
      * The number of `n`-byte string elements in a WOTS+ private key, public key,
      * and signature.
      * [RFC-8391] Section 3.1.1.
@@ -111,11 +104,20 @@ type Byte = [8]
  * Convert a non-negative integer to a binary representation in big-endian
  * byte order.
  * [RFC-8391] Section 2.4.
+ *
+ * Note: the spec is not explicit about what to do when `m < 8y` -- e.g. when
+ * converting to `y` bytes means truncating the integer representation,
+ * rather than padding it with 0s. We chose this behavior based on the
+ * reference implementation that accompanies the spec.
+ * @see https://github.com/XMSS/xmss-reference/blob/master/utils.c#L6
+ * [RFC-8391] Section 7.
+ *
+ * Essentially, we pad with zeros if needed (using `zext`), then `drop` any
+ * unnecessary padding (and potentially also drop some bits of the original
+ * integer).
  */
-toByte : {y, m} (fin y, y > 0) => [m] -> [y]Byte
-toByte x
-    | m <= 8 * y => split (zext x)
-    | m > 8 * y => split (take x)
+toByte : {y, m} (fin y, fin m) => [m] -> [y]Byte
+toByte x = split (drop (zext`{max m (y * 8)} x))
 
 /**
  * A word is a 32-bit sequence used to define hash addresses.
@@ -337,7 +339,7 @@ WOTS_sign M sk ADRS SEED = sig where
 
     // Convert `csum` to base `w`.
     csum' = csum << (8 - (`(len_2 * lg2 w) % 8))
-    // `len_2_bytes` is defined at the top level in the `parameter` block.
+    type len_2_bytes = (len_2 * lg2 w) /^ 8
     msg' = msg # base_w`{len_2} (toByte`{len_2_bytes} csum')
     sig = [sig_i where
             ADRS_i = setChainAddress ADRS i
@@ -364,7 +366,7 @@ WOTS_pkFromSig M sig ADRS SEED = tmp_pk where
 
     // Convert `csum` to base `w`.
     csum' = csum << (8 - (`(len_2 * lg2 w) % 8))
-    // `len_2_bytes` is defined at the top level in the `parameter` block.
+    type len_2_bytes = (len_2 * lg2 w) /^ 8
     msg' = msg # base_w`{len_2} (toByte`{len_2_bytes} csum')
     tmp_pk = [tmp_pk_i where
             ADRS_i = setChainAddress ADRS i
