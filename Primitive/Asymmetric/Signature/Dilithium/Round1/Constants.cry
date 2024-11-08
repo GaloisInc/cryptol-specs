@@ -1,4 +1,4 @@
-module Primitive::Asymmetric::Signature::Dilithium::Constants where
+module Primitive::Asymmetric::Signature::Dilithium::Round1::Constants where
 
 // Fixed parameters
 type QBits = 23

@@ -1,4 +1,4 @@
-module Primitive::Asymmetric::Signature::Dilithium::test::signFinal where
+module Primitive::Asymmetric::Signature::Dilithium::Round1::TestCases::signFinal where
 
 (pkn, skn)=({rho = 0x1c0ee1111b08003f28e65e8b3bdeb037cf8f221dfcdaf5950edb38d506d85bef,
 t1 = [[314, 351, 436, 171, 459, 60, 26, 155, 508, 56, 389, 493, 69,

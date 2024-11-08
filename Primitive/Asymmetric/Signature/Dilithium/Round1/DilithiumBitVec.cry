@@ -17,8 +17,8 @@ import Primitive::Keyless::Hash::KeccakBitOrdering as SHA3 (toBytes)
 import Common::utils
 import Common::mod_arith
 import Primitive::Asymmetric::Cipher::RSA
-import Primitive::Asymmetric::Signature::Dilithium::test::testDilithium
-import Primitive::Asymmetric::Signature::Dilithium::Constants
+import Primitive::Asymmetric::Signature::Dilithium::Round1::TestCases::testDilithium
+import Primitive::Asymmetric::Signature::Dilithium::Round1::Constants
 
 
 // These parameters are fixed for all four recommended implementations

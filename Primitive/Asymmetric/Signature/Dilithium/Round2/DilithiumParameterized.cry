@@ -32,8 +32,8 @@ import Primitive::Keyless::Hash::KeccakBitOrdering as SHA3 (toBytes)
 import Common::utils (dowhile, unzip)
 import Common::bv (safe_add, safe_sub, safe_product, safe_mod)
 import Common::mod_arith (mod_pow)
-import Primitive::Asymmetric::Signature::Dilithium::test::test_latest (testCase1)
-import Primitive::Asymmetric::Signature::Dilithium::Constants
+import Primitive::Asymmetric::Signature::Dilithium::Round2::TestCases::test_latest (testCase1)
+import Primitive::Asymmetric::Signature::Dilithium::Round2::Constants
 
 
 
