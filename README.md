@@ -31,22 +31,21 @@ repository are listed below.
 |                            | [SHA256](Primitive/Keyless/Hash/SHA2/Instantiations/SHA256.cry)                        |           |              |
 |                            | [SHA2](Primitive/Keyless/Hash/SHA2/)                                                   |           |              |
 |                            | [SHA3](Primitive/Keyless/Hash/SHA3/)                                                   |           |              |
-| **Asymmetric Encryption**  | [CRYSTALS Kyber](Primitive/Asymmetric/Cipher/Kyber/3.01/)                              |           |              |
-|                            | [RSA](Primitive/Asymmetric/Cipher/RSA.cry)                                             |           |              |
+| **Key Encapsulation**      | [ML-KEM (CRYSTALS-Kyber)](Primitive/Asymmetric/KEM/ML_KEM/)                            |           |              |
+| **Asymmetric Encryption**  | [RSA](Primitive/Asymmetric/Cipher/RSA.cry)                                             |           |              |
 
 All Cryptol files in this repository are covered by the BSDv3 license. See LICENSE file.
 
 # NIST Post-Quantum Cryptography Standardization Selections
-Here you can find a list of the post-quantum cryptographic schemes that were selected during the final round of NIST's post-quantum cryptography standardization process.
+This repo includes executable specifications of several quantum-resistant schemes. These are drawn from the finalists of the [NIST Post-Quantum Cryptography competition](https://csrc.nist.gov/projects/post-quantum-cryptography). In some cases, we have multiple versions of the algorithms from various rounds of the competition, as well as from the initial public draft (IPD) and final specifications produced by NIST.
 
-The repository contains Cryptol implementations of the selected cryptographic schemes that are resistant to attacks from quantum computers.
+| Primitive | NIST Name (Original Name)   | Type          | Versions Available |
+|-----------|-----------------------------|---------------|--------------------|
+| PKE / KEM | ML-KEM (CRYSTALS-Kyber)     | Lattice-based | [Final version, Round 3.01](Primitive/Asymmetric/KEM/ML_KEM/) |
+| Signature | ML-DSA (CRYSTALS-Dilithium) | Lattice-based | [IPD, Round 2, Round 1](Primitive/Asymmetric/Signature/Dilithium/) |
+| Signature | FN-DSA (FALCON)             | Lattice-based | [Round 1.2](Primitive/Asymmetric/Signature/FALCON/1.2/) |
+| Signature | SLH-DSA (SPHINCS+)          | Hash-based    | [Round 3.1](Primitive/Asymmetric/Signature/SphincsPlus/) |
 
-| Type          | PKE/KEM                                                   | Signature                                                       |
-|---------------|-----------------------------------------------------------|-----------------------------------------------------------------|
-| Lattice-based | [CRYSTALS Kyber](Primitive/Asymmetric/Cipher/Kyber/3.01/) | [CRYSTALS Dilithium](Primitive/Asymmetric/Signature/Dilithium/) |
-|               | [ML-KEM](Primitive/Asymmetric/Cipher/ML_KEM/)             |                                                                 |
-|               |                                                           | [FALCON](Primitive/Asymmetric/Signature/FALCON/1.2/)            |
-| Hash-based    |                                                           | [SPHINCS+](Primitive/Asymmetric/Signature/SphincsPlus/)         |
 
 ## Remarks
 The Cryptol specs presented here are written with the objective of being as close as possible to the specs as presented in the official papers so that even someone without cryptographic experience can verify that the Cryptol code meets the spec by reading it "line by line". As a result, the Cryptol code may not be as efficient as other implementations (for example it may implement DFT instead of FFT), yet it is closer to the paper definitions and aims to be functionally equivalent to them.
