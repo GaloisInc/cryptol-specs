@@ -1,3 +1,6 @@
+% @copyright Galois Inc
+% @author Marios Georgiou <marios@galois.com>
+
 \documentclass{article}
 \usepackage{etex}
 \usepackage[utf8]{inputenc}
@@ -24,7 +27,7 @@
 
 \usepackage{relsize}
 
-\usepackage{caption} 
+\usepackage{caption}
 \captionsetup[table]{skip=10pt}
 
 \usepackage[hyphens]{url}
@@ -51,7 +54,7 @@
 
 \author{Roberto Avanzi, Joppe Bos, Léo Ducas, Eike Kiltz, Tancrède Lepoint,\\
  Vadim Lyubashevsky, John M. Schanck, Peter Schwabe, Gregor Seiler, Damien Stehlé}
-  
+
 \date{\today}
 
 \begin{document}
@@ -64,7 +67,7 @@
 
   import kyber512
 
-  ZeroTestVector : Bit 
+  ZeroTestVector : Bit
   property ZeroTestVector = flag
     where
       (pk,sk) = CGen(zero, zero)

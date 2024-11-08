@@ -1,3 +1,7 @@
+/**
+ * @copyright Galois, Inc.
+ * @author Marios Georgiou <marios@galois.com>
+ */
 module kyber768 = specification where
 
 type q = 3329
