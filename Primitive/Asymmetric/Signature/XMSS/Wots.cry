@@ -38,9 +38,13 @@ parameter
     /**
      * The Winternitz parameter. This must be either 4 or 16.
      * [RFC-8391] Section 3.1.1.
+     *
+     * The type constraint is a bit contrived, but it requires that
+     * `w` is in the range `[0, 16]`, is divisible by 4 (`{0, 4, 8, 12, 16}`),
+     * and is congruent to 1 mod 3 (`{4, 16}`).
      */
     type w : #
-    type constraint (fin w, w % 4 == 0, w % 12 == 4, w <= 16)
+    type constraint (fin w, w % 4 == 0, w % 3 == 1, w <= 16)
 
     /**
      * A keyed cryptographic hash function that takes a key and a message.
@@ -58,8 +62,8 @@ parameter
      * A length value (fixed with respect to `n` and `w`).
      * [RFC-8391] Section 3.1.1.
      *
-     * The type constraint is drawn from Algorithm 5, where a computed
-     * checksum of length `len_1 * (w - 1) * 2^8` must fit in 32 bits.
+     * The type constraint is drawn from Algorithm 5, where a computed checksum
+     * of length `len_1 * (w - 1) * 2^8` must fit in 32 bits for correctness.
      */
     type len_1 = (8 * n) /^ (lg2 w)
     type constraint (width (len_1 * (w - 1) * 2^^8) <= 32)
@@ -84,7 +88,7 @@ parameter
      * This implicit fact about our inputs is hard for Cryptol to infer, so we
      * state it explicitly.
      *
-     * It is implied by the `WOTS_genPK` function, which sets the chain address
+     * It is implied by the `genPK` function, which sets the chain address
      * of an OTS hash address to an iterator that varies from 0 to `len-1`.
      * The chain address is restricted to one 32-bit word. See [RFC-8391]
      * Algorithm 4.
@@ -155,6 +159,10 @@ type OTSHashAddress = [8 * 4]Byte
  * Implementors must independently audit private key generation!
  *
  * [RFC-8391] Section 3.1.3.
+ *
+ * An implementation may also use a cryptographically secure pseudorandom
+ * method to generate the private key from a single `n`-byte value. See
+ * [RFC-8391] Section 3.1.7 for a sample method.
  */
 type PrivateKey = [len][n]Byte
 
@@ -168,6 +176,7 @@ type PublicKey = [len][n]Byte
 
 /**
  * Generate a WOTS+ public key from a private key.
+ * [RFC-8391] Section 3.1.4, Algorithm 4 (called `WOTS_genPK` in the spec).
  */
 genPK : PrivateKey -> OTSHashAddress -> [n]Byte -> PublicKey
 genPK sk ADRS SEED = pk where
@@ -323,14 +332,14 @@ type Signature = [len][n]Byte
 
 /**
  * Generate a signature from a private key and a message.
- * [RFC-8391] Section 3.1.5, Algorithm 5.
+ * [RFC-8391] Section 3.1.5, Algorithm 5 (called `WOTS_sign` in the spec).
  *
  * The checksum in the signature algorithm must fit in 32 bits; we enforce this
  * using a constraint in the type signature; it will always be true for the
  * approved parameter sets.
  */
-WOTS_sign : [n]Byte -> PrivateKey -> OTSHashAddress -> [n]Byte -> Signature
-WOTS_sign M sk ADRS SEED = sig where
+sign : [n]Byte -> PrivateKey -> OTSHashAddress -> [n]Byte -> Signature
+sign M sk ADRS SEED = sig where
     // Convert message to base `w`.
     msg = base_w`{len_1} M
 
@@ -350,14 +359,14 @@ WOTS_sign M sk ADRS SEED = sig where
 
 /**
  * Compute a WOTS+ public key from a message and its signature.
- * [RFC-8391] Section 3.1.6, Algorithm 6.
+ * [RFC-8391] Section 3.1.6, Algorithm 6 (called `WOTS_pkFromSig` in the spec).
  *
  * The result of this function must be compared to the given public key. If
  * the values are not equal, the signature MUST be rejected. This algorithm
  * does not actually reject any signatures!!
  */
-WOTS_pkFromSig : [n]Byte -> Signature -> OTSHashAddress -> [n]Byte -> PublicKey
-WOTS_pkFromSig M sig ADRS SEED = tmp_pk where
+pkFromSig : [n]Byte -> Signature -> OTSHashAddress -> [n]Byte -> PublicKey
+pkFromSig M sig ADRS SEED = tmp_pk where
     // Convert message to base `w`.
     msg = base_w`{len_1} M
 
@@ -384,5 +393,5 @@ WOTS_pkFromSig M sig ADRS SEED = tmp_pk where
  */
 property WOTSisCorrect M sk ADRS SEED = tmp_pk == pk where
     pk = genPK sk ADRS SEED
-    sig = WOTS_sign M sk ADRS SEED
-    tmp_pk = WOTS_pkFromSig M sig ADRS SEED
+    sig = sign M sk ADRS SEED
+    tmp_pk = pkFromSig M sig ADRS SEED
