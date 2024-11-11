@@ -1,0 +1,397 @@
+/**
+ * WOTS+: One-Time Signatures.
+ *
+ * This signature primitive is used in the XMSS signature scheme. In WOTS+,
+ * a private key can be used to sign any message, but each private key can
+ * be used only once.
+ * Warning: If a private key is used to sign two different messages, the scheme
+ * becomes insecure! Cryptol cannot protect against this failure mode!
+ *
+ * Instantiation warnings
+ * - The WOTS+ signature scheme includes a checksum. Per [RFC-8391], the
+ *   checksum can fit in 32 bits _when instantiated with an approved parameter
+ *   set_. This must not be instantiated with any parameter set for which the
+ *   checksum does not fit in 32 bits. [RFC-8391] Section 3.1.5.
+ *
+ * References:
+ * [RFC-8391]: Andreas Huelsing, Denis Butin, Stefan-Lukas Gazdag, Joost
+ *     Rijneveld, and Aziz Mohaisen. XMSS: eXtended Merkle Signature Scheme.
+ *     Internet Requests for Comments (RFC) 8391. May 2018.
+ *     @see https://datatracker.ietf.org/doc/rfc8391
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Asymmetric::Signature::XMSS::Wots where
+
+
+parameter
+    /**
+     * Security parameter.
+     * This defines the message length, the length of a private key, the length
+     * of a public key, and a signature element (in bytes).
+     * [RFC-8391] Section 3.1.1.
+     */
+    type n : #
+    type constraint (fin n)
+
+    /**
+     * The Winternitz parameter. This must be either 4 or 16.
+     * [RFC-8391] Section 3.1.1.
+     *
+     * The type constraint is a bit contrived, but it requires that
+     * `w` is in the range `[0, 16]`, is divisible by 4 (`{0, 4, 8, 12, 16}`),
+     * and is congruent to 1 mod 3 (`{4, 16}`).
+     */
+    type w : #
+    type constraint (fin w, w % 4 == 0, w % 3 == 1, w <= 16)
+
+    /**
+     * A keyed cryptographic hash function that takes a key and a message.
+     * [RFC-8391] Section 3.1.1.1.
+     */
+    F : [n][8] -> [n][8] -> [n][8]
+
+    /**
+     * A pseudorandom function that takes a key and an index.
+     * [RFC-8391] Section 3.1.1.1.
+     */
+    PRF : [n][8] -> [32][8] -> [n][8]
+
+    /**
+     * A length value (fixed with respect to `n` and `w`).
+     * [RFC-8391] Section 3.1.1.
+     *
+     * The type constraint is drawn from Algorithm 5, where a computed checksum
+     * of length `len_1 * (w - 1) * 2^8` must fit in 32 bits for correctness.
+     */
+    type len_1 = (8 * n) /^ (lg2 w)
+    type constraint (width (len_1 * (w - 1) * 2^^8) <= 32)
+
+    /**
+     * A length value (fixed with respect to `n` and `w`).
+     * [RFC-8391] Section 3.1.1.
+     */
+
+    type len_2 = lg2 (len_1 * (w - 1)) / lg2 w + 1
+
+    /**
+     * The number of `n`-byte string elements in a WOTS+ private key, public key,
+     * and signature.
+     * [RFC-8391] Section 3.1.1.
+     */
+    type len = len_1 + len_2
+
+    /**
+     * The `len` parameter fits in 32 bits.
+     *
+     * This implicit fact about our inputs is hard for Cryptol to infer, so we
+     * state it explicitly.
+     *
+     * It is implied by the `genPK` function, which sets the chain address
+     * of an OTS hash address to an iterator that varies from 0 to `len-1`.
+     * The chain address is restricted to one 32-bit word. See [RFC-8391]
+     * Algorithm 4.
+     *
+     * This can also be observed from the computed `len` values from the valid
+     * parameter sets in Section 5.2.
+     */
+    type constraint (32 >= width len)
+
+/**
+ * A byte is a sequence of 8 bits using big-endian representation.
+ * [RFC-8391] Section 2.1.
+ */
+type Byte = [8]
+
+/**
+ * Convert a non-negative integer to a binary representation in big-endian
+ * byte order.
+ * [RFC-8391] Section 2.4.
+ *
+ * Note: the spec is not explicit about what to do when `m < 8y` -- e.g. when
+ * converting to `y` bytes means truncating the integer representation,
+ * rather than padding it with 0s. We chose this behavior based on the
+ * reference implementation that accompanies the spec.
+ * @see https://github.com/XMSS/xmss-reference/blob/master/utils.c#L6
+ * [RFC-8391] Section 7.
+ *
+ * Essentially, we pad with zeros if needed (using `zext`), then `drop` any
+ * unnecessary padding (and potentially also drop some bits of the original
+ * integer).
+ */
+toByte : {y, m} (fin y, fin m) => [m] -> [y]Byte
+toByte x = split (drop (zext`{max m (y * 8)} x))
+
+/**
+ * A word is a 32-bit sequence used to define hash addresses.
+ * [RFC-8391] Section 2.5.
+ */
+type Word = [32]
+
+/**
+ * Address scheme for randomizing hash function calls in the OTS scheme.
+ * [RFC-8391] Section 2.5.
+ *
+ * The address breaks down 7 components, each 1 word long unless specified.
+ * 1. Layer address
+ * 2-3. Tree address (2 Words)
+ * 4. Type (fixed at 0)
+ * 5. OTS address
+ * 6. Chain address
+ * 7. Hash address
+ * 8. keyAndMask
+ *
+ * Note that this isn't defined in terms of the `Word` type because it's
+ * operated on by things that require arrays of bytes.
+ */
+type OTSHashAddress = [8 * 4]Byte
+
+/**
+ * A private, or secret, key in WOTS+ is a length `len` array of `n`-byte
+ * strings.
+ *
+ * It represents the start nodes in a set of hash chains.
+ *
+ * ⚠️ Warning ⚠️: A private key MUST be selected randomly from the uniform
+ * distribution or selected using a cryptographically secure pseudorandom
+ * process! Cryptol cannot verify that a `PrivateKey` was chosen suitably!
+ * Implementors must independently audit private key generation!
+ *
+ * [RFC-8391] Section 3.1.3.
+ *
+ * An implementation may also use a cryptographically secure pseudorandom
+ * method to generate the private key from a single `n`-byte value. See
+ * [RFC-8391] Section 3.1.7 for a sample method.
+ */
+type PrivateKey = [len][n]Byte
+
+/**
+ * A WOTS+ public key is a length `len` array of `n`-byte strings.
+ *
+ * It represents the end nodes i a set of length-`w` hash chains, where the
+ * start nodes are defined in the corresponding `PrivateKey`.
+ */
+type PublicKey = [len][n]Byte
+
+/**
+ * Generate a WOTS+ public key from a private key.
+ * [RFC-8391] Section 3.1.4, Algorithm 4 (called `WOTS_genPK` in the spec).
+ */
+genPK : PrivateKey -> OTSHashAddress -> [n]Byte -> PublicKey
+genPK sk ADRS SEED = pk where
+    pk = [ pki where
+            ADRSi = setChainAddress ADRS i
+            pki = chain ski 0 (`w - 1) SEED ADRSi
+        | i <- [0..len-1]
+        | ski <- sk]
+
+private
+    /**
+     * Set the chain address word (in the 6th position) in an `OTSHashAddress`.
+     * This setter is defined implicitly in the spec.
+     * [RFC-8391] Section 2.7.
+     */
+    setChainAddress : OTSHashAddress -> Word -> OTSHashAddress
+    setChainAddress address value =
+        take`{5 * 4} address # (split value) # drop`{6 * 4} address
+
+    /**
+     * Set the hash address word (in the 7th position) in an `OTSHashAddress`.
+     * This setter is defined implicitly in the spec.
+     * [RFC-8391] Section 2.7.
+     */
+    setHashAddress : OTSHashAddress -> Word -> OTSHashAddress
+    setHashAddress address value =
+        take`{6 * 4} address # (split value) # drop`{7 * 4} address
+
+    /**
+     * Set the `keyAndMask` word (the last position) in an `OTSHashAddress`.
+     * This setter is defined implicitly in the spec.
+     * [RFC-8391] Section 2.7.
+     */
+    setKeyAndMask : OTSHashAddress -> Word -> OTSHashAddress
+    setKeyAndMask address value = take`{7 * 4} address # split value
+
+    /**
+     * Chaining function that iterates `F` on the input `X`, `s` times.
+     * [RFC-8391] Section 3.1.2, Algorithm 2.
+     */
+    chain : [n]Byte -> Word -> Word -> [n]Byte -> OTSHashAddress -> [n]Byte
+    chain X i s SEED ADRS = return where
+        return = if s == 0 then
+                X
+            else if i + s > `w - 1 then
+                error "Invalid `s` and `i` parameters passed to `chain`"
+            else
+                tmp'
+        tmp = chain X i (s - 1) SEED ADRS
+
+        ADRS' = setHashAddress ADRS (i + s - 1)
+        ADRS'' = setKeyAndMask ADRS' 0
+        KEY = PRF SEED ADRS''
+        ADRS''' = setKeyAndMask ADRS'' 1
+        BM = PRF SEED ADRS'''
+
+        tmp' = F KEY (tmp ^ BM)
+
+    /**
+     * Convert a byte string into a set of base-`w` numbers.
+     *
+     * This uses the manual bit-shifting algorithm described in the spec. The
+     * spec is not very particular about bit widths of the helper variables or
+     * the output; we made the following choices:
+     * - `total`: holds each byte of the input, so `[8]`
+     * - `in`: holds the index showing where we are in the input. We use an
+     *   `Integer`, although this could also be `[width len_X]`.
+     * - `bits`: holds the number of bits processed in the current byte. This is
+     *   never larger than 8, but due to the way we've defined the type
+     *   constraint on `w`, it's easier to leave some extra space, so `[8]`.
+     * - `basew`: The output of this function is eventually used as a parameter
+     *   to `chain`, so we pad each base-`w` number to be a `Word` (`[32]`).
+     *
+     * [RFC-8391] Section 2.6, Algorithm 1.
+     */
+    base_w_spec : {out_len, len_X} (
+            fin len_X,
+            out_len <= 8 * len_X / lg2 w)
+        => [len_X]Byte -> [out_len]Word
+    base_w_spec X = basew where
+        // Steps 8 - 13. Define how the helper variables (`total`, `in`, `bits`)
+        // are updated in each round.
+        update_helpers : ([8], Integer, [8]) -> ([8], Integer, [8])
+        update_helpers (total, in, bits) =
+            if bits == 0 then (
+                X@in,
+                in + 1,
+                8 - lg2 `w )
+            else (total, in, bits - lg2 `w)
+
+        // Step 7. Define the number of iterations we need.
+        type consumed = out_len
+
+        // Step 14. Compute the set of base-`w` numbers. `zext` converts an
+        // 8-bit value to a `Word`.
+        basew = take`{consumed} [ zext ((total >> bits) && (`w - 1))
+            // Steps 1-5. Initialize helper variables (and update them for each
+            // round). The first element is dropped because the first variable
+            // update happens before computing any output values.
+            | (total, in, bits) <- drop`{1} (iterate update_helpers (0, 0, 0))]
+
+    /**
+     * Convert a byte string into a set of base-`w` numbers.
+     *
+     * This uses standard built-in Cryptol functions to achieve the same
+     * functionality as the spec version; rather than manually bit shifting, it
+     * regroups the bits into the desired arrangement. This is about 5x faster
+     * than the spec version.
+     *
+     * Note that this depends on the top-level type constraint restricting `w`
+     * to either 4 or 16. I am not sure the grouping would work as well if we
+     * were working in a base that was not a power of 2.
+     */
+    base_w : {out_len, len_X} (
+        fin len_X,
+        out_len <= 8 * len_X / lg2 w)
+        => [len_X]Byte -> [out_len]Word
+    base_w X = map zext (groupBy`{lg2 w} (take (join X)))
+
+    /**
+     * Proof that the Cryptol-ish version of `base_w` matches the spec version.
+     *
+     * Parameter for the following tests are chosen based on the instantiations
+     * that appear in the spec (Algorithms 5 and 6).
+     * ```repl
+     * :prove base_wsMatch`{len_1, n * 8}
+     * type len_2_bytes = len_2 * lg2 w /^ 8
+     * :prove base_wsMatch`{len_2, len_2_bytes}
+     * ```
+     */
+    base_wsMatch : {O, L} (fin L, O <= 8 * L / lg2 w) => [L]Byte -> Bit
+    property base_wsMatch X = base_w_spec`{O, L} X == base_w X
+
+    /**
+     * The spec provides several examples when `w = 16`.
+     * [RFC-8391] Section 2.6.
+     * ```repl
+     * :prove base_wExamplesWork`{}
+     * ```
+     */
+    base_wExamplesWork : (w == 16) => Bit
+    property base_wExamplesWork = test4 && test3 && test2 where
+        test4 = base_w`{4} [0x12, 0x34] == [1, 2, 3, 4]
+        test3 = base_w`{3} [0x12, 0x34] == [1, 2, 3]
+        test2 = base_w`{2} [0x12, 0x34] == [1, 2]
+
+
+/**
+ * A WOTS+ signature.
+ * [RFC-8391] Section 3.1.5.
+ */
+type Signature = [len][n]Byte
+
+/**
+ * Generate a signature from a private key and a message.
+ * [RFC-8391] Section 3.1.5, Algorithm 5 (called `WOTS_sign` in the spec).
+ *
+ * The checksum in the signature algorithm must fit in 32 bits; we enforce this
+ * using a constraint in the type signature; it will always be true for the
+ * approved parameter sets.
+ */
+sign : [n]Byte -> PrivateKey -> OTSHashAddress -> [n]Byte -> Signature
+sign M sk ADRS SEED = sig where
+    // Convert message to base `w`.
+    msg = base_w`{len_1} M
+
+    // Compute checksum.
+    csum = sum [ `w - 1 - msg_i | msg_i <- msg ]
+
+    // Convert `csum` to base `w`.
+    csum' = csum << (8 - (`(len_2 * lg2 w) % 8))
+    type len_2_bytes = (len_2 * lg2 w) /^ 8
+    msg' = msg # base_w`{len_2} (toByte`{len_2_bytes} csum')
+    sig = [sig_i where
+            ADRS_i = setChainAddress ADRS i
+            sig_i = chain sk_i 0 msg_i SEED ADRS_i
+        | i <- [0..len-1]
+        | sk_i <- sk
+        | msg_i <- msg' ]
+
+/**
+ * Compute a WOTS+ public key from a message and its signature.
+ * [RFC-8391] Section 3.1.6, Algorithm 6 (called `WOTS_pkFromSig` in the spec).
+ *
+ * The result of this function must be compared to the given public key. If
+ * the values are not equal, the signature MUST be rejected. This algorithm
+ * does not actually reject any signatures!!
+ */
+pkFromSig : [n]Byte -> Signature -> OTSHashAddress -> [n]Byte -> PublicKey
+pkFromSig M sig ADRS SEED = tmp_pk where
+    // Convert message to base `w`.
+    msg = base_w`{len_1} M
+
+    // Compute checksum.
+    csum = sum [ `w - 1 - msg_i | msg_i <- msg ]
+
+    // Convert `csum` to base `w`.
+    csum' = csum << (8 - (`(len_2 * lg2 w) % 8))
+    type len_2_bytes = (len_2 * lg2 w) /^ 8
+    msg' = msg # base_w`{len_2} (toByte`{len_2_bytes} csum')
+    tmp_pk = [tmp_pk_i where
+            ADRS_i = setChainAddress ADRS i
+            tmp_pk_i = chain sig_i msg_i (`w - 1 - msg_i) SEED ADRS_i
+        | i <- [0..len-1]
+        | sig_i <- sig
+        | msg_i <- msg' ]
+
+/**
+ * A single execution of this property takes ~2 minutes.
+ * ```repl
+ * :set tests = 1
+ * :check WOTSisCorrect
+ * ```
+ */
+property WOTSisCorrect M sk ADRS SEED = tmp_pk == pk where
+    pk = genPK sk ADRS SEED
+    sig = sign M sk ADRS SEED
+    tmp_pk = pkFromSig M sig ADRS SEED
