@@ -6,7 +6,7 @@
 # @author Marios Georgiou <marios@galois.com>
 #
 
-BEGIN { print ":load ml_kem.cry" }
+BEGIN { print ":load Primitive/Asymmetric/Cipher/ML_KEM/Instantiations/ML_KEM512.cry" }
 
 $1 == "count" { print "let count =", $3; print "count:Integer" }
 
