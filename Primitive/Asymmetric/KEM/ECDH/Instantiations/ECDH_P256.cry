@@ -5,8 +5,8 @@
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
  */
-module Primitive::Asymmetric::Generation::ECDH::Instantiations::ECDH_P256 =
-    Primitive::Asymmetric::Generation::ECDH::Specification {
+module Primitive::Asymmetric::KEM::ECDH::Instantiations::ECDH_P256 =
+    Primitive::Asymmetric::KEM::ECDH::Specification {
         Common::EC::PrimeField::Instantiations::P256
     }
 

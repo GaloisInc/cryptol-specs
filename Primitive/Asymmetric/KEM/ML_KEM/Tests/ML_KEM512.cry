@@ -8,7 +8,7 @@
  * @author Marcella Hastings <marcella@galois.com>
  */
 
-import Primitive::Asymmetric::Cipher::ML_KEM::Instantiations::ML_KEM512 as ML_KEM
+import Primitive::Asymmetric::KEM::ML_KEM::Instantiations::ML_KEM512 as ML_KEM
 
 /**
  * This takes ~20 seconds to prove.

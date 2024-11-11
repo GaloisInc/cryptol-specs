@@ -1,0 +1,10 @@
+/**
+ * NIST recommends using ML-KEM-768 as the default parameter set because it
+ * provides a large security margin at a reasonable performance cost.
+ * [FIPS-203] Section 8 "Selecting an appropriate parameter set."
+ *
+ * @copyright Galois Inc
+ * @author Marios Georgiou <marios@galois.com>
+ */
+module Primitive::Asymmetric::KEM::ML_KEM::Instantiations::ML_KEM where
+    import Primitive::Asymmetric::KEM::ML_KEM::Instantiations::ML_KEM768

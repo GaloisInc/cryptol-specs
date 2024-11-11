@@ -1,3 +1,6 @@
+// @copyright Galois Inc
+// @author Marios Georgiou <marios@galois.com>
+
 :l kyber.tex
 
 :set tests=3
