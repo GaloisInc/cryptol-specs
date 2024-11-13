@@ -1,9 +1,13 @@
 /**
  * WOTS+: One-Time Signatures.
  *
- * This signature primitive is used in the XMSS signature scheme. In WOTS+,
- * a private key can be used to sign any message, but each private key can
- * be used only once.
+ * WOTS+ is a signature scheme. A notable limitation of WOTS+ is that a given
+ * key pair can produce exactly ONE signature; repeated signatures with a
+ * single key pair will compromise the private key!!
+ *
+ * This scheme should typically be used as a component of a less limited
+ * signature scheme, like XMSS, LMS, or SPHINCS+.
+ *
  * Warning: If a private key is used to sign two different messages, the scheme
  * becomes insecure! Cryptol cannot protect against this failure mode!
  *
@@ -22,8 +26,7 @@
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
  */
-module Primitive::Asymmetric::Signature::XMSS::Wots where
-
+module Primitive::Asymmetric::Signature::WOTS::Specification where
 
 parameter
     /**
