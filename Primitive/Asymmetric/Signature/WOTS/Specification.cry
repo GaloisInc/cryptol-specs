@@ -6,7 +6,7 @@
  * single key pair will compromise the private key!!
  *
  * This scheme should typically be used as a component of a less limited
- * signature scheme, like XMSS, LMS, or SPHINCS+.
+ * signature scheme, like XMSS or SPHINCS+.
  *
  * Warning: If a private key is used to sign two different messages, the scheme
  * becomes insecure! Cryptol cannot protect against this failure mode!

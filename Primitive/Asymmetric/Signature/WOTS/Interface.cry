@@ -1,3 +1,24 @@
+/*
+ * Public interface for the WOTS+ one-time signature scheme.
+ *
+ * We expect that there will only be one implementation of this scheme.
+ * However, to support its typical use as a component in a more complex scheme
+ * (like XMSS and SPHINCS+), we want to allow other protocols to be
+ * defined in terms of the generic WOTS, and then instantiated with both
+ * WOTS-specific and scheme-specific parameters (and potentially with
+ * additional interface constraints).
+ *
+ * Some documentation is duplicated between this interface and the
+ * specification. This is based on the API in [RFC-8391].
+ *
+ * [RFC-8391]: Andreas Huelsing, Denis Butin, Stefan-Lukas Gazdag, Joost
+ *     Rijneveld, and Aziz Mohaisen. XMSS: eXtended Merkle Signature Scheme.
+ *     Internet Requests for Comments (RFC) 8391. May 2018.
+ *     @see https://datatracker.ietf.org/doc/rfc8391
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
 interface module Primitive::Asymmetric::Signature::WOTS::Interface where
 
 /**
@@ -61,19 +82,8 @@ type Byte = [8]
 /**
  * Address scheme for randomizing hash function calls in the OTS scheme.
  * [RFC-8391] Section 2.5.
- *
- * The address breaks down 7 components, each 1 word (4 bytes) long, except
- * for the tree address.
- *
- * 1. Layer address
- * 2-3. Tree address (2 Words)
- * 4. Type (fixed at 0)
- * 5. OTS address
- * 6. Chain address
- * 7. Hash address
- * 8. keyAndMask
  */
-type OTSHashAddress = [8 * 4]Byte
+type Address = [8 * 4]Byte
 
 /**
  * A private, or secret, key in WOTS+ is a length `len` array of `n`-byte
@@ -112,13 +122,13 @@ type Signature = [len][n]Byte
  * Generate a WOTS+ public key from a private key.
  * [RFC-8391] Section 3.1.4, Algorithm 4 (called `WOTS_genPK` in the spec).
  */
-genPK : PrivateKey -> OTSHashAddress -> [n]Byte -> PublicKey
+genPK : PrivateKey -> Address -> [n]Byte -> PublicKey
 
 /**
  * Generate a signature from a private key and a message.
  * [RFC-8391] Section 3.1.5, Algorithm 5 (called `WOTS_sign` in the spec).
  */
-sign : [n]Byte -> PrivateKey -> OTSHashAddress -> [n]Byte -> Signature
+sign : [n]Byte -> PrivateKey -> Address -> [n]Byte -> Signature
 
 /**
  * Compute a WOTS+ public key from a message and its signature.
@@ -128,4 +138,4 @@ sign : [n]Byte -> PrivateKey -> OTSHashAddress -> [n]Byte -> Signature
  * the values are not equal, the signature MUST be rejected. This algorithm
  * does not actually reject any signatures!!
  */
-pkFromSig : [n]Byte -> Signature -> OTSHashAddress -> [n]Byte -> PublicKey
+pkFromSig : [n]Byte -> Signature -> Address -> [n]Byte -> PublicKey
