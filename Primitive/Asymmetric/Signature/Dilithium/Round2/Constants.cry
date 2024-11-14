@@ -1,3 +1,7 @@
+/*
+ * @copyright Galois, Inc
+ * @author Ajay Kumar Eeralla
+ */
 module Primitive::Asymmetric::Signature::Dilithium::Round2::Constants where
 
 // Fixed parameters
