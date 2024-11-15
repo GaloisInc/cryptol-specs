@@ -8,8 +8,8 @@
    Author: Ajay Kumar Eeralla
 */
 
-module Primitive::Asymmetric::Signature::Dilithium::Round2::DilithiumRecommended = 
-Primitive::Asymmetric::Signature::Dilithium::Round2::DilithiumParameterized where
+module Primitive::Asymmetric::Signature::ML_DSA::Round2::DilithiumRecommended =
+Primitive::Asymmetric::Signature::ML_DSA::Round2::DilithiumParameterized where
 
 // Dilithium III (Recommended) parameters
 type k = 5

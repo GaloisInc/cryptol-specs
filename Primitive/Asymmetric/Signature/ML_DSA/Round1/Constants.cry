@@ -2,7 +2,7 @@
  * @copyright Galois, Inc
  * @author Ajay Kumar Eeralla
  */
-module Primitive::Asymmetric::Signature::Dilithium::Round2::Constants where
+module Primitive::Asymmetric::Signature::ML_DSA::Round1::Constants where
 
 // Fixed parameters
 type QBits = 23

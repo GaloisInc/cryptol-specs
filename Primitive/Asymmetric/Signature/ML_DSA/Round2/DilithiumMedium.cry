@@ -8,12 +8,12 @@
    Author: Ajay Kumar Eeralla
 */
 
-module Primitive::Asymmetric::Signature::Dilithium::Round2::DilithiumRecommended = 
-Primitive::Asymmetric::Signature::Dilithium::Round2::DilithiumParameterized where
+module Primitive::Asymmetric::Signature::ML_DSA::Round2::DilithiumMedium =
+Primitive::Asymmetric::Signature::ML_DSA::Round2::DilithiumParameterized where
 
-// Dilithium IV (Very high) parameters
-type k = 6
-type l = 5
-eta = 3
-beta = 175
-type omega = 120
+// Dilithium II (Medium) parameters
+type k = 4
+type l = 3
+eta = 6
+beta = 325
+type omega = 80

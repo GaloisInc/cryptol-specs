@@ -9,7 +9,7 @@
  * @editor Andrew Kent
  */
 
-module Primitive::Asymmetric::Signature::Dilithium::Round1::DilithiumBitVec where
+module Primitive::Asymmetric::Signature::ML_DSA::Round1::DilithiumBitVec where
 
 import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHA3 (shake128)
 import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHA3 (shake256)
@@ -17,8 +17,8 @@ import Primitive::Keyless::Hash::KeccakBitOrdering as SHA3 (toBytes)
 import Common::utils
 import Common::mod_arith
 import Primitive::Asymmetric::Cipher::RSA
-import Primitive::Asymmetric::Signature::Dilithium::Round1::TestCases::testDilithium
-import Primitive::Asymmetric::Signature::Dilithium::Round1::Constants
+import Primitive::Asymmetric::Signature::ML_DSA::Round1::TestCases::testDilithium
+import Primitive::Asymmetric::Signature::ML_DSA::Round1::Constants
 
 
 // These parameters are fixed for all four recommended implementations
