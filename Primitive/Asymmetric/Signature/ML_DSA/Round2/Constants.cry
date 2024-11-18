@@ -1,4 +1,8 @@
-module Primitive::Asymmetric::Signature::Dilithium::Constants where
+/*
+ * @copyright Galois, Inc
+ * @author Ajay Kumar Eeralla
+ */
+module Primitive::Asymmetric::Signature::ML_DSA::Round2::Constants where
 
 // Fixed parameters
 type QBits = 23

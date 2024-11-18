@@ -9,15 +9,14 @@
  * @editor Andrew Kent
  */
 
-module Primitive::Asymmetric::Signature::Dilithium::Round1::DilithiumInteger where
+module Primitive::Asymmetric::Signature::ML_DSA::Round1::DilithiumInteger where
 
 import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHA3 (shake128)
 import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHA3 (shake256)
 import Primitive::Keyless::Hash::KeccakBitOrdering as SHA3 (toBytes)
 import Common::utils hiding (abs)
-import Primitive::Asymmetric::Signature::Dilithium::test::testDilithium
-import Primitive::Asymmetric::Signature::Dilithium::test::signFinal
-import Primitive::Asymmetric::Signature::Dilithium::test::test_latest
+import Primitive::Asymmetric::Signature::ML_DSA::Round1::TestCases::testDilithium
+import Primitive::Asymmetric::Signature::ML_DSA::Round1::TestCases::signFinal
 
 
 // Recommended Parameters

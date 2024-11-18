@@ -1,7 +1,10 @@
-:l Dilithium2.cry
+// @copyright Galois, Inc
+// @author Brett Boston
+
+:l Dilithium3.cry
 
 :set tests=3
-:! printf "\nRunning 'check' on properties for Dilithium2\n\n"
+:! printf "\nRunning 'check' on properties for Dilithium3\n\n"
 
 :! printf "\nRunning 'check' commands for bitIntegerCorrect property\n\n"
 :check bitIntegerCorrect`{a=10}

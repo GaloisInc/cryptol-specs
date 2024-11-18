@@ -1,4 +1,8 @@
-// Dilithium 2 parameters for round FIPS204 ML-DSA Final Draft
+/**
+ * Dilithium 2 parameters for round FIPS204 ML-DSA Final Draft
+ * @copyright Galois, Inc
+ * @author Brett Boston
+ */
 module Dilithium2 = DilithiumParameterized where
 
 type gamma1 = 131072 //2^^17

@@ -1,0 +1,18 @@
+/**
+ * This module implements the digital signature scheme Dilithium
+ * submitted to the NIST post-quantum project.
+ *
+ * See https://pq-crystals.org/dilithium/data/dilithium-specification.pdf
+ *
+ * @copyright Galois Inc. 2021
+ * @author Ajay Kumar Eeralla
+ */
+module Primitive::Asymmetric::Signature::ML_DSA::Round2::DilithiumMedium =
+Primitive::Asymmetric::Signature::ML_DSA::Round2::DilithiumParameterized where
+
+// Dilithium II (Medium) parameters
+type k = 4
+type l = 3
+eta = 6
+beta = 325
+type omega = 80
