@@ -1,3 +1,6 @@
+// @copyright Galois, Inc
+// @author Brett Boston
+
 :l Dilithium2.cry
 
 :set tests=3

@@ -1,5 +1,8 @@
-// Dilithium 3 parameters for round FIPS204 ML-DSA Final Draft
-
+/**
+ * Dilithium 3 parameters for round FIPS204 ML-DSA Final Draft
+ * @copyright Galois, Inc
+ * @author Brett Boston
+ */
 module Dilithium3 = DilithiumParameterized where
 
 type gamma1 = 524288 //2^^19
