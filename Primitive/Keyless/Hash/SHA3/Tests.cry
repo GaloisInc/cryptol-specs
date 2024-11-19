@@ -59,7 +59,10 @@ submodule SHA3_224 where
      * :prove t72
      * ```
      */
-    property t72 = SHA3_224::hash 0xb29373f6f8839bd498 == output where
+    property t72 = hashWorks && hashBytesWorks where
+        hashWorks = SHA3_224::hash input == output
+        hashBytesWorks = SHA3_224::hashBytes (split input) == split output
+        input = 0xb29373f6f8839bd498
         output = 0xe02a13fa4770f824bcd69799284878f19bfdc833ac6d865f28b757d0
 
     /**
@@ -111,15 +114,17 @@ submodule SHA3_256 where
     property t8 = SHA3_256::hash 0x6a ==
         0xf35e560e05de779f2669b9f513c2a7ab81dfeb100e2f4ee1fb17354bfa2740ca
 
-
     /**
      * This is from the bytewise tests.
      * ```repl
      * :prove t72
      * ```
      */
-    property t72 = SHA3_256::hash 0xfb8dfa3a132f9813ac ==
-        0xfd09b3501888445ffc8c3bb95d106440ceee469415fce1474743273094306e2e
+    property t72 = hashWorks && hashBytesWorks where
+        hashWorks = SHA3_256::hash input == output
+        hashBytesWorks = SHA3_256::hashBytes (split input) == split output
+        input = 0xfb8dfa3a132f9813ac
+        output = 0xfd09b3501888445ffc8c3bb95d106440ceee469415fce1474743273094306e2e
 
     /**
      * This is from the bitwise tests.
@@ -174,7 +179,10 @@ submodule SHA3_384 where
      * :prove t72
      * ```
      */
-    property t72 = SHA3_384::hash 0xa36e5a59043b6333d7 == output where
+    property t72 = hashWorks && hashBytesWorks where
+        hashWorks = SHA3_384::hash input == output
+        hashBytesWorks = SHA3_384::hashBytes (split input) == split output
+        input = 0xa36e5a59043b6333d7
         output = join [
             0xbd045661663436d07720ff3c8b6f922066dfe244456a56ca,
             0x46dfb3f7e271116d932107c7b04cc7c60173e08d0c2e107c
@@ -205,7 +213,10 @@ submodule SHA3_512 where
      * :prove t72
      * ```
      */
-    property t72 = SHA3_512::hash 0x3d6093966950abd846 == output where
+    property t72 = hashWorks && hashBytesWorks where
+        hashWorks = SHA3_512::hash input == output
+        hashBytesWorks = SHA3_512::hashBytes (split input) == split output
+        input = 0x3d6093966950abd846
         output = join [
             0x53e30da8b74ae76abf1f65761653ebfbe87882e9ea0ea564addd7cfd5a652457,
             0x8ad6be014d7799799ef5e15c679582b791159add823b95c91e26de62dcb74cfa

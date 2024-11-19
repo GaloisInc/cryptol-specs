@@ -127,7 +127,7 @@ private
      * convert to and from our byte arrays.
      */
     H : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
-    H M = groupBy (SHA3_256::hash (join M))
+    H M = SHA3_256::hashBytes M
 
     /**
      * One of the hash functions used in the protocol.
@@ -148,7 +148,7 @@ private
      */
     G : {ginl} (fin ginl) => [ginl]Byte -> ([32]Byte, [32]Byte)
     G M = (a, b) where
-        [a, b] = split`{2} (groupBy`{8} (SHA3_512::hash (join M)))
+        [a, b] = split (SHA3_512::hashBytes M)
 
     /**
      * eXtendable-Output Function (XOF) wrapper.
