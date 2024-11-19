@@ -60,13 +60,12 @@ parameter
      * [FIPS-204] Section 4, Table 1.
      *
      * The type constraint is drawn from [FIPS-204] Section 7.4. The primary
-     * constraint we wish to encode is that `2 * γ2` divides `q - 1` (the floor
-     * and ceiling division operations only match when the division is exact).
-     * In order to express this, we must also require that γ2 is finite and
-     * non-zero.
+     * constraint we wish to encode is that `2 * γ2` divides `q - 1` (that is,
+     * if you divide `q - 1` by `2 * γ2`, the remainder is 0).
+     * In order to express this, we must also require that γ2 is non-zero.
      */
     type γ2 : #
-    type constraint (fin γ2, 2 * γ2 > 0, (q - 1) / (2 * γ2) == (q - 1) /^ (2 * γ2))
+    type constraint (2 * γ2 > 0, (q - 1) % (2 * γ2) == 0)
 
     /**
      * Dimensions of the matrix `A`, which is part of the public key.
