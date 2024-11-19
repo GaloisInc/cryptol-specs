@@ -62,6 +62,17 @@ xof : {d, m} (fin m) => [m] -> [d]
 xof M = KBO::reverseBitOrdering (Keccak ((KBO::reverseBitOrdering M) # 0b1111))
 
 /**
+ * SHAKE128 extendable-output function over byte-delimited inputs.
+ *
+ * Note that `d` is specified in _bits_. The `dBytes` parameter allows us to
+ * have infinite output. The alternative approach, requiring `d % 8 == 0`,
+ * is only possible when `d` is finite due to a type constraint on
+ * the mod operation.
+ */
+xofBytes : {d, m, dBytes} (fin m, dBytes * 8 == d) => [m][8] -> [dBytes][8]
+xofBytes M = split (xof (join M))
+
+/**
  * The CAVP test vectors provide input in MSB order as hex strings with an
  * even number of digits; each test is for a specific bit-length input.
  * This aligns with the encoding scheme described in [FIPS-202] Appendix B.
