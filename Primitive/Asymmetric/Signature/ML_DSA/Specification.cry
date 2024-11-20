@@ -23,6 +23,21 @@ import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHAKE128
 import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHAKE256
 
 /**
+ * Ring defined as the product of 255 elements in `Z q` used for NTT.
+ * [FIPS-204] Section 2.3 and Section 2.4.1.
+ */
+type Tq = [256](Z q)
+
+/**
+ * Ring of single-variable polynomials over the integers mod `X^256 + 1`.
+ * [FIPS-204] Section 2.3 and Section 2.4.1.
+ *
+ * The `i`th element of this list represents the coefficient for the degree-`i`
+ * term.
+ */
+type R = [256]Integer
+
+/**
  * Wrapper function around SHAKE256, specifying the length `l` in bytes.
  * [FIPS-204] Section 3.7.
  *
