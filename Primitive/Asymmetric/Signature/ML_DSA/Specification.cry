@@ -19,6 +19,33 @@
  */
 module Primitive::Asymmetric::Signature::ML_DSA::Specification where
 
+import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHAKE128
+import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHAKE256
+
+/**
+ * Wrapper function around SHAKE256, specifying the length `l` in bytes.
+ * [FIPS-204] Section 3.7.
+ *
+ * The spec also defines a 3-part API for interacting with `H` (`Init`,
+ * `Absorb`, `Squeeze`); we simulate this by generating an infinite output
+ * and lazily taking things from it for each call to `Squeeze`, as described
+ * in the same section.
+ */
+H : {l, m} (fin m) => [m][8] -> [l][8]
+H str = split (SHAKE256::xof`{8 * l} (join str))
+
+/**
+ * Wrapper function around SHAKE128, specifying the length `l` in bytes.
+ * [FIPS-204] Section 3.7.
+ *
+ * The spec also defines a 3-part API for interacting with `G` (`Init`,
+ * `Absorb`, `Squeeze`); we simulate this by generating an infinite output
+ * and lazily taking things from it for each call to `Squeeze`, as described
+ * in the same section.
+ */
+G : {l, m} (fin m) => [m][8] -> [l][8]
+G str = split (SHAKE128::xof`{8 * l} (join str))
+
 parameter
     /**
      * Modulus defining the ring used throughout the protocol.
