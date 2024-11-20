@@ -188,3 +188,28 @@ CoeffFromHalfByte b =
     else
         if (`η == 4) && (b < 9) then Some (4 - toInteger b)
         else None
+
+/**
+ * Sample a polynomial in the ring `Tq`.
+ * [FIPS-204] Section 7.3, Algorithm 30.
+ */
+RejNTTPoly : [32]Byte -> Tq
+RejNTTPoly ρ = a_hat where
+    // Step 2 - 3.
+    ctx0 = G ρ
+
+    // Step 4. The `take` here replaces the loop condition.
+    a_hat = take`{256} (sample ctx0)
+
+    sample : [inf][8] -> [inf](Z q)
+    sample GSqueeze = a_hat' where
+        // Step 5. This pops the first 3 bytes off the pseudorandom stream.
+        (s, ctx) = splitAt`{3} GSqueeze
+
+        // Step 6.
+        a_hat_j = CoeffFromThreeBytes (s@0) (s@1) (s@2)
+
+        // Step 7 - 9. The recursive call here replaces the `while` loop.
+        a_hat' = case a_hat_j of
+            Some aj -> [aj] # (sample ctx)
+            None -> sample ctx
