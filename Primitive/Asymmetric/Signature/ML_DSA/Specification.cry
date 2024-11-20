@@ -177,3 +177,14 @@ CoeffFromThreeBytes b0 b1 b2 = maybe_z where
 
     toZ : [32] -> Z q
     toZ b = fromInteger (toInteger b)
+
+/**
+ * Generate an element of {-η, -η + 1, ..., η} or a failure indicator.
+ * [FIPS-204] Section 7.1, Algorithm 15.
+ */
+CoeffFromHalfByte : [4] -> Option Integer
+CoeffFromHalfByte b =
+    if (`η == 2) && (b < 15) then Some (2 - (toInteger b % 5))
+    else
+        if (`η == 4) && (b < 9) then Some (4 - toInteger b)
+        else None
