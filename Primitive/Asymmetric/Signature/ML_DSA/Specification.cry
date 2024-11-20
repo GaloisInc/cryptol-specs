@@ -22,6 +22,8 @@ module Primitive::Asymmetric::Signature::ML_DSA::Specification where
 import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHAKE128
 import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHAKE256
 
+type Byte = [8]
+
 /**
  * Ring defined as the product of 255 elements in `Z q` used for NTT.
  * [FIPS-204] Section 2.3 and Section 2.4.1.
@@ -151,3 +153,27 @@ type d = 13
  * [FIPS-204] Section 4, Table 1.
  */
 type β = η * τ
+
+/**
+ * Generate an element in the integers mod `q` or a failure indicator.
+ * [FIPS-204] Section 7.1, Algorithm 14.
+ */
+CoeffFromThreeBytes : Byte -> Byte -> Byte -> Option (Z q)
+CoeffFromThreeBytes b0 b1 b2 = maybe_z where
+    // Steps 1 - 4.
+    b2' = if b2 > 127 then b2 - 128 else b2
+
+    // We have to explicitly expand the byte strings to support the
+    // operations in the next step. 32 bits gives us plenty of space.
+    [bq0, bq1, bq2'] = map zext`{32} [b0, b1, b2']
+
+    // Step 5.
+    z = 2^^16 * bq2' + 2^^8 * bq1 + bq0
+
+    // Step 6 - 7. We have to convert `z` into `Z q` manually in the successful
+    // case -- note that we can't do it sooner because otherwise the condition
+    // is moot.
+    maybe_z = if z < `q then Some (toZ z) else None
+
+    toZ : [32] -> Z q
+    toZ b = fromInteger (toInteger b)
