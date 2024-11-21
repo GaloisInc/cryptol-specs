@@ -198,7 +198,7 @@ RejNTTPoly ρ = a_hat where
     // Step 2 - 3.
     ctx0 = G ρ
 
-    // Step 4. The `take` here replaces the loop condition.
+    // Step 4, 11. The `take` here replaces the loop condition.
     a_hat = take`{256} (sample ctx0)
 
     sample : [inf][8] -> [inf](Z q)
@@ -213,3 +213,53 @@ RejNTTPoly ρ = a_hat where
         a_hat' = case a_hat_j of
             Some aj -> [aj] # (sample ctx)
             None -> sample ctx
+
+/**
+ * Sample an element in `R` with coefficients in the range [-η, η].
+ * [FIPS-204] Section 7.3, Algorithm 31.
+ */
+RejBoundedPoly: [66]Byte -> R
+RejBoundedPoly ρ = a where
+    // Steps 2 - 3.
+    ctx0 = H ρ
+
+    // Step 4, 17. The `take` replaces the loop condition.
+    a = take`{256} (sample ctx0)
+
+    sample : [inf][8] -> [inf]Integer
+    sample HSqueeze = a' where
+        // Step 5. This pops one byte off the pseudorandom stream.
+        ([z] # ctx) = HSqueeze
+
+        // Step 6 - 8. We use Cryptol-native functions instead of dividing
+        // and modding `z`. See `TakeAndDropAreDivAndMod` for the equivalence.
+        z0 = CoeffFromHalfByte (drop`{4} z)
+        z1 = CoeffFromHalfByte (take`{4} z)
+
+        // Step 8 - 15. The recursive calls replace the `while` loop.
+        // In order to make the types work, we have to mash the two conditions
+        // together and make exactly one recursive call.
+        a' = case z0 of
+            Some z0' -> case z1 of
+                Some z1' -> [z0', z1'] # (sample ctx)
+                None -> [z0'] # (sample ctx)
+            None -> case z1 of
+                Some z1' -> [z1'] # (sample ctx)
+                None -> sample ctx
+
+/**
+ * Given a byte, the `take` function is equivalent to dividing by 16, and the
+ * `drop` function is equivalent to taking the value mod 16.
+ *
+ * We prefer the Cryptol functions because they automatically convert from a
+ * byte to a 4-bit value, which we need to call `CoeffFromHalfByte`. Here, we
+ * use `zext` pad the 4-bit-vector, so we can compare it to the byte.
+ * ```repl
+ * :prove TakeAndDropAreDivAndMod
+ * ```
+ */
+TakeAndDropAreDivAndMod : [8] -> Bool
+property TakeAndDropAreDivAndMod z = dropIsMod && takeIsDiv where
+    dropIsMod = z % 16 == zext (drop`{4} z)
+    // Division of bit vectors in Cryptol automatically takes the floor.
+    takeIsDiv = z / 16 == zext (take`{4} z)
