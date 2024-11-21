@@ -1,0 +1,111 @@
+/**
+ * ML-DSA (CRYSTALS-Dilithium) signature scheme.
+ *
+ * This provides an algorithm for digital signatures with non-repudiation,
+ * designed to be secure against an adversary with a large-scale quantum
+ * computer.
+ *
+ * This executable specification matches the final version of [FIPS-204].
+ *
+ * References:
+ * [FIPS-204]: National Institute of Standards and Technology. Module-Lattice-
+ *     Based Digital Signature Standard. (Department of Commerce, Washington,
+ *     D.C.), Federal Information Processing Standards Publication (FIPS) NIST
+ *     FIPS 204. August 2024.
+ *     @see https://doi.org/10.6028/NIST.FIPS.204
+ *
+ * @copyright Galois Inc
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Asymmetric::Signature::ML_DSA::Specification where
+
+parameter
+    /**
+     * Modulus defining the ring used throughout the protocol.
+     * [FIPS-204] Section 4, Table 1.
+     */
+    type q = 8380417
+
+    /**
+     * Hamming weight of the mask sampled in signing.
+     *
+     * The spec describes this as "number of ±1s in polynomial `c`", where `c`
+     * is the verifier's challenge.
+     * [FIPS-204] Section 4, Table 1.
+     *
+     * The type constraint is drawn from [FIPS-204] Section 7.3, Algorithm 29.
+     */
+    type τ : #
+    type constraint (τ <= 64)
+
+    /**
+     * Collision strength of the commitment hash `c~` component of a signature.
+     * [FIPS-204] Section 4, Table 1.
+     */
+    type λ : #
+
+    /**
+     * Coefficient range of the commitment mask `y` used in signing.
+     * [FIPS-204] Section 4, Table 1.
+     *
+     * The type constraint, which claims that γ1 must be a power of 2, is drawn
+     * from [FIPS-203] Section 7.2, Algorithm 27.
+     */
+    type γ1 : #
+    type constraint (2 ^^ (lg2 γ1) == γ1)
+
+    /**
+     * Low-order rounding range; this defines how to round the signer's
+     * commitment `w`.
+     * [FIPS-204] Section 4, Table 1.
+     *
+     * The type constraint is drawn from [FIPS-204] Section 7.4. The primary
+     * constraint we wish to encode is that `2 * γ2` divides `q - 1`;
+     * to express this, we must also require that γ2 is non-zero.
+     */
+    type γ2 : #
+    type constraint (γ2 > 0, (q - 1) % (2 * γ2) == 0)
+
+    /**
+     * Dimensions of the matrix `A`, which is part of the public key.
+     * [FIPS-204] Section 4, Table 1.
+     */
+    type k : #
+    type ell : #
+
+    /**
+     * Private key range; the private key is a polynomial whose coefficients
+     * are all in a range defined by η.
+     * [FIPS-204] Section 4, Table 1.
+     *
+     * The type constraint (that η must be in the set {2, 4}) is drawn from
+     * [FIPS-204] Section 7.1, Algorithm 15.
+     */
+    type η : #
+    type constraint (η % 2 == 0, 2 <= η, η <= 4)
+
+    /**
+     * Maximum Hamming weight for the hint component of a signature.
+     * [FIPS-204] Section 4, Table 1.
+     */
+    type ω : #
+
+/**
+ * A 512th root of unity in `Z_q`.
+ * [FIPS-204] Section 4, Table 1.
+ */
+type ζ = 1753
+
+/**
+ * Number of dropped bits from `t` (this compresses the public key for
+ * a performance optimization).
+ * [FIPS-204] Section 4, Table 1.
+ */
+type d = 13
+
+/**
+ * Allowable error range for signature components. In signing, this is used to
+ * determine if a candidate signature is valid.
+ * [FIPS-204] Section 4, Table 1.
+ */
+type β = η * τ
