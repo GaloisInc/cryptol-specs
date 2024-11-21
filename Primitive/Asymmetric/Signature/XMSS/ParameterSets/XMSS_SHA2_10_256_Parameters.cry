@@ -1,0 +1,25 @@
+/**
+ * Definition of the approved parameter set used to instantiate
+ * `XMSS_SHA2_10_256`.
+ * [RFC-8391] Section 5.1.
+ *
+ * @copyright Galois, Inc
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Asymmetric::Signature::XMSS::ParameterSets::XMSS_SHA2_10_256_Parameters
+where
+    import Primitive::Keyless::Hash::SHA2::Instantiations::SHA256 as SHA256
+
+    type n = 32
+    type h = 10
+
+    H KEY M = split (SHA256::hash ((1 : [32 * 8]) # join (KEY # M)))
+
+    // The maximum message width is defined by SHA256.
+    type MaxMessageWidth = SHA256::MaxMessageWidth
+
+    // The padding in this instantiation includes the domain separator (32
+    // bytes) and the key (3n bytes).
+    type PaddingWidth = (32 * 8) + (3 * n * 8)
+
+    H_msg KEY M = split (SHA256::hash ((2 : [32 * 8]) # join (KEY # M)))
