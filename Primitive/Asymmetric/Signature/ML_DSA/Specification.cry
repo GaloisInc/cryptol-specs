@@ -19,6 +19,18 @@
  */
 module Primitive::Asymmetric::Signature::ML_DSA::Specification where
 
+type Byte = [8]
+
+/**
+ * The ring of single-variable polynomials over the integers mod 2, modulo
+ * `X^256 + 1`.
+ * [FIPS-204] Section 2.3 and Section 2.4.1.
+ *
+ * We represent individual elements in `ℤ_2` as bits, so this is just a bit
+ * array.
+ */
+type R2 = [256]
+
 parameter
     /**
      * Modulus defining the ring used throughout the protocol.
@@ -72,6 +84,7 @@ parameter
      */
     type k : #
     type ell : #
+    type constraint (fin k, fin ell)
 
     /**
      * Private key range; the private key is a polynomial whose coefficients
@@ -109,3 +122,52 @@ type d = 13
  * [FIPS-204] Section 4, Table 1.
  */
 type β = η * τ
+
+
+HintBitPack : [k]R2 -> [ω + k]Byte
+HintBitPack h = y where
+    y_Indexes = findOnes (join h) 0 []
+
+    // TODO : add "count-for-each-h" list at the end.
+
+    y = zero
+
+private
+    /**
+     * Helper function for `HintBitPack` that records all the indexes of all
+     * the non-zero elements of `h`
+     * [FIPS-204] Section 7.1, Algorithm 20, Steps 1-9.
+     *
+     * The top-level call should set:
+     * - h = the entire hint, joined into one array;
+     * - j = 0 (as in Step 4);
+     * - yIndex = [] (to indicate that we have not identified any non-zero
+     *   entries yet).
+     *
+     * This does not look like the spec; we try to provide intuition:
+     * - This function assumes the hint `h` is passed as a flattened single
+     *   array (rather than a 2D array as described in the spec). This gives us
+     *   a single recursive iterator `j` instead of two, like the pair of
+     *   loops in the spec. In the recursive case, a single iterator has a much
+     *   simpler type signature compared to a dual-iterator implementation.
+     * - The iterator `j` is a `Byte` so it will increase `mod 256`. This
+     *   mimics the behavior in the inner loop in Step 4, and ensures that
+     *   `y[Index]` is set to the correct value.
+     * - We don't explicitly track the value of `Index`; instead, we build up
+     *   the array `y_Index` as we encounter each non-zero entry. Once we've
+     *   traversed the entire hint, we pad the remaining potential-index bytes
+     *   with 0, per Step 1.
+     *
+     * This function does _not_ implement Step 10 of Algorithm 20!
+     */
+    findOnes : {m, n} (fin m, fin n) => [m] -> Byte -> [n]Byte -> [ω]Byte
+    findOnes h j yIndex
+        | (m == 0, n > ω) => error "the hint had too many non-zero entries!"
+        | (m == 0, n <= ω) => yIndex # zero
+        | (m > 0) =>
+            if hi_j == 1 then
+                findOnes h_tail (j + 1) (yIndex # [j])
+            else
+                findOnes h_tail (j + 1) yIndex
+            where
+                ([hi_j] # h_tail) = h
