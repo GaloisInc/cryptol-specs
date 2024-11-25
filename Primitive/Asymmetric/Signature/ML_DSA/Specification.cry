@@ -102,6 +102,7 @@ parameter
      * [FIPS-204] Section 4, Table 1.
      */
     type ω : #
+    type constraint (fin ω)
 
 /**
  * A 512th root of unity in `Z_q`.
@@ -124,13 +125,32 @@ type d = 13
 type β = η * τ
 
 
+/**
+ * Encode a polynomial vector `h` with binary coefficients into a byte string.
+ * [FIPS-204] Section 7.1, Algorithm 20.
+ */
 HintBitPack : [k]R2 -> [ω + k]Byte
 HintBitPack h = y where
-    y_Indexes = findOnes (join h) 0 []
+    // Step 1 - 9. This finds the indices of all the non-zero bits in `h`.
+    y_Index = findOnes (join h) 0 []
 
-    // TODO : add "count-for-each-h" list at the end.
+    // Count the number of non-zero bits in a polynomial `R2`.
+    countOnes : R2 -> Byte
+    countOnes hi = foldl
+        (\numOnes b -> if b then numOnes + 1 else numOnes)
+        0
+        hi
 
-    y = zero
+    // Count the non-zero bits in each polynomial in `h`...
+    individualCounts = [countOnes hi | hi <- h]
+    // ...then get the running sum as in Step 10.
+    // `scanl` includes the initial value (0), which we don't want.
+    y_ωi = drop`{1} (scanl (+) 0 individualCounts)
+
+    // The first `ω` bytes encode where non-zero terms occur; the last `k`
+    // bytes encode how many nonzero coefficients are present in each of the
+    // polynomials comprising `h`.
+    y = y_Index # y_ωi
 
 private
     /**
