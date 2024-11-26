@@ -40,6 +40,16 @@ type Tq = [256](Z q)
 type R = [256]Integer
 
 /**
+ * The ring of single-variable polynomials over the integers mod 2, modulo
+ * `X^256 + 1`.
+ * [FIPS-204] Section 2.3 and Section 2.4.1.
+ *
+ * We represent individual elements in `ℤ_2` as bits, so this is just a bit
+ * array.
+ */
+type R2 = [256]
+
+/**
  * Wrapper function around SHAKE256, specifying the length `l` in bytes.
  * [FIPS-204] Section 3.7.
  *
@@ -116,6 +126,7 @@ parameter
      */
     type k : #
     type ell : #
+    type constraint (fin k, fin ell, k > 0)
 
     /**
      * Private key range; the private key is a polynomial whose coefficients
@@ -133,6 +144,7 @@ parameter
      * [FIPS-204] Section 4, Table 1.
      */
     type ω : #
+    type constraint (fin ω)
 
 /**
  * A 512th root of unity in `Z_q`.
@@ -188,6 +200,35 @@ CoeffFromHalfByte b =
     else
         if (`η == 4) && (b < 9) then Some (4 - toInteger b)
         else None
+
+/**
+ * Encode a polynomial vector `h` with binary coefficients into a byte string.
+ * [FIPS-204] Section 7.1, Algorithm 20.
+ */
+HintBitPack : [k]R2 -> [ω + k]Byte
+HintBitPack h = yFinal where
+    // Step 1.
+    y0 = zero : [ω + k]Byte
+    // Step 2.
+    Index0 = 0
+    // Steps 3 - 11. This builds a list with all the intermediate values of
+    // `y` and `Index`...
+    yAndIndex = [(y0, Index0)] # [ (y'', Index') where
+            // Steps 5 - 8.
+            (y', Index') = if (h @i @j) != 0 then
+                    (update y Index j, Index + 1)
+                else (y, Index)
+
+            // Step 10.
+            y'' = if j == 255 then
+                    update y' (`ω + i) Index'
+                else y'
+        | (y, Index) <- yAndIndex
+        // Step 3 - 4.
+        | i <- [0..k-1], j <- [0..255]
+    ]
+    // Step 12. ...we return the last `y`.
+    (yFinal, _) = yAndIndex ! 0
 
 /**
  * Sample a polynomial in the ring `Tq`.
