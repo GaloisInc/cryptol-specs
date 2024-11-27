@@ -39,9 +39,13 @@ parameter
      *
      * Allowable values for each word size `w` are defined in [FIPS-180-4]
      * Section 1, Figure 1.
+     *
+     * The spec does not explicitly require that the digest size is a multiple
+     * of 8, but all the allowable sizes are; adding this explicit constraint
+     * allows us to define a hash function that operates over bytes.
      */
     type DigestSize : #
-    type constraint (8 * w >= DigestSize)
+    type constraint (8 * w >= DigestSize, DigestSize % 8 == 0)
 
     /**
      * Initial hash value.
@@ -360,3 +364,13 @@ hash M = take (join (digest ! 0)) where
             c' = b
             b' = a
             a' = T1 + T2
+
+/**
+ * Secure hash function, computed over bytes.
+ *
+ * This is not explicitly part of the spec, but many applications represent
+ * their input and output over byte strings (rather than bit strings as used
+ * in the spec itself).
+ */
+hashBytes: {l} (ValidMessageLength (8 * l)) => [l][8] -> [DigestSize / 8][8]
+hashBytes M = groupBy`{8} (hash (join M))

@@ -112,53 +112,38 @@ private
     /**
      * Pseudorandom function (PRF).
      * [FIPS-203] Section 4.1, Equations 4.2 and 4.3.
-     *
-     * The SHA3 API operates over bit streams; the `groupBy` and `join` calls
-     * convert to and from our byte arrays.
      */
     PRF : {eta} (2 <= eta, eta <= 3) => [32]Byte -> Byte -> [64 * eta]Byte
-    PRF s b = groupBy`{8} (SHAKE256::xof (join s # b))
+    PRF s b = SHAKE256::xofBytes`{8 * 64 * eta} (s # [b])
 
     /**
      * One of the hash functions used in the protocol.
      * [FIPS-203] Section 4.1, Equation 4.4.
-     *
-     * The SHA3 API operates over bit streams; the `groupBy` and `join` calls
-     * convert to and from our byte arrays.
      */
     H : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
-    H M = groupBy (SHA3_256::hash (join M))
+    H s = SHA3_256::hashBytes s
 
     /**
      * One of the hash functions used in the protocol.
      * [FIPS-203] Section 4.1, Equation 4.4.
-     *
-     * The SHA3 API operates over bit streams; the `groupBy` and `join` calls
-     * convert to and from our byte arrays.
      */
     J : {hinl} (fin hinl) => [hinl]Byte -> [32]Byte
-    J s = groupBy (SHAKE256::xof (join s))
+    J s = SHAKE256::xofBytes`{8 * 32} s
 
     /**
      * One of the hash functions used in the protocol.
      * [FIPS-203] Section 4.1, Equation 4.5.
-     *
-     * The SHA3 API operates over bit streams; the `groupBy` and `join` calls
-     * convert to and from our byte arrays.
      */
     G : {ginl} (fin ginl) => [ginl]Byte -> ([32]Byte, [32]Byte)
-    G M = (a, b) where
-        [a, b] = split`{2} (groupBy`{8} (SHA3_512::hash (join M)))
+    G c = (a, b) where
+        [a, b] = split (SHA3_512::hashBytes c)
 
     /**
      * eXtendable-Output Function (XOF) wrapper.
      * [FIPS-203] Section 4.1, Equation 4.6.
-     *
-     * The SHA3 API operates over bit streams; the `groupBy` and `join` calls
-     * convert to and from our byte arrays.
      */
     XOF : ([34]Byte) -> [inf]Byte
-    XOF(d) = groupBy (SHAKE128::xof (join d))
+    XOF = SHAKE128::xofBytes
 
     /**
      * Conversion from little-endian bit arrays to byte arrays.
