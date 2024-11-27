@@ -275,7 +275,9 @@ HintBitUnpack y = h___ where
     Step7_14 : Pair -> Byte -> Byte -> Option Pair
     Step7_14 (h, Index) i First =
         if Index < (y@(`ω + i)) then
-            if (Index > First) ==> ((y@(Index - 1)) >= (y@Index)) then None
+            // The `/\` is a short-cutting `and`, equivalent to the nested `if`
+            // statements in the spec.
+            if ((Index > First) /\ (y@(Index - 1) >= y@Index)) then None
             // Recursive call is equivalent to continuing the loop.
             // The constants `i` and `First` do not change between iterations.
             else Step7_14
