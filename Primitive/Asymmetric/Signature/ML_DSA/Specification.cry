@@ -291,12 +291,22 @@ HintBitUnpack y = h20 where
 
 /**
  * Verify that `HintBitUnpack` is the reverse of `HintBitPack`.
+ *
+ * This takes a list of indexes indicating the non-zero elements and constructs
+ * a valid, sparse `h` -- rejection sampling was not a valid option because
+ * sparse-enough `h`s were too rare.
  * ```repl
  * :check HintPackingInverts
  * ```
  */
-property HintPackingInverts h = sum (map toInteger (join (map groupBy`{1} h))) < `ω ==>
-   HintBitUnpack (HintBitPack h) == h
+HintPackingInverts : {w} (w <= ω) => [w][lg2 (256 * k)] -> Bit
+property HintPackingInverts h_Indexes =
+    case HintBitUnpack (HintBitPack h) of
+        Some h' -> h == h'
+        None -> False
+    where
+        // build h out of h_indexes:
+        h = split`{k} [if elem idx h_Indexes then 1 else 0 | idx <- [0..(256 * k) - 1]]
 
 /**
  * Sample a polynomial in the ring `Tq`.
