@@ -1,5 +1,8 @@
 /**
  * Convenience functions for working with `Option`s.
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
  */
 module Common::OptionUtils where
 
@@ -15,22 +18,23 @@ isNone opt = ~ isSome opt
  * Map an `Option a` to an `Option b` by applying a function to a contained
  * value (if `Some`) or returns `None` (if `None`).
  */
-mapOption : {a, b} (a -> b) -> Option a -> Option b
-mapOption f opt = case opt of
+optApply : {a, b} (a -> b) -> Option a -> Option b
+optApply f opt = case opt of
     Some x -> Some (f x)
     None -> None
 
 /**
- * Flatten a nested option into a single option.
+ * Flatten a nested `Option` into a single `Option` that is `Some` only if
+ * both original `Option`s are `Some`.
  */
-flatten : {a} Option (Option a) -> Option a
-flatten opt = case opt of
+optFlatten : {a} Option (Option a) -> Option a
+optFlatten opt = case opt of
     Some opt' -> opt'
     None -> None
 
 /**
- * Map an `Option a` to an `Option b` by calling `mapOption` on a function that
- * produces an `Option b`, then flattening the result.
+ * Map an `Option a` to an `Option b` by calling `optApply` on a function that
+ * produces an `Option b`, then `optFlatten`ing the result.
  */
-flatMap : {a, b} (a -> Option b) -> Option a -> Option b
-flatMap f opt = flatten (mapOption f opt)
+optFlatApply: {a, b} (a -> Option b) -> Option a -> Option b
+optFlatApply f opt = optFlatten (optApply f opt)
