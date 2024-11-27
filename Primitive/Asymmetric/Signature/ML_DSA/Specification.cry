@@ -19,6 +19,7 @@
  */
 module Primitive::Asymmetric::Signature::ML_DSA::Specification where
 
+import Common::utils(while)
 import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHAKE128
 import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHAKE256
 
@@ -126,7 +127,7 @@ parameter
      */
     type k : #
     type ell : #
-    type constraint (fin k, fin ell, k > 0)
+    type constraint (fin k, fin ell, k > 0, width k <= 8)
 
     /**
      * Private key range; the private key is a polynomial whose coefficients
@@ -144,7 +145,7 @@ parameter
      * [FIPS-204] Section 4, Table 1.
      */
     type ω : #
-    type constraint (fin ω)
+    type constraint (fin ω, width ω <= 8)
 
 /**
  * A 512th root of unity in `Z_q`.
@@ -229,6 +230,73 @@ HintBitPack h = yFinal where
     ]
     // Step 12. ...we return the last `y`.
     (yFinal, _) = yAndIndex ! 0
+
+/**
+ * This diverges slightly from the spec:
+ * - To simplify updating `h`, we treat it as a single array of size `256k`.
+ *   We separate it into the correct `[k]R2` representation in the final step.
+ *   We access the array in "the natural way" -- that is, in Step 12, the
+ *   element `h[i]_y[Index]` is at index `i * k + y[Index]` in our array.
+ */
+HintBitUnpack : [ω + k]Byte -> [k]R2
+HintBitUnpack y = h20 where
+   // Step 1.
+   h0 = zero : [k * 256]
+   // Step 2.
+   Index0 = 0
+   // Step 3. Construct a list comprising the values of `h` and `Index`
+   // at the end of each iteration of the loop in Steps 3 - 15.
+   hAndIndex = [(h0, Index0)] # [(h', Index') where
+           // Steps 4 - 5.
+           _ = if (y@(`ω + i) < Index) || (y@(`ω + i) > `ω) then
+                   error "invalid count"
+               else 0
+
+           // Step 6.
+           First = Index
+
+           // Steps 7 - 14. This loop is uses recursion under the hood and
+           // operates over a state of `(h : [k * 256], Index : Integer)`
+           (h', Index') = while
+               // Step 7 (condition).
+               (\(_, Idx) -> Idx < y@(`ω + i))
+               // Steps 8 - 13 (function body).
+               (\(h_, Idx) ->
+                   if (Idx > First) && (y@(Idx - 1) >= y@Idx) then
+                       error "Invalid y[Index]"
+                   else (
+                       update h_ (i*`k + y@Idx) 1,
+                       Idx + 1)
+               )
+               // Initial value of `h` and `Index` at the beginning of the
+               // loop.
+               (h, Index)
+       | (h, Index) <- hAndIndex
+       | i <- [0..k-1]
+   ]
+   // No direct correlation in the spec; this gets the values of `h` and
+   // `Index` at the end of the `for` loop (e.g. at Step 15).
+   (h15, Index15) = hAndIndex ! 0
+
+   // This helper function uses recursion to read any leftover bytes in the
+   // first `ω` bytes of `y`; it returns an error if any of them are non-zero.
+   checkZero idx =
+       if idx > (`ω - 1) then True
+       else if (y@idx != zero) then False
+       else checkZero (idx + 1)
+
+   // Step 16 - 19. Recall that `Index15` is the value of `Index` at Step 15.
+   h20 = if (checkZero Index15) then split h15
+       else error "non-zero entries padding indexes"
+
+/**
+ * Verify that `HintBitUnpack` is the reverse of `HintBitPack`.
+ * ```repl
+ * :check HintPackingInverts
+ * ```
+ */
+property HintPackingInverts h = sum (map toInteger (join (map groupBy`{1} h))) < `ω ==>
+   HintBitUnpack (HintBitPack h) == h
 
 /**
  * Sample a polynomial in the ring `Tq`.
