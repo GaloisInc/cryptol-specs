@@ -19,6 +19,7 @@
  */
 module Primitive::Asymmetric::Signature::ML_DSA::Specification where
 
+import Common::OptionUtils(flatMap)
 import Common::utils(while)
 import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHAKE128
 import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHAKE256
@@ -238,56 +239,69 @@ HintBitPack h = yFinal where
  *   We access the array in "the natural way" -- that is, in Step 12, the
  *   element `h[i]_y[Index]` is at index `i * k + y[Index]` in our array.
  */
-HintBitUnpack : [ω + k]Byte -> [k]R2
-HintBitUnpack y = h20 where
-   // Step 1.
-   h0 = zero : [k * 256]
-   // Step 2.
-   Index0 = 0
-   // Step 3. Construct a list comprising the values of `h` and `Index`
-   // at the end of each iteration of the loop in Steps 3 - 15.
-   hAndIndex = [(h0, Index0)] # [(h', Index') where
-           // Steps 4 - 5.
-           _ = if (y@(`ω + i) < Index) || (y@(`ω + i) > `ω) then
-                   error "invalid count"
-               else 0
+HintBitUnpack : [ω + k]Byte -> Option ([k]R2)
+HintBitUnpack y = h___ where
+    // Useful rename for annotation functions that operate over the stateful
+    // pair of `h` and `Index` used across this function.
+    type Pair = ([k * 256], Byte)
 
-           // Step 6.
-           First = Index
+    // Step 1.
+    h0 = zero : [k * 256]
+    // Step 2.
+    Index0 = 0
 
-           // Steps 7 - 14. This loop is uses recursion under the hood and
-           // operates over a state of `(h : [k * 256], Index : Integer)`
-           (h', Index') = while
-               // Step 7 (condition).
-               (\(_, Idx) -> Idx < y@(`ω + i))
-               // Steps 8 - 13 (function body).
-               (\(h_, Idx) ->
-                   if (Idx > First) && (y@(Idx - 1) >= y@Idx) then
-                       error "Invalid y[Index]"
-                   else (
-                       update h_ (i*`k + y@Idx) 1,
-                       Idx + 1)
-               )
-               // Initial value of `h` and `Index` at the beginning of the
-               // loop.
-               (h, Index)
-       | (h, Index) <- hAndIndex
-       | i <- [0..k-1]
-   ]
-   // No direct correlation in the spec; this gets the values of `h` and
-   // `Index` at the end of the `for` loop (e.g. at Step 15).
-   (h15, Index15) = hAndIndex ! 0
+    // Step 3. Construct a list comprising the values of `h` and `Index`
+    // at the end of each iteration of the loop in Steps 3 - 15.
+    hAndIndex = [Some (h0, Index0)] # [
+            flatMap (Step4_5 i) maybe_hAndIndex
+        | maybe_hAndIndex <- hAndIndex
+        | i <- [0..k-1]
+    ]
 
-   // This helper function uses recursion to read any leftover bytes in the
-   // first `ω` bytes of `y`; it returns an error if any of them are non-zero.
-   checkZero idx =
-       if idx > (`ω - 1) then True
-       else if (y@idx != zero) then False
-       else checkZero (idx + 1)
+    // Steps 4 - 5.
+    Step4_5 : Byte -> Pair -> Option Pair
+    Step4_5 i (h, Index) = if (y@(`ω + i) < Index) || (y@(`ω + i) > `ω) then
+            None
+        else Step6_15 (h, Index) i
 
-   // Step 16 - 19. Recall that `Index15` is the value of `Index` at Step 15.
-   h20 = if (checkZero Index15) then split h15
-       else error "non-zero entries padding indexes"
+    // Steps 6 -15
+    Step6_15 : Pair -> Byte -> Option Pair
+    Step6_15 (h, Index) i = result15 where
+        // Step 6.
+        First = Index
+        result15 = Step7_14 (h, Index) i First
+
+    // Steps 7 - 14.
+    Step7_14 : Pair -> Byte -> Byte -> Option Pair
+    Step7_14 (h, Index) i First =
+        if Index < (y@(`ω + i)) then
+            if (Index > First) ==> ((y@(Index - 1)) >= (y@Index)) then None
+            // Recursive call is equivalent to continuing the loop.
+            // The constants `i` and `First` do not change between iterations.
+            else Step7_14
+                (update h (i*`k + y@Index) 1,
+                Index + 1)
+                i First
+        // If the loop condition is no longer true, return the current values
+        // of `h` and `Index`.
+        else Some (h, Index)
+
+    // Get the values of `h` and `Index` after the loop in Steps 3 - 15.
+    maybe_hAndIndex = hAndIndex ! 0
+
+    // This helper function uses recursion to read any leftover bytes in the
+    // first `ω` bytes of `y`; it returns an error if any of them are non-zero.
+    checkZero idx =
+        if idx > (`ω - 1) then True
+        else if (y@idx != zero) then False
+        else checkZero (idx + 1)
+
+    // Step 16 - 20.
+    h___ = flatMap
+        (\(h, Index) -> if (checkZero Index) then Some (split`{k} h)
+            else None
+        )
+        maybe_hAndIndex
 
 /**
  * Verify that `HintBitUnpack` is the reverse of `HintBitPack`.
