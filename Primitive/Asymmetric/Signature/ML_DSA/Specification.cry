@@ -237,7 +237,7 @@ HintBitPack h = yFinal where
  * - To simplify updating `h`, we treat it as a single array of size `256k`.
  *   We separate it into the correct `[k]R2` representation in the final step.
  *   We access the array in "the natural way" -- that is, in Step 12, the
- *   element `h[i]_y[Index]` is at index `i * k + y[Index]` in our array.
+ *   element `h[i]_y[Index]` is at index `i * 256 + y[Index]` in our array.
  */
 HintBitUnpack : [ω + k]Byte -> Option ([k]R2)
 HintBitUnpack y = h___ where
@@ -259,20 +259,20 @@ HintBitUnpack y = h___ where
     ]
 
     // Steps 4 - 5.
-    Step4_5 : Byte -> Pair -> Option Pair
+    Step4_5 : Integer -> Pair -> Option Pair
     Step4_5 i (h, Index) = if (y@(`ω + i) < Index) || (y@(`ω + i) > `ω) then
             None
         else Step6_15 (h, Index) i
 
     // Steps 6 -15
-    Step6_15 : Pair -> Byte -> Option Pair
+    Step6_15 : Pair -> Integer -> Option Pair
     Step6_15 (h, Index) i = result15 where
         // Step 6.
         First = Index
         result15 = Step7_14 (h, Index) i First
 
     // Steps 7 - 14.
-    Step7_14 : Pair -> Byte -> Byte -> Option Pair
+    Step7_14 : Pair -> Integer -> Byte -> Option Pair
     Step7_14 (h, Index) i First =
         if Index < (y@(`ω + i)) then
             // The `/\` is a short-cutting `and`, equivalent to the nested `if`
@@ -281,7 +281,7 @@ HintBitUnpack y = h___ where
             // Recursive call is equivalent to continuing the loop.
             // The constants `i` and `First` do not change between iterations.
             else Step7_14
-                (update h (i*`k + y@Index) 1,
+                (update h (i*256 + (toInteger (y@Index))) 1,
                 Index + 1)
                 i First
         // If the loop condition is no longer true, return the current values
