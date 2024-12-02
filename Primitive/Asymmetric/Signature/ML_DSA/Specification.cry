@@ -202,6 +202,19 @@ BitsToIntegersInverts : {α} (fin α, α > 0) => [α] -> Bit
 property BitsToIntegersInverts x = IntegerToBits (BitsToInteger x) == x
 
 /**
+ * Compute a base-256 representation of `x mod 256^α` using little-endian byte
+ * order.
+ * [FIPS-204] Section 7.1, Algorithm 11.
+ */
+IntegerToBytes : {α} (fin α, α > 0) => Integer -> [α]Byte
+IntegerToBytes x = y where
+    // Step 3. Compute the value of `x'` at each iteration of the loop.
+    xs' = [x] # [x' / 256 | x' <- xs']
+
+    // Step 2, 4.
+    y = [fromInteger (x' % 256) | x' <- xs' | i <- [0..α - 1]]
+
+/**
  * Generate an element in the integers mod `q` or a failure indicator.
  * [FIPS-204] Section 7.1, Algorithm 14.
  */
