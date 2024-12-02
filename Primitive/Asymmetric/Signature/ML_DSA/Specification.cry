@@ -126,7 +126,7 @@ parameter
      */
     type k : #
     type ell : #
-    type constraint (fin k, fin ell, k > 0, width k <= 8)
+    type constraint (fin k, fin ell, k > 0)
 
     /**
      * Private key range; the private key is a polynomial whose coefficients
@@ -142,9 +142,18 @@ parameter
     /**
      * Maximum Hamming weight for the hint component of a signature.
      * [FIPS-204] Section 4, Table 1.
+     *
+     * The constraints are drawn from [FIPS-204] Algorithm 21:
+     * - `ω > 0`: in Step 16, we have to be able to compute `ω - 1`.
+     * - `width ω <= 8`: This is an implementation artifact from Step 4. We
+     *   compare `ω` to an element in `y`, which is a byte. Cryptol will
+     *   default to fitting `ω` into in a byte. This is always true with the
+     *   allowable parameter sets. If a new parameter set is released with a
+     *   much larger `ω`, we can modify the implementation to remove this
+     *   constraint without affecting functionality.
      */
     type ω : #
-    type constraint (fin ω, width ω <= 8)
+    type constraint (fin ω, ω > 0, width ω <= 8)
 
 /**
  * A 512th root of unity in `Z_q`.
@@ -297,16 +306,16 @@ HintBitUnpack y = h20 where
     // Get the values of `h` and `Index` after the loop in Steps 3 - 15.
     maybe_hAndIndex' = hAndIndexes ! 0
 
-    // This helper function uses recursion to read any leftover bytes in the
-    // first `ω` bytes of `y`; it returns an error if any of them are non-zero.
-    checkZero i =
-        if i > (`ω - 1) then True
-        else if (y@i != zero) then False
-        else checkZero (i + 1)
+    // This helper function reads any "leftover" bytes (e.g. beyond `Index`) in
+    // the first `ω` bytes of `y`; it returns `True` if all of them are zero.
+    checkLeftoverBytes Index = and [i >= Index ==> y@i == 0 | i <- [0..ω - 1]]
 
     // Step 16 - 20.
     h20 = case maybe_hAndIndex' of
-        Some hAndIndex -> if (checkZero Index) then Some (split`{k} h)
+        Some hAndIndex -> if (checkLeftoverBytes Index) then
+                // This `split` converts back to the spec-adherent
+                // representation of `h`.
+                Some (split`{k} h)
             else None
             where (h, Index) = hAndIndex
         None -> None
