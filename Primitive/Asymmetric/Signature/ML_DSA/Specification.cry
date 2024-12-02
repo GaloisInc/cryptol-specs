@@ -19,6 +19,50 @@
  */
 module Primitive::Asymmetric::Signature::ML_DSA::Specification where
 
+import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHAKE128
+import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHAKE256
+
+type Byte = [8]
+
+/**
+ * Ring defined as the product of 256 elements in `Z q`, used for NTT.
+ * [FIPS-204] Section 2.3 and Section 2.4.1.
+ */
+type Tq = [256](Z q)
+
+/**
+ * Ring of single-variable polynomials over the integers mod `X^256 + 1`.
+ * [FIPS-204] Section 2.3 and Section 2.4.1.
+ *
+ * The `i`th element of this list represents the coefficient for the degree-`i`
+ * term.
+ */
+type R = [256]Integer
+
+/**
+ * Wrapper function around SHAKE256, specifying the length `l` in bytes.
+ * [FIPS-204] Section 3.7.
+ *
+ * The spec also defines a 3-part API for interacting with `H` (`Init`,
+ * `Absorb`, `Squeeze`); we simulate this by generating an infinite output
+ * and lazily taking things from it for each call to `Squeeze`, as described
+ * in the same section.
+ */
+H : {l, m} (fin m) => [m][8] -> [l][8]
+H str = SHAKE256::xofBytes`{8 * l} str
+
+/**
+ * Wrapper function around SHAKE128, specifying the length `l` in bytes.
+ * [FIPS-204] Section 3.7.
+ *
+ * The spec also defines a 3-part API for interacting with `G` (`Init`,
+ * `Absorb`, `Squeeze`); we simulate this by generating an infinite output
+ * and lazily taking things from it for each call to `Squeeze`, as described
+ * in the same section.
+ */
+G : {l, m} (fin m) => [m][8] -> [l][8]
+G str = SHAKE128::xofBytes`{8 * l} str
+
 parameter
     /**
      * Modulus defining the ring used throughout the protocol.
@@ -109,3 +153,117 @@ type d = 13
  * [FIPS-204] Section 4, Table 1.
  */
 type β = η * τ
+
+/**
+ * Generate an element in the integers mod `q` or a failure indicator.
+ * [FIPS-204] Section 7.1, Algorithm 14.
+ */
+CoeffFromThreeBytes : Byte -> Byte -> Byte -> Option (Z q)
+CoeffFromThreeBytes b0 b1 b2 = maybe_z where
+    // Steps 1 - 4.
+    b2' = if b2 > 127 then b2 - 128 else b2
+
+    // We have to explicitly expand the byte strings to support the
+    // operations in the next step. 32 bits gives us plenty of space.
+    [bq0, bq1, bq2'] = map zext`{32} [b0, b1, b2']
+
+    // Step 5.
+    z = 2^^16 * bq2' + 2^^8 * bq1 + bq0
+
+    // Step 6 - 7. We have to convert `z` into `Z q` manually in the successful
+    // case -- note that we can't do it sooner because otherwise the condition
+    // is moot.
+    maybe_z = if z < `q then Some (toZ z) else None
+
+    toZ : [32] -> Z q
+    toZ b = fromInteger (toInteger b)
+
+/**
+ * Generate an element of {-η, -η + 1, ..., η} or a failure indicator.
+ * [FIPS-204] Section 7.1, Algorithm 15.
+ */
+CoeffFromHalfByte : [4] -> Option Integer
+CoeffFromHalfByte b =
+    if (`η == 2) && (b < 15) then Some (2 - (toInteger b % 5))
+    else
+        if (`η == 4) && (b < 9) then Some (4 - toInteger b)
+        else None
+
+/**
+ * Sample a polynomial in the ring `Tq`.
+ * [FIPS-204] Section 7.3, Algorithm 30.
+ */
+RejNTTPoly : [32]Byte -> Tq
+RejNTTPoly ρ = a_hat where
+    // Step 2 - 3.
+    ctx0 = G ρ
+
+    // Step 4, 11. The `take` here replaces the loop condition.
+    a_hat = take`{256} (sample ctx0)
+
+    sample : [inf][8] -> [inf](Z q)
+    sample GSqueeze = a_hat' where
+        // Step 5. This pops the first 3 bytes off the pseudorandom stream.
+        (s, ctx) = splitAt`{3} GSqueeze
+
+        // Step 6.
+        a_hat_j = CoeffFromThreeBytes (s@0) (s@1) (s@2)
+
+        // Step 7 - 9. The recursive call here replaces the `while` loop.
+        a_hat' = case a_hat_j of
+            Some aj -> [aj] # (sample ctx)
+            // In the spec, the sample `a_hat_j` is always added to the list,
+            // and `j` is only increased if the sample was not rejected (so a
+            // rejected value is overwritten in the next iteration). Here,
+            // we only add `a_hat_j` if it's valid.
+            None -> sample ctx
+
+/**
+ * Sample an element in `R` with coefficients in the range [-η, η].
+ * [FIPS-204] Section 7.3, Algorithm 31.
+ */
+RejBoundedPoly: [66]Byte -> R
+RejBoundedPoly ρ = a where
+    // Steps 2 - 3.
+    ctx0 = H ρ
+
+    // Step 4, 17. The `take` replaces the loop condition.
+    a = take`{256} (sample ctx0)
+
+    sample : [inf][8] -> [inf]Integer
+    sample HSqueeze = a' where
+        // Step 5. This pops one byte off the pseudorandom stream.
+        ([z] # ctx) = HSqueeze
+
+        // Step 6 - 8. We use Cryptol-native functions instead of dividing
+        // and modding `z`. See `TakeAndDropAreDivAndMod` for the equivalence.
+        z0 = CoeffFromHalfByte (drop`{4} z)
+        z1 = CoeffFromHalfByte (take`{4} z)
+
+        // Step 8 - 15. The recursive calls replace the `while` loop.
+        // In order to make the types work, we have to mash the two conditions
+        // together and make exactly one recursive call.
+        a' = case z0 of
+            Some z0' -> case z1 of
+                Some z1' -> [z0', z1'] # (sample ctx)
+                None -> [z0'] # (sample ctx)
+            None -> case z1 of
+                Some z1' -> [z1'] # (sample ctx)
+                None -> sample ctx
+
+/**
+ * Given a byte, the `take` function is equivalent to dividing by 16, and the
+ * `drop` function is equivalent to taking the value mod 16.
+ *
+ * We prefer the Cryptol functions because they automatically convert from a
+ * byte to a 4-bit value, which we need to call `CoeffFromHalfByte`. Here, we
+ * use `zext` pad the 4-bit-vector, so we can compare it to the byte.
+ * ```repl
+ * :prove TakeAndDropAreDivAndMod
+ * ```
+ */
+TakeAndDropAreDivAndMod : [8] -> Bool
+property TakeAndDropAreDivAndMod z = dropIsMod && takeIsDiv where
+    dropIsMod = z % 16 == zext (drop`{4} z)
+    // Division of bit vectors in Cryptol automatically takes the floor.
+    takeIsDiv = z / 16 == zext (take`{4} z)
