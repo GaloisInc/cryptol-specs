@@ -155,6 +155,24 @@ type d = 13
 type β = η * τ
 
 /**
+ * Compute a base-2 representation of the input mod `2^α` using little-endian
+ * order.
+ * [FIPS-204] Section 7.1, Algorithm 9.
+ */
+IntegerToBits : {α} (fin α, α > 0) => Integer -> [α]
+IntegerToBits x = y' where
+    // Step 3. Compute the value of each `y_i`.
+    y = [x' % 2 | x' <- xs' | i <- [0..α - 1]]
+
+    // Step 4. Compute value of `x'` at each iteration of the loop.
+    // In Cryptol, integer division takes the floor by default.
+    xs' = [x] # [x' / 2 | x' <- xs']
+
+    // Cryptol-specific conversion: convert each Integer-typed bit to an actual
+    // bit and join into a single vector.
+    y' = join [(fromInteger yi) : [1] | yi <- y]
+
+/**
  * Generate an element in the integers mod `q` or a failure indicator.
  * [FIPS-204] Section 7.1, Algorithm 14.
  */
