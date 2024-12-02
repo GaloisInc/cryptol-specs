@@ -173,6 +173,35 @@ IntegerToBits x = y' where
     y' = join [(fromInteger yi) : [1] | yi <- y]
 
 /**
+ * Compute the integer value expressed by a bit string using little-endian
+ * order.
+ * [FIPS-204] Section 7.1, Algorithm 10.
+ */
+BitsToInteger : {α} (fin α, α > 0) => [α] -> Integer
+BitsToInteger y = xs ! 0 where
+    // Cryptol-specific conversion: separate the input into α 1-bit vectors,
+    // then convert each to an integer.
+    y' = map toInteger (split`{α} y)
+
+    // Steps 1 - 4. Compute the value of `x` at each iteration of the loop.
+    xs = [0] # [2 * x + y' @ (`α - i)
+        | x <- xs
+        | i <- [1..α]]
+
+/**
+ * The integer / bit conversion functions must invert each other.
+ * This is not explicit in the spec, but we define the property anyway.
+ * The parameter choices are approximately the same as some of the use cases
+ * in the spec.
+ * ```repl
+ * :check BitsToIntegersInverts`{44}
+ * :exhaust BitsToIntegersInverts`{10}
+ * ```
+ */
+BitsToIntegersInverts : {α} (fin α, α > 0) => [α] -> Bit
+property BitsToIntegersInverts x = IntegerToBits (BitsToInteger x) == x
+
+/**
  * Generate an element in the integers mod `q` or a failure indicator.
  * [FIPS-204] Section 7.1, Algorithm 14.
  */
