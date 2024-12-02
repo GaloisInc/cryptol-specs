@@ -25,7 +25,7 @@ import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHAKE256
 type Byte = [8]
 
 /**
- * Ring defined as the product of 255 elements in `Z q` used for NTT.
+ * Ring defined as the product of 256 elements in `Z q`, used for NTT.
  * [FIPS-204] Section 2.3 and Section 2.4.1.
  */
 type Tq = [256](Z q)
@@ -49,7 +49,7 @@ type R = [256]Integer
  * in the same section.
  */
 H : {l, m} (fin m) => [m][8] -> [l][8]
-H str = split (SHAKE256::xof`{8 * l} (join str))
+H str = SHAKE256::xofBytes`{8 * l} str
 
 /**
  * Wrapper function around SHAKE128, specifying the length `l` in bytes.
@@ -61,7 +61,7 @@ H str = split (SHAKE256::xof`{8 * l} (join str))
  * in the same section.
  */
 G : {l, m} (fin m) => [m][8] -> [l][8]
-G str = split (SHAKE128::xof`{8 * l} (join str))
+G str = SHAKE128::xofBytes`{8 * l} str
 
 parameter
     /**
@@ -212,6 +212,10 @@ RejNTTPoly ρ = a_hat where
         // Step 7 - 9. The recursive call here replaces the `while` loop.
         a_hat' = case a_hat_j of
             Some aj -> [aj] # (sample ctx)
+            // In the spec, the sample `a_hat_j` is always added to the list,
+            // and `j` is only increased if the sample was not rejected (so a
+            // rejected value is overwritten in the next iteration). Here,
+            // we only add `a_hat_j` if it's valid.
             None -> sample ctx
 
 /**
