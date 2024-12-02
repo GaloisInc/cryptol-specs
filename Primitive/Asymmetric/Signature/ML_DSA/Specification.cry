@@ -306,18 +306,21 @@ HintBitUnpack y = h20 where
     // Get the values of `h` and `Index` after the loop in Steps 3 - 15.
     maybe_hAndIndex' = hAndIndexes ! 0
 
-    // This helper function reads any "leftover" bytes (e.g. beyond `Index`) in
-    // the first `ω` bytes of `y`; it returns `True` if all of them are zero.
-    checkLeftoverBytes Index = and [i >= Index ==> y@i == 0 | i <- [0..ω - 1]]
-
     // Step 16 - 20.
     h20 = case maybe_hAndIndex' of
-        Some hAndIndex -> if (checkLeftoverBytes Index) then
+        Some hAndIndex -> if checkLeftoverBytes then
                 // This `split` converts back to the spec-adherent
                 // representation of `h`.
                 Some (split`{k} h)
             else None
-            where (h, Index) = hAndIndex
+            where
+                (h, Index) = hAndIndex
+                // This helper reads any "leftover" bytes (e.g. beyond `Index`)
+                // in the first `ω` bytes of `y`; it returns `True` if all of
+                // them are zero.
+                checkLeftoverBytes = and [i >= Index ==> y@i == 0
+                    | i <- [0..ω - 1]]
+
         None -> None
 
 /**
