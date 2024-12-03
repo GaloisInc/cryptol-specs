@@ -25,6 +25,17 @@ import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHAKE256
 type Byte = [8]
 
 /**
+ * The `bitlen` function defined in the spec is equivalent to the Cryptol
+ * built-in `width` function on types. We use `width` throughout this
+ * executable spec so that we can operate over types.
+ * [FIPS-204] Section 2.3, "bitlen a".
+ * ```repl
+ * :prove bitlenIsWidth
+ * ```
+ */
+property bitlenIsWidth = (`(width 32) == 6) && (`(width 31) == 5)
+
+/**
  * Ring defined as the product of 256 elements in `Z q`, used for NTT.
  * [FIPS-204] Section 2.3 and Section 2.4.1.
  */
@@ -339,6 +350,46 @@ CoeffFromHalfByte b =
     else
         if (`η == 4) && (b < 9) then Some (4 - toInteger b)
         else None
+
+/**
+ * Encode a polynomial `w` into a byte string.
+ * [FIPS-204] Section 7.1, Algorithm 16.
+ *
+ * This function assumes that all the coefficients of `w` are in the range
+ * `[0, b]`.
+ */
+SimpleBitPack : {b} (fin b, width b > 0) => R -> [32 * width b]Byte
+SimpleBitPack w = BitsToBytes z where
+    z = join [IntegerToBits`{width b} (w@i) | i <- [0..255]]
+
+/**
+ * Reverses the procedure `SimpleBitPack`.
+ * [FIPS-204] Section 7.1, Algorithm 18.
+ *
+ * For some choices of `b`, there are inputs that will cause this function to
+ * output polynomials whose coefficients are not in the range `[0, b]`.
+ */
+SimpleBitUnpack : {b} (fin b, width b > 0) => [32 * width b]Byte -> R
+SimpleBitUnpack v = w where
+    type c = width b
+    z = BytesToBits v
+    // Separate `z` into the sets `[z[ic], z[ic + 1], ... , z[ic + c - 1]]`.
+    z_ics = groupBy`{c} z
+    w = [BitsToInteger`{c} z_ic | z_ic <- z_ics]
+
+/**
+ * `SimpleBitUnpack` reverses `SimpleBitPack`.
+ * To ensure the precondition for `SimpleBitPack`, we take the input as an set
+ * of integers mod `b` and convert to integers.
+ * [FIPS-204] Section 7.1, comment on Algorithm 18.
+ * ```repl
+ * :check SimplePackingInverts`{10}
+ * ```
+ */
+SimplePackingInverts : {b} (fin b, width b > 0) => [256](Z b) -> Bit
+property SimplePackingInverts w_inRange = simplePackInverts where
+    w = map fromZ w_inRange
+    simplePackInverts = SimpleBitUnpack`{b} (SimpleBitPack`{b} w) == w
 
 /**
  * Encode a polynomial vector `h` with binary coefficients into a byte string.
