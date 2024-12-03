@@ -215,6 +215,76 @@ IntegerToBytes x = y where
     y = [fromInteger (x' % 256) | x' <- xs' | i <- [0..α - 1]]
 
 /**
+ * Convert a bit string into a byte string using little-endian order.
+ * [FIPS-204] Section 7.1, Algorithm 12.
+ */
+BitsToBytes : {α} (fin α) => [α]Bit -> [α /^ 8]Byte
+BitsToBytes y
+    // A zero-length input will produce a zero-length output.
+    | α == 0 => zero
+    | α > 0 => z where
+        // Compute the values of `y[i]` and `i` at each iteration of the loop.
+        // To simplify the next step, this also:
+        // - Groups the `y[i]` bits into sets of 8 for each `z[⌊i / 8⌋]`, and
+        // - Pads each bit of `y[i]` into a byte to support subsequent operations.
+        y' = groupBy`{8} ([(zext [yi], i)
+            | yi <- y
+            | i <- [0..α - 1]] # zero)
+
+        // Steps 2 - 4. We compute the `y` terms separately then `sum` them
+        // for each byte in `z`.
+        z = [sum [yi * (2 ^^ (i % 8))
+                | (yi, i) <- yi8]
+            | yi8 <- y']
+
+/**
+ * Convert a byte string into a bit string using little-endian order.
+ * [FIPS-204] Section 7.1, Algorithm 13.
+ */
+BytesToBits : {α} (fin α) => [α]Byte -> [8 * α]Bit
+BytesToBits z
+    | α == 0 => []
+    | α > 0 => join [[ y8ij where
+            // Step 4. Taking the last bit is the same as modding by 2. (See
+            // `mod2IsFinalBit`).
+            y8ij = zi' ! 0
+            // Step 5. Shifting right is the same as the iterative
+            // division (see `div2IsShiftR`). This accounts for all the
+            // divisions "up to this point" (e.g. none when `j = 0`), which
+            // is why we use `zi'` to evaluate `y8ij` above.
+            zi' = zi >> j
+        // Step 3.
+        | j <- [0..7]]
+        // Step 2. We iterate over `z` directly instead of indexing into it.
+        | zi <- z ]
+
+private
+    /**
+     * The iterative division by 2 in `BytesToBits` is the same as shifting
+     * right.
+     * ```repl
+     * :prove div2IsShiftR
+     * ```
+     */
+    div2IsShiftR : Byte -> Bit
+    div2IsShiftR C = take (d2 C) == shl where
+        // Note: division here is floor'd by default.
+        d2 c = [c] # d2 (c / 2)
+        shl = [C >> j | j <- [0..7]]
+
+/**
+ * The conversions between bits and bytes are each others' inverses, for
+ * lengths that are a multiple of 8.
+ * This isn't explicit in the spec, but we include the property anyway.
+ * ```repl
+ * :prove B2B2BInverts`{320}
+ * :prove B2B2BInverts`{32 * 44}
+ * ```
+ */
+B2B2BInverts : {α} (fin α) => [8 * α] -> Bit
+property B2B2BInverts y = BytesToBits (BitsToBytes y) == y
+
+/**
  * Generate an element in the integers mod `q` or a failure indicator.
  * [FIPS-204] Section 7.1, Algorithm 14.
  */
