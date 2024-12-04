@@ -136,16 +136,23 @@ parameter
      * is the verifier's challenge.
      * [FIPS-204] Section 4, Table 1.
      *
-     * The type constraint is drawn from [FIPS-204] Section 7.3, Algorithm 29.
+     * The type constraints are drawn from [FIPS-204] Section 7.3, Algorithm
+     * 29; the first is implicit in Step 6, and the second is explicit in the
+     * algorithm description.
      */
     type τ : #
-    type constraint (τ <= 64)
+    type constraint (0 < τ, τ <= 64)
 
     /**
      * Collision strength of the commitment hash `c~` component of a signature.
      * [FIPS-204] Section 4, Table 1.
+     *
+     * The type constraint is drawn from [FIPS-204] Section 7.3, Algorithm 29;
+     * it's implicit that the hash function `H` requires a finite input, so the
+     * length of the input seed, and thus of `λ`, must be finite.
      */
     type λ : #
+    type constraint (fin λ)
 
     /**
      * Coefficient range of the commitment mask `y` used in signing.
@@ -616,6 +623,47 @@ property HintPackingInverts h_Indexes =
     where
         // Build `h` out of `h_indexes`:
         h = split`{k} [if elem idx h_Indexes then 1 else 0 | idx <- [0..(256 * k) - 1]]
+
+/**
+ * Sample a polynomial in `R` with coefficients from `{-1, 0, 1}` and Hamming
+ * weight `τ`.
+ * [FIPS-204] Section 7.3, Algorithm 29.
+ */
+SampleInBall : [λ / 4]Byte -> R
+SampleInBall ρ = cFinal where
+    // Step 1.
+    c0 = zero
+    // Steps 2 - 3.
+    ctx_0 = H`{inf} ρ
+    // Step 4.
+    ((s : [8]Byte) # ctx_1) = ctx_0
+    // Step 5.
+    h = BytesToBits s
+
+    // Steps 7 - 10. Uses recursion instead of a loop to sample bytes from the
+    // hash stream, returning the first one that's in the range `[0, i]`.
+    sample : [inf]Byte -> Byte -> (Byte, [inf]Byte)
+    sample ([j] # ctx) i =
+        if j > i then
+            sample ctx i
+        else (j, ctx)
+
+    // Steps 6 - 13. Computes the value of `c` and the updated `ctx` at each
+    // iteration of the loop.
+    cAndCtx = [(c0, ctx_1)] # [(c'', ctx') where
+            // Steps 7 - 10.
+            (j, ctx') = sample ctx (fromInteger i)
+            // Step 11.
+            c' = update c i (c@j)
+            // Step 12. In Cryptol, we need to manually convert the exponent
+            // from a `Bit` to a numeric type.
+            hiτ = if (h @ (i + `τ - 256)) then 1 else 0 : Integer
+            c'' = update c' j ((-1)^^hiτ)
+
+        | i <- [256 - τ..255]
+        | (c, ctx) <- cAndCtx]
+
+    (cFinal, _) = cAndCtx ! 0
 
 /**
  * Sample a polynomial in the ring `Tq`.
