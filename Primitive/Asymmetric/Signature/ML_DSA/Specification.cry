@@ -363,6 +363,18 @@ SimpleBitPack w = BitsToBytes z where
     z = join [IntegerToBits`{width b} (w@i) | i <- [0..255]]
 
 /**
+ * Encode a polynomial `w` into a byte string.
+ * [FIPS-204] Section 7.1, Algorithm 17.
+ *
+ * This function assumes that all the coefficients of `w` are in the range
+ * `[-a, b]`.
+ */
+BitPack : {a, b} (fin a, fin b, width (a + b) > 0) =>
+    R -> [32 * width (a + b)]Byte
+BitPack w = BitsToBytes z where
+    z = join [IntegerToBits`{width (a + b)} (`b - w@i) | i <- [0..255]]
+
+/**
  * Reverses the procedure `SimpleBitPack`.
  * [FIPS-204] Section 7.1, Algorithm 18.
  *
@@ -373,9 +385,10 @@ SimpleBitUnpack : {b} (fin b, width b > 0) => [32 * width b]Byte -> R
 SimpleBitUnpack v = w where
     type c = width b
     z = BytesToBits v
-    // Separate `z` into the sets `[z[ic], z[ic + 1], ... , z[ic + c - 1]]`.
-    z_ics = groupBy`{c} z
-    w = [BitsToInteger`{c} z_ic | z_ic <- z_ics]
+    // Separate `z` into the sets `[z[ic], z[ic + 1], ... , z[ic + c - 1]]` for
+    // `i` in the range `[0..255]`.
+    z_ics = split z : [256][c]
+    w = [BitsToInteger`{c} (z_ics@i) | i <- [0..255]]
 
 /**
  * `SimpleBitUnpack` reverses `SimpleBitPack`.
@@ -390,6 +403,43 @@ SimplePackingInverts : {b} (fin b, width b > 0) => [256](Z b) -> Bit
 property SimplePackingInverts w_inRange = simplePackInverts where
     w = map fromZ w_inRange
     simplePackInverts = SimpleBitUnpack`{b} (SimpleBitPack`{b} w) == w
+
+/**
+ * Reverse the procedure `BitPack`.
+ * [FIPS-204] Section 7.1, Algorithm 19.
+ *
+ * For some choices of `a` and `b`, there are malformed byte strings that will
+ * cause this function to output polynomials whose coefficients are not in the
+ * range `[-a, b]`.
+ */
+BitUnpack : {a, b} (fin a, fin b, width (a + b) > 0) =>
+    [32 * width (a + b)]Byte -> R
+BitUnpack v = w where
+    type c = width (a + b)
+    z = BytesToBits v
+
+    // Split `z` into the sets `[z[ic], z[ic + 1], ... , z[ic + c - 1]]` for
+    // `i` in the range `[0..255]`.
+    z_ics = split z : [256][c]
+
+    w = [`b - BitsToInteger`{c} (z_ics@i)| i <- [0..255]]
+
+/**
+ * `BitUnpack` reverses `BitPack`.
+ * To ensure the precondition for `BitPack`, we take the input as an set
+ * of integers mod `a + b `, convert to integers, then shift them down to the
+ * interval `[-a, b]`.
+ * [FIPS-204] Section 7.1, comment on Algorithm 19.
+ * ```repl
+ * :check PackingInverts`{10, 10}
+ * ```
+ */
+PackingInverts : {a, b} (fin a, fin b, width (a + b) > 0) =>
+    [256](Z (a + b)) -> Bit
+property PackingInverts w_inRange = packInverts where
+    // Shift from `[0, a + b]` to `[-a, b]`.
+    w = [(fromZ wi) - `a | wi <- w_inRange]
+    packInverts = BitUnpack`{a, b} (BitPack`{a, b} w) == w
 
 /**
  * Encode a polynomial vector `h` with binary coefficients into a byte string.
