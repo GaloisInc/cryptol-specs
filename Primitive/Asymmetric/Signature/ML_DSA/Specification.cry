@@ -256,7 +256,7 @@ HintBitPack h = yFinal where
  *   executed with recursion.
  */
 HintBitUnpack : [ω + k]Byte -> Option ([k]R2)
-HintBitUnpack y = h20 where
+HintBitUnpack y = hFinal where
     // Step 1.
     h0 = zero : [k * 256]
     // Step 2.
@@ -279,35 +279,33 @@ HintBitUnpack y = h20 where
         else Step6_15 (h, Index) i
 
     // Steps 6 - 15.
-    Step6_15 (h, Index) i = Step7_14 (h, Index) i First where
+    Step6_15 (h, Index) i = Step7_14 (h, Index) where
         // Step 6.
         First = Index
 
-    // Steps 7 - 14.
-    Step7_14 (h, Index) i First =
-        // Step 7 (condition).
-        if Index < (y@(`ω + i)) then
-            // Step 8 - 11.
-            // The `/\` is a short-cutting `and`, equivalent to the nested `if`
-            // statements in the spec.
-            if ((Index > First) /\ (y@(Index - 1) >= y@Index)) then None
-            // Step 7 (recursive call -- equivalent to continuing the loop).
-            else Step7_14
-                // Step 12.
-                (update h (i*256 + (toInteger (y@Index))) 1,
-                // Step 13.
-                Index + 1)
-                // These variables do not change between iterations.
-                i First
-        // If the loop condition is no longer true, return the current values
-        // of `h` and `Index`.
-        else Some (h, Index)
+        // Steps 7 - 14.
+        Step7_14 (h', Index') =
+            // Step 7 (condition).
+            if Index' < (y@(`ω + i)) then
+                // Step 8 - 11.
+                // The `/\` is a short-cutting `and`, equivalent to the nested
+                // `if` statements in the spec.
+                if ((Index' > First) /\ (y@(Index' - 1) >= y@Index')) then None
+                // Step 7 (recursive call -- equivalent to continuing the loop).
+                else Step7_14
+                    // Step 12.
+                    (update h' (i*256 + (toInteger (y@Index'))) 1,
+                    // Step 13.
+                    Index' + 1)
+            // If the loop condition is no longer true, return the current
+            // values of `h` and `Index`.
+            else Some (h', Index')
 
     // Get the values of `h` and `Index` after the loop in Steps 3 - 15.
     maybe_hAndIndex' = hAndIndexes ! 0
 
     // Step 16 - 20.
-    h20 = case maybe_hAndIndex' of
+    hFinal = case maybe_hAndIndex' of
         Some hAndIndex -> if checkLeftoverBytes then
                 // This `split` converts back to the spec-adherent
                 // representation of `h`.
