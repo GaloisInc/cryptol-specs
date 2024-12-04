@@ -40,6 +40,16 @@ type Tq = [256](Z q)
 type R = [256]Integer
 
 /**
+ * The ring of single-variable polynomials over the integers mod 2, modulo
+ * `X^256 + 1`.
+ * [FIPS-204] Section 2.3 and Section 2.4.1.
+ *
+ * We represent individual elements in `ℤ_2` as bits, so this is just a bit
+ * array.
+ */
+type R2 = [256]
+
+/**
  * Wrapper function around SHAKE256, specifying the length `l` in bytes.
  * [FIPS-204] Section 3.7.
  *
@@ -116,6 +126,7 @@ parameter
      */
     type k : #
     type ell : #
+    type constraint (fin k, fin ell, k > 0)
 
     /**
      * Private key range; the private key is a polynomial whose coefficients
@@ -131,8 +142,18 @@ parameter
     /**
      * Maximum Hamming weight for the hint component of a signature.
      * [FIPS-204] Section 4, Table 1.
+     *
+     * The constraints are drawn from [FIPS-204] Algorithm 21:
+     * - `ω > 0`: in Step 16, we have to be able to compute `ω - 1`.
+     * - `width ω <= 8`: This is an implementation artifact from Step 4. We
+     *   compare `ω` to an element in `y`, which is a byte. Cryptol will
+     *   default to fitting `ω` into in a byte. This is always true with the
+     *   allowable parameter sets. If a new parameter set is released with a
+     *   much larger `ω`, we can modify the implementation to remove this
+     *   constraint without affecting functionality.
      */
     type ω : #
+    type constraint (fin ω, ω > 0, width ω <= 8)
 
 /**
  * A 512th root of unity in `Z_q`.
@@ -318,6 +339,144 @@ CoeffFromHalfByte b =
     else
         if (`η == 4) && (b < 9) then Some (4 - toInteger b)
         else None
+
+/**
+ * Encode a polynomial vector `h` with binary coefficients into a byte string.
+ * [FIPS-204] Section 7.1, Algorithm 20.
+ */
+HintBitPack : [k]R2 -> [ω + k]Byte
+HintBitPack h = yFinal where
+    // Step 1.
+    y0 = zero : [ω + k]Byte
+    // Step 2.
+    Index0 = 0
+    // Steps 3 - 11. This builds a list with all the intermediate values of
+    // `y` and `Index`...
+    yAndIndex = [(y0, Index0)] # [ (y'', Index') where
+            // Steps 5 - 8.
+            (y', Index') = if (h @i @j) != 0 then
+                    (update y Index j, Index + 1)
+                else (y, Index)
+
+            // Step 10.
+            y'' = if j == 255 then
+                    update y' (`ω + i) Index'
+                else y'
+        | (y, Index) <- yAndIndex
+        // Step 3 - 4.
+        | i <- [0..k-1], j <- [0..255]
+    ]
+    // Step 12. ...we return the last `y`.
+    (yFinal, _) = yAndIndex ! 0
+
+/**
+ * Reverses the procedure `HintBitPack`.
+ * [FIPS-204] Section 7.1, Algorithm 21.
+ *
+ * This diverges slightly from the spec:
+ * - To simplify updating `h`, we treat it as a single array of size `256k`.
+ *   We separate it into the correct `[k]R2` representation in the final step.
+ *   We access the array in "the natural way" -- that is, in Step 12, the
+ *   element `h[i]_y[Index]` is at index `i * 256 + y[Index]` in our array.
+ * - We cannot "return early" when we encounter an error case. Instead, we use
+ *   options to indicate whether a failure has occurred and skip further
+ *   computation when the option is `None`.
+ * - The for loop in Step 3 is executed with a list comprehension. The while
+ *   loop in Step 7 is executed with recursion. The for loop in Step 16 is
+ *   executed with recursion.
+ */
+HintBitUnpack : [ω + k]Byte -> Option ([k]R2)
+HintBitUnpack y = hFinal where
+    // Step 1.
+    h0 = zero : [k * 256]
+    // Step 2.
+    Index0 = 0
+
+    // Step 3. Construct a list comprising the values of `h` and `Index`
+    // at the end of each iteration of the loop in Steps 3 - 15.
+    hAndIndexes = [Some (h0, Index0)] # [
+            // Call Steps 4-5 if we haven't encountered an error yet.
+            case maybe_hAndIndex of
+                Some hAndIndex -> Step4_5 hAndIndex i
+                None -> None
+        | maybe_hAndIndex <- hAndIndexes
+        | i <- [0..k-1]
+    ]
+
+    // Steps 4 - 5.
+    Step4_5 (h, Index) i = if (y@(`ω + i) < Index) || (y@(`ω + i) > `ω) then
+            None
+        else Step6_15 (h, Index) i
+
+    // Steps 6 - 15.
+    Step6_15 (h, Index) i = Step7_14 (h, Index) where
+        // Step 6.
+        First = Index
+
+        // Steps 7 - 14.
+        Step7_14 (h', Index') =
+            // Step 7 (condition).
+            if Index' < (y@(`ω + i)) then
+                // Step 8 - 11.
+                // The `/\` is a short-cutting `and`, equivalent to the nested
+                // `if` statements in the spec.
+                if ((Index' > First) /\ (y@(Index' - 1) >= y@Index')) then None
+                // Step 7 (recursive call -- equivalent to continuing the loop).
+                else Step7_14
+                    // Step 12.
+                    (update h' (i*256 + (toInteger (y@Index'))) 1,
+                    // Step 13.
+                    Index' + 1)
+            // If the loop condition is no longer true, return the current
+            // values of `h` and `Index`.
+            else Some (h', Index')
+
+    // Get the values of `h` and `Index` after the loop in Steps 3 - 15.
+    maybe_hAndIndex' = hAndIndexes ! 0
+
+    // Step 16 - 20.
+    hFinal = case maybe_hAndIndex' of
+        Some hAndIndex -> if checkLeftoverBytes then
+                // This `split` converts back to the spec-adherent
+                // representation of `h`.
+                Some (split`{k} h)
+            else None
+            where
+                (h, Index) = hAndIndex
+                // This helper reads any "leftover" bytes (e.g. beyond `Index`)
+                // in the first `ω` bytes of `y`; it returns `True` if all of
+                // them are zero.
+                checkLeftoverBytes = and [i >= Index ==> y@i == 0
+                    | i <- [0..ω - 1]]
+
+        None -> None
+
+/**
+ * Verify that `HintBitUnpack` is the reverse of `HintBitPack`.
+ *
+ * This takes a list of indexes indicating the non-zero elements and constructs
+ * a valid, sparse `h` -- rejection sampling is not a valid option because
+ * sparse-enough `h`s were too rare.
+ *
+ * We test the case where we have the maximum number of 1s, a medium number, and
+ * a case where at least one vector should have no non-zero terms at all.
+ * In practice, the hint may fall anywhere in this range.
+ * ```repl
+ * :check HintPackingInverts`{ω}
+ * :check HintPackingInverts`{ω / 2}
+ * :check HintPackingInverts`{3}
+ * ```
+ *
+ * Note that this does not test the error cases for `HintBitUnpack`.
+ */
+HintPackingInverts : {w} (w <= ω) => [w][lg2 (256 * k)] -> Bit
+property HintPackingInverts h_Indexes =
+    case HintBitUnpack (HintBitPack h) of
+        Some h' -> h == h'
+        None -> False
+    where
+        // Build `h` out of `h_indexes`:
+        h = split`{k} [if elem idx h_Indexes then 1 else 0 | idx <- [0..(256 * k) - 1]]
 
 /**
  * Sample a polynomial in the ring `Tq`.
