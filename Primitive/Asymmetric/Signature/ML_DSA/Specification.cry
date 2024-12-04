@@ -208,11 +208,11 @@ property BitsToIntegersInverts x = IntegerToBits (BitsToInteger x) == x
  */
 IntegerToBytes : {α} (fin α, α > 0) => Integer -> [α]Byte
 IntegerToBytes x = y where
-    // Step 3. Compute the value of `x'` at each iteration of the loop.
-    xs' = [x] # [x' / 256 | x' <- xs']
-
-    // Step 2, 4.
+    // Step 2 - 3.
     y = [fromInteger (x' % 256) | x' <- xs' | i <- [0..α - 1]]
+
+    // Step 4. Compute the value of `x'` at each iteration of the loop.
+    xs' = [x] # [x' / 256 | x' <- xs']
 
 /**
  * Convert a bit string into a byte string using little-endian order.
