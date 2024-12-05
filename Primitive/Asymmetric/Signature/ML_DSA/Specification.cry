@@ -756,6 +756,16 @@ ExpandA ρ = A_hat where
         | r <- [0..k - 1]]
 
 /**
+ * Sample vectors in `R^ell` and `R^k`, each with polynomial coordinates whose
+ * coefficients are in the interval `[-η , η]`.
+ * [FIPS-204] Section 7.3, Algorithm 33.
+ */
+ExpandS : [64]Byte -> ([ell]R, [k]R)
+ExpandS ρ = (s1, s2) where
+    s1 = [RejBoundedPoly (ρ # IntegerToBytes`{2} r) | r <- [0..ell-1]]
+    s2 = [RejBoundedPoly (ρ # IntegerToBytes`{2} (r + `ell)) | r <- [0..k-1]]
+
+/**
  * Decompose a set of integers mod `q` into a pair `(r1, r0)` such that
  * `r === r1 * 2^d + r0 mod q`.
  *
