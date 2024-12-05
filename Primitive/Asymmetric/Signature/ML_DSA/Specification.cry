@@ -50,6 +50,37 @@ type R = [256]Integer
 type R2 = [256]
 
 /**
+ * Compute the centered-mod function (denoted `mod±` in the spec).
+ * [FIPS-204] Section 2.3, "mod±".
+ */
+modPlusMinus : {α} (fin α) => Z q -> Integer
+modPlusMinus m = m' where
+    m_int = (fromZ m) % `α
+    m' = if m_int > (`α / 2) then m_int - `α
+        else m_int
+
+/**
+ * The `mod±` function satisfies the functionality described in the spec.
+ * [FIPS-204] Section 2.3, "mod±".
+ *
+ * The lower bound computes `−⌈𝛼/2⌉` by simplifying the ceiling division
+ * equation `⌈a / b⌉ = (a + b - 1) / b`.
+ *
+ * The parameters chosen here are all the values of `α` used in the spec.
+ * ```repl
+ * :prove modPlusMinusWorks`{2^^d}
+ * :prove modPlusMinusWorks`{q}
+ * :prove modPlusMinusWorks`{2 * γ2}
+ * ```
+ */
+modPlusMinusWorks : {α} (fin α) => Z q -> Bit
+property modPlusMinusWorks m = inRange && congruent where
+    m' = modPlusMinus`{α} m
+    lower_bound = - ((`α + 1) / 2)
+    inRange = (lower_bound < m') && (m' <= (`α / 2))
+    congruent = ((fromZ m) % `α) == (m' % `α)
+
+/**
  * Wrapper function around SHAKE256, specifying the length `l` in bytes.
  * [FIPS-204] Section 3.7.
  *
