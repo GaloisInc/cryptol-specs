@@ -162,7 +162,7 @@ parameter
      * from [FIPS-203] Section 7.2, Algorithm 27.
      */
     type γ1 : #
-    type constraint (2 ^^ (lg2 γ1) == γ1)
+    type constraint (fin γ1, 2 ^^ (lg2 γ1) == γ1)
 
     /**
      * Low-order rounding range; this defines how to round the signer's
@@ -764,6 +764,35 @@ ExpandS : [64]Byte -> ([ell]R, [k]R)
 ExpandS ρ = (s1, s2) where
     s1 = [RejBoundedPoly (ρ # IntegerToBytes`{2} r) | r <- [0..ell-1]]
     s2 = [RejBoundedPoly (ρ # IntegerToBytes`{2} (r + `ell)) | r <- [0..k-1]]
+
+/**
+ * Sample a vector in `R^ell` such that each polynomial in `y` has coefficients
+ * in the range `[-γ1 + 1, γ1]`.
+ * [FIPS-204] Section 7.3, Algorithm 34.
+ *
+ * Note: This function requires that `μ` is non-negative.
+ */
+ExpandMask : [64]Byte -> Integer -> [ell]R
+ExpandMask ρ μ = y where
+    // Cryptol's type inference is not quite complex enough to prove this type
+    // equivalent to the type constraint in `BitUnpack`, which requires that
+    // `c` is the same width as the sum of the two parameters:
+    //     `c == width (γ1 - 1 + γ1)`.
+    // However, the spec defines:
+    //     `c := 1 + width (γ1 - 1)`.
+    //
+    // Since we know that `γ1` is a power of 2, these two definitions are equivalent.
+    // Note that `width` is defined as `width x = lg2 (x + 1)`. We have:
+    // `BitUnpack` definition:
+    //     `width (γ1 - 1 + γ1) = lg2 (2 * γ1) = 1 + lg2 γ1`
+    // `ExpandMask` definition:
+    //     `1 + width (γ1 - 1) = 1 + lg2 γ1`
+    type c = width (2 * γ1 - 1)
+
+    y = [BitUnpack`{γ1 - 1, γ1} v where
+            ρ' = ρ # IntegerToBytes`{2} (μ + r)
+            v = H`{32 * c} ρ'
+        | r <- [0..ell - 1]]
 
 /**
  * Decompose a set of integers mod `q` into a pair `(r1, r0)` such that
