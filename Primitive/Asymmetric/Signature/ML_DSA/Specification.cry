@@ -113,7 +113,7 @@ parameter
      * from [FIPS-203] Section 7.2, Algorithm 27.
      */
     type γ1 : #
-    type constraint (2 ^^ (lg2 γ1) == γ1)
+    type constraint (fin γ1, 2 ^^ (lg2 γ1) == γ1)
 
     /**
      * Low-order rounding range; this defines how to round the signer's
@@ -603,11 +603,40 @@ ExpandA ρ = A_hat where
 /**
  * Sample vectors in `R^ell` and `R^k`, each with polynomial coordinates whose
  * coefficients are in the interval `[-η , η]`.
+ * [FIPS-204] Section 7.3, Algorithm 33.
  */
 ExpandS : [64]Byte -> ([ell]R, [k]R)
 ExpandS ρ = (s1, s2) where
     s1 = [RejBoundedPoly (ρ # IntegerToBytes`{2} r) | r <- [0..ell-1]]
     s2 = [RejBoundedPoly (ρ # IntegerToBytes`{2} (r + `ell)) | r <- [0..k-1]]
+
+
+/**
+ * Sample a vector in `R^ell` such that each polynomial in `y` has coefficients
+ * in the range `[-γ1 + 1, γ1]`.
+ * [FIPS-204] Section 7.3, Algorithm 34.
+ *
+ * Note: This function requires that `μ` is non-negative.
+ */
+ExpandMask : [64]Byte -> Integer -> [ell]R
+ExpandMask ρ μ = y where
+    type c = width (2 * γ1 - 1)
+    y = [BitUnpack`{γ1 - 1, γ1} v where
+            ρ' = ρ # IntegerToBytes`{2} (μ + r)
+            v = H`{32 * c} ρ'
+        | r <- [0..ell - 1]]
+
+BitUnpack : {a, b} (fin a, fin b, width (a + b) > 0) =>
+    [32 * width (a + b)]Byte -> R
+BitUnpack v = w where
+    type c = width (a + b)
+    z = BytesToBits v
+
+    // Split `z` into the sets `[z[ic], z[ic + 1], ... , z[ic + c - 1]]` for
+    // `i` in the range `[0..255]`.
+    z_ics = split z : [256][c]
+
+    w = [`b - BitsToInteger`{c} (z_ics@i)| i <- [0..255]]
 
 /**
  * Given a byte, the `take` function is equivalent to dividing by 16, and the
