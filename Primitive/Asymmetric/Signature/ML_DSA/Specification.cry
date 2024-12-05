@@ -182,7 +182,7 @@ parameter
      */
     type k : #
     type ell : #
-    type constraint (fin k, fin ell, k > 0)
+    type constraint (fin k, fin ell, k > 0, ell > 0)
 
     /**
      * Private key range; the private key is a polynomial whose coefficients
@@ -743,6 +743,17 @@ property TakeAndDropAreDivAndMod z = dropIsMod && takeIsDiv where
     dropIsMod = z % 16 == zext (drop`{4} z)
     // Division of bit vectors in Cryptol automatically takes the floor.
     takeIsDiv = z / 16 == zext (take`{4} z)
+
+/**
+ * Sample a `k x l` matrix of elements of `T_q`.
+ * [FIPS-204] Section 7.3, Algorithm 32.
+ */
+ExpandA : [32]Byte -> [k][ell]Tq
+ExpandA ρ = A_hat where
+    A_hat = [[RejNTTPoly ρ' where
+            ρ' = ρ # IntegerToBytes`{1} s # IntegerToBytes`{1} r
+        | s <- [0..ell - 1]]
+        | r <- [0..k - 1]]
 
 /**
  * Decompose a set of integers mod `q` into a pair `(r1, r0)` such that
