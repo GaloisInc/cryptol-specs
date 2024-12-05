@@ -50,6 +50,13 @@ type R = [256]Integer
 type R2 = [256]
 
 /**
+ * The ring of single-variable polynomials over the integers mod `q`, modulo
+ * `X^256 + 1`.
+ * [FIPS-204] Section 2.3 and Section 2.4.1.
+ */
+type Rq = [256](Z q)
+
+/**
  * Compute the centered-mod function (denoted `mod±` in the spec).
  * [FIPS-204] Section 2.3, "mod±".
  */
@@ -587,3 +594,45 @@ property TakeAndDropAreDivAndMod z = dropIsMod && takeIsDiv where
     dropIsMod = z % 16 == zext (drop`{4} z)
     // Division of bit vectors in Cryptol automatically takes the floor.
     takeIsDiv = z / 16 == zext (take`{4} z)
+
+/**
+ * Decompose a set of integers mod `q` into a pair `(r1, r0)` such that
+ * `r === r1 * 2^d + r0 mod q`.
+ *
+ * This applies the `Power2Round` function (Algorithm 35) coefficientwise to
+ * the polynomials in the vectors, per the description at the beginning of
+ * [FIPS-204] Section 7.4.
+ */
+Power2Round : [k]Rq -> ([k]R, [k]R)
+Power2Round r_vec = (r1_vec, r0_vec) where
+    // [FIPS-204] Section 7.4, Algorithm 35.
+    Power2Round_Single : Z q -> (Integer, Integer)
+    Power2Round_Single r = (r1, r0) where
+        r_plus = r
+        r0 = modPlusMinus`{2^^d} r_plus
+        r1 = ((fromZ r_plus) - r0) / (2^^`d)
+
+    // Apply the function coefficientwise to every polynomial.
+    zipped_r1r0 : [k][256](Integer, Integer)
+    zipped_r1r0 = [map Power2Round_Single r | r <- r_vec]
+
+    // Unzip the tuples.
+    r1_vec = [[r1_j | (r1_j, _) <- ri] | ri <- zipped_r1r0]
+    r0_vec = [[r0_j | (_, r0_j) <- ri] | ri <- zipped_r1r0]
+
+private
+    /**
+     * Property demonstrating that `Power2Round` does what it says it's
+     * supposed to do in the definition.
+     * [FIPS-204] Section 7.4, comment on Algorithm 35.
+     * ```repl
+     * :check power2RoundSatisfiesDefinition
+     * ```
+     */
+    power2RoundSatisfiesDefinition r_vec = validDecomp where
+        (r1_vec, r0_vec)= Power2Round r_vec
+        isValid (r, (r1, r0)) = (r1 * 2^^`d + r0) % `q == (fromZ r)
+        validDecomp = and [ and (map isValid (zip rs (zip r1s r0s)))
+            | r1s <- r1_vec
+            | r0s <- r0_vec
+            | rs <- r_vec]
