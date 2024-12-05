@@ -133,7 +133,7 @@ parameter
      */
     type k : #
     type ell : #
-    type constraint (fin k, fin ell, k > 0)
+    type constraint (fin k, fin ell, k > 0, ell > 0)
 
     /**
      * Private key range; the private key is a polynomial whose coefficients
@@ -587,6 +587,17 @@ RejBoundedPoly ρ = a where
             None -> case z1 of
                 Some z1' -> [z1'] # (sample ctx)
                 None -> sample ctx
+
+/**
+ * Sample a `k x l` matrix of elements of `T_q`.
+ * [FIPS-204] Section 7.3, Algorithm 32.
+ */
+ExpandA : [32]Byte -> [k][ell]Tq
+ExpandA ρ = A_hat where
+    A_hat = [[RejNTTPoly ρ' where
+            ρ' = ρ # IntegerToBytes`{1} s # IntegerToBytes`{1} r
+        | s <- [0..ell - 1]]
+        | r <- [0..k - 1]]
 
 /**
  * Given a byte, the `take` function is equivalent to dividing by 16, and the
