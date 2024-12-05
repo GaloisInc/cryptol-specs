@@ -669,7 +669,7 @@ SampleInBall ρ = cFinal where
  * Sample a polynomial in the ring `Tq`.
  * [FIPS-204] Section 7.3, Algorithm 30.
  */
-RejNTTPoly : [32]Byte -> Tq
+RejNTTPoly : [34]Byte -> Tq
 RejNTTPoly ρ = a_hat where
     // Step 2 - 3.
     ctx0 = G ρ
