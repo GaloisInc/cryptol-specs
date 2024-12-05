@@ -599,6 +599,16 @@ ExpandA ρ = A_hat where
         | s <- [0..ell - 1]]
         | r <- [0..k - 1]]
 
+
+/**
+ * Sample vectors in `R^ell` and `R^k`, each with polynomial coordinates whose
+ * coefficients are in the interval `[-η , η]`.
+ */
+ExpandS : [64]Byte -> ([ell]R, [k]R)
+ExpandS ρ = (s1, s2) where
+    s1 = [RejBoundedPoly (ρ # IntegerToBytes`{2} r) | r <- [0..ell-1]]
+    s2 = [RejBoundedPoly (ρ # IntegerToBytes`{2} (r + `ell)) | r <- [0..k-1]]
+
 /**
  * Given a byte, the `take` function is equivalent to dividing by 16, and the
  * `drop` function is equivalent to taking the value mod 16.
