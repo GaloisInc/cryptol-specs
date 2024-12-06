@@ -681,3 +681,27 @@ private
             | r1s <- r1_vec
             | r0s <- r0_vec
             | rs <- r_vec]
+
+/**
+ * Returns `r1` from the output of `Decompose`.
+ * [FIPS-24] Section 7.4, Algorithm 37.
+ *
+ * This applies the `HighBits` function (Algorithm 37) coefficientwise to
+ * the polynomials in the vectors, per the description at the beginning of
+ * Section 7.4.
+ */
+HighBits : [k]Rq -> [k]R
+HighBits r = r1 where
+    (r1, _) = Decompose r
+
+/**
+ * Returns `r0` from the output of `Decompose`.
+ * [FIPS-24] Section 7.4, Algorithm 38.
+ *
+ * This applies the `LowBits` function (Algorithm 38) coefficientwise to
+ * the polynomials in the vectors, per the description at the beginning of
+ * Section 7.4.
+ */
+LowBits : [k]Rq -> [k]R
+LowBits r = r0 where
+    (_, r0) = Decompose r
