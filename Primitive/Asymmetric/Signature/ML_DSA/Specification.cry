@@ -636,3 +636,48 @@ private
             | r1s <- r1_vec
             | r0s <- r0_vec
             | rs <- r_vec]
+
+/**
+ * Decompose a set of integers mod `q` into a pair `(r1, r0)` such that
+ * `r === r1 (2 γ2) + r0 mod q`.
+ *
+ * This applies the `Decompose` function (Algorithm 36) coefficientwise to
+ * the polynomials in the vectors, per the description at the beginning of
+ * [FIPS-204] Section 7.4.
+ */
+Decompose : [k]Rq -> ([k]R, [k]R)
+Decompose r_vec = (r1_vec, r0_vec) where
+    // [FIPS-204] Section 7.4, Algorithm 36.
+    Decompose_Single : Z q -> (Integer, Integer)
+    Decompose_Single r = (r1, r0') where
+        r_plus = r
+        r0 = modPlusMinus`{2 * γ2} r_plus
+        (r1, r0') = if (fromZ r_plus) - r0 == `q - 1 then
+                (0, r0 - 1)
+            else
+                (((fromZ r_plus) - r0) / (2 * `γ2), r0)
+
+    // Apply the function coefficientwise to every polynomial.
+    zipped_r1r0 : [k][256](Integer, Integer)
+    zipped_r1r0 = [map Decompose_Single r | r <- r_vec]
+
+    // Unzip the tuples.
+    r1_vec = [[r1_j | (r1_j, _) <- ri] | ri <- zipped_r1r0]
+    r0_vec = [[r0_j | (_, r0_j) <- ri] | ri <- zipped_r1r0]
+
+private
+    /**
+     * Property demonstrating that `Decompose` does what it says it's
+     * supposed to do in the definition.
+     * [FIPS-204] Section 7.4, comment on Algorithm 36.
+     * ```repl
+     * :check decomposeSatisfiesDefinition
+     * ```
+     */
+    decomposeSatisfiesDefinition r_vec = validDecomp where
+        (r1_vec, r0_vec)= Decompose r_vec
+        isValid (r, (r1, r0)) = (r1 * 2 * `γ2 + r0) % `q == (fromZ r)
+        validDecomp = and [ and (map isValid (zip rs (zip r1s r0s)))
+            | r1s <- r1_vec
+            | r0s <- r0_vec
+            | rs <- r_vec]
