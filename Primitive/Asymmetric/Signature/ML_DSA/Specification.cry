@@ -705,3 +705,64 @@ HighBits r = r1 where
 LowBits : [k]Rq -> [k]R
 LowBits r = r0 where
     (_, r0) = Decompose r
+
+/**
+ * Compute the hint bits indiciating whether adding `z` to `r` alters the high
+ * bits of `r`.
+ * [FIPS-204] Section 7.4, Algorithm 39.
+ *
+ * This applies the `MakeHint` function coefficientwise to the polynomials in the
+ * vectors, per the description at the beginning of Section 7.4. The `HighBits`
+ * function operates over vectors of polynomials; then we compare the vectors of
+ * high bits coefficientwise.
+ */
+MakeHint : [k]Rq -> [k]Rq -> [k]R2
+MakeHint z_vec r_vec = hint where
+    r1_vec = HighBits r_vec
+    v1_vec = HighBits (r_vec + z_vec)
+
+    hint = [[r1 != v1
+        | r1 <- r1s | v1 <- v1s]
+        | r1s <- r1_vec | v1s <- v1_vec]
+
+/**
+ * Return the high bits of `r` adjusted according to hint `h`.
+ * [FIPS-204] Section 7.4, Algorithm 40.
+ *
+ * This applies the `UseHint` function coefficientwise to the polynomials in
+ * the vectors, per the description at the beginning of Section 7.4.
+ */
+UseHint : [k]R2 -> [k]Rq -> [k]R
+UseHint h_vec r_vec = r1_vec where
+    // Step 1.
+    m = (`q - 1) / (2 * `γ2)
+    // Step 2.
+    (r1_vec, r0_vec) = Decompose r_vec
+
+    // Steps 3 - 5. This takes the decomposed integers instead of the original
+    // element in `Z q`.
+    adjustHighBits r1 r0 h =
+        if (h == 1) && (r0 > 0) then (r1 + 1) % m
+        | (h == 1) && (r0 <= 0) then (r1 - 1) % m
+        else r1
+
+    // Apply the function coefficientwise to the decomposed polynomials.
+    r1'_vec = [[adjustHighBits r1 r0 h
+            | r1 <- r1s | r0 <- r0s | h <- hs]
+        | r1s <- r1_vec | r0s <- r0_vec | hs <- h_vec]
+
+private
+    /**
+     * The output of `UseHint` must be within the range `[0, (q-1) / (2*γ2)]`.
+     * [FIPS-204] Section 7.4, comment on Algorithm 40.
+     *
+     * This takes about 1 minute to prove.
+     * ```repl
+     * :prove useHintIsInRange
+     * ```
+     */
+    property useHintIsInRange h_vec r_vec = r1InRange where
+        r1_vec = UseHint h_vec r_vec
+        inRange r1 = (0 <= r1) && (r1 <= (`q - 1) / (2 * `γ2))
+        // Apply check coefficientwise to the polynomial vector.
+        r1InRange = and [and (map inRange r1s) | r1s <- r1_vec]
