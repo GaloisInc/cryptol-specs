@@ -25,6 +25,12 @@ import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHAKE256
 type Byte = [8]
 
 /**
+ * Public key for the ML-DSA scheme.
+ * [FIPS-204] Section 5.1, Algorithm 1 (and throughout).
+ */
+type PublicKey = [32 + 32 * k * (width (q - 1) - d)]Byte
+
+/**
  * The `bitlen` function defined in the spec is equivalent to the Cryptol
  * built-in `width` function on types. We use `width` throughout this
  * executable spec so that we can operate over types.
@@ -632,6 +638,49 @@ property HintPackingInverts h_Indexes =
     where
         // Build `h` out of `h_indexes`:
         h = split`{k} [if elem idx h_Indexes then 1 else 0 | idx <- [0..(256 * k) - 1]]
+
+/**
+ * Encode a public key for ML-DSA into a byte string.
+ * [FIPS-204] Section 7.2, Algorithm 22.
+ *
+ * This assumes that `t1` has coefficients in the range
+ * `[0, 2^(bitlen(q-1) - d) - 1]`.
+ */
+pkEncode : [32]Byte -> [k]R -> PublicKey
+pkEncode ρ t1 = pk where
+    pk = ρ # join [SimpleBitPack`{2 ^^ (width (q - 1) - d) - 1} (t1@i) | i <- [0..k-1]]
+
+/**
+ * Reverse the procedure `pkEncode`.
+ * [FIPS-204] Section 7.2, Algorithm 23.
+ *
+ * This produces a `t1` with coefficients in the range
+ * `[0, 2^(bitlen(q-1) - d) - 1]`.
+ */
+pkDecode : PublicKey -> ([32]Byte, [k]R)
+pkDecode pk = (ρ, t1) where
+    // Step 1. We split off the single `ρ` byte, then separate the remaining
+    // bytes into the `k` components as described.
+    (ρ # zBytes) = pk
+    z = split zBytes
+    // Steps 2 - 4.
+    t1 = [SimpleBitUnpack`{2 ^^ (width (q - 1) - d) - 1} (z@i) | i <- [0..k-1]]
+
+private
+    /**
+     * `pkDecode` must reverse the procedure `pkEncode`.
+     * ```repl
+     * :set tests=20
+     * :check pkCodingInverts
+     * ```
+     */
+    pkCodingInverts : [32]Byte -> [k][256][width (q - 1) - d] -> Bit
+    pkCodingInverts ρ t1_inRange = inverts where
+        // `t1_inRange` is typed to ensure that all the coefficients will be
+        // in the range `[0, 2^^(width (q-1)-d) - 1]`.
+        t1 = [map toInteger t1_i | t1_i <- t1_inRange]
+        (ρ', t1') = pkDecode (pkEncode ρ t1)
+        inverts = (ρ == ρ') && (t1 == t1')
 
 /**
  * Sample a polynomial in `R` with coefficients from `{-1, 0, 1}` and Hamming
