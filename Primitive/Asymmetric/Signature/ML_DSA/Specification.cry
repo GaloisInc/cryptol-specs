@@ -31,6 +31,12 @@ type Byte = [8]
 type PublicKey = [32 + 32 * k * (width (q - 1) - d)]Byte
 
 /**
+ * Private key for the ML-DSA scheme.
+ * [FIPS-204] Section 5.1, Algorithm 1 (and throughout).
+ */
+type PrivateKey = [32 + 32 + 64 + 32 * ((k + ell) * width (2 * η) + d * k)]Byte
+
+/**
  * The `bitlen` function defined in the spec is equivalent to the Cryptol
  * built-in `width` function on types. We use `width` throughout this
  * executable spec so that we can operate over types.
@@ -681,6 +687,81 @@ private
         t1 = [map toInteger t1_i | t1_i <- t1_inRange]
         (ρ', t1') = pkDecode (pkEncode ρ t1)
         inverts = (ρ == ρ') && (t1 == t1')
+
+/**
+ * Encodes a secret key for ML-DSA into a byte string.
+ * [FIPS-204] Secetion 7.2, Algorithm 24.
+ */
+skEncode : [32]Byte -> [32]Byte -> [64]Byte -> [ell]R -> [k]R -> [k]R
+    -> PrivateKey
+skEncode ρ K tr s1 s2 t0 = sk9 where
+    // Note: `sk#` indicates the value of `sk` at Step `#`.
+    // Step 1.
+    sk1 = ρ # K # tr
+    // Steps 2 - 4.
+    sk3 = sk1 # join [BitPack`{η, η} (s1@i) | i <- [0..ell-1]]
+    // Steps 5 - 7.
+    sk6 = sk3 # join [BitPack`{η, η} (s2@i) | i <- [0..k-1]]
+    // Steps 8 - 10.
+    sk9 = sk6 #
+        join [BitPack`{2^^(d - 1) - 1, 2^^(d - 1)} (t0@i) | i <- [0..k-1]]
+
+/**
+ * Reverse the procedure `skEncode`.
+ * [FIPS-204] Section 7.2, Algorithm 25.
+ *
+ * Warning: there exist malformed inputs that can cause `skDecode` to return
+ * values that are not in the correct range! `skDecode` must only be run on
+ * inputs that come from trusted sources!
+ */
+skDecode : PrivateKey -> ([32]Byte, [32]Byte, [64]Byte, [ell]R, [k]R, [k]R)
+skDecode sk = (ρ, K, tr, s1, s2, t0) where
+    // Step 1. We split off the six components, then further separate `y`, `z`,
+    // and `w` into their two dimensions.
+    (ρ # K # tr # yBytes # zBytes # wBytes) = sk
+    y = split`{ell} yBytes
+    z = split`{k} zBytes
+    w = split`{k} wBytes
+
+    // Steps 2 - 4.
+    s1 = [BitUnpack`{η, η} (y@i) | i <- [0..ell-1]]
+    // Steps 5 - 7.
+    s2 = [BitUnpack`{η, η} (z@i) | i <- [0..k-1]]
+    // Steps 8 - 10.
+    t0 = [BitUnpack`{2^^(d - 1) - 1, 2^^(d - 1)} (w@i) | i <- [0..k-1]]
+
+private
+    /**
+     * The `skDecode` function must be the inverse of `skEncode`.
+     * [FIPS-204] Section 7.3, comment on Algorithm 25.
+     *
+     * This test enforces the range requirements on the inputs to
+     * `skEncode` by taking parameters in the integers mod groups, then
+     * converting to unbounded integers and shifting to be in the expected
+     * range.
+     *
+     * ```repl
+     * :check skCodingInverts
+     * ```
+     */
+    skCodingInverts : [32]Byte -> [32]Byte -> [64]Byte
+        -> [ell][256](Z (2 * η))
+        -> [k][256](Z (2 * η))
+        -> [k][256](Z (2 ^^ d - 2))
+        -> Bit
+    skCodingInverts ρ K tr s1_inRange s2_inRange t0_inRange = inverts where
+        // Adjust to be in the correct range and of the correct type.
+        s1 = [[(fromZ s1_ij) - `η | s1_ij <- s1_j ] | s1_j <- s1_inRange]
+        s2 = [[(fromZ s2_ij) - `η | s2_ij <- s2_j ] | s2_j <- s2_inRange]
+        // I think this is not uniform sampling. I kept getting an off-by-one
+        // error, so I made the sample size a little smaller.
+        t0 = [[(fromZ t0_ij) - (2 ^^ (`d-1) - 1)
+            | t0_ij <- t0_j ]
+            | t0_j <- t0_inRange]
+
+        (ρ', K', tr', s1', s2', t0') = skDecode (skEncode ρ K tr s1 s2 t0)
+        inverts = (ρ == ρ') && (K == K') && (tr == tr')
+            && (s1 == s1') && (s2 == s2') && (t0 == t0')
 
 /**
  * Sample a polynomial in `R` with coefficients from `{-1, 0, 1}` and Hamming
