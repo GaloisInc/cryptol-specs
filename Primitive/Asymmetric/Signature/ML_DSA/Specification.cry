@@ -61,6 +61,44 @@ type R = [256]Integer
 type R2 = [256]
 
 /**
+ * The ring of single-variable polynomials over the integers mod `q`, modulo
+ * `X^256 + 1`.
+ * [FIPS-204] Section 2.3 and Section 2.4.1.
+ */
+type Rq = [256](Z q)
+
+/**
+ * Compute the centered-mod function (denoted `mod±` in the spec).
+ * [FIPS-204] Section 2.3, "mod±".
+ */
+modPlusMinus : {α} (fin α) => Z q -> Integer
+modPlusMinus m = m' where
+    m_int = (fromZ m) % `α
+    m' = if m_int > (`α / 2) then m_int - `α
+        else m_int
+
+/**
+ * The `mod±` function satisfies the functionality described in the spec.
+ * [FIPS-204] Section 2.3, "mod±".
+ *
+ * The lower bound computes `−⌈𝛼/2⌉` by simplifying the ceiling division
+ * equation `⌈a / b⌉ = (a + b - 1) / b`.
+ *
+ * The parameters chosen here are all the values of `α` used in the spec.
+ * ```repl
+ * :prove modPlusMinusWorks`{2^^d}
+ * :prove modPlusMinusWorks`{q}
+ * :prove modPlusMinusWorks`{2 * γ2}
+ * ```
+ */
+modPlusMinusWorks : {α} (fin α) => Z q -> Bit
+property modPlusMinusWorks m = inRange && congruent where
+    m' = modPlusMinus`{α} m
+    lower_bound = - ((`α + 1) / 2)
+    inRange = (lower_bound < m') && (m' <= (`α / 2))
+    congruent = ((fromZ m) % `α) == (m' % `α)
+
+/**
  * Wrapper function around SHAKE256, specifying the length `l` in bytes.
  * [FIPS-204] Section 3.7.
  *
@@ -657,3 +695,175 @@ property TakeAndDropAreDivAndMod z = dropIsMod && takeIsDiv where
     dropIsMod = z % 16 == zext (drop`{4} z)
     // Division of bit vectors in Cryptol automatically takes the floor.
     takeIsDiv = z / 16 == zext (take`{4} z)
+
+/**
+ * Decompose a set of integers mod `q` into a pair `(r1, r0)` such that
+ * `r === r1 * 2^d + r0 mod q`.
+ *
+ * This applies the `Power2Round` function (Algorithm 35) coefficientwise to
+ * the polynomials in the vectors, per the description at the beginning of
+ * [FIPS-204] Section 7.4.
+ */
+Power2Round : [k]Rq -> ([k]R, [k]R)
+Power2Round r_vec = (r1_vec, r0_vec) where
+    // [FIPS-204] Section 7.4, Algorithm 35.
+    Power2Round_Single : Z q -> (Integer, Integer)
+    Power2Round_Single r = (r1, r0) where
+        r_plus = r
+        r0 = modPlusMinus`{2^^d} r_plus
+        r1 = ((fromZ r_plus) - r0) / (2^^`d)
+
+    // Apply the function coefficientwise to every polynomial.
+    zipped_r1r0 : [k][256](Integer, Integer)
+    zipped_r1r0 = [map Power2Round_Single r | r <- r_vec]
+
+    // Unzip the tuples.
+    r1_vec = [[r1_j | (r1_j, _) <- ri] | ri <- zipped_r1r0]
+    r0_vec = [[r0_j | (_, r0_j) <- ri] | ri <- zipped_r1r0]
+
+private
+    /**
+     * Property demonstrating that `Power2Round` does what it says it's
+     * supposed to do in the definition.
+     * [FIPS-204] Section 7.4, comment on Algorithm 35.
+     * ```repl
+     * :check power2RoundSatisfiesDefinition
+     * ```
+     */
+    power2RoundSatisfiesDefinition r_vec = validDecomp where
+        (r1_vec, r0_vec)= Power2Round r_vec
+        isValid (r, (r1, r0)) = (r1 * 2^^`d + r0) % `q == (fromZ r)
+        validDecomp = and [ and (map isValid (zip rs (zip r1s r0s)))
+            | r1s <- r1_vec
+            | r0s <- r0_vec
+            | rs <- r_vec]
+
+/**
+ * Decompose a set of integers mod `q` into a pair `(r1, r0)` such that
+ * `r === r1 (2 γ2) + r0 mod q`.
+ *
+ * This applies the `Decompose` function (Algorithm 36) coefficientwise to
+ * the polynomials in the vectors, per the description at the beginning of
+ * [FIPS-204] Section 7.4.
+ */
+Decompose : [k]Rq -> ([k]R, [k]R)
+Decompose r_vec = (r1_vec, r0_vec) where
+    // [FIPS-204] Section 7.4, Algorithm 36.
+    Decompose_Single : Z q -> (Integer, Integer)
+    Decompose_Single r = (r1, r0') where
+        r_plus = r
+        r0 = modPlusMinus`{2 * γ2} r_plus
+        (r1, r0') = if (fromZ r_plus) - r0 == `q - 1 then
+                (0, r0 - 1)
+            else
+                (((fromZ r_plus) - r0) / (2 * `γ2), r0)
+
+    // Apply the function coefficientwise to every polynomial.
+    zipped_r1r0 : [k][256](Integer, Integer)
+    zipped_r1r0 = [map Decompose_Single r | r <- r_vec]
+
+    // Unzip the tuples.
+    r1_vec = [[r1_j | (r1_j, _) <- ri] | ri <- zipped_r1r0]
+    r0_vec = [[r0_j | (_, r0_j) <- ri] | ri <- zipped_r1r0]
+
+private
+    /**
+     * Property demonstrating that `Decompose` does what it says it's
+     * supposed to do in the definition.
+     * [FIPS-204] Section 7.4, comment on Algorithm 36.
+     * ```repl
+     * :check decomposeSatisfiesDefinition
+     * ```
+     */
+    decomposeSatisfiesDefinition r_vec = validDecomp where
+        (r1_vec, r0_vec)= Decompose r_vec
+        isValid (r, (r1, r0)) = (r1 * 2 * `γ2 + r0) % `q == (fromZ r)
+        validDecomp = and [ and (map isValid (zip rs (zip r1s r0s)))
+            | r1s <- r1_vec
+            | r0s <- r0_vec
+            | rs <- r_vec]
+
+/**
+ * Returns `r1` from the output of `Decompose`.
+ * [FIPS-24] Section 7.4, Algorithm 37.
+ *
+ * This applies the `HighBits` function (Algorithm 37) coefficientwise to
+ * the polynomials in the vectors, per the description at the beginning of
+ * Section 7.4.
+ */
+HighBits : [k]Rq -> [k]R
+HighBits r = r1 where
+    (r1, _) = Decompose r
+
+/**
+ * Returns `r0` from the output of `Decompose`.
+ * [FIPS-24] Section 7.4, Algorithm 38.
+ *
+ * This applies the `LowBits` function (Algorithm 38) coefficientwise to
+ * the polynomials in the vectors, per the description at the beginning of
+ * Section 7.4.
+ */
+LowBits : [k]Rq -> [k]R
+LowBits r = r0 where
+    (_, r0) = Decompose r
+
+/**
+ * Compute the hint bits indiciating whether adding `z` to `r` alters the high
+ * bits of `r`.
+ * [FIPS-204] Section 7.4, Algorithm 39.
+ *
+ * This applies the `MakeHint` function coefficientwise to the polynomials in the
+ * vectors, per the description at the beginning of Section 7.4. The `HighBits`
+ * function operates over vectors of polynomials; then we compare the vectors of
+ * high bits coefficientwise.
+ */
+MakeHint : [k]Rq -> [k]Rq -> [k]R2
+MakeHint z_vec r_vec = hint where
+    r1_vec = HighBits r_vec
+    v1_vec = HighBits (r_vec + z_vec)
+
+    hint = [[r1 != v1
+        | r1 <- r1s | v1 <- v1s]
+        | r1s <- r1_vec | v1s <- v1_vec]
+
+/**
+ * Return the high bits of `r` adjusted according to hint `h`.
+ * [FIPS-204] Section 7.4, Algorithm 40.
+ *
+ * This applies the `UseHint` function coefficientwise to the polynomials in
+ * the vectors, per the description at the beginning of Section 7.4.
+ */
+UseHint : [k]R2 -> [k]Rq -> [k]R
+UseHint h_vec r_vec = r1_vec where
+    // Step 1.
+    m = (`q - 1) / (2 * `γ2)
+    // Step 2.
+    (r1_vec, r0_vec) = Decompose r_vec
+
+    // Steps 3 - 5. This takes the decomposed integers instead of the original
+    // element in `Z q`.
+    adjustHighBits r1 r0 h =
+        if (h == 1) && (r0 > 0) then (r1 + 1) % m
+        | (h == 1) && (r0 <= 0) then (r1 - 1) % m
+        else r1
+
+    // Apply the function coefficientwise to the decomposed polynomials.
+    r1'_vec = [[adjustHighBits r1 r0 h
+            | r1 <- r1s | r0 <- r0s | h <- hs]
+        | r1s <- r1_vec | r0s <- r0_vec | hs <- h_vec]
+
+private
+    /**
+     * The output of `UseHint` must be within the range `[0, (q-1) / (2*γ2)]`.
+     * [FIPS-204] Section 7.4, comment on Algorithm 40.
+     *
+     * This takes about 1 minute to prove.
+     * ```repl
+     * :prove useHintIsInRange
+     * ```
+     */
+    property useHintIsInRange h_vec r_vec = r1InRange where
+        r1_vec = UseHint h_vec r_vec
+        inRange r1 = (0 <= r1) && (r1 <= (`q - 1) / (2 * `γ2))
+        // Apply check coefficientwise to the polynomial vector.
+        r1InRange = and [and (map inRange r1s) | r1s <- r1_vec]
