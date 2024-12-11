@@ -158,11 +158,20 @@ parameter
      * Coefficient range of the commitment mask `y` used in signing.
      * [FIPS-204] Section 4, Table 1.
      *
-     * The type constraint, which claims that γ1 must be a power of 2, is drawn
-     * from [FIPS-203] Section 7.2, Algorithm 27.
+     * The first type constraint, which claims that `γ1` must be a power of 2,
+     * is drawn from [FIPS-203] Section 7.2, Algorithm 27.
+     * The second is a true statement (when `γ1` is a power of 2, so for all
+     * valid parameter sets for ML-DSA) that is hard to infer. It's stated
+     * explicitly here because the two expressions are used interchangeably in
+     * the spec. Note that `width x = lg2 (x + 1)`:
+     * ```math
+     *    1 + width (γ1 - 1) = 1 + lg2 (γ1).
+     *    width (γ1 - 1 + γ1) = lg2 (2 * γ1) = 1 + lg2 (γ1).
+     * ```
      */
     type γ1 : #
     type constraint (fin γ1, 2 ^^ (lg2 γ1) == γ1)
+    type constraint (1 + width (γ1 - 1) == width (γ1 - 1 + γ1))
 
     /**
      * Low-order rounding range; this defines how to round the signer's
@@ -774,20 +783,7 @@ ExpandS ρ = (s1, s2) where
  */
 ExpandMask : [64]Byte -> Integer -> [ell]R
 ExpandMask ρ μ = y where
-    // Cryptol's type inference is not quite complex enough to prove this type
-    // equivalent to the type constraint in `BitUnpack`, which requires that
-    // `c` is the same width as the sum of the two parameters:
-    //     `c == width (γ1 - 1 + γ1)`.
-    // However, the spec defines:
-    //     `c := 1 + width (γ1 - 1)`.
-    //
-    // Since we know that `γ1` is a power of 2, these two definitions are equivalent.
-    // Note that `width` is defined as `width x = lg2 (x + 1)`. We have:
-    // `BitUnpack` definition:
-    //     `width (γ1 - 1 + γ1) = lg2 (2 * γ1) = 1 + lg2 γ1`
-    // `ExpandMask` definition:
-    //     `1 + width (γ1 - 1) = 1 + lg2 γ1`
-    type c = width (2 * γ1 - 1)
+    type c = 1 + width (γ1 - 1)
 
     y = [BitUnpack`{γ1 - 1, γ1} v where
             ρ' = ρ # IntegerToBytes`{2} (μ + r)
