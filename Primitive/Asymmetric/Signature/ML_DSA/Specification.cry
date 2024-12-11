@@ -196,12 +196,15 @@ parameter
      * commitment `w`.
      * [FIPS-204] Section 4, Table 1.
      *
-     * The type constraint is drawn from [FIPS-204] Section 7.4. The primary
-     * constraint we wish to encode is that `2 * γ2` divides `q - 1`;
+     * The first type constraint is drawn from [FIPS-204] Section 7.4. The
+     * primary constraint we wish to encode is that `2 * γ2` divides `q - 1`;
      * to express this, we must also require that γ2 is non-zero.
+     * The second type constraint is drawn from Algorithm 28 -- the type
+     * argument to `SimpleBitPack` must have positive width.
      */
     type γ2 : #
     type constraint (γ2 > 0, (q - 1) % (2 * γ2) == 0)
+    type constraint (width ((q - 1) / (2 * γ2) - 1) > 0)
 
     /**
      * Dimensions of the matrix `A`, which is part of the public key.
@@ -832,6 +835,17 @@ private
             Some h' -> h == h'
             None -> False
         inverts = (c_til == c_til') && (z == z') && h_matches
+/**
+ * Encode a polynomial vector `w1` into a byte string.
+ * [FIPS-204] Section 7.3, Algorithm 28.
+ *
+ * The polynomial coordinates of `w1` must be in the range
+ * `[0, (q - 1) / (2 * γ2) - 1]`.
+ */
+w1Encode : [k]R -> [32 * k * width ((q - 1) / (2 * γ2) - 1)]Byte
+w1Encode w1 = w1_til where
+    w1_til = join
+        [SimpleBitPack`{(q - 1) / (2 * γ2) - 1} (w1@i) | i <- [0..k-1]]
 
 /**
  * Sample a polynomial in `R` with coefficients from `{-1, 0, 1}` and Hamming
