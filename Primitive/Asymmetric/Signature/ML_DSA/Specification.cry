@@ -654,6 +654,12 @@ property HintPackingInverts h_Indexes =
         h = buildHint h_Indexes
 
 private
+    /**
+     * Creates a hint with `w` non-zero entries at the indices specified in
+     * the parameter.
+     * This is for testing functions that take a hint as a parameter and assume
+     * it is appropriately sparse.
+     */
     buildHint : {w} (w <= ω) => [w][lg2 (256 * k)] -> [k]R2
     buildHint h_Indexes = h where
         h = split`{k} [if elem idx h_Indexes then 1 else 0 | idx <- [0..(256 * k) - 1]]
@@ -760,14 +766,12 @@ private
     skCodingInverts : [32]Byte -> [32]Byte -> [64]Byte
         -> [ell][256](Z (2 * η))
         -> [k][256](Z (2 * η))
-        -> [k][256](Z (2 ^^ d - 2))
+        -> [k][256](Z (2 ^^ d - 1))
         -> Bit
     skCodingInverts ρ K tr s1_inRange s2_inRange t0_inRange = inverts where
         // Adjust to be in the correct range and of the correct type.
         s1 = [[(fromZ s1_ij) - `η | s1_ij <- s1_j ] | s1_j <- s1_inRange]
         s2 = [[(fromZ s2_ij) - `η | s2_ij <- s2_j ] | s2_j <- s2_inRange]
-        // I think this is not uniform sampling. I kept getting an off-by-one
-        // error, so I made the sample size a little smaller.
         t0 = [[(fromZ t0_ij) - (2 ^^ (`d-1) - 1)
             | t0_ij <- t0_j ]
             | t0_j <- t0_inRange]
@@ -783,23 +787,24 @@ private
  * The parameter `z` must have coefficients in `[-γ1 + 1, γ1]`.
  */
 sigEncode : [λ / 4]Byte -> [ell]R -> [k]R2 -> Signature
-sigEncode c_til z h = sigma where
+sigEncode c_til z h = σ where
+    // Note that `σ#` indicates the value of `σ` at Step `#`.
     // Step 1.
-    sigma1 = c_til
+    σ1 = c_til
     // Step 2 - 4.
-    sigma3 = sigma1 # join [BitPack`{γ1 - 1, γ1} (z@i) | i <- [0..ell-1]]
+    σ3 = σ1 # join [BitPack`{γ1 - 1, γ1} (z@i) | i <- [0..ell-1]]
     // Step 5.
-    sigma = sigma3 # HintBitPack h
+    σ = σ3 # HintBitPack h
 
 /**
  * Reverse the procedure `sigEncode`.
  * [FIPS-204] Section 7.3, Algorithm 27.
  */
 sigDecode : Signature -> ([λ / 4]Byte, [ell]R, Option ([k]R2))
-sigDecode sigma = (c_til, z, h) where
+sigDecode σ = (c_til, z, h) where
     // Step 1. We separate into bytes, then further split `x` into its two
     // dimensions.
-    (c_til # xBytes # y) = sigma
+    (c_til # xBytes # y) = σ
     x = split`{ell} xBytes
 
     // Step 2 - 4.
@@ -820,7 +825,8 @@ private
      * :check sigCodingInverts`{ω / 2}
      * ```
      */
-    sigCodingInverts : {w} (w < ω) => [λ / 4]Byte -> [ell][256](Z (2* γ1 - 1)) -> [w][lg2 (256 * k)] -> Bit
+    sigCodingInverts : {w} (w < ω) =>
+        [λ / 4]Byte -> [ell][256](Z (2 * γ1 - 1)) -> [w][lg2 (256 * k)] -> Bit
     property sigCodingInverts c_til z_inRange h_Indexes = inverts where
         // The coefficients of `z` must be in the range `[-γ1 + 1, γ1]`.
         // Convert to correct type and adjust them to the correct range.
