@@ -136,26 +136,42 @@ parameter
      * is the verifier's challenge.
      * [FIPS-204] Section 4, Table 1.
      *
-     * The type constraint is drawn from [FIPS-204] Section 7.3, Algorithm 29.
+     * The type constraints are drawn from [FIPS-204] Section 7.3, Algorithm
+     * 29; the first is implicit in Step 6, and the second is explicit in the
+     * algorithm description.
      */
     type τ : #
-    type constraint (τ <= 64)
+    type constraint (0 < τ, τ <= 64)
 
     /**
      * Collision strength of the commitment hash `c~` component of a signature.
      * [FIPS-204] Section 4, Table 1.
+     *
+     * The type constraint is drawn from [FIPS-204] Section 7.3, Algorithm 29;
+     * it's implicit that the hash function `H` requires a finite input, so the
+     * length of the input seed, and thus of `λ`, must be finite.
      */
     type λ : #
+    type constraint (fin λ)
 
     /**
      * Coefficient range of the commitment mask `y` used in signing.
      * [FIPS-204] Section 4, Table 1.
      *
-     * The type constraint, which claims that γ1 must be a power of 2, is drawn
-     * from [FIPS-203] Section 7.2, Algorithm 27.
+     * The first type constraint, which claims that `γ1` must be a power of 2,
+     * is drawn from [FIPS-203] Section 7.2, Algorithm 27.
+     * The second is a true statement (when `γ1` is a power of 2, so for all
+     * valid parameter sets for ML-DSA) that is hard to infer. It's stated
+     * explicitly here because the two expressions are used interchangeably in
+     * the spec. Note that `width x = lg2 (x + 1)`:
+     * ```math
+     *    1 + width (γ1 - 1) = 1 + lg2 (γ1).
+     *    width (γ1 - 1 + γ1) = lg2 (2 * γ1) = 1 + lg2 (γ1).
+     * ```
      */
     type γ1 : #
-    type constraint (2 ^^ (lg2 γ1) == γ1)
+    type constraint (fin γ1, 2 ^^ (lg2 γ1) == γ1)
+    type constraint (1 + width (γ1 - 1) == width (γ1 - 1 + γ1))
 
     /**
      * Low-order rounding range; this defines how to round the signer's
@@ -175,7 +191,7 @@ parameter
      */
     type k : #
     type ell : #
-    type constraint (fin k, fin ell, k > 0)
+    type constraint (fin k, fin ell, k > 0, ell > 0)
 
     /**
      * Private key range; the private key is a polynomial whose coefficients
@@ -618,10 +634,51 @@ property HintPackingInverts h_Indexes =
         h = split`{k} [if elem idx h_Indexes then 1 else 0 | idx <- [0..(256 * k) - 1]]
 
 /**
+ * Sample a polynomial in `R` with coefficients from `{-1, 0, 1}` and Hamming
+ * weight `τ`.
+ * [FIPS-204] Section 7.3, Algorithm 29.
+ */
+SampleInBall : [λ / 4]Byte -> R
+SampleInBall ρ = cFinal where
+    // Step 1.
+    c0 = zero
+    // Steps 2 - 3.
+    ctx_0 = H`{inf} ρ
+    // Step 4.
+    ((s : [8]Byte) # ctx_1) = ctx_0
+    // Step 5.
+    h = BytesToBits s
+
+    // Steps 7 - 10. Uses recursion instead of a loop to sample bytes from the
+    // hash stream, returning the first one that's in the range `[0, i]`.
+    sample : [inf]Byte -> Byte -> (Byte, [inf]Byte)
+    sample ([j] # ctx) i =
+        if j > i then
+            sample ctx i
+        else (j, ctx)
+
+    // Steps 6 - 13. Computes the value of `c` and the updated `ctx` at each
+    // iteration of the loop.
+    cAndCtx = [(c0, ctx_1)] # [(c'', ctx') where
+            // Steps 7 - 10.
+            (j, ctx') = sample ctx (fromInteger i)
+            // Step 11.
+            c' = update c i (c@j)
+            // Step 12. In Cryptol, we need to manually convert the exponent
+            // from a `Bit` to a numeric type.
+            hiτ = if (h @ (i + `τ - 256)) then 1 else 0 : Integer
+            c'' = update c' j ((-1)^^hiτ)
+
+        | i <- [256 - τ..255]
+        | (c, ctx) <- cAndCtx]
+
+    (cFinal, _) = cAndCtx ! 0
+
+/**
  * Sample a polynomial in the ring `Tq`.
  * [FIPS-204] Section 7.3, Algorithm 30.
  */
-RejNTTPoly : [32]Byte -> Tq
+RejNTTPoly : [34]Byte -> Tq
 RejNTTPoly ρ = a_hat where
     // Step 2 - 3.
     ctx0 = G ρ
@@ -695,6 +752,43 @@ property TakeAndDropAreDivAndMod z = dropIsMod && takeIsDiv where
     dropIsMod = z % 16 == zext (drop`{4} z)
     // Division of bit vectors in Cryptol automatically takes the floor.
     takeIsDiv = z / 16 == zext (take`{4} z)
+
+/**
+ * Sample a `k x l` matrix of elements of `T_q`.
+ * [FIPS-204] Section 7.3, Algorithm 32.
+ */
+ExpandA : [32]Byte -> [k][ell]Tq
+ExpandA ρ = A_hat where
+    A_hat = [[RejNTTPoly ρ' where
+            ρ' = ρ # IntegerToBytes`{1} s # IntegerToBytes`{1} r
+        | s <- [0..ell - 1]]
+        | r <- [0..k - 1]]
+
+/**
+ * Sample vectors in `R^ell` and `R^k`, each with polynomial coordinates whose
+ * coefficients are in the interval `[-η , η]`.
+ * [FIPS-204] Section 7.3, Algorithm 33.
+ */
+ExpandS : [64]Byte -> ([ell]R, [k]R)
+ExpandS ρ = (s1, s2) where
+    s1 = [RejBoundedPoly (ρ # IntegerToBytes`{2} r) | r <- [0..ell-1]]
+    s2 = [RejBoundedPoly (ρ # IntegerToBytes`{2} (r + `ell)) | r <- [0..k-1]]
+
+/**
+ * Sample a vector in `R^ell` such that each polynomial in `y` has coefficients
+ * in the range `[-γ1 + 1, γ1]`.
+ * [FIPS-204] Section 7.3, Algorithm 34.
+ *
+ * Note: This function requires that `μ` is non-negative.
+ */
+ExpandMask : [64]Byte -> Integer -> [ell]R
+ExpandMask ρ μ = y where
+    type c = 1 + width (γ1 - 1)
+
+    y = [BitUnpack`{γ1 - 1, γ1} v where
+            ρ' = ρ # IntegerToBytes`{2} (μ + r)
+            v = H`{32 * c} ρ'
+        | r <- [0..ell - 1]]
 
 /**
  * Decompose a set of integers mod `q` into a pair `(r1, r0)` such that
