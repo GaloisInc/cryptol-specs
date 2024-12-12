@@ -13,6 +13,10 @@
  *     D.C.), Federal Information Processing Standards Publication (FIPS) NIST
  *     FIPS 204. August 2024.
  *     @see https://doi.org/10.6028/NIST.FIPS.204
+ * [NTT-Guide]: Ardianto Satriawan, Rella Mareta, and Hanho Lee. A Complete
+ *     Beginner Guide to the Number Theoretic Transform (NTT). Cryptology
+ *     ePrint Archive. 2024.
+ *     @see https://eprint.iacr.org/2024/585.pdf
  *
  * @copyright Galois Inc
  * @author Marcella Hastings <marcella@galois.com>
@@ -245,7 +249,8 @@ parameter
  * A 512th root of unity in `Z_q`.
  * [FIPS-204] Section 4, Table 1.
  */
-type ζ = 1753
+ζ : Z q
+ζ = 1753
 
 /**
  * Number of dropped bits from `t` (this compresses the public key for
@@ -1181,3 +1186,69 @@ private
         inRange r1 = (0 <= r1) && (r1 <= (`q - 1) / (2 * `γ2))
         // Apply check coefficientwise to the polynomial vector.
         r1InRange = and [and (map inRange r1s) | r1s <- r1_vec]
+
+/**
+ * Number theoretic transform: compute the "NTT representation" in
+ * `T_q` of a polynomial in `R_q`.
+ *
+ * This is equivalent to [FIPS-204] Section 7.5, Algorithm 41. That particular
+ * formulation is difficult to implement in Cryptol. Instead, we use the naive
+ * NTT implementation described in [NTT-Guide] Section 3.3.2, Equation 16. Note
+ * that [NTT-Guide] uses different notation: their `ψ` is our `ζ`; their `a`
+ * is our `f`; and we set their `n = 256`.
+ *
+ * @design Marcella Hastings <marcella@galois.com>: This is neither efficient
+ * nor obviously spec-adherent. We should aim to make it at least one of those.
+ * Ideally we will consolidate all the NTT implementations across the cryptol-
+ * specs repo into a single common, validated (by some means...) implementation
+ * and import it for use here and elsewhere.
+ * @see https://github.com/GaloisInc/cryptol-specs/issues/163
+ */
+NTT : Rq -> Tq
+NTT f = [f_hat_j j | j <- [0..255]] where
+    f_hat_j j = sum [ (ζ ^^ (2 * i * j + i)) * fi | i <- [0..255] | fi <- f]
+
+/**
+ * Inverse of the number theoretic transform: converts from the "NTT
+ * representation" in `T_q` to a polynomial in `R_q`.
+ *
+ * This is equivalent to [FIPS-204] Section 7.5, Algorithm 42. That particular
+ * formulation is difficult to implement in Cryptol. Instead, we use the naive
+ * NTT implementation described in [NTT-Guide] Section 3.3.3, Equation 18. Note
+ * that [NTT-Guide] uses different notation: their `ψ` is our `ζ`; their `a`
+ * is our `f`; and we set their `n = 256`.
+ *
+ * @design Marcella Hastings <marcella@galois.com>: This is neither efficient
+ * nor obviously spec-adherent. We should aim to make it at least one of those.
+ * Ideally we will consolidate all the NTT implementations across the cryptol-
+ * specs repo into a single common, validated (by some means...) implementation
+ * and import it for use here and elsewhere.
+ * @see https://github.com/GaloisInc/cryptol-specs/issues/163
+ */
+NTTInv : Tq -> Rq
+NTTInv f_hat = [f_i j * inv_root | j <- [0..255]] where
+    inv_root = recip 256 : Z q
+    inv_ζ = recip ζ
+    f_i j = sum [ (inv_ζ ^^ (2 * i * j + j)) * f_hat_j | i <- [0..255] | f_hat_j <- f_hat]
+
+private
+    /**
+     * This property demonstrates that `NTTInv` inverts `NTT`.
+     * ```repl
+     * :set tests=20
+     * :check NTT_Inverts
+     * ```
+     * Alternately, this proves in ~8 min with Z3 v4.13.3.
+     */
+    NTT_Inverts : Rq -> Bit
+    property NTT_Inverts f =  NTTInv (NTT f) == f
+
+    /**
+     * This property demonstrates that `NTT` inverts `NTTInv`.
+     * ```repl
+     * :set tests=20
+     * :check NTTInv_Inverts
+     * ```
+     */
+    NTTInv_Inverts : Tq -> Bit
+    property NTTInv_Inverts f =  NTT (NTTInv f) == f
