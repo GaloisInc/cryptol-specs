@@ -1271,6 +1271,23 @@ AddNTT a b = c where
 property addNTTisPlus a b = AddNTT a b == a + b
 
 /**
+ * Compute the product of two elements in `Tq`.
+ * [FIPS-204] Section 7.6, Algorithm 45.
+ */
+MultiplyNTT : Tq -> Tq -> Tq
+MultiplyNTT a b = c where
+    c = [a@i * b@i | i <- [0..255]]
+
+/**
+ * The definition of multiplication in the spec is the same as the built-in
+ * multiplication (*) operator in Cryptol!
+ * ```repl
+ * :prove multiplyNTTisStar
+ * ```
+ */
+property multiplyNTTisStar a b = MultiplyNTT a b == a * b
+
+/**
  * Compute the sum of two vectors over `Tq`
  * [FIPS-204] Section 7.6, Algorithm 46.
  */
@@ -1289,3 +1306,38 @@ AddVectorNTT v w = u where
  */
 addVectorNTTisPlus : {r} (fin r, r > 0) => [r]Tq -> [r]Tq -> Bit
 property addVectorNTTisPlus v w = AddVectorNTT v w == v + w
+
+/**
+ * Compute the product of a scalar and a vector over `Tq`.
+ * [FIPS-204] Section 7.6, Algorithm 47.
+ */
+ScalarVectorNTT : {l} (fin l, l > 0) => Tq -> [l]Tq -> [l]Tq
+ScalarVectorNTT c v = w where
+    w = [MultiplyNTT c (v@i) | i <- [0..l-1]]
+
+/**
+ * Custom operator for computing the product of a scalar and a vector.
+ *
+ * The spec overloads the ring operator `∘` to mean several operations,
+ * in `Tq`, including the product of two elements, the product of a scalar
+ * and a vector, and the product of a matrix and a vector.
+ * Cryptol does not support user-defined overloaded symbols, so we define
+ * `∘` to be the function with the most usage in the spec.
+ *
+ * This implements a more efficient version of `ScalarVectorNTT`.
+ */
+(∘) : {l} (fin l, l > 0) => Tq -> [l]Tq -> [l]Tq
+(∘) c v = [c * vi | vi <- v]
+
+/**
+ * The optimized scalar vector multiplication operator `∘` is equivalent to
+ * `ScalarVectorNTT`.
+ *
+ * These parameters are the only ones used for this operation in the spec:
+ * ```repl
+ * :prove ringIsScalarVectorNTT`{k}
+ * :prove ringIsScalarVectorNTT`{ell}
+ * ```
+ */
+ringIsScalarVectorNTT : {l} (fin l, l > 0) => Tq -> [l]Tq -> Bit
+property ringIsScalarVectorNTT c v = c ∘ v == ScalarVectorNTT c v
