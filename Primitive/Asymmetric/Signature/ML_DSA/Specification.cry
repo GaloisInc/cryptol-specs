@@ -1252,3 +1252,40 @@ private
      */
     NTTInv_Inverts : Tq -> Bit
     property NTTInv_Inverts f =  NTT (NTTInv f) == f
+
+/**
+ * Compute the sum of two elemetns in `Tq`.
+ * [FIPS-204] Section 7.6, Algorithm 44.
+ */
+AddNTT : Tq -> Tq -> Tq
+AddNTT a b = c where
+    c = [a@i + b@i | i <- [0..255]]
+
+/**
+ * The definition of addition in the spec is the same as the built-in addition
+ * operator in Cryptol!
+ * ```repl
+ * :prove addNTTisPlus
+ * ```
+ */
+property addNTTisPlus a b = AddNTT a b == a + b
+
+/**
+ * Compute the sum of two vectors over `Tq`
+ * [FIPS-204] Section 7.6, Algorithm 46.
+ */
+AddVectorNTT : {l} (fin l, l > 0) => [l]Tq -> [l]Tq -> [l]Tq
+AddVectorNTT v w = u where
+    u = [AddNTT (v@i) (w@i) | i <- [0..l-1]]
+
+/**
+ * The defintion of vector addition in the spec is the same as the built-in
+ * addition operator in Cryptol!
+ * There's only one NTT vector addition that I could find in the spec and it's
+ * between vectors of length `k`:
+ * ```repl
+ * :prove addVectorNTTisPlus`{k}
+ * ```
+ */
+addVectorNTTisPlus : {r} (fin r, r > 0) => [r]Tq -> [r]Tq -> Bit
+property addVectorNTTisPlus v w = AddVectorNTT v w == v + w
