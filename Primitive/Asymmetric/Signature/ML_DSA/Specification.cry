@@ -278,6 +278,28 @@ type d = 13
  */
 type β = η * τ
 
+
+KeyGen_internal : [32]Byte -> (PublicKey, PrivateKey)
+KeyGen_internal ξ = (pk, sk) where
+    (ρ # ρ' # K) = H`{128} (ξ # IntegerToBytes`{1} `k # IntegerToBytes`{1} `ell)
+
+    A_hat = ExpandA ρ
+
+    (s1, s2) = ExpandS ρ'
+
+    // An element of `R` may be "typecast" to an element of `Rq`. [FIPS-204] Section 2.4.1.
+    s1' = [map fromInteger s1_i | s1_i <- s1]
+    s2' = [map fromInteger s2_i | s2_i <- s2]
+
+    t = NTTInv_Vec (A_hat ∘∘ NTT_Vec s1') + s2'
+    (t1, t0) = Power2Round t
+
+    pk = pkEncode ρ t1
+
+    tr = H`{64} pk
+
+    sk = skEncode ρ K tr s1 s2 t0
+
 /**
  * Compute a base-2 representation of the input mod `2^α` using little-endian
  * order.
