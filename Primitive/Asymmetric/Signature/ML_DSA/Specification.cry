@@ -1341,3 +1341,46 @@ ScalarVectorNTT c v = w where
  */
 ringIsScalarVectorNTT : {l} (fin l, l > 0) => Tq -> [l]Tq -> Bit
 property ringIsScalarVectorNTT c v = c ∘ v == ScalarVectorNTT c v
+
+/**
+ * Compute the product of a matrix and a vector over `Tq`.
+ * [FIPS-204] Section 7.6, Algorithm 48.
+ *
+ * Note: The spec defines this operation for a matrix with dimensions
+ * `k x ell`, where `k` and `ell` are natural numbers. This actually overloads
+ * those names, since they're also the dimensions that are part of the
+ * parameterization of the algorithm. In fact, we only ever use this
+ * function for the matrix `A_hat` with dimensions `k x ell` (the parameters).
+ * So, this isn't implemented over arbitrary matrix dimensions, although I
+ * think it could be.
+ */
+MatrixVectorNTT : [k][ell]Tq -> [ell]Tq -> [k]Tq
+MatrixVectorNTT M v = w where
+    // We use the `sum` built-in function instead of iteratively applying
+    // `AddNTT`. See `addNTTisPlus` property for the equivalence.
+    w = [sum [ MultiplyNTT (M@i@j) (v@j)
+        | j <- [0..ell-1]]
+        | i <- [0..k-1] ]
+
+/**
+ * Custom operator for computing the product of a matrix and a vector.
+ *
+ * The spec overloads the ring operator `∘` to mean several operations in
+ * `Tq`. In this executable spec, we define `∘` to mean scalar-vector
+ * multiplication. Cryptol does not support user-defined overloaded symbols,
+ * but for readability, it's nice to have an infix operator for this function.
+ *
+ * This implements a more efficient verison of `ScalarVectorNTT`.
+ */
+(∘∘) : [k][ell]Tq -> [ell]Tq -> [k]Tq
+(∘∘) M v = [sum [Mij * vj | Mij <- Mi | vj <- v] | Mi <- M]
+
+/**
+ * The optimized matrix vector multiplication operator `∘∘` is equivalent to
+ * `MatrixVectorNTT`.
+ * ```repl
+ * :prove doubleRingIsMatrixVectorNTT
+ * ```
+ */
+doubleRingIsMatrixVectorNTT : [k][ell]Tq -> [ell]Tq -> Bit
+property doubleRingIsMatrixVectorNTT M v = (M ∘∘ v) == MatrixVectorNTT M v
