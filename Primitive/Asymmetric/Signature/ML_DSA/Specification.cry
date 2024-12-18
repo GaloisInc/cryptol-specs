@@ -144,6 +144,9 @@ NTTInv_Vec = map NTT
 H : {l, m} (fin m) => [m][8] -> [l][8]
 H str = SHAKE256::xofBytes`{8 * l} str
 
+HBits : {l, m} (fin m) => [m] -> [l][8]
+HBits str = split (SHAKE256::xof`{8 * l} str)
+
 /**
  * Wrapper function around SHAKE128, specifying the length `l` in bytes.
  * [FIPS-204] Section 3.7.
@@ -281,16 +284,20 @@ type β = η * τ
 
 KeyGen_internal : [32]Byte -> (PublicKey, PrivateKey)
 KeyGen_internal ξ = (pk, sk) where
+    // works
     (ρ # ρ' # K) = H`{128} (ξ # IntegerToBytes`{1} `k # IntegerToBytes`{1} `ell)
 
+    // works
     A_hat = ExpandA ρ
 
+    // works
     (s1, s2) = ExpandS ρ'
 
     // An element of `R` may be "typecast" to an element of `Rq`. [FIPS-204] Section 2.4.1.
     s1' = [map fromInteger s1_i | s1_i <- s1]
     s2' = [map fromInteger s2_i | s2_i <- s2]
 
+    /// NTT S1 is wrong!
     t = NTTInv_Vec (A_hat ∘∘ NTT_Vec s1') + s2'
     (t1, t0) = Power2Round t
 
@@ -299,6 +306,32 @@ KeyGen_internal ξ = (pk, sk) where
     tr = H`{64} pk
 
     sk = skEncode ρ K tr s1 s2 t0
+
+Verify_internal : {m} (fin m) => PublicKey -> [m] -> Signature -> Bool
+Verify_internal pk M' sigma = isValid where
+    (rho, t1) = pkDecode pk // (Byte, R)
+    (c_til, z, h) = sigDecode sigma // (Byte, R, R2)
+
+    isValid = case h of
+        None -> False
+        Some h' -> validate h'
+
+    validate h' = v where
+        A_hat = ExpandA rho  // Tq
+        tr = H`{64} pk
+        mu = HBits`{64} ((BytesToBits tr) # M')
+        c = SampleInBall c_til // R
+
+        // Convert everything to Rq
+        dup = `(2^^d)
+        t1_q = [[dup * fromInteger`{Z q} tij | tij <- ti] | ti <- t1] : [k]Rq
+        z_q = [map fromInteger`{Z q} zi | zi <- z] : [ell]Rq
+        c_q = map fromInteger`{Z q} c
+        w'_Approx = NTTInv_Vec (A_hat ∘∘ NTT_Vec z_q - NTT c_q ∘ NTT_Vec t1_q )
+        w'_1 = UseHint h' w'_Approx
+        c_til' = H`{λ / 4} (mu # w1Encode w'_1)
+        v = c_til == c_til'
+
 
 /**
  * Compute a base-2 representation of the input mod `2^α` using little-endian
@@ -440,18 +473,20 @@ CoeffFromThreeBytes b0 b1 b2 = maybe_z where
     b2' = if b2 > 127 then b2 - 128 else b2
 
     // We have to explicitly expand the byte strings to support the
-    // operations in the next step. 32 bits gives us plenty of space.
-    [bq0, bq1, bq2'] = map zext`{32} [b0, b1, b2']
+    // operations in the next step -- 23 bits is enough, per the spec,
+    // but we'll pad to 24.
+    [bq0, bq1, bq2'] = map zext`{24} [b0, b1, b2']
 
-    // Step 5.
-    z = 2^^16 * bq2' + 2^^8 * bq1 + bq0
+    // Step 5. Set to 23 bits now that we've done the math.
+    z = drop`{1} (2^^16 * bq2' + 2^^8 * bq1 + bq0)
+
 
     // Step 6 - 7. We have to convert `z` into `Z q` manually in the successful
     // case -- note that we can't do it sooner because otherwise the condition
     // is moot.
     maybe_z = if z < `q then Some (toZ z) else None
 
-    toZ : [32] -> Z q
+    toZ : [23] -> Z q
     toZ b = fromInteger (toInteger b)
 
 /**
@@ -1091,6 +1126,15 @@ private
             | r0s <- r0_vec
             | rs <- r_vec]
 
+reversePower2Round : [k]R -> [k]R -> [k]Rq
+reversePower2Round t1 t0 = t where
+    reconstruct (r1, r0) = fromInteger (r1 * 2^^`d + r0)
+    t = [map reconstruct (zip t1s t0s) | t1s <- t1 | t0s <- t0]
+
+property p2r2p elts = elts == elts' where
+    (t1, t0) = Power2Round elts
+    elts' = reversePower2Round t1 t0
+
 /**
  * Decompose a set of integers mod `q` into a pair `(r1, r0)` such that
  * `r === r1 (2 γ2) + r0 mod q`.
@@ -1238,9 +1282,16 @@ private
  * and import it for use here and elsewhere.
  * @see https://github.com/GaloisInc/cryptol-specs/issues/163
  */
+import Common::ntt as NTTMod
 NTT : Rq -> Tq
+//NTT = NTTMod::fntt
+
+monty_inverse = recip (2^^32) : Z q
+
+//NTT_mine : Rq -> Tq
 NTT f = [f_hat_j j | j <- [0..255]] where
     f_hat_j j = sum [ (ζ ^^ (2 * i * j + i)) * fi | i <- [0..255] | fi <- f]
+    montgomery_reduce x = monty_inverse * x
 
 /**
  * Inverse of the number theoretic transform: converts from the "NTT
@@ -1260,10 +1311,13 @@ NTT f = [f_hat_j j | j <- [0..255]] where
  * @see https://github.com/GaloisInc/cryptol-specs/issues/163
  */
 NTTInv : Tq -> Rq
+NTTInv = NTTMod::ivntt
+/*
 NTTInv f_hat = [f_i j * inv_root | j <- [0..255]] where
     inv_root = recip 256 : Z q
     inv_ζ = recip ζ
     f_i j = sum [ (inv_ζ ^^ (2 * i * j + j)) * f_hat_j | i <- [0..255] | f_hat_j <- f_hat]
+*/
 
 private
     /**
@@ -1390,9 +1444,7 @@ property ringIsScalarVectorNTT c v = c ∘ v == ScalarVectorNTT c v
  */
 MatrixVectorNTT : [k][ell]Tq -> [ell]Tq -> [k]Tq
 MatrixVectorNTT M v = w where
-    // We use the `sum` built-in function instead of iteratively applying
-    // `AddNTT`. See `addNTTisPlus` property for the equivalence.
-    w = [sum [ MultiplyNTT (M@i@j) (v@j)
+    w = [foldl AddNTT zero [MultiplyNTT (M@i@j) (v@j)
         | j <- [0..ell-1]]
         | i <- [0..k-1] ]
 
