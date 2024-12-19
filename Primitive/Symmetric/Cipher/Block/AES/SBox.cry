@@ -18,21 +18,25 @@ type SBox = [256] GF28
  *
  * `GF28::inverse b` corresponds to Equation 5.2.
  */
-sbox : SBox
-sbox = [ transform (GF28::inverse b) | b <- [0 .. 255] ] where
+sboxTable : SBox
+sboxTable = [ transform (GF28::inverse b) | b <- [0 .. 255] ] where
     // Equation 5.3.
     transform b = GF28::add [b, (b >>> 4), (b >>> 5), (b >>> 6), (b >>> 7), c]
     // The constant byte {01100011}.
     c = 0x63
+sbox : GF28 -> GF28
+sbox w = sboxTable @ w
 
 /**
  * Inverted substitution table for AES.
  * [FIPS-197u1] Section 5.3.2.
  */
-sboxInv : SBox
-sboxInv = [ GF28::inverse (transformInv b) | b <- [0 .. 255] ] where
+sboxInvTable : SBox
+sboxInvTable = [ GF28::inverse (transformInv b) | b <- [0 .. 255] ] where
     transformInv b = GF28::add [(b >>> 2), (b >>> 5), (b >>> 7), d]
     d = 0x05
+sboxInv : GF28 -> GF28
+sboxInv w = sboxInvTable @ w
 
 /**
  * S-box inversion must be correctly defined.
@@ -40,4 +44,4 @@ sboxInv = [ GF28::inverse (transformInv b) | b <- [0 .. 255] ] where
  * :prove sBoxInverts
  * ```
  */
-property sBoxInverts b = sboxInv @ ( sbox @ b) == b
+property sBoxInverts b = sboxInv ( sbox b) == b

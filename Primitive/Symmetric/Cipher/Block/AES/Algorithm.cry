@@ -67,7 +67,7 @@ cipher (kInit,ks,kFinal) pt = stateToMsg final_state // Line 13
  * It does so by applying the AES S-box independently to each byte in the state.
  */
 SubBytes : State -> State
-SubBytes state = [ [ sbox @ b | b <- row ] | row <- state ]
+SubBytes state = [ [ sbox b | b <- row ] | row <- state ]
 
 /**
  * ShiftRows transforms the state by cycling the last three rows.
@@ -127,7 +127,7 @@ InvShiftRows state = [ row >>> i | row <- state | i : [2] <- [0 .. 3] ]
  * [FIPS-197u1] Section 5.3.2
  */
 InvSubBytes : State -> State
-InvSubBytes state = [ [ sboxInv @ b | b <- row ] | row <- state ]
+InvSubBytes state = [ [ sboxInv b | b <- row ] | row <- state ]
 
 /**
  * Inverts the `MixColumns` function.
