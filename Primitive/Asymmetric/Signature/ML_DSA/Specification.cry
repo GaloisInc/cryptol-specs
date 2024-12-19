@@ -1231,6 +1231,9 @@ private
  * that [NTT-Guide] uses different notation: their `ψ` is our `ζ`; their `a`
  * is our `f`; and we set their `n = 256`.
  *
+ * There is one divergence between [NTT-Guide] and [FIPS-204]: the spec uses
+ * bit-reversed indexes for the NTT representation, but the guide does not.
+ *
  * @design Marcella Hastings <marcella@galois.com>: This is neither efficient
  * nor obviously spec-adherent. We should aim to make it at least one of those.
  * Ideally we will consolidate all the NTT implementations across the cryptol-
@@ -1239,8 +1242,12 @@ private
  * @see https://github.com/GaloisInc/cryptol-specs/issues/163
  */
 NTT : Rq -> Tq
-NTT f = [f_hat_j j | j <- [0..255]] where
+NTT f = [f_hat_j j | j <- bitrev_indexes] where
     f_hat_j j = sum [ (ζ ^^ (2 * i * j + i)) * fi | i <- [0..255] | fi <- f]
+
+    // Rearrange the indexes so that the NTT representation is in
+    // bit-reversed-index order.
+    bitrev_indexes = map toInteger (map reverse [0..255 : [8]])
 
 /**
  * Inverse of the number theoretic transform: converts from the "NTT
@@ -1251,6 +1258,9 @@ NTT f = [f_hat_j j | j <- [0..255]] where
  * NTT implementation described in [NTT-Guide] Section 3.3.3, Equation 18. Note
  * that [NTT-Guide] uses different notation: their `ψ` is our `ζ`; their `a`
  * is our `f`; and we set their `n = 256`.
+ *
+ * There is one divergence between [NTT-Guide] and [FIPS-204]: the spec uses
+ * bit-reversed indexes for the NTT representation, but the guide does not.
  *
  * @design Marcella Hastings <marcella@galois.com>: This is neither efficient
  * nor obviously spec-adherent. We should aim to make it at least one of those.
@@ -1263,7 +1273,13 @@ NTTInv : Tq -> Rq
 NTTInv f_hat = [f_i j * inv_root | j <- [0..255]] where
     inv_root = recip 256 : Z q
     inv_ζ = recip ζ
-    f_i j = sum [ (inv_ζ ^^ (2 * i * j + j)) * f_hat_j | i <- [0..255] | f_hat_j <- f_hat]
+    f_i j = sum [ (inv_ζ ^^ (2 * i * j + j)) * f_hat_j
+        | i <- [0..255]
+        | f_hat_j <- indexReversedFHat]
+
+    // Rearrange the NTT representation to bit-reverse the indexes.
+    bitrev_indexes = map reverse [0..255 : [8]]
+    indexReversedFHat = [f_hat@i | i <- bitrev_indexes]
 
 private
     /**
