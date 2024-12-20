@@ -44,4 +44,4 @@ sboxInv w = sboxInvTable @ w
  * :prove sBoxInverts
  * ```
  */
-property sBoxInverts b = sboxInv ( sbox b) == b
+property sBoxInverts b = sboxInv (sbox b) == b
