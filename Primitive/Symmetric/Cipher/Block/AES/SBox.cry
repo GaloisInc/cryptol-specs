@@ -36,7 +36,7 @@ sboxInvTable = [ GF28::inverse (transformInv b) | b <- [0 .. 255] ] where
     transformInv b = GF28::add [(b >>> 2), (b >>> 5), (b >>> 7), d]
     d = 0x05
 sboxInv : GF28 -> GF28
-sboxInv w = sboxInvTable @ w
+sboxInv b = sboxInvTable @ b
 
 /**
  * S-box inversion must be correctly defined.
