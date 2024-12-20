@@ -25,7 +25,7 @@ sboxTable = [ transform (GF28::inverse b) | b <- [0 .. 255] ] where
     // The constant byte {01100011}.
     c = 0x63
 sbox : GF28 -> GF28
-sbox w = sboxTable @ w
+sbox b = sboxTable @ b
 
 /**
  * Inverted substitution table for AES.

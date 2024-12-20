@@ -90,7 +90,7 @@ MixColumns state = GF28::matrixMult m state
  * [FIPS-197u1] Section 5.1.4
  */
 AddRoundKey : RoundKey -> State -> State
-AddRoundKey rkey state = rkey ^ state
+AddRoundKey w state = w ^ state
 
 /**
  * The general function for inverting AES with 128-, 192-, or 256-bit keys.
