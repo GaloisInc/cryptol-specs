@@ -130,7 +130,7 @@ property modPlusMinusWorks m = inRange && congruent where
  * names, we define the following functions.
  */
 NTT_Vec = map NTT
-NTTInv_Vec = map NTT
+NTTInv_Vec = map NTTInv
 
 /**
  * Wrapper function around SHAKE256, specifying the length `l` in bytes.
