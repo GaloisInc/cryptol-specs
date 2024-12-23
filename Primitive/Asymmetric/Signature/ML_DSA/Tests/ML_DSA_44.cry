@@ -7,6 +7,9 @@
  *     @see https://github.com/post-quantum-cryptography/KAT
  * [ACVP]: NIST. usnistgov. GitHub repo "ACVP-Server".
  *     @see https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ML-DSA-keyGen-FIPS204
+ *
+ * @copyright Galois, Inc
+ * @author Marcella Hastings <marcella@galois.com>
  */
 import Primitive::Asymmetric::Signature::ML_DSA::Instantiations::ML_DSA_44 as ML_DSA
 
