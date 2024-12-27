@@ -136,6 +136,14 @@ infNormRq w = maxList [ maxList [ abs (modPlusMinus`{q} wij)
 infNormR : {m} (fin m) => [m]R -> Integer
 infNormR w = maxList [ maxList [ abs wij | wij <- wi] | wi <- w]
 
+/**
+ * Typecasts elements in `R` to `Rq` by taking the unique congruence class
+ * modulo `q` tht contains each coefficient.
+ * [FIPS-204] Section 2.4.1.
+ */
+castToRq : {m} (fin m) => [m]R -> [m]Rq
+castToRq v = [map fromInteger vi | vi <- v]
+
 private
     /**
      * Compute the max of a list of non-negative elements, as in
@@ -317,8 +325,9 @@ KeyGen_internal ξ = (pk, sk) where
     (s1, s2) = ExpandS ρ'
 
     // Explicitly typecast vectors in `R` to `Rq`.
-    s1' = [map fromInteger s1_i | s1_i <- s1]
-    s2' = [map fromInteger s2_i | s2_i <- s2]
+    s1' = castToRq s1
+    s2' = castToRq s2
+
     // Step 5.
     t = NTTInv_Vec (A_hat ∘∘ NTT_Vec s1') + s2'
     // Step 6.
@@ -331,6 +340,14 @@ KeyGen_internal ξ = (pk, sk) where
     // Step 10.
     sk = skEncode ρ K tr s1 s2 t0
 
+
+Sign_internal : {m} (fin m) => PrivateKey -> [m] -> [32]Byte -> Signature
+Sign_internal sk M' rnd = undefined where
+    (rho, K, tr, s1, s2, t0) = skDecode sk
+
+    s1_hat = NTT_Vec (castToRq s1)
+    s2_hat = NTT_Vec (castToRq s2)
+    t0_hat = NTT_Vec (castToRq t0)
 /**
  * Compute a base-2 representation of the input mod `2^α` using little-endian
  * order.
