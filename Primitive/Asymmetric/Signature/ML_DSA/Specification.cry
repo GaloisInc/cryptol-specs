@@ -121,6 +121,30 @@ property modPlusMinusWorks m = inRange && congruent where
     congruent = ((fromZ m) % `α) == (m' % `α)
 
 /**
+ * Compute the infinity norm over a list of elements in `Rq`.
+ * [FIPS-204] Section 2.3, "‖⋅‖∞".
+ */
+infNormRq : {m} (fin m) => [m]Rq -> Integer
+infNormRq w = maxList [ maxList [ abs (modPlusMinus`{q} wij)
+    | wij <- wi]
+    | wi <- w]
+
+/**
+ * Compute the infinity norm over a list of elements in `R`.
+ * [FIPS-204] Section 2.3, "‖⋅‖∞".
+ */
+infNormR : {m} (fin m) => [m]R -> Integer
+infNormR w = maxList [ maxList [ abs wij | wij <- wi] | wi <- w]
+
+private
+    /**
+     * Compute the max of a list of non-negative elements, as in
+     * [FIPS-204] Section 2.3, "‖⋅‖∞".
+     */
+    maxList : {n, a} (fin n, Literal 0 a, Cmp a) => [n]a -> a
+    maxList list = foldl max 0 list
+
+/**
  * Apply `NTT` and `NTTInv` entry-wise over a vector of polynomials.
  * [FIPS-204] Section 2.5.
  *
