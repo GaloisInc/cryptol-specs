@@ -17,14 +17,18 @@ import Primitive::Asymmetric::Signature::ML_DSA::Instantiations::ML_DSA_44 as ML
  * Test function for running a KAT from [PQC-KAT] in the "deterministic, raw"
  * category.
  *
- * "Deterministic" categorizes how the signing seeds `ρ'` are computed.
+ * "Deterministic" categorizes the per-message randomness parameter `rnd` for
+ * `Sign_internal` -- in this case, it is zero.
  * "Raw" categorizes the set of functions being tested -- in this case, the
  * `{KeyGen, Sign, Verify}_internal` functions. See [PQC-KAT] README.md for
  * more details.
  */
-tryDetKAT xi expected_pk expected_sk = keygenWorks where
+tryDetKAT xi expected_pk expected_sk msg expected_sig = signWorks where
     (pk, sk) = ML_DSA::KeyGen_internal xi
     keygenWorks = (pk == expected_pk) && (sk == expected_sk)
+
+    sig = ML_DSA::Sign_internal expected_sk msg zero
+    signWorks = expected_sig == (sig # (split msg))
 
 /**
  * Test the raw, deterministic KAT with count 0.
@@ -32,7 +36,7 @@ tryDetKAT xi expected_pk expected_sk = keygenWorks where
  * :prove det0
  * ```
  */
-property det0 = tryDetKAT xi pk sk where
+property det0 = tryDetKAT xi pk sk msg sm where
     xi = split 0xf696484048ec21f96cf50a56d0759c448f3779752f0383d37449690694cf7a68
     seed = join [
         0x23f1c88bd0e65f2c891ce865bd3275a7ffdbe4f9036e75b9,
@@ -165,7 +169,7 @@ property det0 = tryDetKAT xi pk sk where
     ])
     msg = 0x6dbbc4375136df3b07f7c70e639e223e
     mlen = 16
-    sm = join [
+    sm = split (join [
         0xa8bb75e2f0902b5a2330d586ac172f8a09f66d9b83867b705dbb40c8d032df0e,
         0x56029a5b7a6701b50bd9f0c28a9d1cf0f64c2f3e01d6cbd7fd358c2de8d34de1,
         0x328693586ee45861b3142a80f9e2039bc53719bdead3ed17c760770c8c542154,
@@ -242,5 +246,5 @@ property det0 = tryDetKAT xi pk sk where
         0x090e32537987888f92959e9fb5cacdf2fd020d1f48556168696a72a0a5addce8,
         0xeefcfe1b275b7b829daeafc1c4d1de193e43474e4f6e7f96adb7bfd200000000,
         0x0000000000000000000000000000000011232f3c6dbbc4375136df3b07f7c70e
-    ] # 0x639e223e
+    ] # 0x639e223e)
     smlen = 2436

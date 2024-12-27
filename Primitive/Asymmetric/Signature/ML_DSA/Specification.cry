@@ -177,6 +177,15 @@ H : {l, m} (fin m) => [m][8] -> [l][8]
 H str = SHAKE256::xofBytes`{8 * l} str
 
 /**
+ * Wrapper function around SHAKE256 that takes bit strings as input.
+ * [FIPS-204] Section 3.7.
+ *
+ *
+ */
+HBits : {l, m} (fin m) => [m] -> [l][8]
+HBits str = split (SHAKE256::xof`{8 * l} (str))
+
+/**
  * Wrapper function around SHAKE128, specifying the length `l` in bytes.
  * [FIPS-204] Section 3.7.
  *
@@ -308,7 +317,7 @@ type d = 13
  * determine if a candidate signature is valid.
  * [FIPS-204] Section 4, Table 1.
  */
-type β = η * τ
+β = `(η * τ) : Integer
 
 /**
  * Generate a public-private key pair from a seed.
@@ -342,12 +351,51 @@ KeyGen_internal ξ = (pk, sk) where
 
 
 Sign_internal : {m} (fin m) => PrivateKey -> [m] -> [32]Byte -> Signature
-Sign_internal sk M' rnd = undefined where
+Sign_internal sk M' rnd = σ where
     (rho, K, tr, s1, s2, t0) = skDecode sk
 
     s1_hat = NTT_Vec (castToRq s1)
     s2_hat = NTT_Vec (castToRq s2)
     t0_hat = NTT_Vec (castToRq t0)
+    A_hat = ExpandA rho
+
+    // TODO: explain why we `join` instead of `BytesToBits`ing here.
+    mu = HBits`{64} (join tr # M')
+    rho''= H`{64} (K # rnd # mu)
+
+    kappa0 = 0
+
+    rejection_sample: Integer -> ([λ / 4]Byte, ([ell]Rq, [k]R2))
+    rejection_sample kappa = case maybe_zh of
+            Some zh -> (c_til, zh)
+            None -> rejection_sample (kappa + `ell)
+        where
+            y = castToRq (ExpandMask rho'' kappa)
+            w = NTTInv_Vec (A_hat ∘∘ (NTT_Vec y))
+            w1 = HighBits w
+            c_til = H`{λ / 4} (mu # w1Encode w1)
+            [c] = castToRq [(SampleInBall c_til)]
+            c_hat = NTT c
+            cs1 = NTTInv_Vec (c_hat ∘ s1_hat)
+            cs2 = NTTInv_Vec (c_hat ∘ s2_hat)
+            z = y + cs1
+            r0 = LowBits (w - cs2)
+            maybe_zh = if (infNormRq z >= `γ1 - β) || (infNormR r0 >= `γ2 - β) then
+                    None
+                else maybe_zh' where
+                    ct0 = NTTInv_Vec (c_hat ∘ t0_hat)
+                    h = MakeHint (-ct0) (w - cs2 + ct0)
+                    maybe_zh' = if (infNormRq ct0 >= `γ2) || (numberOf1sInh > `ω)
+                        then None
+                        else Some (z, h)
+                    numberOf1sInh = sum [if b then 1 else 0 | b <- join h]
+
+    (c_tilFinal, (zFinal, hFinal)) = rejection_sample kappa0
+
+    modPlusMinus_Vec v = [map modPlusMinus`{q} vi | vi <- v]
+
+    σ = sigEncode c_tilFinal (modPlusMinus_Vec zFinal) hFinal
+
 /**
  * Compute a base-2 representation of the input mod `2^α` using little-endian
  * order.
