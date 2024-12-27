@@ -350,50 +350,66 @@ KeyGen_internal ξ = (pk, sk) where
     sk = skEncode ρ K tr s1 s2 t0
 
 
+/**
+ * Deterministic algorithm to generate a signature for a formatted message `M'`.
+ * [FIPS-204] Section 6.2, Algorithm 7.
+ */
 Sign_internal : {m} (fin m) => PrivateKey -> [m] -> [32]Byte -> Signature
 Sign_internal sk M' rnd = σ where
-    (rho, K, tr, s1, s2, t0) = skDecode sk
+    // Step 1.
+    (ρ, K, tr, s1, s2, t0) = skDecode sk
 
+    // Steps 2 - 5.
     s1_hat = NTT_Vec (castToRq s1)
     s2_hat = NTT_Vec (castToRq s2)
     t0_hat = NTT_Vec (castToRq t0)
-    A_hat = ExpandA rho
+    A_hat = ExpandA ρ
 
-    // TODO: explain why we `join` instead of `BytesToBits`ing here.
-    mu = HBits`{64} (join tr # M')
-    rho''= H`{64} (K # rnd # mu)
+    // Step 6. The endianness does not align with the spec here -- we had to
+    // use `join` instead of `BytesToBits`ing here.
+    μ = HBits`{64} (join tr # M')
 
-    kappa0 = 0
+    // Step 7.
+    ρ''= H`{64} (K # rnd # μ)
 
+    // Steps 10 - 32. The rejection sampling loop in the spec is implemented
+    // here using recursion.
     rejection_sample: Integer -> ([λ / 4]Byte, ([ell]Rq, [k]R2))
-    rejection_sample kappa = case maybe_zh of
+    rejection_sample κ = case maybe_zh of
             Some zh -> (c_til, zh)
-            None -> rejection_sample (kappa + `ell)
+            None -> rejection_sample (κ + `ell)
         where
-            y = castToRq (ExpandMask rho'' kappa)
+            y = castToRq (ExpandMask ρ'' κ)
             w = NTTInv_Vec (A_hat ∘∘ (NTT_Vec y))
             w1 = HighBits w
-            c_til = H`{λ / 4} (mu # w1Encode w1)
+            c_til = H`{λ / 4} (μ # w1Encode w1)
             [c] = castToRq [(SampleInBall c_til)]
             c_hat = NTT c
             cs1 = NTTInv_Vec (c_hat ∘ s1_hat)
             cs2 = NTTInv_Vec (c_hat ∘ s2_hat)
             z = y + cs1
             r0 = LowBits (w - cs2)
-            maybe_zh = if (infNormRq z >= `γ1 - β) || (infNormR r0 >= `γ2 - β) then
-                    None
+            maybe_zh = if (infNormRq z >= `γ1 - β) || (infNormR r0 >= `γ2 - β)
+                then None
                 else maybe_zh' where
                     ct0 = NTTInv_Vec (c_hat ∘ t0_hat)
                     h = MakeHint (-ct0) (w - cs2 + ct0)
-                    maybe_zh' = if (infNormRq ct0 >= `γ2) || (numberOf1sInh > `ω)
+                    maybe_zh' =
+                        if (infNormRq ct0 >= `γ2) || (numberOf1sInh > `ω)
                         then None
                         else Some (z, h)
+
+                    // Compute the number of 1s in the hint by converting each
+                    // bit to an integer and summing them.
                     numberOf1sInh = sum [if b then 1 else 0 | b <- join h]
 
-    (c_tilFinal, (zFinal, hFinal)) = rejection_sample kappa0
+    // Step 8 - 32.
+    (c_tilFinal, (zFinal, hFinal)) = rejection_sample 0
 
+    // In Step 33, `modPlusMinus` is applied componentwise to the vector `z`.
     modPlusMinus_Vec v = [map modPlusMinus`{q} vi | vi <- v]
 
+    // Step 33.
     σ = sigEncode c_tilFinal (modPlusMinus_Vec zFinal) hFinal
 
 /**
