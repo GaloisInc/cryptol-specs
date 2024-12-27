@@ -278,26 +278,33 @@ type d = 13
  */
 type β = η * τ
 
-
+/**
+ * Generate a public-private key pair from a seed.
+ * [FIPS-204] Section 6.1, Algorithm 6.
+ */
 KeyGen_internal : [32]Byte -> (PublicKey, PrivateKey)
 KeyGen_internal ξ = (pk, sk) where
+    // Step 1.
     (ρ # ρ' # K) = H`{128} (ξ # IntegerToBytes`{1} `k # IntegerToBytes`{1} `ell)
 
+    // Step 3.
     A_hat = ExpandA ρ
-
+    // Step 4.
     (s1, s2) = ExpandS ρ'
 
-    // An element of `R` may be "typecast" to an element of `Rq`. [FIPS-204] Section 2.4.1.
+    // Explicitly typecast vectors in `R` to `Rq`.
     s1' = [map fromInteger s1_i | s1_i <- s1]
     s2' = [map fromInteger s2_i | s2_i <- s2]
-
+    // Step 5.
     t = NTTInv_Vec (A_hat ∘∘ NTT_Vec s1') + s2'
+    // Step 6.
     (t1, t0) = Power2Round t
 
+    // Step 8.
     pk = pkEncode ρ t1
-
+    // Step 9.
     tr = H`{64} pk
-
+    // Step 10.
     sk = skEncode ρ K tr s1 s2 t0
 
 /**
