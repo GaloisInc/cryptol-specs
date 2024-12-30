@@ -18,10 +18,26 @@
 module Primitive::Asymmetric::Signature::ML_DSA::ML_DSA where
 
 import interface Primitive::Asymmetric::Signature::ML_DSA::Parameters as P
-import Primitive::Asymmetric::Signature::ML_DSA::Specification { interface P } as Spec
+import Primitive::Asymmetric::Signature::ML_DSA::Specification { interface P }
+
+/**
+ * Generate a public-private key pair.
+ * [FIPS-204] Section 5.1, Algorithm 1.
+ *
+ * This diverges from the spec: since Cryptol does not support random number
+ * generation, this function takes the randomness `ξ` as a parameter. This value
+ * must be generated in a cryptographic module using an approved random bit
+ * generator (RBG).
+ */
+KeyGen : Option ([32]Byte) -> Option (PublicKey, PrivateKey)
+KeyGen maybe_ξ = case maybe_ξ of
+    None -> None
+    Some ξ -> Some (KeyGen_internal ξ)
 
 // We expose the internal functions for testing purposes only.
 submodule TestAPI where
+    import Primitive::Asymmetric::Signature::ML_DSA::Specification { interface P } as Spec
+
     KeyGen_internal = Spec::KeyGen_internal
     Sign_internal = Spec::Sign_internal
     Verify_internal = Spec::Verify_internal
