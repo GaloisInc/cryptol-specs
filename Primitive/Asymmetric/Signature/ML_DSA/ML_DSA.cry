@@ -78,3 +78,26 @@ submodule TestAPI where
     KeyGen_internal = Spec::KeyGen_internal
     Sign_internal = Spec::Sign_internal
     Verify_internal = Spec::Verify_internal
+
+/**
+ * Correctness property for MLDSA: A signature on a message generated under a
+ * valid keypair must be valid.
+ * ```repl
+ * :set tests=3
+ * :check MLDSAIsCorrect`{10}
+ * ```
+ * Note: This correctness property should also be covered by the KATs in the
+ * `Tests/` directory.
+ */
+MLDSAIsCorrect : {m} (fin m) => [32]Byte -> [32]Byte -> [m] -> [255]Byte -> Bit
+property MLDSAIsCorrect ξ rnd M ctx = sigVerifies where
+    maybe_keys = KeyGen (Some ξ)
+    maybe_sigVerifies = case maybe_keys of
+        None -> None
+        Some keys -> case (Sign sk M ctx (Some rnd)) of
+                None -> None
+                Some sig -> Verify pk M sig ctx
+            where (pk, sk) = keys
+    sigVerifies = case maybe_sigVerifies of
+        None -> False
+        Some v -> v
