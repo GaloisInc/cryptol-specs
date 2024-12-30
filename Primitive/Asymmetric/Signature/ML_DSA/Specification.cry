@@ -413,6 +413,44 @@ Sign_internal sk M' rnd = σ where
     σ = sigEncode c_tilFinal (modPlusMinus_Vec zFinal) hFinal
 
 /**
+ * Internal function to verify a signature for a formatted message.
+ * [FIPS-204] Section 6.3, Algorithm 8.
+ */
+Verify_internal : {m} (fin m) => PublicKey -> [m] -> Signature -> Bool
+Verify_internal pk M' σ = isValid where
+    // Step 1 - 2.
+    (rho, t1) = pkDecode pk
+    (c_til, z, h) = sigDecode σ
+
+    // Step 5.
+    A_hat = ExpandA rho
+    // Step 6.
+    tr = H`{64} pk
+    // Step 7. The endianness does not align with the spec here -- we had to
+    // use `join` instead of `BytesToBits`.
+    mu = HBits`{64} (join tr # M')
+
+    // Step 8.
+    [c] = castToRq [(SampleInBall c_til)]
+
+    // These casts are implicit in Step 9 in the sepc.
+    t1' = castToRq t1
+    z' = castToRq z
+    // The spec uses the shorthand `t1 * 2^d`; in Cryptol, we need to create
+    // a matrix with the same dimensions as `t1` where every element is `2^d`.
+    two_d = repeat (repeat (2^^`d))
+
+    // Step 9.
+    wApprox' = NTTInv_Vec (A_hat ∘∘ NTT_Vec z' - (NTT c ∘ NTT_Vec (t1' * two_d)))
+
+    // Steps 3 - 4, 10 - 13.
+    isValid = case h of
+        None -> False
+        Some h' -> (infNormR z < `γ1 - β) && (c_til == c_til') where
+            w1' = UseHint h' wApprox'
+            c_til' = H`{λ / 4} (mu # w1Encode w1')
+
+/**
  * Compute a base-2 representation of the input mod `2^α` using little-endian
  * order.
  * [FIPS-204] Section 7.1, Algorithm 9.

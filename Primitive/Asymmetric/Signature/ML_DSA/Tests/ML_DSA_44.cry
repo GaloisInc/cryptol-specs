@@ -22,13 +22,20 @@ import Primitive::Asymmetric::Signature::ML_DSA::Instantiations::ML_DSA_44 as ML
  * "Raw" categorizes the set of functions being tested -- in this case, the
  * `{KeyGen, Sign, Verify}_internal` functions. See [PQC-KAT] README.md for
  * more details.
+ *
+ * The [PQC-KAT] vectors provide the expected signature in the format
+ * `sig || msg`, while [FIPS-204] has sign and verify interact with just `sig`.
  */
-tryDetKAT xi expected_pk expected_sk msg expected_sig = signWorks where
+tryDetKAT xi expected_pk expected_sk msg expected_sig = mldsaWorks where
     (pk, sk) = ML_DSA::KeyGen_internal xi
     keygenWorks = (pk == expected_pk) && (sk == expected_sk)
 
     sig = ML_DSA::Sign_internal expected_sk msg zero
     signWorks = expected_sig == (sig # (split msg))
+
+    verifyWorks = ML_DSA::Verify_internal expected_pk msg (take expected_sig)
+
+    mldsaWorks = keygenWorks && signWorks && verifyWorks
 
 /**
  * Test the raw, deterministic KAT with count 0.
