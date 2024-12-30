@@ -1,11 +1,12 @@
 /**
- * ML-DSA (CRYSTALS-Dilithium) signature scheme.
+ * ML-DSA (CRYSTALS-Dilithium) signature scheme components.
  *
  * This provides an algorithm for digital signatures with non-repudiation,
  * designed to be secure against an adversary with a large-scale quantum
  * computer.
  *
  * This executable specification matches the final version of [FIPS-204].
+ * This file _excludes_ the external functions in Section 5.
  *
  * References:
  * [FIPS-204]: National Institute of Standards and Technology. Module-Lattice-

@@ -1,0 +1,27 @@
+/**
+ * ML-DSA (CRYSTALS-Dilithium) signature scheme.
+ *
+ * This provides an algorithm for digital signatures with non-repudiation,
+ * designed to be secure against an adversary with a large-scale quantum
+ * computer.
+ *
+ * This module implements the ML-DSA family of external functions in [FIPS-204]
+ * Section 5.
+ *
+ * References:
+ * [FIPS-204]: National Institute of Standards and Technology. Module-Lattice-
+ *     Based Digital Signature Standard. (Department of Commerce, Washington,
+ *     D.C.), Federal Information Processing Standards Publication (FIPS) NIST
+ *     FIPS 204. August 2024.
+ *     @see https://doi.org/10.6028/NIST.FIPS.204
+ */
+module Primitive::Asymmetric::Signature::ML_DSA::ML_DSA where
+
+import interface Primitive::Asymmetric::Signature::ML_DSA::Parameters as P
+import Primitive::Asymmetric::Signature::ML_DSA::Specification { interface P } as Spec
+
+// We expose the internal functions for testing purposes only.
+submodule TestAPI where
+    KeyGen_internal = Spec::KeyGen_internal
+    Sign_internal = Spec::Sign_internal
+    Verify_internal = Spec::Verify_internal

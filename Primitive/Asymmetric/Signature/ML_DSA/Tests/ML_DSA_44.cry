@@ -11,7 +11,8 @@
  * @copyright Galois, Inc
  * @author Marcella Hastings <marcella@galois.com>
  */
-import Primitive::Asymmetric::Signature::ML_DSA::Instantiations::ML_DSA_44 as ML_DSA
+import Primitive::Asymmetric::Signature::ML_DSA::Instantiations::ML_DSA_44 as ML_DSA_44
+import submodule ML_DSA_44::TestAPI as ML_DSA
 
 /**
  * Test function for running a KAT from [PQC-KAT] in the "deterministic, raw"
