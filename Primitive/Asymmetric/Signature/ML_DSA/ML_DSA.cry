@@ -59,6 +59,18 @@ Sign sk M ctx maybe_rnd
             // Step 11.
             sigma = Some (Sign_internal sk M' rnd)
 
+/**
+ * Verify a signature for a message.
+ * [FIPS-204] Section 5.3, Algorithm 3.
+ */
+Verify : {m, c} (fin m, fin c) =>
+    PublicKey -> [m] -> Signature -> [c]Byte -> Option Bool
+Verify pk M sigma ctx
+    | c > 255 => None
+    | c <= 255 => Some (Verify_internal pk M' sigma) where
+        M' = BytesToBits (IntegerToBytes`{1} 0 # IntegerToBytes`{1} `c # ctx) # M
+
+
 // We expose the internal functions for testing purposes only.
 submodule TestAPI where
     import Primitive::Asymmetric::Signature::ML_DSA::Specification { interface P } as Spec
