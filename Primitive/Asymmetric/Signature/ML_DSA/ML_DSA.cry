@@ -34,6 +34,31 @@ KeyGen maybe_ξ = case maybe_ξ of
     None -> None
     Some ξ -> Some (KeyGen_internal ξ)
 
+/**
+ * Generate an ML-DSA signature.
+ * [FIPS-204] Section 5.2, Algorithm 2.
+ *
+ * This diverges from the spec: since Cryptol does not support random number
+ * generation, this function takes the randomness `rnd` as a parameter. This
+ * value must be generated in a cryptographic module using an approved random
+ * bit generator (RBG).
+ *
+ * Note: The type parameter `c` is equivalent to `|ctx|` in the spec.
+ */
+Sign : {m, c} (fin m, fin c) =>
+    PrivateKey -> [m] -> [c]Byte -> Option ([32]Byte) -> Option (Signature)
+Sign sk M ctx maybe_rnd
+    // Steps 1 - 3.
+    | c > 255 => None
+    // Steps 5 - 8.
+    | c <= 255 => case maybe_rnd of
+        None -> None
+        Some rnd -> sigma where
+            // Step 10.
+            M' = BytesToBits (IntegerToBytes`{1} 0 # IntegerToBytes`{1} `c # ctx) # M
+            // Step 11.
+            sigma = Some (Sign_internal sk M' rnd)
+
 // We expose the internal functions for testing purposes only.
 submodule TestAPI where
     import Primitive::Asymmetric::Signature::ML_DSA::Specification { interface P } as Spec
