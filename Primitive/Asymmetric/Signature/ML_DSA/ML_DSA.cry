@@ -54,8 +54,11 @@ Sign sk M ctx maybe_rnd
     | c <= 255 => case maybe_rnd of
         None -> None
         Some rnd -> sigma where
-            // Step 10.
-            M' = BytesToBits (IntegerToBytes`{1} 0 # IntegerToBytes`{1} `c # ctx) # M
+            // Step 10. We use `join` instead of `BytesToBits`, which produces
+            // the same byte string, but with the bits in each byte reversed.
+            // I think we have to do this to support the later call to `HBits`,
+            // which expects the bit-order and byte-order to be the same.
+            M' = join (IntegerToBytes`{1} 0 # IntegerToBytes`{1} `c # ctx) # M
             // Step 11.
             sigma = Some (Sign_internal sk M' rnd)
 
@@ -68,7 +71,11 @@ Verify : {m, c} (fin m, fin c) =>
 Verify pk M sigma ctx
     | c > 255 => None
     | c <= 255 => Some (Verify_internal pk M' sigma) where
-        M' = BytesToBits (IntegerToBytes`{1} 0 # IntegerToBytes`{1} `c # ctx) # M
+        // Step 10. We use `join` instead of `BytesToBits`, which produces
+        // the same byte string, but with the bits in each byte reversed.
+        // I think we have to do this to support the later call to `HBits`,
+        // which expects the bit-order and byte-order to be the same.
+        M' = join (IntegerToBytes`{1} 0 # IntegerToBytes`{1} `c # ctx) # M
 
 
 // We expose the internal functions for testing purposes only.

@@ -285,8 +285,10 @@ Sign_internal sk M' rnd = σ where
     t0_hat = NTT_Vec (castToRq t0)
     A_hat = ExpandA ρ
 
-    // Step 6. The endianness does not align with the spec here -- we had to
-    // use `join` instead of `BytesToBits`ing here.
+    // Step 6. We use `join` instead of `BytesToBits`, which produces the same
+    // byte string, but with the bits in each byte reversed. I think we have to
+    // do this to support the call to `HBits`, which expects the bit-order and
+    // byte-order to be the same.
     μ = HBits`{64} (join tr # M')
 
     // Step 7.
@@ -353,8 +355,10 @@ Verify_internal pk M' σ = isValid where
     A_hat = ExpandA rho
     // Step 6.
     tr = H`{64} pk
-    // Step 7. The endianness does not align with the spec here -- we had to
-    // use `join` instead of `BytesToBits`.
+    // Step 7. We use `join` instead of `BytesToBits`, which produces the same
+    // byte string, but with the bits in each byte reversed. I think we have to
+    // do this to support the call to `HBits`, which expects the bit-order and
+    // byte-order to be the same.
     mu = HBits`{64} (join tr # M')
 
     // Step 8.
