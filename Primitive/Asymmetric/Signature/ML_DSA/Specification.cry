@@ -1299,7 +1299,7 @@ MakeHint z_vec r_vec = hint where
  * the vectors, per the description at the beginning of Section 7.4.
  */
 UseHint : [k]R2 -> [k]Rq -> [k]R
-UseHint h_vec r_vec = r1_vec where
+UseHint h_vec r_vec = r1'_vec where
     // Step 1.
     m = (`q - 1) / (2 * `γ2)
     // Step 2.
