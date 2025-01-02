@@ -8,6 +8,21 @@
  * This module implements the ML-DSA family of external functions in [FIPS-204]
  * Section 5.
  *
+ * There are some requirements around the use of this algorithm that cannot be
+ * enforced by Cryptol! See [FIPS-204] Section 3.6 for further details.
+ * - The seed `ξ` used in `KeyGen` must be fresh (i.e. not previously used) and
+ *   must be  generated with an approved RBG with suitable security strength!
+ * - The value `rnd` used in the hedged variant of `Sign` should be generated
+ *   by an approved RBG, but could be generated with an alternative method
+ *   to maintain some protection against side-channel attacks and fault attacks
+ *   on deterministic signatures.
+ * - Potentially sensitive intermediate values computed in key generation and
+ *   signing must be destroyed as soon as it is no longer needed.
+ *
+ * Other requirements from Section 3.6 can be enforced using Cryptol (this
+ * implementation enforces public-key and signature length checks, and does not
+ * use floating-point arithmetic).
+ *
  * References:
  * [FIPS-204]: National Institute of Standards and Technology. Module-Lattice-
  *     Based Digital Signature Standard. (Department of Commerce, Washington,
