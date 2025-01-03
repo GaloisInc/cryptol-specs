@@ -29,6 +29,9 @@
  *     D.C.), Federal Information Processing Standards Publication (FIPS) NIST
  *     FIPS 204. August 2024.
  *     @see https://doi.org/10.6028/NIST.FIPS.204
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
  */
 module Primitive::Asymmetric::Signature::ML_DSA::ML_DSA where
 
