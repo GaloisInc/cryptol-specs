@@ -1,0 +1,114 @@
+/*
+ * Parameter definitions for the ML-DSA signature scheme.
+ * [FIPS-204] Section 4.
+ *
+ * References:
+ * [FIPS-204]: National Institute of Standards and Technology. Module-Lattice-
+ *     Based Digital Signature Standard. (Department of Commerce, Washington,
+ *     D.C.), Federal Information Processing Standards Publication (FIPS) NIST
+ *     FIPS 204. August 2024.
+ *     @see https://doi.org/10.6028/NIST.FIPS.204
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+interface module Primitive::Asymmetric::Signature::ML_DSA::Parameters where
+    /**
+     * Modulus defining the ring used throughout the protocol.
+     * [FIPS-204] Section 4, Table 1.
+     */
+    type q = 8380417
+
+    /**
+     * Hamming weight of the mask sampled in signing.
+     *
+     * The spec describes this as "number of ±1s in polynomial `c`", where `c`
+     * is the verifier's challenge.
+     * [FIPS-204] Section 4, Table 1.
+     *
+     * The type constraints are drawn from [FIPS-204] Section 7.3, Algorithm
+     * 29; the first is implicit in Step 6, and the second is explicit in the
+     * algorithm description.
+     */
+    type τ : #
+    type constraint (0 < τ, τ <= 64)
+
+    /**
+     * Collision strength of the commitment hash `c~` component of a signature.
+     * [FIPS-204] Section 4, Table 1.
+     *
+     * The type constraint is drawn from [FIPS-204] Section 7.3, Algorithm 29;
+     * it's implicit that the hash function `H` requires a finite input, so the
+     * length of the input seed, and thus of `λ`, must be finite.
+     */
+    type λ : #
+    type constraint (fin λ)
+
+    /**
+     * Coefficient range of the commitment mask `y` used in signing.
+     * [FIPS-204] Section 4, Table 1.
+     *
+     * The first type constraint, which claims that `γ1` must be a power of 2,
+     * is drawn from [FIPS-203] Section 7.2, Algorithm 27.
+     * The second is a true statement (when `γ1` is a power of 2, so for all
+     * valid parameter sets for ML-DSA) that is hard to infer. It's stated
+     * explicitly here because the two expressions are used interchangeably in
+     * the spec. Note that `width x = lg2 (x + 1)`:
+     * ```math
+     *    1 + width (γ1 - 1) = 1 + lg2 (γ1).
+     *    width (γ1 - 1 + γ1) = lg2 (2 * γ1) = 1 + lg2 (γ1).
+     * ```
+     */
+    type γ1 : #
+    type constraint (fin γ1, 2 ^^ (lg2 γ1) == γ1)
+    type constraint (1 + width (γ1 - 1) == width (γ1 - 1 + γ1))
+
+    /**
+     * Low-order rounding range; this defines how to round the signer's
+     * commitment `w`.
+     * [FIPS-204] Section 4, Table 1.
+     *
+     * The first type constraint is drawn from [FIPS-204] Section 7.4. The
+     * primary constraint we wish to encode is that `2 * γ2` divides `q - 1`;
+     * to express this, we must also require that γ2 is non-zero.
+     * The second type constraint is drawn from Algorithm 28 -- the type
+     * argument to `SimpleBitPack` must have positive width.
+     */
+    type γ2 : #
+    type constraint (γ2 > 0, (q - 1) % (2 * γ2) == 0)
+    type constraint (width ((q - 1) / (2 * γ2) - 1) > 0)
+
+    /**
+     * Dimensions of the matrix `A`, which is part of the public key.
+     * [FIPS-204] Section 4, Table 1.
+     */
+    type k : #
+    type ell : #
+    type constraint (fin k, fin ell, k > 0, ell > 0)
+
+    /**
+     * Private key range; the private key is a polynomial whose coefficients
+     * are all in a range defined by η.
+     * [FIPS-204] Section 4, Table 1.
+     *
+     * The type constraint (that η must be in the set {2, 4}) is drawn from
+     * [FIPS-204] Section 7.1, Algorithm 15.
+     */
+    type η : #
+    type constraint (η % 2 == 0, 2 <= η, η <= 4)
+
+    /**
+     * Maximum Hamming weight for the hint component of a signature.
+     * [FIPS-204] Section 4, Table 1.
+     *
+     * The constraints are drawn from [FIPS-204] Algorithm 21:
+     * - `ω > 0`: in Step 16, we have to be able to compute `ω - 1`.
+     * - `width ω <= 8`: This is an implementation artifact from Step 4. We
+     *   compare `ω` to an element in `y`, which is a byte. Cryptol will
+     *   default to fitting `ω` into in a byte. This is always true with the
+     *   allowable parameter sets. If a new parameter set is released with a
+     *   much larger `ω`, we can modify the implementation to remove this
+     *   constraint without affecting functionality.
+     */
+    type ω : #
+    type constraint (fin ω, ω > 0, width ω <= 8)
