@@ -8,7 +8,7 @@
  * @author Marcella Hastings <marcella@galois.com>
  */
 module Primitive::Asymmetric::Signature::ML_DSA::Instantiations::ML_DSA_44 =
-    Primitive::Asymmetric::Signature::ML_DSA::Specification where
+    Primitive::Asymmetric::Signature::ML_DSA::ML_DSA where
 
         type q = 8380417
         type τ = 39

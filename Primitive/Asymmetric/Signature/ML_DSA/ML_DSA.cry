@@ -1,0 +1,129 @@
+/**
+ * ML-DSA (CRYSTALS-Dilithium) signature scheme.
+ *
+ * This provides an algorithm for digital signatures with non-repudiation,
+ * designed to be secure against an adversary with a large-scale quantum
+ * computer.
+ *
+ * This module implements the ML-DSA family of external functions in [FIPS-204]
+ * Section 5.
+ *
+ * There are some requirements around the use of this algorithm that cannot be
+ * enforced by Cryptol! See [FIPS-204] Section 3.6 for further details.
+ * - The seed `ξ` used in `KeyGen` must be fresh (i.e. not previously used) and
+ *   must be  generated with an approved RBG with suitable security strength!
+ * - The value `rnd` used in the hedged variant of `Sign` should be generated
+ *   by an approved RBG, but could be generated with an alternative method
+ *   to maintain some protection against side-channel attacks and fault attacks
+ *   on deterministic signatures.
+ * - Potentially sensitive intermediate values computed in key generation and
+ *   signing must be destroyed as soon as it is no longer needed.
+ *
+ * Other requirements from Section 3.6 can be enforced using Cryptol (this
+ * implementation enforces public-key and signature length checks, and does not
+ * use floating-point arithmetic).
+ *
+ * References:
+ * [FIPS-204]: National Institute of Standards and Technology. Module-Lattice-
+ *     Based Digital Signature Standard. (Department of Commerce, Washington,
+ *     D.C.), Federal Information Processing Standards Publication (FIPS) NIST
+ *     FIPS 204. August 2024.
+ *     @see https://doi.org/10.6028/NIST.FIPS.204
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Asymmetric::Signature::ML_DSA::ML_DSA where
+
+import interface Primitive::Asymmetric::Signature::ML_DSA::Parameters as P
+import Primitive::Asymmetric::Signature::ML_DSA::Specification { interface P }
+
+/**
+ * Generate a public-private key pair.
+ * [FIPS-204] Section 5.1, Algorithm 1.
+ *
+ * This diverges from the spec: since Cryptol does not support random number
+ * generation, this function takes the randomness `ξ` as a parameter. This value
+ * must be generated in a cryptographic module using an approved random bit
+ * generator (RBG).
+ */
+KeyGen : Option ([32]Byte) -> Option (PublicKey, PrivateKey)
+KeyGen maybe_ξ = case maybe_ξ of
+    None -> None
+    Some ξ -> Some (KeyGen_internal ξ)
+
+/**
+ * Generate an ML-DSA signature.
+ * [FIPS-204] Section 5.2, Algorithm 2.
+ *
+ * This diverges from the spec: since Cryptol does not support random number
+ * generation, this function takes the randomness `rnd` as a parameter. This
+ * value must be generated in a cryptographic module using an approved random
+ * bit generator (RBG).
+ *
+ * Note: The type parameter `c` is equivalent to `|ctx|` in the spec.
+ */
+Sign : {m, c} (fin m, fin c) =>
+    PrivateKey -> [m] -> [c]Byte -> Option ([32]Byte) -> Option (Signature)
+Sign sk M ctx maybe_rnd
+    // Steps 1 - 3.
+    | c > 255 => None
+    // Steps 5 - 8.
+    | c <= 255 => case maybe_rnd of
+        None -> None
+        Some rnd -> sigma where
+            // Step 10. We use `join` instead of `BytesToBits`, which produces
+            // the same byte string, but with the bits in each byte reversed.
+            // I think we have to do this to support the later call to `HBits`,
+            // which expects the bit-order and byte-order to be the same.
+            M' = join (IntegerToBytes`{1} 0 # IntegerToBytes`{1} `c # ctx) # M
+            // Step 11.
+            sigma = Some (Sign_internal sk M' rnd)
+
+/**
+ * Verify a signature for a message.
+ * [FIPS-204] Section 5.3, Algorithm 3.
+ */
+Verify : {m, c} (fin m, fin c) =>
+    PublicKey -> [m] -> Signature -> [c]Byte -> Option Bool
+Verify pk M sigma ctx
+    | c > 255 => None
+    | c <= 255 => Some (Verify_internal pk M' sigma) where
+        // Step 10. We use `join` instead of `BytesToBits`, which produces
+        // the same byte string, but with the bits in each byte reversed.
+        // I think we have to do this to support the later call to `HBits`,
+        // which expects the bit-order and byte-order to be the same.
+        M' = join (IntegerToBytes`{1} 0 # IntegerToBytes`{1} `c # ctx) # M
+
+
+// We expose the internal functions for testing purposes only.
+submodule TestAPI where
+    import Primitive::Asymmetric::Signature::ML_DSA::Specification { interface P } as Spec
+
+    KeyGen_internal = Spec::KeyGen_internal
+    Sign_internal = Spec::Sign_internal
+    Verify_internal = Spec::Verify_internal
+
+/**
+ * Correctness property for MLDSA: A signature on a message generated under a
+ * valid keypair must be valid.
+ * This takes about 6 minutes.
+ * ```repl
+ * :set tests=3
+ * :check MLDSAIsCorrect`{10}
+ * ```
+ * Note: This correctness property should also be covered by the KATs in the
+ * `Tests/` directory.
+ */
+MLDSAIsCorrect : {m} (fin m) => [32]Byte -> [32]Byte -> [m] -> [255]Byte -> Bit
+property MLDSAIsCorrect ξ rnd M ctx = sigVerifies where
+    maybe_keys = KeyGen (Some ξ)
+    maybe_sigVerifies = case maybe_keys of
+        None -> None
+        Some keys -> case (Sign sk M ctx (Some rnd)) of
+                None -> None
+                Some sig -> Verify pk M sig ctx
+            where (pk, sk) = keys
+    sigVerifies = case maybe_sigVerifies of
+        None -> False
+        Some v -> v
