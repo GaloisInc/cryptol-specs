@@ -107,6 +107,7 @@ submodule TestAPI where
 /**
  * Correctness property for MLDSA: A signature on a message generated under a
  * valid keypair must be valid.
+ * This takes about 6 minutes.
  * ```repl
  * :set tests=3
  * :check MLDSAIsCorrect`{10}

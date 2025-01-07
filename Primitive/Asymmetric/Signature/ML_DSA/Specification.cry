@@ -503,6 +503,7 @@ private
  * The conversions between bits and bytes are each others' inverses, for
  * lengths that are a multiple of 8.
  * This isn't explicit in the spec, but we include the property anyway.
+ * This takes ~10 seconds.
  * ```repl
  * :prove B2B2BInverts`{320}
  * :prove B2B2BInverts`{32 * 44}
@@ -757,6 +758,7 @@ HintBitUnpack y = hFinal where
  * We test the case where we have the maximum number of 1s, a medium number, and
  * a case where at least one vector should have no non-zero terms at all.
  * In practice, the hint may fall anywhere in this range.
+ * This takes about 1 minute.
  * ```repl
  * :check HintPackingInverts`{ω}
  * :check HintPackingInverts`{ω / 2}
@@ -814,6 +816,7 @@ pkDecode pk = (ρ, t1) where
 private
     /**
      * `pkDecode` must reverse the procedure `pkEncode`.
+     * This takes about 30s.
      * ```repl
      * :set tests=20
      * :check pkCodingInverts
@@ -879,7 +882,9 @@ private
      * converting to unbounded integers and shifting to be in the expected
      * range.
      *
+     * This takes about 1 minute.
      * ```repl
+     * :set tests=20
      * :check skCodingInverts
      * ```
      */
@@ -940,6 +945,7 @@ private
      * The parameter `w` defines the number of non-zero entries in the hint.
      * It can be any number in the range `[0, ω - 1]`. In practice, it's
      * dependent on many factors, so we choose the middle of the range for convenience.
+     * This takes about 45 seconds.
      * ```repl
      * :set test=20
      * :check sigCodingInverts`{ω / 2}
@@ -1291,10 +1297,10 @@ private
      * The output of `UseHint` must be within the range `[0, (q-1) / (2*γ2)]`.
      * [FIPS-204] Section 7.4, comment on Algorithm 40.
      *
-     * This takes about 1 minute to prove.
      * ```repl
-     * :prove useHintIsInRange
+     * :check useHintIsInRange
      * ```
+     * Alternately, this takes about 1 hour to prove.
      */
     property useHintIsInRange h_vec r_vec = r1InRange where
         r1_vec = UseHint h_vec r_vec
@@ -1365,6 +1371,7 @@ NTTInv f_hat = [f_i j * inv_root | j <- [0..255]] where
 private
     /**
      * This property demonstrates that `NTTInv` inverts `NTT`.
+     * This takes about 20s to check.
      * ```repl
      * :set tests=20
      * :check NTT_Inverts
@@ -1376,6 +1383,7 @@ private
 
     /**
      * This property demonstrates that `NTT` inverts `NTTInv`.
+     * This takes about 20s to check.
      * ```repl
      * :set tests=20
      * :check NTTInv_Inverts
