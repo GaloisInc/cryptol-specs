@@ -16,7 +16,8 @@
 
 module Primitive::Symmetric::Cipher::Block::AES::Algorithm where
 
-import Primitive::Symmetric::Cipher::Block::AES::State (State, RoundKey, msgToState, stateToMsg)
+import Primitive::Symmetric::Cipher::Block::AES::State (State, RoundKey,
+  msgToState, stateToMsg)
 import Primitive::Symmetric::Cipher::Block::AES::SBox
 import Common::GF28 as GF28
 
