@@ -55,10 +55,26 @@ parameter
 
 /**
  * Upper bound on the width of messages that can be processed.
- * [FIPS-180-4] Section 1, Figure 1.
+ * [FIPS-180-4] Section 1, Figure 1, "Message Size (bits)"
  */
-type MaxMessageWidth = 2 * w
-type constraint ValidMessageLength L = width L < MaxMessageWidth
+type MessageUpperBound = 2 * w
+type constraint ValidMessageLength L = width L < MessageUpperBound
+
+/**
+ * Length of the hash digest.
+ *
+ * This is made public to instantiate the `HashInterface`.
+ */
+type DigestLength = DigestSize
+
+/**
+ * Security strength (in bits) of the hash function.
+ * @see NIST SP 800-107 (to be withdrawn): https://csrc.nist.gov/pubs/sp/800/107/r1/final
+ * @see Hash functions webpage: https://csrc.nist.gov/projects/hash-functions
+ *
+ * This is made public to instantiate the `HashInterface`.
+ */
+type SecurityStrength = DigestSize / 2
 
 private
     /**
