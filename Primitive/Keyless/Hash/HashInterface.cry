@@ -39,4 +39,4 @@ interface module Primitive::Keyless::Hash::HashInterface where
      * Hash function, mapping an arbitrary-length message to a fixed-length
      * message digest.
      */
-    hash: {m} (width m < MessageUpperBound) => [m] -> [DigestLength]
+    hash: {m} (fin m, width m < MessageUpperBound) => [m] -> [DigestLength]
