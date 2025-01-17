@@ -1,0 +1,65 @@
+/*
+Test vectors for ECDSA with curve P224.
+
+[RFC6979]: Thomas Pornin. Deterministic Usage of the Digital Siganture
+    Algorithm (DSA) and Elliptic Curve Digital Signature Algorithm (ECDSA).
+    Internet Requests for Comments (RFC) 6979. August 2013.
+    @see https://datatracker.ietf.org/doc/html/rfc6979
+
+@copyright Galois, Inc.
+@author Marcella Hastings <marcella@galois.com>
+*/
+import Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P224_SHA224 as ECDSA
+import Common::utils(BVtoZ)
+
+/**
+ * Test vector for ECDSA with curve P-224 and SHA-224 as the hash.
+ * [RFC6979] Appendix A.2.4.
+ * ```repl
+ * :prove sampleVector
+ * ```
+ */
+property sampleVector = signIsCorrect && verifyIsCorrect
+  where
+    M = join "sample"
+
+    d = BVtoZ 0xF220266E1105BFE3083E03EC7A3A654651F45E37167E88600BF257C1
+    k = BVtoZ 0xC1D1F2F10881088301880506805FEB4825FE09ACB6816C36991AA06D
+    expected_r = BVtoZ 0x1CDFE6662DDE1E4A1EC4CDEDF6A1F5A2FB7FBD9145C12113E6ABFD3E
+    expected_s = BVtoZ 0xA6694FD7718A21053F225D3F46197CA699D45006C06F871808F43EBC
+
+    sig = ECDSA::sign M d k
+    signIsCorrect = case sig of
+        Some (r,s) -> (expected_r == r) && (expected_s == s)
+        None -> False
+
+    Q = ECDSA::publicKey d
+    verifyIsCorrect = case sig of
+        Some (r,s) -> ECDSA::verify M (r,s) Q
+        None -> False
+
+/**
+ * Test vector for ECDSA with curve P-224 and SHA-224 as the hash.
+ * [RFC6979] Appendix A.2.4.
+ * ```repl
+ * :prove testVector
+ * ```
+ */
+property testVector = signIsCorrect && verifyIsCorrect
+  where
+    M = join "test"
+    d = BVtoZ 0xF220266E1105BFE3083E03EC7A3A654651F45E37167E88600BF257C1
+    k = BVtoZ 0xDF8B38D40DCA3E077D0AC520BF56B6D565134D9B5F2EAE0D34900524
+    expected_r = BVtoZ 0xC441CE8E261DED634E4CF84910E4C5D1D22C5CF3B732BB204DBEF019
+    expected_s = BVtoZ 0x902F42847A63BDC5F6046ADA114953120F99442D76510150F372A3F4
+
+    sig = ECDSA::sign M d k
+    signIsCorrect = case sig of
+        Some (r,s) -> (expected_r == r) && (expected_s == s)
+        None -> False
+
+    Q = ECDSA::publicKey d
+    verifyIsCorrect = case sig of
+        Some (r,s) -> ECDSA::verify M (r,s) Q
+        None -> False
+

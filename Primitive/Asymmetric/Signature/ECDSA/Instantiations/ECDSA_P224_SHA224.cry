@@ -1,0 +1,11 @@
+/*
+ * Instantiate ECDSA with curve P-224 and SHA224.
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P224_SHA224 =
+    Primitive::Asymmetric::Signature::ECDSA::Specification {
+        EC = Common::EC::PrimeField::Instantiations::P224,
+        Hash = Primitive::Keyless::Hash::SHA2::Instantiations::SHA224
+    }
