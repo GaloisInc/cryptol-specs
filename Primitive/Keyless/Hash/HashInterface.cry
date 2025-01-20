@@ -1,0 +1,42 @@
+/*
+ * Interface for a hash function with a fixed-length digest.
+ *
+ * This is designed for use in algorithms that require an arbitrary hash
+ * function. It does not support extendable-output functions that allow
+ * arbitrary-length outputs.
+ *
+ * @copyright Galois, Inc 2025
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+interface module Primitive::Keyless::Hash::HashInterface where
+    /**
+     * Upper bound on the length of messages that can be hashed with this
+     * hash function.
+     *
+     * This can be set to `inf` for hash functions that do not have a
+     * restriction on message length.
+     */
+    type MessageUpperBound : #
+
+    /**
+     * Length of the hash digest, in bits.
+     */
+    type DigestLength : #
+
+    /**
+     * Security strength (in bits) of the hash function.
+     *
+     * This is assumed to be the minimum of the collision resistance strength,
+     * the preimage resistance strength, and the second preimage resistance
+     * strength. For most NIST-standardized hash functions, the security
+     * strength is half the digest length. The exception is SHA-1, which is
+     * largely deprecated.
+     * @see https://csrc.nist.gov/projects/hash-functions#security-strengths
+     */
+    type SecurityStrength : #
+
+    /**
+     * Hash function, mapping an arbitrary-length message to a fixed-length
+     * message digest.
+     */
+    hash: {m} (fin m, width m < MessageUpperBound) => [m] -> [DigestLength]

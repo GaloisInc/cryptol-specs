@@ -9,7 +9,7 @@ Test vectors for ECDSA with curve P256.
 @copyright Galois, Inc.
 @author Marcella Hastings <marcella@galois.com>
 */
-import Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P256 as ECDSA
+import Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P256_SHA256 as ECDSA
 import Common::utils(BVtoZ)
 
 /**

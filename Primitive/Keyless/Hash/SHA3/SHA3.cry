@@ -31,6 +31,27 @@ parameter
     type constraint (fin digest, digest % 8 == 0, digest >= 224, digest <= 512)
 
 /**
+ * Length of the hash digest.
+ *
+ * This is made public to instantiate the `HashInterface`.
+ */
+type DigestLength = digest
+
+/**
+ * There is no upper bound on the message length for SHA3 hashes.
+ */
+type MessageUpperBound = inf
+
+/**
+ * Security strength (in bits) of the hash function.
+ * [FIPS-202] Appendix A.1, Table 4.
+ * @see Hash functions webpage: https://csrc.nist.gov/projects/hash-functions#security-strengths
+ *
+ * This is made public to instantiate the `HashInterface`.
+ */
+type SecurityStrength = DigestLength / 2
+
+/**
  * SHA-3 hash function specification.
  * [FIPS-202] Section 6.1.
  *

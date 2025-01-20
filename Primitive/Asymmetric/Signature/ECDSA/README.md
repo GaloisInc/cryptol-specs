@@ -1,10 +1,10 @@
 # Elliptic curve digital signature algorithm (ECDSA)
 
-ECDSA is the elliptic-curve analog of the digital signature algorithm, specified in [FIPS 186-5](https://doi.org/10.6028/NIST.FIPS.186-5). The security of ECDSA depends on two primitives: the elliptic curve and the hash function. At this time, the implementation is generic over elliptic curve but fixes the hash function to SHA-256.
+ECDSA is the elliptic-curve analog of the digital signature algorithm, specified in [FIPS 186-5](https://doi.org/10.6028/NIST.FIPS.186-5). The security of ECDSA depends on two primitives: the elliptic curve and the hash function. At this time, the implementation is generic over both primitives.
 
 Structurally, there are two separate specification files:
-- `Specification.cry` matches the spec as closely as possible;
-- `UnconstrainedSpec.cry` implements the same algorithms but omits some of the top-level domain parameter constraints (e.g. on the size of the curve; on the relative security of the curve and hash function)
+- `UnconstrainedSpec.cry` implements the algorithms from the spec;
+- `Specification.cry` uses the algorithms from the unconstrained spec and adds required constraints on the domain parameters. Specifically, it sets a minimum allowable bit length for the size of the elliptic curve and requires the hash function to be at least as secure as the elliptic curve.
 
 We recommend using `Specification.cry` for most applications to ensure compliance with FIPS 186-5.
 The FIPS 186-5 compliant implementation has been instantiated and tested with curve P-256 and SHA256 (see `Instantiations/` and `Tests/`, respectively). Both versions rely on the curve implementation in `Common/EC/PrimeField/`.
