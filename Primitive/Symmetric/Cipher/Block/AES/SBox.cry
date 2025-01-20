@@ -36,6 +36,7 @@ sbox b = sboxTable @ b
  * Sbox example from p. 14
  * ```repl
  *  :prove sBox53
+ * ```
  */
 property sBox53 = sbox 0x53 == 0xed
 
