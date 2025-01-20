@@ -33,6 +33,14 @@ sbox : GF28 -> GF28
 sbox b = sboxTable @ b
 
 /**
+ * Sbox example from p. 14
+ * ```repl
+ *  :prove sBox53
+ * ```
+ */
+property sBox53 = sbox 0x53 == 0xed
+
+/**
  * The substitution table as given in Table 6. The table is pulled out here
  * for efficiency, letting us compute the table once per access in AES.
  */
