@@ -15,24 +15,24 @@ inter-dependency.
 Some of the widely adopted cryptographic algorithms contained in this
 repository are listed below.
 
-|                            | Primitive                                                                              | Synthesis | Verification |
-|----------------------------|----------------------------------------------------------------------------------------|-----------|--------------|
-| **Block Cipher**           | [AES](Primitive/Symmetric/Cipher/Block/AES)                                            |           |              |
-|                            | [Triple DES](Primitive/Symmetric/Cipher/Block/TripleDES.md)                            |           |              |
-| **Stream Cipher**          | [ChaCha20-Poly1305](Primitive/Symmetric/Cipher/Authenticated/ChaChaPolyCryptolIETF.md) |           |              |
-| **Message Authentication** | [HMAC](Primitive/Symmetric/MAC/HMAC.cry)                                               |           |              |
-| **Digital Signature**      | [ECDSA](Primitive/Asymmetric/Signature/ECDSA)                                          |           |              |
-|                            | [SPHINCS+](Primitive/Asymmetric/Signature/SphincsPlus/)                                |           |              |
-|                            | [FALCON](Primitive/Asymmetric/Signature/FALCON/1.2/)                                   |           |              |
-|                            | [CRYSTALS Dilithium](Primitive/Asymmetric/Signature/Dilithium/)                        |           |              |
-| **Hash**                   | [SHA1](Primitive/Keyless/Hash/SHA1.cry)                                                |           |              |
-|                            | [SHA256](Primitive/Keyless/Hash/SHA2/Instantiations/SHA256.cry)                        |           |              |
-|                            | [SHA2](Primitive/Keyless/Hash/SHA2/)                                                   |           |              |
-|                            | [SHA3](Primitive/Keyless/Hash/SHA3/)                                                   |           |              |
-| **Key Encapsulation**      | [ML-KEM (CRYSTALS-Kyber)](Primitive/Asymmetric/KEM/ML_KEM/)                            |           |              |
-| **Asymmetric Encryption**  | [RSA](Primitive/Asymmetric/Cipher/RSA.cry)                                             |           |              |
+|                            | Primitive                                                                              |
+|----------------------------|----------------------------------------------------------------------------------------|
+| **Block Cipher**           | [AES](Primitive/Symmetric/Cipher/Block/AES)                                            |
+|                            | [Triple DES](Primitive/Symmetric/Cipher/Block/TripleDES.md)                            |
+| **Stream Cipher**          | [ChaCha20-Poly1305](Primitive/Symmetric/Cipher/Authenticated/ChaChaPolyCryptolIETF.md) |
+| **Message Authentication** | [HMAC](Primitive/Symmetric/MAC/HMAC.cry)                                               |
+| **Digital Signature**      | [ECDSA](Primitive/Asymmetric/Signature/ECDSA)                                          |
+|                            | [SPHINCS+](Primitive/Asymmetric/Signature/SphincsPlus/)                                |
+|                            | [FALCON](Primitive/Asymmetric/Signature/FALCON/1.2/)                                   |
+|                            | [ML-DSA (CRYSTALS_Dilithium)](Primitive/Asymmetric/Signature/ML_DSA/)                  |
+| **Hash**                   | [SHA1](Primitive/Keyless/Hash/SHA1.cry)                                                |
+|                            | [SHA256](Primitive/Keyless/Hash/SHA2/Instantiations/SHA256.cry)                        |
+|                            | [SHA2](Primitive/Keyless/Hash/SHA2/)                                                   |
+|                            | [SHA3](Primitive/Keyless/Hash/SHA3/)                                                   |
+| **Key Encapsulation**      | [ML-KEM (CRYSTALS-Kyber)](Primitive/Asymmetric/KEM/ML_KEM/)                            |
+| **Asymmetric Encryption**  | [RSA](Primitive/Asymmetric/Cipher/RSA.cry)                                             |
 
-All Cryptol files in this repository are covered by the BSDv3 license. See LICENSE file.
+All Cryptol files in this repository are covered by [the BSDv3 license](LICENSE).
 
 # NIST Post-Quantum Cryptography Standardization Selections
 This repo includes executable specifications of several quantum-resistant schemes. These are drawn from the finalists of the [NIST Post-Quantum Cryptography competition](https://csrc.nist.gov/projects/post-quantum-cryptography). In some cases, we have multiple versions of the algorithms from various rounds of the competition, as well as from the initial public draft (IPD) and final specifications produced by NIST.
@@ -40,7 +40,7 @@ This repo includes executable specifications of several quantum-resistant scheme
 | Primitive | NIST Name (Original Name)   | Type          | Versions Available |
 |-----------|-----------------------------|---------------|--------------------|
 | PKE / KEM | ML-KEM (CRYSTALS-Kyber)     | Lattice-based | [Final spec (FIPS-203)](Primitive/Asymmetric/KEM/ML_KEM/) |
-| Signature | ML-DSA (CRYSTALS-Dilithium) | Lattice-based | [Final spec (FIPS-204), IPD, Round 2, Round 1](Primitive/Asymmetric/Signature/Dilithium/) |
+| Signature | ML-DSA (CRYSTALS-Dilithium) | Lattice-based | [Final spec (FIPS-204)](Primitive/Asymmetric/Signature/ML_DSA/) |
 | Signature | FN-DSA (FALCON)             | Lattice-based | [Round 1.2](Primitive/Asymmetric/Signature/FALCON/1.2/) |
 | Signature | SLH-DSA (SPHINCS+)          | Hash-based    | [Round 3.1](Primitive/Asymmetric/Signature/SphincsPlus/) |
 
