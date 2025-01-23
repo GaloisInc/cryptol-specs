@@ -1,6 +1,3 @@
-# Cryptol Specifications for ML-KEM (FIPS 203)
-
-## Description
 This directory contains the Cryptol specifications for the ML-KEM (Module-Lattice-Based Key-Encapsulation Mechanism) as defined in the specification [FIPS 203](https://doi.org/10.6028/NIST.FIPS.203).
 
 The Cryptol code in this executable specification was developed to closely resemble the standard; it prioritizes readability and obvious correctness over efficiency.

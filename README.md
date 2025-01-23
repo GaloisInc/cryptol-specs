@@ -7,35 +7,29 @@ starting point, however, we plan to collect as many specifications as
 we can find, as-is, and incrementally improve their presentation and
 inter-dependency.
 
-- [NIST Post-Quantum Cryptography Standardization Selections](#nist-post-quantum-cryptography-standardization-selections)
-- [Remarks](#remarks-on-correctness)
-- [Contributing](#contributing)
-
-
-Some of the widely adopted cryptographic algorithms contained in this
-repository are listed below.
-
-|                            | Primitive                                                                              |
-|----------------------------|----------------------------------------------------------------------------------------|
-| **Block Cipher**           | [AES](Primitive/Symmetric/Cipher/Block/AES)                                            |
-|                            | [Triple DES](Primitive/Symmetric/Cipher/Block/TripleDES.md)                            |
-| **Stream Cipher**          | [ChaCha20-Poly1305](Primitive/Symmetric/Cipher/Authenticated/ChaChaPolyCryptolIETF.md) |
-| **Message Authentication** | [HMAC](Primitive/Symmetric/MAC/HMAC.cry)                                               |
-| **Digital Signature**      | [ECDSA](Primitive/Asymmetric/Signature/ECDSA)                                          |
-|                            | [SPHINCS+](Primitive/Asymmetric/Signature/SphincsPlus/)                                |
-|                            | [FALCON](Primitive/Asymmetric/Signature/FALCON/1.2/)                                   |
-|                            | [ML-DSA (CRYSTALS_Dilithium)](Primitive/Asymmetric/Signature/ML_DSA/)                  |
-| **Hash**                   | [SHA1](Primitive/Keyless/Hash/SHA1.cry)                                                |
-|                            | [SHA256](Primitive/Keyless/Hash/SHA2/Instantiations/SHA256.cry)                        |
-|                            | [SHA2](Primitive/Keyless/Hash/SHA2/)                                                   |
-|                            | [SHA3](Primitive/Keyless/Hash/SHA3/)                                                   |
-| **Key Encapsulation**      | [ML-KEM (CRYSTALS-Kyber)](Primitive/Asymmetric/KEM/ML_KEM/)                            |
-| **Asymmetric Encryption**  | [RSA](Primitive/Asymmetric/Cipher/RSA.cry)                                             |
-
 All Cryptol files in this repository are covered by [the BSDv3 license](LICENSE).
 
-# NIST Post-Quantum Cryptography Standardization Selections
-This repo includes executable specifications of several quantum-resistant schemes. These are drawn from the finalists of the [NIST Post-Quantum Cryptography competition](https://csrc.nist.gov/projects/post-quantum-cryptography). In some cases, we have multiple versions of the algorithms from various rounds of the competition, as well as from the initial public draft (IPD) and final specifications produced by NIST.
+# Collections of Algorithms
+This repo has executable specifications for many cryptographic algorithms.
+
+## CNSA 2.0
+This repo includes all the general purpose, quantum-resistant algorithms approved in [the Commercial National Security Algorithm Suite 2.0 (CNSA 2.0)](https://media.defense.gov/2022/Sep/07/2003071836/-1/-1/0/CSI_CNSA_2.0_FAQ_.PDF) and one of the application-specific algorithms.
+The repo includes most of the approved parameter sets for each of the above algorithms; this table only links to the parameters specifically included in CNSA 2.0.
+
+| Primitive | Specification | Parameters |
+| --- | --- | --- |
+| Block cipher | [AES](Primitive/Symmetric/Cipher/Block/AES) | [AES256](Primitive/Symmetric/Cipher/Block/AES256.cry) [^1] |
+| Key establishment | [ML-KEM](Primitive/Asymmetric/KEM/ML_KEM/) | [ML-KEM-1024](Primitive/Asymmetric/KEM/ML_KEM/Instantiations/ML_KEM1024.cry) |
+| Signature | [ML-DSA](Primitive/Asymmetric/Signature/ML_DSA/) | [ML-DSA-87](Primitive/Asymmetric/Signature/ML_DSA/Instantiations/ML_DSA_87.cry) |
+| Hashing | [SHA2](Primitive/Keyless/Hash/SHA2/Specification.cry) | [SHA-384](Primitive/Keyless/Hash/SHA2/Instantiations/SHA384.cry), [SHA-512](Primitive/Keyless/Hash/SHA2/Instantiations/SHA512.cry) |
+| Hashing | [SHA3](Primitive/Keyless/Hash/SHA3/SHA3.cry) ([Keccak](Primitive/Keyless/Hash/Keccak.cry)) | [SHA3-384](Primitive/Keyless/Hash/SHA3/SHA3_384.cry), [SHA3-512](Primitive/Keyless/Hash/SHA3/SHA3_512.cry) |
+
+[^1]: AES must be paired with an approved mode of operation for secure use, like [CTR mode](Primitive/Symmetric/Cipher/Block/Instantiations/AES256_CTR.cry) or [GCM mode](Primitive/Symmetric/Cipher/Authenticated/Instantiations/AES256_GCM.cry).
+
+
+
+## NIST Post-Quantum Cryptography Standardization Selections
+This repo includes several quantum-resistant schemes drawn from the finalists of the [NIST Post-Quantum Cryptography competition](https://csrc.nist.gov/projects/post-quantum-cryptography). Some of these have been updated to the final approved version; others are from earlier rounds of the competition.
 
 | Primitive | NIST Name (Original Name)   | Type          | Versions Available |
 |-----------|-----------------------------|---------------|--------------------|
@@ -44,12 +38,33 @@ This repo includes executable specifications of several quantum-resistant scheme
 | Signature | FN-DSA (FALCON)             | Lattice-based | [Round 1.2](Primitive/Asymmetric/Signature/FALCON/1.2/) |
 | Signature | SLH-DSA (SPHINCS+)          | Hash-based    | [Round 3.1](Primitive/Asymmetric/Signature/SphincsPlus/) |
 
-
-## Appreciations
-Without the generous help of the authors who were willing to share their work with us, our team would not have been able to create such an effective codebase. We are truly grateful for their support. In particular, we'd like to thank:
+We appreciate the generous help of the authors who were willing to share their work with us, while developing early versions of these executable specifications. We are truly grateful for their support. In particular, we'd like to thank:
 - Vadim Lyubashevsky (CRYSTALS Kyber and CRYSTALS Dilithium)
 - Andreas Hülsing (SPHINCS+)
 - Pierre-Alain Fouque and Thomas Pornin (FALCON)
+
+## Suite B
+This repo includes the set of cryptographic algorithms specified in [NSA's Suite B Cryptography](https://en.wikipedia.org/wiki/NSA_Suite_B_Cryptography).
+
+| Primitive | Specification | Parameters |
+| --- | --- | --- |
+| Block cipher | [AES](Primitive/Symmetric/Cipher/Block/AES) | [AES128-CTR](Primitive/Symmetric/Cipher/Block/Instantiations/AES128_CTR.cry), [AES128-GCM](Primitive/Symmetric/Cipher/Authenticated/Instantiations/AES128.cry), [AES256-CTR](Primitive/Symmetric/Cipher/Block/Instantiations/AES256_CTR.cry), [AES256-GCM](Primitive/Symmetric/Cipher/Authenticated/Instantiations/AES256_GCM.cry)|
+| Key agreement | [ECDH](Primitive/Asymmetric/KEM/ECDH/Specification.cry) | [ECDH-P256](Primitive/Asymmetric/KEM/ECDH/Instantiations/ECDH_P256.cry), [ECDH-P384](Primitive/Asymmetric/KEM/ECDH/Instantiations/ECDH_P384.cry) |
+| Signature | [ECDSA](Primitive/Asymmetric/Signature/ECDSA/) | [ECDSA-P256-SHA256](Primitive/Asymmetric/Signature/ECDSA/Instantiations/ECDSA_P256_SHA256.cry), [ECDSA-P384-SHA384](Primitive/Asymmetric/Signature/ECDSA/Instantiations/ECDSA_P384_SHA384.cry) |
+| Hashing | [SHA2](Primitive/Keyless/Hash/SHA2/Specification.cry) | [SHA-256](Primitive/Keyless/Hash/SHA2/Instantiations/SHA256.cry), [SHA-384](Primitive/Keyless/Hash/SHA2/Instantiations/SHA384.cry) |
+
+## Other kinds of algorithms
+
+There are some [ciphers for authenticated encryption](Primitive/Symmetric/Cipher/Authenticated/) that are commonly used but not formally NIST-approved, like [ChaCha20-Poly1305](Primitive/Symmetric/Cipher/Authenticated/ChaChaPolyCryptolIETF.md) and [AES-GCM-SIV](Primitive/Symmetric/Cipher/Authenticated/AES_GCM_SIV.cry). There are also [many block ciphers](Primitive/Symmetric/Cipher/Block/), including some of historical interest (e.g. [Triple DES](Primitive/Symmetric/Cipher/Block/TripleDES.md)), and a smaller collection of [stream ciphers](Primitive/Symmetric/Cipher/Stream/)
+
+There is an implementation of [HMAC](Primitive/Symmetric/MAC/HMAC.cry) that is used to instantiate [a hash-based key derivation function (HKDF)](Primitive/Symmetric/KDF/).
+
+There are two members of [the BLAKE family of hash functions](Primitive/Keyless/Hash/), as well as several historical hash functions, like [MD5](Primitive/Keyless/Hash/MD5.md) and [SHA1](Primitive/Keyless/Hash/SHA1.cry), that are not suitable for general use. There's also a version of the standardized [deterministic random bit generator (DRBG)](Primitive/Keyless/Generator/DRBG.cry).
+
+There's a family of RSA-based schemes, including [the basic RSA cipher](Primitive/Asymmetric/Cipher/RSA.cry), [RSA with various encoding schemes](Primitive/Asymmetric/Scheme), and some [RSA-based signature schemes](Primitive/Asymmetric/Signature).
+
+
+
 
 # Remarks on correctness
 The Cryptol specs presented here are written with the objective of being as close as possible to the specs as presented in the official papers so that even someone without cryptographic experience can verify that the Cryptol code meets the spec by reading it "line by line". As a result, the Cryptol code may not be as efficient as other implementations (for example it may implement DFT instead of FFT), yet it is closer to the paper definitions and aims to be functionally equivalent to them.
