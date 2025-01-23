@@ -17,7 +17,7 @@ www.cryptol.net
     @see https://doi.org/10.6028/NIST.SP.800-107r1.
 */
 
-module Primitive::Keyless::Hash::SHA2Imperative::SHA where
+module Primitive::Keyless::Hash::SHA2Internal::SHA where
 
 import Array
 import Common::ByteArray

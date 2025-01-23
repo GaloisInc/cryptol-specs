@@ -7,7 +7,7 @@
    www.cryptol.net
 */
 
-module Primitive::Keyless::Hash::SHA2Imperative::SHA256 = Primitive::Keyless::Hash::SHA2Imperative::SHA where
+module Primitive::Keyless::Hash::SHA2Internal::SHA256 = Primitive::Keyless::Hash::SHA2Internal::SHA where
 
 type wp = 32
 
