@@ -6,7 +6,6 @@ type HashLen = 32
 HMAC = hmacBytes
 
 hmacBytes : {n, m} (64 >= width (8 * (64 + m)),
-                    64 >= width (8 * n), 32 >= width m, fin m, fin n) =>
-              [n][8] -> [m][8] -> [32][8]
-hmacBytes key msg = split (hmacSHA256 key msg)
-
+                    64 > width (8 * n), 32 >= width m, fin m, fin n) =>
+            [n][8] -> [m][8] -> [32][8]
+      hmacBytes key msg = split (hmacSHA256 key msg)
