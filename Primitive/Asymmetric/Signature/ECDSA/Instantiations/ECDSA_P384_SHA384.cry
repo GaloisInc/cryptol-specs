@@ -1,0 +1,11 @@
+/*
+ * Instantiate ECDSA with curve P-384 (also known as secp384p1) and SHA384.
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P384_SHA384 =
+    Primitive::Asymmetric::Signature::ECDSA::Specification {
+        EC = Common::EC::PrimeField::Instantiations::P384,
+        Hash = Primitive::Keyless::Hash::SHA2::Instantiations::SHA384
+    }

@@ -1,16 +1,29 @@
 /*
-Test vectors for ECDSA with curve P256.
-
-[RFC6979]: Thomas Pornin. Deterministic Usage of the Digital Siganture
-    Algorithm (DSA) and Elliptic Curve Digital Signature Algorithm (ECDSA).
-    Internet Requests for Comments (RFC) 6979. August 2013.
-    @see https://datatracker.ietf.org/doc/html/rfc6979
-
-@copyright Galois, Inc.
-@author Marcella Hastings <marcella@galois.com>
-*/
+ * Test vectors for ECDSA with curve P256.
+ *
+ * [RFC6979]: Thomas Pornin. Deterministic Usage of the Digital Siganture
+ *    Algorithm (DSA) and Elliptic Curve Digital Signature Algorithm (ECDSA).
+ *    Internet Requests for Comments (RFC) 6979. August 2013.
+ *    @see https://datatracker.ietf.org/doc/html/rfc6979
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
 import Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P256_SHA256 as ECDSA
 import Common::utils(BVtoZ)
+
+property checkSignature d msg k expected_r expected_s =
+    signIsCorrect && verifyIsCorrect where
+
+    sig = ECDSA::sign msg d k
+    signIsCorrect = case sig of
+        Some (r,s) -> (expected_r == r) && (expected_s == s)
+        None -> False
+
+    Q = ECDSA::publicKey d
+    verifyIsCorrect = case sig of
+        Some (r,s) -> ECDSA::verify msg (r,s) Q
+        None -> False
 
 /**
  * Test vector for ECDSA with curve P-256 and SHA-256 as the hash.
@@ -19,23 +32,12 @@ import Common::utils(BVtoZ)
  * :prove sampleVector
  * ```
  */
-property sampleVector = signIsCorrect && verifyIsCorrect
-  where
+property sampleVector = checkSignature d M k expected_r expected_s where
     M = join "sample"
     d = BVtoZ 0xC9AFA9D845BA75166B5C215767B1D6934E50C3DB36E89B127B8A622B120F6721
     k = BVtoZ 0xA6E3C57DD01ABE90086538398355DD4C3B17AA873382B0F24D6129493D8AAD60
     expected_r = BVtoZ 0xEFD48B2AACB6A8FD1140DD9CD45E81D69D2C877B56AAF991C34D0EA84EAF3716
     expected_s = BVtoZ 0xF7CB1C942D657C41D436C7A1B6E29F65F3E900DBB9AFF4064DC4AB2F843ACDA8
-
-    sig = ECDSA::sign M d k
-    signIsCorrect = case sig of
-        Some (r,s) -> (expected_r == r) && (expected_s == s)
-        None -> False
-
-    Q = ECDSA::publicKey d
-    verifyIsCorrect = case sig of
-        Some (r,s) -> ECDSA::verify M (r,s) Q
-        None -> False
 
 /**
  * Test vector for ECDSA with curve P-256 and SHA-256 as the hash.
@@ -44,20 +46,9 @@ property sampleVector = signIsCorrect && verifyIsCorrect
  * :prove testVector
  * ```
  */
-property testVector = signIsCorrect && verifyIsCorrect
-  where
+property testVector = checkSignature d M k expected_r expected_s where
     M = join "test"
     d = BVtoZ 0xC9AFA9D845BA75166B5C215767B1D6934E50C3DB36E89B127B8A622B120F6721
     k = BVtoZ 0xD16B6AE827F17175E040871A1C7EC3500192C4C92677336EC2537ACAEE0008E0
     expected_r = BVtoZ 0xF1ABB023518351CD71D881567B1EA663ED3EFCF6C5132B354F28D3B0B7D38367
     expected_s = BVtoZ 0x019F4113742A2B14BD25926B49C649155F267E60D3814B4C0CC84250E46F0083
-
-    sig = ECDSA::sign M d k
-    signIsCorrect = case sig of
-        Some (r,s) -> (expected_r == r) && (expected_s == s)
-        None -> False
-
-    Q = ECDSA::publicKey d
-    verifyIsCorrect = case sig of
-        Some (r,s) -> ECDSA::verify M (r,s) Q
-        None -> False
