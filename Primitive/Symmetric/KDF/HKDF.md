@@ -1,3 +1,7 @@
+<!---
+ - @copyright Galois, Inc.
+ - @author Aaron Tomb
+ --->
 # HMAC-based Extract-and-Expand Key Derivation Function (HKDF)
 
 ## Welcome

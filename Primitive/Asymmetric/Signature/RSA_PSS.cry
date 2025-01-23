@@ -1,16 +1,16 @@
 /*
-   Copyright (c) 2021, Galois Inc.
-   www.cryptol.net
-*/
-
-/* This module implements an RSA signature scheme
-   with the EMSA-PSS encoding method described in 9.1 of
-
-   PKCS #1: RSA Cryptography Specifications Version 2.2
-
-   See also:
-   https://tools.ietf.org/html/rfc8017
-*/
+ * @copyright Galois Inc. 2021
+ * @author Andrei Stefanescu
+ * www.cryptol.net
+ *
+ * This module implements an RSA signature scheme
+ * with the EMSA-PSS encoding method described in 9.1 of
+ *
+ * PKCS #1: RSA Cryptography Specifications Version 2.2
+ *
+ * See also:
+ * https://tools.ietf.org/html/rfc8017
+ */
 module Primitive::Asymmetric::Signature::RSA_PSS where
 
 import Common::utils
