@@ -19,10 +19,19 @@ parameter
   type hLen : # // Number of octets returned by chosen hash function
   type constraint (fin hLen, hLen >= 1)
 
-  hash : {n} (fin n) => [n][8] -> [8 * hLen]
+  /**
+   * Some hash functions have an upper bound on the message length they support.
+   *
+   * Most uses of `hash` here are on a fixed input made of 8 bytes of padding
+   * an `hLen`-byte hashed message, and an `hLen`-byte salt. The type constraint
+   * enforces that all such calls are on valid-length inputs.
+   */
+  type MessageUpperBound : #
+  type constraint (width (8 * (hLen + hLen + 8)) < MessageUpperBound)
 
+  hash : {n} (fin n, width (8 * n) < MessageUpperBound) => [n][8] -> [8 * hLen]
 
-MGF1 : {seedLen, maskLen} (fin seedLen, fin maskLen) => [seedLen][8] -> [maskLen][8]
+MGF1 : {seedLen, maskLen} (fin seedLen, fin maskLen, width (8 * seedLen + 32) < MessageUpperBound) => [seedLen][8] -> [maskLen][8]
 MGF1 seed = take (join [ split (hash (seed # (split c))) | c <- [(0 : [32]) ...] ])
 
 
