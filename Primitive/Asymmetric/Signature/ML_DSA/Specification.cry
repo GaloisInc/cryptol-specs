@@ -24,8 +24,8 @@
  */
 module Primitive::Asymmetric::Signature::ML_DSA::Specification where
 
-import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHAKE128
-import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHAKE256
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE128 as SHAKE128
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE256 as SHAKE256
 
 /**
  * The set {0, 1, ..., 255} of integers represented by a byte, denoted 𝔹 in

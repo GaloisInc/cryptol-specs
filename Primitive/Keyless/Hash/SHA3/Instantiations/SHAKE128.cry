@@ -13,14 +13,14 @@
  * @editor Marcella Hastings <marcella@galois.com>
  *
  */
-module Primitive::Keyless::Hash::SHAKE::SHAKE128 where
-import Primitive::Keyless::Hash::Keccak where
+module Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE128 where
+import Primitive::Keyless::Hash::SHA3::Specification where
     type b = 1600
     type nr = 24
     // The capacity is double the security level, so this provides a security
     // level of 128 (as the name suggests).
     type c = 256
-import Primitive::Keyless::Hash::KeccakBitOrdering as KBO
+import Primitive::Keyless::Hash::SHA3::KeccakBitOrdering as KBO
 
 /**
  * SHAKE128 extendable-output function.

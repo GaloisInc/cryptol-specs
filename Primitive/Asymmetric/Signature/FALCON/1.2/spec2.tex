@@ -916,7 +916,7 @@ the last has weight $1$).
 \end{algorithm}
 
 \begin{code}
-  import Primitive::Keyless::Hash::SHAKE::SHAKE256
+  import Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE256
   HashToPoint : {q', k, n, len}
     (q' <= 2^^16, q' >= 1, isPowerOfTwo k n, fin len) =>
     [len] -> Poly n (Z q')

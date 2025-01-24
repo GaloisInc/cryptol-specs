@@ -10,7 +10,7 @@
  * @author Ajay Kumar Eeralla
  * @author Marcella Hastings <marcella@galois.com>
  */
-module Primitive::Keyless::Hash::KeccakBitOrdering where
+module Primitive::Keyless::Hash::SHA3::KeccakBitOrdering where
 /**
  * Deprecated!!
  * Splits a list of bits into bytes, using little-endian bit order.

@@ -1,6 +1,6 @@
 module sphincsplus256f=specification where
 
-import Primitive::Keyless::Hash::SHAKE::SHAKE256
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE256
 
 type n = 32
 type h = 68
