@@ -1,11 +1,11 @@
 /*
-@copyright Galois, Inc. 2016-2018
-@author Aaron Tomb <atomb@galois.com>
-@author Nathan Collins <conathan@galois.com>
-@author Joey Dodds <jdodds@galois.com>
-*/
+ * @copyright Galois, Inc. 2016-2018
+ * @author Aaron Tomb <atomb@galois.com>
+ * @author Nathan Collins <conathan@galois.com>
+ * @author Joey Dodds <jdodds@galois.com>
+ */
 
-module Primitive::Symmetric::MAC::HMAC where
+module Primitive::Symmetric::MAC::HMAC_SHA256 where
 
 import Primitive::Keyless::Hash::SHA2::Instantiations::SHA256 as SHA256
 

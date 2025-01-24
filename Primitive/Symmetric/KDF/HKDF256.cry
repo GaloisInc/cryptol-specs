@@ -4,7 +4,7 @@
  */
 module Primitive::Symmetric::KDF::HKDF256 = Primitive::Symmetric::KDF::HKDF where
 
-import Primitive::Symmetric::MAC::HMAC
+import Primitive::Symmetric::MAC::HMAC_SHA256
 
 type HashLen = 32
 HMAC = hmacBytes
