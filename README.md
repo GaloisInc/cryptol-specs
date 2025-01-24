@@ -22,7 +22,7 @@ The repo includes most of the approved parameter sets for each of the above algo
 | Key establishment | [ML-KEM](Primitive/Asymmetric/KEM/ML_KEM/) | [ML-KEM-1024](Primitive/Asymmetric/KEM/ML_KEM/Instantiations/ML_KEM1024.cry) |
 | Signature | [ML-DSA](Primitive/Asymmetric/Signature/ML_DSA/) | [ML-DSA-87](Primitive/Asymmetric/Signature/ML_DSA/Instantiations/ML_DSA_87.cry) |
 | Hashing | [SHA2](Primitive/Keyless/Hash/SHA2/Specification.cry) | [SHA-384](Primitive/Keyless/Hash/SHA2/Instantiations/SHA384.cry), [SHA-512](Primitive/Keyless/Hash/SHA2/Instantiations/SHA512.cry) |
-| Hashing | [SHA3](Primitive/Keyless/Hash/SHA3/SHA3.cry) ([Keccak](Primitive/Keyless/Hash/Keccak.cry)) | [SHA3-384](Primitive/Keyless/Hash/SHA3/SHA3_384.cry), [SHA3-512](Primitive/Keyless/Hash/SHA3/SHA3_512.cry) |
+| Hashing | [SHA3](Primitive/Keyless/Hash/SHA3) | [SHA3-384](Primitive/Keyless/Hash/SHA3/Instantiations/SHA3_384.cry), [SHA3-512](Primitive/Keyless/Hash/SHA3/Instantiations/SHA3_512.cry) |
 
 [^1]: AES must be paired with an approved mode of operation for secure use, like [CTR mode](Primitive/Symmetric/Cipher/Block/Instantiations/AES256_CTR.cry) or [GCM mode](Primitive/Symmetric/Cipher/Authenticated/Instantiations/AES256_GCM.cry).
 
