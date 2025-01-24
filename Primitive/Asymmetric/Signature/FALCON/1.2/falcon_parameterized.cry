@@ -1,3 +1,7 @@
+/**
+ * @copyright Galois, Inc.
+ * @author Marios Georgiou <marios@galois.com>
+ */
 module falcon_parameterized where
 
 parameter
