@@ -1,3 +1,7 @@
+/**
+ * @copyright Galois, Inc.
+ * @author Marios Georgiou <marios@galois.com>
+ */
 module sphincsplus128s=specification where
 
 import Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE256
