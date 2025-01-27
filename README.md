@@ -18,15 +18,11 @@ The repo includes most of the approved parameter sets for each of the above algo
 
 | Primitive | Specification | Parameters |
 | --- | --- | --- |
-| Block cipher | [AES](Primitive/Symmetric/Cipher/Block/AES) | [AES256](Primitive/Symmetric/Cipher/Block/AES256.cry) [^1] |
+| Block cipher | [AES](Primitive/Symmetric/Cipher/Block/AES) | [AES256](Primitive/Symmetric/Cipher/Block/AES256.cry) ([AES256-CTR](Primitive/Symmetric/Cipher/Block/Instantiations/AES256_CTR.cry), [AES256-GCM](Primitive/Symmetric/Cipher/Authenticated/Instantiations/AES256_GCM.cry)) |
 | Key establishment | [ML-KEM](Primitive/Asymmetric/KEM/ML_KEM/) | [ML-KEM-1024](Primitive/Asymmetric/KEM/ML_KEM/Instantiations/ML_KEM1024.cry) |
 | Signature | [ML-DSA](Primitive/Asymmetric/Signature/ML_DSA/) | [ML-DSA-87](Primitive/Asymmetric/Signature/ML_DSA/Instantiations/ML_DSA_87.cry) |
 | Hashing | [SHA2](Primitive/Keyless/Hash/SHA2/Specification.cry) | [SHA-384](Primitive/Keyless/Hash/SHA2/Instantiations/SHA384.cry), [SHA-512](Primitive/Keyless/Hash/SHA2/Instantiations/SHA512.cry) |
 | Hashing | [SHA3](Primitive/Keyless/Hash/SHA3/SHA3.cry) ([Keccak](Primitive/Keyless/Hash/Keccak.cry)) | [SHA3-384](Primitive/Keyless/Hash/SHA3/SHA3_384.cry), [SHA3-512](Primitive/Keyless/Hash/SHA3/SHA3_512.cry) |
-
-[^1]: AES must be paired with an approved mode of operation for secure use, like [CTR mode](Primitive/Symmetric/Cipher/Block/Instantiations/AES256_CTR.cry) or [GCM mode](Primitive/Symmetric/Cipher/Authenticated/Instantiations/AES256_GCM.cry).
-
-
 
 ## NIST Post-Quantum Cryptography Standardization Selections
 This repo includes several quantum-resistant schemes drawn from the finalists of the [NIST Post-Quantum Cryptography competition](https://csrc.nist.gov/projects/post-quantum-cryptography). Some of these have been updated to the final approved version; others are from earlier rounds of the competition.
@@ -49,7 +45,7 @@ This repo includes the set of cryptographic algorithms specified in [NSA's Suite
 | Primitive | Specification | Parameters |
 | --- | --- | --- |
 | Block cipher | [AES](Primitive/Symmetric/Cipher/Block/AES) | [AES128-CTR](Primitive/Symmetric/Cipher/Block/Instantiations/AES128_CTR.cry), [AES128-GCM](Primitive/Symmetric/Cipher/Authenticated/Instantiations/AES128.cry), [AES256-CTR](Primitive/Symmetric/Cipher/Block/Instantiations/AES256_CTR.cry), [AES256-GCM](Primitive/Symmetric/Cipher/Authenticated/Instantiations/AES256_GCM.cry)|
-| Key agreement | [ECDH](Primitive/Asymmetric/KEM/ECDH/Specification.cry) | [ECDH-P256](Primitive/Asymmetric/KEM/ECDH/Instantiations/ECDH_P256.cry), [ECDH-P384](Primitive/Asymmetric/KEM/ECDH/Instantiations/ECDH_P384.cry) |
+| Key agreement | [ECDH](Primitive/Asymmetric/KEM/ECDH/) | [ECDH-P256](Primitive/Asymmetric/KEM/ECDH/Instantiations/ECDH_P256.cry), [ECDH-P384](Primitive/Asymmetric/KEM/ECDH/Instantiations/ECDH_P384.cry) |
 | Signature | [ECDSA](Primitive/Asymmetric/Signature/ECDSA/) | [ECDSA-P256-SHA256](Primitive/Asymmetric/Signature/ECDSA/Instantiations/ECDSA_P256_SHA256.cry), [ECDSA-P384-SHA384](Primitive/Asymmetric/Signature/ECDSA/Instantiations/ECDSA_P384_SHA384.cry) |
 | Hashing | [SHA2](Primitive/Keyless/Hash/SHA2/Specification.cry) | [SHA-256](Primitive/Keyless/Hash/SHA2/Instantiations/SHA256.cry), [SHA-384](Primitive/Keyless/Hash/SHA2/Instantiations/SHA384.cry) |
 
