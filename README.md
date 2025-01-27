@@ -57,7 +57,7 @@ This repo includes the set of cryptographic algorithms specified in [NSA's Suite
 
 There are some [ciphers for authenticated encryption](Primitive/Symmetric/Cipher/Authenticated/) that are commonly used but not formally NIST-approved, like [ChaCha20-Poly1305](Primitive/Symmetric/Cipher/Authenticated/ChaChaPolyCryptolIETF.md) and [AES-GCM-SIV](Primitive/Symmetric/Cipher/Authenticated/AES_GCM_SIV.cry). There are also [many block ciphers](Primitive/Symmetric/Cipher/Block/), including some of historical interest (e.g. [Triple DES](Primitive/Symmetric/Cipher/Block/TripleDES.md)), and a smaller collection of [stream ciphers](Primitive/Symmetric/Cipher/Stream/)
 
-There is an implementation of [HMAC](Primitive/Symmetric/MAC/HMAC.cry) that is used to instantiate [a hash-based key derivation function (HKDF)](Primitive/Symmetric/KDF/).
+There is an implementation of [HMAC](Primitive/Symmetric/MAC/HMAC_SHA256.cry) that is used to instantiate [a hash-based key derivation function (HKDF)](Primitive/Symmetric/KDF/).
 
 There are two members of [the BLAKE family of hash functions](Primitive/Keyless/Hash/), as well as several historical hash functions, like [MD5](Primitive/Keyless/Hash/MD5.md) and [SHA1](Primitive/Keyless/Hash/SHA1.cry), that are not suitable for general use. There's also a version of the standardized [deterministic random bit generator (DRBG)](Primitive/Keyless/Generator/DRBG.cry).
 
