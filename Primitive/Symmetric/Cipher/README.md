@@ -1,18 +1,18 @@
 Ciphers using symmetric keys.
 
-| Scheme | Standard | Literate | Up-to-date |
-| --- | --- | --- | --- |
-| AES | Gold | No | Yes |
-| DES | | No | Unsure |
-| GOST | | No | Unsure |
-| KATAN | | No | Unsure |
-| LED | | No | Unsure |
-| McMambo | | No | Unsure |
-| PRESENT | | No | Unsure |
-| PRINCE | | No | Unsure |
-| SHACAL | | No | Unsure |
-| Simon | | No | Unsure |
-| Speck | | No | Unsure |
-| TEA | | No | Unsure |
-| Threefish | | No | Unsure |
-| TripleDES | | No | Unsure |
+| Scheme | Standard | Literate |
+| --- | --- | --- |
+| AES | Gold | No |
+| DES | | No |
+| GOST | | No |
+| KATAN | | No |
+| LED | | No |
+| McMambo | | No |
+| PRESENT | | No |
+| PRINCE | | No |
+| SHACAL | | No |
+| Simon | | No |
+| Speck | | No |
+| TEA | | No |
+| Threefish | | No |
+| TripleDES | | No |
