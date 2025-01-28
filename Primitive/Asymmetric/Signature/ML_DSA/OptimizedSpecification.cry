@@ -100,15 +100,30 @@ CoeffFromThreeBytes = Spec::CoeffFromThreeBytes
 CoeffFromHalfByte = Spec::CoeffFromHalfByte
 
 SimpleBitPack : {b} (fin b, width b > 0) => R -> [32 * width b]Byte
-SimpleBitPack x = Spec::SimpleBitPack`{b} x
+SimpleBitPack w = BitsToBytes (join (map IntegerToBits`{width b} w))
+
+SimpleBitPackEquivalence : {b} (fin b, width b > 0) => R -> Bit
+property SimpleBitPackEquivalence w = Spec::SimpleBitPack`{b} w == SimpleBitPack`{b} w
 
 BitPack : {a, b} (fin a, fin b, width (a + b) > 0) =>
     R -> [32 * width (a + b)]Byte
-BitPack w = Spec::BitPack`{a, b} w
+BitPack w = BitsToBytes (join (map (\x -> IntegerToBits`{width (a + b)} (`b - x)) w))
 
-SimpleBitUnpack = Spec::SimpleBitUnpack
+BitPackEquivalence : {a, b} (fin a, fin b, width (a + b) > 0) => R -> Bit
+property BitPackEquivalence w = Spec::BitPack`{a, b} w == BitPack`{a, b} w
 
-BitUnpack = Spec::BitUnpack
+SimpleBitUnpack : {b} (fin b, width b > 0) => [32 * width b]Byte -> R
+SimpleBitUnpack v = map BitsToInteger (split (BytesToBits v))
+
+SimpleBitUnpackEquivalence : {b} (fin b, width b > 0) => [32 * width b]Byte -> Bit
+property SimpleBitUnpackEquivalence v = Spec::SimpleBitUnpack`{b} v == SimpleBitUnpack`{b} v
+
+BitUnpack : {a, b} (fin a, fin b, width (a + b) > 0) =>
+    [32 * width (a + b)]Byte -> R
+BitUnpack v = map (\x -> `b - BitsToInteger x) (split (BytesToBits v))
+
+BitUnpackEquivalence : {a, b} (fin a, fin b, width (a + b) > 0) => [32 * width (a + b)]Byte -> Bit
+property BitUnpackEquivalence v = Spec::BitUnpack`{a, b} v == BitUnpack`{a, b} v
 
 HintBitPack = Spec::HintBitPack
 
