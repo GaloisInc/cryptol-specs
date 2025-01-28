@@ -1,0 +1,152 @@
+/**
+ * Optimized implementation of the ML-DSA (CRYSTALS-Dilithium) signature scheme.
+ * 
+ * This implementation deviates from the specification in favor of performance.
+ *
+ * @copyright Galois Inc
+ * @author Marios Georgiou <marios@galois.com>
+ */
+module Primitive::Asymmetric::Signature::ML_DSA::OptimizedSpecification where
+
+import interface Primitive::Asymmetric::Signature::ML_DSA::Parameters as P
+import Primitive::Asymmetric::Signature::ML_DSA::Specification { interface P }  as Spec
+
+type q = P::q
+type ω = P::ω
+type k = P::k
+type ell = P::ell
+type η = P::η
+type λ = P::λ
+type γ1 = P::γ1
+type γ2 = P::γ2
+
+type Byte = Spec::Byte
+
+type Tq = Spec::Tq
+type R = Spec::R
+type R2 = Spec::R2
+type Rq = Spec::Rq
+
+modPlusMinus : {α} (fin α) => Z q -> Integer
+modPlusMinus = Spec::modPlusMinus`{α}
+
+infNormRq = Spec::infNormRq
+
+infNormR = Spec::infNormR
+
+castToRq = Spec::castToRq
+
+NTT_Vec = Spec::NTT_Vec
+
+NTTInv_Vec = Spec::NTTInv_Vec
+
+H = Spec::H
+
+HBits = Spec::HBits
+
+G = Spec::G
+
+ζ = Spec::ζ
+
+type d = Spec::d
+
+β = Spec::β
+
+type PublicKey = Spec::PublicKey
+
+type PrivateKey = Spec::PrivateKey
+
+type Signature = Spec::Signature
+
+KeyGen_internal = Spec::KeyGen_internal
+
+Sign_internal = Spec::Sign_internal
+
+Verify_internal = Spec::Verify_internal
+
+IntegerToBits : {α} (fin α, α > 0) => Integer -> [α]
+IntegerToBits = Spec::IntegerToBits
+
+BitsToInteger = Spec::BitsToInteger
+
+IntegerToBytes : {α} (fin α, α > 0) => Integer -> [α]Byte
+IntegerToBytes = Spec::IntegerToBytes
+
+BitsToBytes : {α} (fin α) => [α]Bit -> [α /^ 8]Byte
+BitsToBytes = Spec::BitsToBytes
+
+BytesToBits : {α} (fin α) => [α]Byte -> [8 * α]Bit
+BytesToBits = Spec::BytesToBits
+
+B2B2BInverts = Spec::B2B2BInverts
+
+CoeffFromThreeBytes = Spec::CoeffFromThreeBytes
+
+CoeffFromHalfByte = Spec::CoeffFromHalfByte
+
+SimpleBitPack : {b} (fin b, width b > 0) => R -> [32 * width b]Byte
+SimpleBitPack x = Spec::SimpleBitPack`{b} x
+
+BitPack : {a, b} (fin a, fin b, width (a + b) > 0) =>
+    R -> [32 * width (a + b)]Byte
+BitPack w = Spec::BitPack`{a, b} w
+
+SimpleBitUnpack = Spec::SimpleBitUnpack
+
+BitUnpack = Spec::BitUnpack
+
+HintBitPack = Spec::HintBitPack
+
+HintBitUnpack = Spec::HintBitUnpack
+
+pkEncode = Spec::pkEncode
+
+pkDecode = Spec::pkDecode
+
+skEncode = Spec::skEncode
+
+skDecode = Spec::skDecode
+
+sigEncode = Spec::sigEncode
+
+sigDecode = Spec::sigDecode
+
+w1Encode = Spec::w1Encode
+
+SampleInBall = Spec::SampleInBall
+
+RejNTTPoly = Spec::RejNTTPoly
+
+RejBoundedPoly = Spec::RejBoundedPoly
+
+ExpandA = Spec::ExpandA
+
+ExpandS = Spec::ExpandS
+
+ExpandMask = Spec::ExpandMask
+
+Power2Round = Spec::Power2Round
+
+Decompose = Spec::Decompose
+
+HighBits = Spec::HighBits
+
+LowBits = Spec::LowBits
+
+MakeHint = Spec::MakeHint
+
+UseHint = Spec::UseHint
+
+NTT = Spec::NTT
+
+NTTInv = Spec::NTTInv
+
+AddNTT = Spec::AddNTT
+
+MultiplyNTT = Spec::MultiplyNTT
+
+AddVectorNTT = Spec::AddVectorNTT
+
+ScalarVectorNTT = Spec::ScalarVectorNTT
+
+MatrixVectorNTT = Spec::MatrixVectorNTT
