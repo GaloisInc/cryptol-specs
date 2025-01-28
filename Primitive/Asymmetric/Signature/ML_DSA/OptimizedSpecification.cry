@@ -65,18 +65,33 @@ Sign_internal = Spec::Sign_internal
 Verify_internal = Spec::Verify_internal
 
 IntegerToBits : {α} (fin α, α > 0) => Integer -> [α]
-IntegerToBits = Spec::IntegerToBits
+IntegerToBits x = reverse (fromInteger x)
 
-BitsToInteger = Spec::BitsToInteger
+IntegerToBitsEquivalence : {α} (fin α, α > 0) => Integer -> Bit
+property IntegerToBitsEquivalence x = Spec::IntegerToBits`{α} x == IntegerToBits`{α} x
+
+BitsToInteger y = toInteger (reverse y)
+
+BitsToIntegerEquivalence : {α} (fin α, α > 0) => [α] -> Bit
+property BitsToIntegerEquivalence x = Spec::BitsToInteger x == BitsToInteger x
 
 IntegerToBytes : {α} (fin α, α > 0) => Integer -> [α]Byte
-IntegerToBytes = Spec::IntegerToBytes
+IntegerToBytes x = reverse (split (fromInteger x))
+
+IntegerToBytesEquivalence : {α} (fin α, α > 0) => Integer -> Bit
+property IntegerToBytesEquivalence x = Spec::IntegerToBytes`{α} x == IntegerToBytes`{α} x
 
 BitsToBytes : {α} (fin α) => [α]Bit -> [α /^ 8]Byte
-BitsToBytes = Spec::BitsToBytes
+BitsToBytes y = map reverse (split (y # zero))
+
+BitsToBytesEquivalence : {α} (fin α) => [α]Bit -> Bit
+property BitsToBytesEquivalence x = Spec::BitsToBytes x == BitsToBytes x
 
 BytesToBits : {α} (fin α) => [α]Byte -> [8 * α]Bit
-BytesToBits = Spec::BytesToBits
+BytesToBits z = join (map reverse z)
+
+BytesToBitsEquivalence : {α} (fin α) => [α]Byte -> Bit
+property BytesToBitsEquivalence x = Spec::BytesToBits x == BytesToBits x
 
 B2B2BInverts = Spec::B2B2BInverts
 
