@@ -1,0 +1,14 @@
+/**
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ *
+ * Parameters are taken from Table 3.1 of the Simon documentation.
+ *
+ */
+
+module Primitive::Symmetric::Cipher::Block::Simon::Instantiations::Simon128_256 =
+  Primitive::Symmetric::Cipher::Block::Simon::Specification where
+    type n = 64
+    type m = 4
+    type T = 72
+    type j = 4
