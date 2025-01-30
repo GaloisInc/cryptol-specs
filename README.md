@@ -71,4 +71,4 @@ Finally, NIST provides known-answer tests (KATs) via [the CAVP program](https://
 
 
 # Contributing
-You can contribute to this project by submitting issues or bug reports.
+You can contribute to this project by submitting issues or bug reports. Please see our [gold standard spec criteria](https://github.com/GaloisInc/cryptol-specs/wiki/Reviewing-guidelines) for details on what a good executable specification looks like. At this time, we have not completed a style guide, but we have [an issue](https://github.com/GaloisInc/cryptol-specs/issues/5) that may contain some preliminary guidelines.

@@ -1,10 +1,10 @@
 Hash functions.
 
-| Scheme | Standard | Literate |
+| Scheme | [Gold standard](https://github.com/GaloisInc/cryptol-specs/wiki/Reviewing-guidelines)? | Literate |
 | --- | --- | --- |
-| SHA2 | Gold | No |
+| SHA2 | Yes | No |
 | SHA2Internal | | No |
-| SHA3 | Gold | No |
+| SHA3 | Yes | No |
 | BLAKE (2b and 2s) | | No |
 | FNV | | No |
 | MD5 | | Yes |

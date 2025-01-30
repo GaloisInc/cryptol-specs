@@ -1,8 +1,8 @@
 Ciphers using symmetric keys.
 
-| Scheme | Standard | Literate |
+| Scheme | [Gold standard](https://github.com/GaloisInc/cryptol-specs/wiki/Reviewing-guidelines)? | Literate |
 | --- | --- | --- |
-| AES | Gold | No |
+| AES | Yes | No |
 | DES | | No |
 | GOST | | No |
 | KATAN | | No |
