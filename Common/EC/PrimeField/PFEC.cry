@@ -54,7 +54,7 @@ References
 module Common::EC::PrimeField::PFEC where
 
 import Common::ModDivZ
-import Common::utils(half, mp_mod_inv, mul2, mul3, mul4, mul8, ZtoBV)
+import Common::utils(half, mul2, mul3, mul4, mul8, ZtoBV)
 
 parameter
     /**
@@ -363,7 +363,7 @@ private
         if p.z == 0 then Infinity
         else Affine (lambda ^^2 * p.x) (lambda ^^3 * p.y)
         where
-            lambda = mp_mod_inv p.z
+            lambda = recip p.z
 
 
     // The twin affine function depends on the set of four points: two
