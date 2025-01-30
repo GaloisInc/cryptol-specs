@@ -55,11 +55,11 @@ cipher (kInit,ks,kFinal) pt = stateToMsg final_state // Line 13
     // Lines 2-3
     state0 = AddRoundKey kInit (msgToState pt)
     // Line 4
-    rounds = [state0] # [ transform w state | w <- ks | state <- rounds ]
+    state4 = foldl transform state0 ks
     // Lines 5-8
-    transform w state = AddRoundKey w (MixColumns (ShiftRows (SubBytes state)))
+    transform state w = AddRoundKey w (MixColumns (ShiftRows (SubBytes state)))
     // Lines 10-12
-    final_state = AddRoundKey kFinal (ShiftRows (SubBytes (rounds ! 0)))
+    final_state = AddRoundKey kFinal (ShiftRows (SubBytes (state4)))
 
 /**
  * SubBytes applies an invertible, non-linear transformation to the state.
@@ -110,11 +110,11 @@ invCipher (kInit, ks, kFinal) ct = stateToMsg final_state // Line 13
     // Lines 2-3
     state0 = AddRoundKey kFinal ( msgToState ct)
     // Line 4
-    rounds = [state0] # [ transform w state | w <- (reverse ks) | state <- rounds ]
+    state4 = foldl transform state0 (reverse ks)
     // Lines 5-8
-    transform w state = InvMixColumns (AddRoundKey w (InvSubBytes (InvShiftRows state)))
+    transform state w = InvMixColumns (AddRoundKey w (InvSubBytes (InvShiftRows state)))
     // Lines 10-12
-    final_state = AddRoundKey kInit (InvSubBytes (InvShiftRows (rounds ! 0)))
+    final_state = AddRoundKey kInit (InvSubBytes (InvShiftRows (state4)))
 
 /**
  * Inverts the `ShiftRows` function.
