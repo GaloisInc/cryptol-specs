@@ -361,9 +361,17 @@ private
     to_affine p =
         // The point at infinity does not have an affine representation.
         if p.z == 0 then Infinity
-        else Affine (lambda ^^2 * p.x) (lambda ^^3 * p.y)
-        where
-            lambda = recip p.z
+        else (Affine (lambda ^^2 * p.x) (lambda ^^3 * p.y)
+               // We use parentheses to limit the scope of this `where` clause
+               // to the `else` branch of the `if`-expression. Doing so is not
+               // strictly necessary in Cryptol, as Cryptol's lazy evaluation
+               // will only evaluate `lambda` if the `else` branch is evaluated.
+               // This is solely done for the benefit of compiling to
+               // call-by-value languages (e.g., C or Rust), as evaluating
+               // `lambda` before the `if`-expression would result in a panic
+               // when `p.z == 0`.
+               where
+                 lambda = recip p.z)
 
 
     // The twin affine function depends on the set of four points: two
