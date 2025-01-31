@@ -90,6 +90,12 @@ KeyGen_internal ξ = (pk, sk) where
     // Step 10.
     sk = skEncode ρ K tr s1 s2 t0
 
+/**
+ * ```repl
+ * :set tests=3
+ * :check KeyGen_internalEquivalence
+ * ```
+ */
 KeyGen_internalEquivalence : [32]Byte -> Bit
 property KeyGen_internalEquivalence ξ = Spec::KeyGen_internal ξ == KeyGen_internal ξ
 
@@ -100,29 +106,57 @@ Verify_internal = Spec::Verify_internal
 IntegerToBits : {α} (fin α, α > 0) => Integer -> [α]
 IntegerToBits x = reverse (fromInteger x)
 
+/**
+ * ```repl
+ * :check IntegerToBitsEquivalence`{44}
+ * ```
+ */
 IntegerToBitsEquivalence : {α} (fin α, α > 0) => Integer -> Bit
 property IntegerToBitsEquivalence x = Spec::IntegerToBits`{α} x == IntegerToBits`{α} x
 
 BitsToInteger y = toInteger (reverse y)
 
+/**
+ * ```repl
+ * :check BitsToIntegerEquivalence`{44}
+ * :exhaust BitsToIntegerEquivalence`{10}
+ * ```
+ */
 BitsToIntegerEquivalence : {α} (fin α, α > 0) => [α] -> Bit
 property BitsToIntegerEquivalence x = Spec::BitsToInteger x == BitsToInteger x
 
 IntegerToBytes : {α} (fin α, α > 0) => Integer -> [α]Byte
 IntegerToBytes x = reverse (split (fromInteger x))
 
+/**
+ * ```repl
+ * :check IntegerToBytesEquivalence`{44}
+ * ```
+ */
 IntegerToBytesEquivalence : {α} (fin α, α > 0) => Integer -> Bit
 property IntegerToBytesEquivalence x = Spec::IntegerToBytes`{α} x == IntegerToBytes`{α} x
 
 BitsToBytes : {α} (fin α) => [α]Bit -> [α /^ 8]Byte
 BitsToBytes y = map reverse (split (y # zero))
 
+/**
+ * ```repl
+ * :prove BitsToBytesEquivalence`{320 * 8}
+ * :prove BitsToBytesEquivalence`{32 * 44 * 8}
+ * ```
+ */
 BitsToBytesEquivalence : {α} (fin α) => [α]Bit -> Bit
 property BitsToBytesEquivalence x = Spec::BitsToBytes x == BitsToBytes x
 
 BytesToBits : {α} (fin α) => [α]Byte -> [8 * α]Bit
 BytesToBits z = join (map reverse z)
 
+/**
+ * ```repl
+ * :prove BytesToBitsEquivalence`{320}
+ * :prove BytesToBitsEquivalence`{32 * 44}
+ * ```
+ */
 BytesToBitsEquivalence : {α} (fin α) => [α]Byte -> Bit
 property BytesToBitsEquivalence x = Spec::BytesToBits x == BytesToBits x
 
@@ -135,6 +169,11 @@ CoeffFromHalfByte = Spec::CoeffFromHalfByte
 SimpleBitPack : {b} (fin b, width b > 0) => R -> [32 * width b]Byte
 SimpleBitPack w = BitsToBytes (join (map IntegerToBits`{width b} w))
 
+/**
+ * ```repl
+ * :check SimpleBitPackEquivalence`{10}
+ * ```
+ */
 SimpleBitPackEquivalence : {b} (fin b, width b > 0) => R -> Bit
 property SimpleBitPackEquivalence w = Spec::SimpleBitPack`{b} w == SimpleBitPack`{b} w
 
@@ -142,12 +181,22 @@ BitPack : {a, b} (fin a, fin b, width (a + b) > 0) =>
     R -> [32 * width (a + b)]Byte
 BitPack w = BitsToBytes (join (map (\x -> IntegerToBits`{width (a + b)} (`b - x)) w))
 
+/**
+ * ```repl
+ * :check BitPackEquivalence`{10, 10}
+ * ```
+ */
 BitPackEquivalence : {a, b} (fin a, fin b, width (a + b) > 0) => R -> Bit
 property BitPackEquivalence w = Spec::BitPack`{a, b} w == BitPack`{a, b} w
 
 SimpleBitUnpack : {b} (fin b, width b > 0) => [32 * width b]Byte -> R
 SimpleBitUnpack v = map BitsToInteger (split (BytesToBits v))
 
+/**
+ * ```repl
+ * :check SimpleBitUnpackEquivalence`{10}
+ * ```
+ */
 SimpleBitUnpackEquivalence : {b} (fin b, width b > 0) => [32 * width b]Byte -> Bit
 property SimpleBitUnpackEquivalence v = Spec::SimpleBitUnpack`{b} v == SimpleBitUnpack`{b} v
 
@@ -155,6 +204,11 @@ BitUnpack : {a, b} (fin a, fin b, width (a + b) > 0) =>
     [32 * width (a + b)]Byte -> R
 BitUnpack v = map (\x -> `b - BitsToInteger x) (split (BytesToBits v))
 
+/**
+ * ```repl
+ * :check BitUnpackEquivalence`{10, 10}
+ * ```
+ */
 BitUnpackEquivalence : {a, b} (fin a, fin b, width (a + b) > 0) => [32 * width (a + b)]Byte -> Bit
 property BitUnpackEquivalence v = Spec::BitUnpack`{a, b} v == BitUnpack`{a, b} v
 
@@ -170,6 +224,11 @@ pkEncode : [32]Byte -> [k]R -> PublicKey
 pkEncode ρ t1 = pk where
     pk = ρ # join [SimpleBitPack`{2 ^^ (width (q - 1) - d) - 1} (t1@i) | i <- [0..k-1]]
 
+/**
+ * ```repl
+ * :check pkEncodeEquivalence
+ * ```
+ */
 pkEncodeEquivalence : [32]Byte -> [k]R -> Bit
 property pkEncodeEquivalence ρ t1 = Spec::pkEncode ρ t1 == pkEncode ρ t1
 
@@ -186,6 +245,11 @@ pkDecode pk = (ρ, t1) where
     // Steps 2 - 4.
     t1 = [SimpleBitUnpack`{2 ^^ (width (q - 1) - d) - 1} (z@i) | i <- [0..k-1]]
 
+/**
+ * ```repl
+ * :check pkDecodeEquivalence
+ * ```
+ */
 pkDecodeEquivalence : PublicKey -> Bit
 property pkDecodeEquivalence pk = Spec::pkDecode pk == pkDecode pk
 
@@ -207,6 +271,11 @@ skEncode ρ K tr s1 s2 t0 = sk9 where
     sk9 = sk6 #
         join [BitPack`{2^^(d - 1) - 1, 2^^(d - 1)} (t0@i) | i <- [0..k-1]]
 
+/**
+ * ```repl
+ * :check skEncodeEquivalence
+ * ```
+ */
 skEncodeEquivalence : [32]Byte -> [32]Byte -> [64]Byte -> [ell]R -> [k]R -> [k]R -> Bit
 property skEncodeEquivalence ρ K tr s1 s2 t0 = Spec::skEncode ρ K tr s1 s2 t0 == skEncode ρ K tr s1 s2 t0
 
@@ -230,6 +299,11 @@ skDecode sk = (ρ, K, tr, s1, s2, t0) where
     // Steps 8 - 10.
     t0 = [BitUnpack`{2^^(d - 1) - 1, 2^^(d - 1)} (w@i) | i <- [0..k-1]]
 
+/**
+ * ```repl
+ * :check skDecodeEquivalence
+ * ```
+ */
 skDecodeEquivalence : PrivateKey -> Bit
 property skDecodeEquivalence sk = Spec::skDecode sk == skDecode sk
 
@@ -272,6 +346,11 @@ w1Encode w1 = w1_til where
     w1_til = join
         [SimpleBitPack`{(q - 1) / (2 * γ2) - 1} (w1@i) | i <- [0..k-1]]
 
+/**
+ * ```repl
+ * :check w1EncodeEquivalence
+ * ```
+ */
 w1EncodeEquivalence : [k]R -> Bit
 property w1EncodeEquivalence w1 = Spec::w1Encode w1 == w1Encode w1
 
@@ -316,6 +395,12 @@ SampleInBall ρ = cFinal where
 
     (cFinal, _) = cAndCtx ! 0
 
+/**
+ * ```repl
+ * :set tests=3
+ * :check SampleInBallEquivalence
+ * ```
+ */
 SampleInBallEquivalence : [λ / 4]Byte -> Bit
 property SampleInBallEquivalence ρ = Spec::SampleInBall ρ == SampleInBall ρ
 
@@ -334,6 +419,12 @@ ExpandA ρ = A_hat where
         | s <- [0..ell - 1]]
         | r <- [0..k - 1]]
 
+/**
+ * ```repl
+ * :set tests=3
+ * :check ExpandAEquivalence
+ * ```
+ */
 ExpandAEquivalence : [32]Byte -> Bit
 property ExpandAEquivalence ρ = Spec::ExpandA ρ == ExpandA ρ
 
@@ -346,6 +437,12 @@ ExpandS ρ = (s1, s2) where
     s1 = [RejBoundedPoly (ρ # IntegerToBytes`{2} r) | r <- [0..ell-1]]
     s2 = [RejBoundedPoly (ρ # IntegerToBytes`{2} (r + `ell)) | r <- [0..k-1]]
 
+/**
+ * ```repl
+ * :set tests=5
+ * :check ExpandSEquivalence
+ * ```
+ */
 ExpandSEquivalence : [64]Byte -> Bit
 property ExpandSEquivalence ρ = Spec::ExpandS ρ == ExpandS ρ
 
@@ -362,6 +459,12 @@ ExpandMask ρ μ = y where
             v = H ρ'
         | r <- [0..ell - 1]]
 
+/**
+ * ```repl
+ * :set tests=5
+ * :check ExpandMaskEquivalence
+ * ```
+ */
 ExpandMaskEquivalence : [64]Byte -> Integer -> Bit
 property ExpandMaskEquivalence ρ μ = Spec::ExpandMask ρ μ == ExpandMask ρ μ
 
