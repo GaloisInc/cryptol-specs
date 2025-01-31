@@ -61,7 +61,7 @@ property aesIsCorrect k pt = decrypt k (encrypt k pt) == pt
 type ExpandedKey = AES::KeySchedule
 
 keyExpansion: [KeySize] -> ExpandedKey
-keyExpansion = ExpandKey::expandKey
+keyExpansion = ExpandKey::keyExpansion
 
 encryptWithSchedule :  ExpandedKey -> [BlockSize] -> [BlockSize]
 encryptWithSchedule = AES::cipher
