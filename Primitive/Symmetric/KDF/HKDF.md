@@ -1,3 +1,7 @@
+<!---
+ - @copyright Galois, Inc.
+ - @author Aaron Tomb
+ --->
 # HMAC-based Extract-and-Expand Key Derivation Function (HKDF)
 
 ## Welcome
@@ -88,7 +92,7 @@ parameter
     type constraint validHMACSizes KeyLen MsgLen =
       ( fin KeyLen, fin MsgLen
           , 32 >= width MsgLen
-          , 64 >= width (8 * KeyLen)
+          , 64 > width (8 * KeyLen)
           , 64 >= width (8 * 64 + MsgLen))
 
 

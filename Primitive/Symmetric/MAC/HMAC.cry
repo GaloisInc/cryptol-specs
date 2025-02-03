@@ -7,16 +7,16 @@
 
 module Primitive::Symmetric::MAC::HMAC where
 
-import Primitive::Keyless::Hash::SHA2Imperative::SHA256
+import Primitive::Keyless::Hash::SHA2::Instantiations::SHA256 as SHA256
 
 //////// Functional version ////////
 
-sha256Wrap msg = sha (join msg)
+sha256Wrap msg = SHA256::hash (join msg)
 
 hmacSHA256 : {pwBytes, msgBytes}
              (fin pwBytes, fin msgBytes
              , 32 >= width msgBytes
-             , 64 >= width (8*pwBytes)
+             , 64 > width (8*pwBytes)
              , 64 >= width (8 * (64 + msgBytes))
              ) => [pwBytes][8] -> [msgBytes][8] -> [256]
 hmacSHA256 = hmac `{blockLength=64} sha256Wrap sha256Wrap sha256Wrap
@@ -50,7 +50,18 @@ hmac hash hash2 hash3 key message = hash2 (okey # internal)
    ikey = [k ^ 0x36 | k <- ks]
    internal = split (hash (ikey # message))
 
-
+/**
+ * Test vector from NIST's CAVP program.
+ * @see https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/message-authentication#Testing
+ * ```repl
+ * :prove cavpTest30
+ * ```
+ */
+property cavpTest30 = digest == expected_digest where
+  key = split 0x9779d9120642797f1747025d5b22b7ac607cab08e1758f2f3a46c8be1e25c53b8c6a8f58ffefa176
+  msg = split 0xb1689c2591eaf3c9e66070f8a77954ffb81749f1b00346f9dfe0b2ee905dcc288baf4a92de3f4001dd9f44c468c3d07d6c6ee82faceafc97c2fc0fc0601719d2dcd0aa2aec92d1b0ae933c65eb06a03c9c935c2bad0459810241347ab87e9f11adb30415424c6c7f5f22a003b8ab8de54f6ded0e3ab9245fa79568451dfa258e
+  expected_digest = 0x769f00d3e6a6cc1fb426a14a4f76c6462e6149726e0dee0ec0cf97a16605ac8b
+  digest = hmacSHA256 key msg
 
 
 

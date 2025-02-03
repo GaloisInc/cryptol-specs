@@ -5,16 +5,16 @@
    www.cryptol.net
 */
 
-module Primitive::Keyless::Hash::SHA2Imperative::SHA512_224 = Primitive::Keyless::Hash::SHA2Imperative::SHA where
+module Primitive::Keyless::Hash::SHA2Internal::SHA384 = Primitive::Keyless::Hash::SHA2Internal::SHA where
 
 type wp = 64
 
-type digest_size = 224
+type digest_size = 384
 
 type j = 80
 
-H0 = [ 0x8c3d37c819544da2, 0x73e1996689dcd4d6, 0x1dfab7ae32ff9c82, 0x679dd514582f9fcf,
-       0x0f6d2b697bd44da8, 0x77e36f7304c48942, 0x3f9d85a86a1d36c8, 0x1112e6ad91d692a1]
+H0 = [ 0xcbbb9d5dc1059ed8, 0x629a292a367cd507, 0x9159015a3070dd17, 0x152fecd8f70e5939,
+       0x67332667ffc00b31, 0x8eb44a8768581511, 0xdb0c2e0d64f98fa7, 0x47b5481dbefa4fa4]
 
 K = [ 0x428a2f98d728ae22, 0x7137449123ef65cd, 0xb5c0fbcfec4d3b2f, 0xe9b5dba58189dbbc,
       0x3956c25bf348b538, 0x59f111f1b605d019, 0x923f82a4af194f9b, 0xab1c5ed5da6d8118,
