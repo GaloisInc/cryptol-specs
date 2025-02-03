@@ -3,7 +3,7 @@
  * @author John Christensen <jchristensen@galois.com>
  *
  * Test vectors for Speck.
- * These test vectors were taken from:
+ * These test vectors were taken Appendix C of:
  *
  * [SPECK]: Beaulieu, Shors, Smith, Treatman-Clark, Weeks, Wingers
  *          The Simon and Speck Families of Lightweight Block Ciphers
@@ -27,7 +27,7 @@ import Primitive::Symmetric::Cipher::Block::Speck::Instantiations::Speck128_256 
  * Test vector for Speck32_64
  *
  * ```repl
- * :check t0
+ * :prove t0
  * ```
  */
 property t0 = Speck32_64::encrypt k p == c
@@ -40,7 +40,7 @@ property t0 = Speck32_64::encrypt k p == c
  * Test vector for Speck48_72
  *
  * ```repl
- * :check t1
+ * :prove t1
  * ```
  */
 property t1 = Speck48_72::encrypt k p == c
@@ -53,7 +53,7 @@ property t1 = Speck48_72::encrypt k p == c
  * Test vector for Speck48_96
  *
  * ```repl
- * :check t2
+ * :prove t2
  * ```
  */
 property t2 = Speck48_96::encrypt k p == c
@@ -66,7 +66,7 @@ property t2 = Speck48_96::encrypt k p == c
  * Test vector for Speck64_96
  *
  * ```repl
- * :check t3
+ * :prove t3
  * ```
  */
 property t3 = Speck64_96::encrypt k p == c
@@ -79,7 +79,7 @@ property t3 = Speck64_96::encrypt k p == c
  * Test vector for Speck64_128
  *
  * ```repl
- * :check t4
+ * :prove t4
  * ```
  */
 property t4 = Speck64_128::encrypt k p == c
@@ -92,7 +92,7 @@ property t4 = Speck64_128::encrypt k p == c
  * Test vector for Speck96_96
  *
  * ```repl
- * :check t5
+ * :prove t5
  * ```
  */
 property t5 = Speck96_96::encrypt k p == c
@@ -105,7 +105,7 @@ property t5 = Speck96_96::encrypt k p == c
  * Test vector for Speck96_144
  *
  * ```repl
- * :check t6
+ * :prove t6
  * ```
  */
 property t6 = Speck96_144::encrypt k p == c
@@ -118,7 +118,7 @@ property t6 = Speck96_144::encrypt k p == c
  * Test vector for Speck128_128
  *
  * ```repl
- * :check t7
+ * :prove t7
  * ```
  */
 property t7 = Speck128_128::encrypt k p == c
@@ -131,7 +131,7 @@ property t7 = Speck128_128::encrypt k p == c
  * Test vector for Speck128_192
  *
  * ```repl
- * :check t8
+ * :prove t8
  * ```
  */
 property t8 = Speck128_192::encrypt k p == c
@@ -144,7 +144,7 @@ property t8 = Speck128_192::encrypt k p == c
  * Test vector for Speck128_256
  *
  * ```repl
- * :check t9
+ * :prove t9
  * ```
  */
 property t9 = Speck128_256::encrypt k p == c

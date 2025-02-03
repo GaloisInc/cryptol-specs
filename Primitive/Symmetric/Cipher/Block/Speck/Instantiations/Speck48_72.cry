@@ -10,6 +10,6 @@ module Primitive::Symmetric::Cipher::Block::Speck::Instantiations::Speck48_72 =
 
 type n = 24
 type m = 3
-type alpha = 8
-type beta = 3
+type α = 8
+type β = 3
 type T = 22

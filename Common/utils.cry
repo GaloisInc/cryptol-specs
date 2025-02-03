@@ -66,3 +66,19 @@ half x = fromInteger (if isEven xint then xint/2 else ((xint + `p) / 2))
 
 half_correct : {p} (fin p, p >= 3, isOdd p) => Z p -> Bit
 property half_correct x = half x + half x == x
+
+/**
+ * Function composition, specialized to functions from `(a -> a)`.
+ */
+compose : {a} () => (a -> a) -> (a -> a) -> a -> a
+compose f g = \x -> g (f x)
+
+/**
+ * Composition of many functions from `(a -> a)`.
+ */
+composeMany : {nf, a} () => [nf](a -> a) -> a -> a
+composeMany fcns
+    | nf == 0 => \x -> x
+    | nf == 1 => fcns@0
+    | nf == 2 => compose (fcns@0) (fcns@1)
+    | nf > 2  => compose (fcns@0) (composeMany (drop `{1} fcns))

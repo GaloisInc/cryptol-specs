@@ -12,9 +12,13 @@
  * [SPECK]: Beaulieu, Shors, Smith, Treatman-Clark, Weeks, Wingers
  *          The Simon and Speck Families of Lightweight Block Ciphers
  *          19 June 2013
+ * @see https://eprint.iacr.org/2013/404.pdf
+ *
  */
 
 module Primitive::Symmetric::Cipher::Block::Speck::Specification where
+
+import Common::utils (composeMany, compose)
 
 parameter
 
@@ -31,14 +35,16 @@ parameter
     type m : #
 
     /**
-     * `alpha` is a rotation constant.
+     * `α` is a rotation constant.
      */
-    type alpha : #
+    type α : #
+    type constraint (α >= 7, α <= 8)
 
     /**
-     * `beta` is a rotation constant.
+     * `β` is a rotation constant.
      */
-    type beta : #
+    type β : #
+    type constraint (β >= 2, β <= 3)
 
     /**
      * `T` is the number of rounds.
@@ -50,7 +56,7 @@ parameter
      * They admit all valid Speck instantiations.
      * They do not exclude all invalid instantiations.
      */
-    type constraint (fin n, fin T, fin m, n >= width alpha, n >= width beta)
+    type constraint (fin n, fin T, fin m, n >= width α, n >= width β)
     type constraint (m >= 2, m <= 4, T >= 2, n >= width T)
 
 /**
@@ -66,7 +72,7 @@ encrypt key plaintext = join (Speck_k (split plaintext))
         // Cryptol parses all bitvectors MSB first.
         // Thus, we reverse the key to match the
         // convention of the specification.
-        Rks = map (\k -> R k) (keySchedule (reverse (split key)))
+        Rks = map R (keySchedule (reverse (split key)))
         Speck_k = composeMany Rks
 
 /**
@@ -79,7 +85,7 @@ decrypt : [m * n] -> [2 * n] -> [2 * n]
 decrypt key ciphertext = join (Speck_k (split ciphertext))
     where
         // As in `encrypt`, we reverse the key.
-        Rks = map (\k -> R_Inv k) (keySchedule (reverse (split key)))
+        Rks = map R_Inv (keySchedule (reverse (split key)))
         Speck_k = composeMany (reverse Rks)
 
 private
@@ -92,6 +98,121 @@ private
      * ```
      */
     property decryptInvertsEncrypt k x = decrypt k (encrypt k x) == x
+
+    /**
+     * Left circular shift.
+     * The notation `S` is used because it appears in the specification.
+     *
+     * Reference: [SPECK], Section 4.1.
+     */
+    S : {j} (fin j) => [n] -> [n]
+    S x = x <<< `j
+
+    /**
+     * Right circular shift.
+     * The notation `S_Inv` is used rather than using 'negative exponents'
+     * to avoid arithmetic strangeness with negative bitvectors.
+     *
+     * Reference: [SPECK], Section 4.1.
+     */
+    S_Inv : {j} (fin j) => [n] -> [n]
+    S_Inv x = x >>> `j
+
+    /**
+     * Left circular shift by the rotation constant α.
+     *
+     * Reference: [SPECK], Section 4.1.
+     */
+    Sα x = S `{α} x
+
+    /**
+     * Left circular shift by the rotation constant β.
+     *
+     * Reference: [SPECK], Section 4.1.
+     */
+    Sβ x = S `{β} x
+
+    /**
+     * Right circular shift by the rotation constant α.
+     *
+     * Reference: [SPECK], Section 4.1.
+     */
+    Sα_Inv x = S_Inv `{α} x
+
+    /**
+     * Right circular shift by the rotation constant β.
+     *
+     * Reference: [SPECK], Section 4.1.
+     */
+    Sβ_Inv x = S_Inv `{β} x
+
+    /**
+     * The Speck round function. This function is parameterized by a key.
+     * This function is a composition of shifts and modular additions.
+     *
+     * Reference: [SPECK], Section 4.1.
+     */
+    R : [n] -> [2][n] -> [2][n]
+    R k [x, y] = [(Sα_Inv x + y) ^ k, Sβ y ^ (Sα_Inv x + y) ^ k]
+
+    /**
+     * The inverse Speck round function.
+     *
+     * Reference: [SPECK], Section 4.1.
+     */
+    R_Inv : [n] -> [2][n] -> [2][n]
+    R_Inv k [x, y] = [Sα ((x ^ k) - Sβ_Inv (x ^ y)), Sβ_Inv (x ^ y)]
+
+    /**
+     * `R_Inv` is the inverse of `R`.
+     *
+     * ```repl
+     * :prove RInvertible
+     * ```
+     */
+    property RInvertible k x = R_Inv k (R k x) == x
+
+    /**
+     * `R` can be decomposed as two Feistel-like maps
+     * with respect to modular addition. This is the
+     * map with addition modulo `2^n`. Part of this function's
+     * output is used in the key schedule.
+     *
+     * Reference: [SPECK], Section 4.1, 4.2.
+     */
+    Rf1 : [n] -> [2][n] -> [2][n]
+    Rf1 k [x, y] = [y, (Sα_Inv x + y) ^ k]
+
+    /**
+     * `R` can be decomposed as two Feistel-like maps
+     * with respect to modular addition. This is the
+     * map with addition modulo `2` (i.e., XOR). Part of
+     * this function's output is used in the key schedule.
+     *
+     * Note that this function has no key dependence.
+     *
+     * Reference: [SPECK], Section 4.1, 4.2.
+     */
+    Rf2 : [2][n] -> [2][n]
+    Rf2 [x, y] = [y, Sβ x ^ y]
+
+    /**
+     * Composition of the Feistel-like maps.
+     * An alternative formulation of `R`.
+     */
+    Rf : [n] -> [2][n] -> [2][n]
+    Rf k s = f s
+        where
+            f = compose (Rf1 k) Rf2
+
+    /**
+     * `Rf` is functionally equiavalent to `R`.
+     *
+     * ```repl
+     * :prove REquivalent
+     * ```
+     */
+    property REquivalent k s = Rf k s == R k s
 
     /**
      * The Speck key schedule.
@@ -108,8 +229,19 @@ private
             // write key K as (k0, l0, ... l_m-2)
             [k0] # li = K
             // define mutual recursion of sequences ki and li
-            ks = [k0] # [Sb (ks @ i) ^ (ls @ (i + `m - 1)) | i <- [0..T - 2]]
-            ls = li # [(k + Sa_Inv (ls @ i)) ^ i | k <- ks | i <- [0..T - 2] ]
+            ks = [k0] # [Sβ (ks @ i) ^ (ls @ (i + `m - 1)) | i <- [0..T - 2]]
+            ls = li # [(k + Sα_Inv (ls @ i)) ^ i | k <- ks | i <- [0..T - 2] ]
+
+    /**
+     * The key schedule is injective.
+     *
+     * ```repl
+     * :prove keyScheduleInjective
+     * ```
+     */
+    property keyScheduleInjective k v = k != v ==> result
+        where
+            result = keySchedule k != keySchedule v
 
     /**
      * The Speck key schedule, formulated in terms of the Speck round function.
@@ -134,17 +266,6 @@ private
             f2 s = (Rf2 s) @ 1
 
     /**
-     * The key schedule is injective.
-     *
-     * ```repl
-     * :prove keyScheduleInjective
-     * ```
-     */
-    property keyScheduleInjective k v = k != v ==> result
-        where
-            result = keySchedule k != keySchedule v
-
-    /**
      * The key schedule formulations are equiavalent.
      *
      * ```repl
@@ -152,134 +273,3 @@ private
      * ```
      */
     property keySchedulesEquivalent K = keySchedule K == keySchedule' K
-
-    /**
-     * The Speck round function. This function is parameterized by a key.
-     * This function is a composition of shifts and modular additions.
-     *
-     * Reference: [SPECK], Section 4.1.
-     */
-    R : [n] -> [2][n] -> [2][n]
-    R k [x, y] = [(Sa_Inv x + y) ^ k, Sb y ^ (Sa_Inv x + y) ^ k]
-
-    /**
-     * The inverse Speck round function.
-     *
-     * Reference: [SPECK], Section 4.1.
-     */
-    R_Inv : [n] -> [2][n] -> [2][n]
-    R_Inv k [x, y] = [Sa ((x ^ k) - Sb_Inv (x ^ y)), Sb_Inv (x ^ y)]
-
-    /**
-     * `R_Inv` is the inverse of `R`.
-     *
-     * ```repl
-     * :prove RInvertible
-     * ```
-     */
-    property RInvertible k x = R_Inv k (R k x) == x
-
-    /**
-     * `R` can be decomposed as two Feistel-like maps
-     * with respect to modular addition. This is the
-     * map with addition modulo `2^n`. Part of this function's
-     * output is used in the key schedule.
-     *
-     * Reference: [SPECK], Section 4.1, 4.2.
-     */
-    Rf1 : [n] -> [2][n] -> [2][n]
-    Rf1 k [x, y] = [y, (Sa_Inv x + y) ^ k]
-
-    /**
-     * `R` can be decomposed as two Feistel-like maps
-     * with respect to modular addition. This is the
-     * map with addition modulo `2` (i.e., XOR). Part of
-     * this function's output is used in the key schedule.
-     *
-     * Note that this function has no key dependence.
-     *
-     * Reference: [SPECK], Section 4.1, 4.2.
-     */
-    Rf2 : [2][n] -> [2][n]
-    Rf2 [x, y] = [y, Sb x ^ y]
-
-    /**
-     * Composition of the Feistel-like maps.
-     * An alternative formulation of `R`.
-     */
-    Rf : [n] -> [2][n] -> [2][n]
-    Rf k s = f s
-        where
-            f = compose (Rf1 k) Rf2
-
-    /**
-     * `Rf` is functionally equiavalent to `R`.
-     *
-     * ```repl
-     * :prove REquivalent
-     * ```
-     */
-    property REquivalent k s = Rf k s == R k s
-
-    /**
-     * Left circular shift.
-     * The notation `S` is used because it appears in the specification.
-     *
-     * Reference: [SPECK], Section 4.1.
-     */
-    S : {j} (fin j) => [n] -> [n]
-    S x = x <<< `j
-
-    /**
-     * Right circular shift.
-     * The notation `S_Inv` is used rather than using 'negative exponents'
-     * to avoid arithmetic strangeness with negative bitvectors.
-     *
-     * Reference: [SPECK], Section 4.1.
-     */
-    S_Inv : {j} (fin j) => [n] -> [n]
-    S_Inv x = x >>> `j
-
-    /**
-     * Left ciruclar shift by the rotation constant alpha.
-     *
-     * Reference: [SPECK], Section 4.1.
-     */
-    Sa x = S `{alpha} x
-
-    /**
-     * Left ciruclar shift by the rotation constant beta.
-     *
-     * Reference: [SPECK], Section 4.1.
-     */
-    Sb x = S `{beta} x
-
-    /**
-     * Right ciruclar shift by the rotation constant alpha.
-     *
-     * Reference: [SPECK], Section 4.1.
-     */
-    Sa_Inv x = S_Inv `{alpha} x
-
-    /**
-     * Right ciruclar shift by the rotation constant beta.
-     *
-     * Reference: [SPECK], Section 4.1.
-     */
-    Sb_Inv x = S_Inv `{beta} x
-
-    /**
-     * Function composition, specialized to functions from `(a -> a)`.
-     */
-    compose : {a} () => (a -> a) -> (a -> a) -> a -> a
-    compose f g = \x -> g (f x)
-
-    /**
-     * Composition of many functions from `(a -> a)`.
-     */
-    composeMany : {nf, a} (fin n) => [nf](a -> a) -> a -> a
-    composeMany fcns
-        | nf == 0 => \x -> x
-        | nf == 1 => fcns@0
-        | nf == 2 => compose (fcns@0) (fcns@1)
-        | nf > 2  => compose (fcns@0) (composeMany (drop `{1} fcns))
