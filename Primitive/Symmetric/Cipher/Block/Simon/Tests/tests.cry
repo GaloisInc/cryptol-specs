@@ -1,0 +1,157 @@
+/*
+
+  @copyright Galois, Inc.
+  @author John Christensen <jchristensen@galois.com>
+
+  The following are test vectors for the Simon block cipher.
+  These test vectors are taken from the following reference:
+
+   References
+   [SIMON]: Beaulieu, Shors, Smith, Treatman-Clark, Weeks, Wingers
+            The Simon and Speck Families of Lightweight Block Ciphers
+            19 June 2013
+*/
+
+module Primitive::Symmetric::Cipher::Block::Simon::Tests::tests where
+
+import Primitive::Symmetric::Cipher::Block::Simon::Instantiations::Simon32_64 as Simon32_64
+import Primitive::Symmetric::Cipher::Block::Simon::Instantiations::Simon48_72 as Simon48_72
+import Primitive::Symmetric::Cipher::Block::Simon::Instantiations::Simon48_96 as Simon48_96
+import Primitive::Symmetric::Cipher::Block::Simon::Instantiations::Simon64_96 as Simon64_96
+import Primitive::Symmetric::Cipher::Block::Simon::Instantiations::Simon64_128 as Simon64_128
+import Primitive::Symmetric::Cipher::Block::Simon::Instantiations::Simon96_96 as Simon96_96
+import Primitive::Symmetric::Cipher::Block::Simon::Instantiations::Simon96_144 as Simon96_144
+import Primitive::Symmetric::Cipher::Block::Simon::Instantiations::Simon128_128 as Simon128_128
+import Primitive::Symmetric::Cipher::Block::Simon::Instantiations::Simon128_192 as Simon128_192
+import Primitive::Symmetric::Cipher::Block::Simon::Instantiations::Simon128_256 as Simon128_256
+
+
+/**
+ * A test vector for Simon32_64
+ *
+ * ```repl
+ * :check t0
+ * ```
+ */
+property t0 = Simon32_64::encrypt k pt == ct
+  where
+    k = 0x1918_1110_0908_0100
+    pt = 0x6565_6877
+    ct = 0xc69b_e9bb
+
+/**
+ * A test vector for Simon48_72
+ *
+ * ```repl
+ * :check t1
+ * ```
+ */
+property t1 = Simon48_72::encrypt k pt == ct
+  where
+    k = 0x121110_0a0908_020100
+    pt = 0x612067_6e696c
+    ct = 0xdae5ac_292cac
+
+/**
+ * A test vector for Simon48_96
+ *
+ * ```repl
+ * :check t2
+ * ```
+ */
+property t2 = Simon48_96::encrypt k pt == ct
+  where
+    k = 0x1a1918_121110_0a0908_020100
+    pt = 0x726963_20646e
+    ct = 0x6e06a5_acf156
+
+/**
+ * A test vector for Simon64_96
+ *
+ * ```repl
+ * :check t3
+ * ```
+ */
+property t3 = Simon64_96::encrypt k pt == ct
+  where
+    k = 0x13121110_0b0a0908_03020100
+    pt = 0x6f722067_6e696c63
+    ct = 0x5ca2e27f_111a8fc8
+
+/**
+ * A test vector for Simon64_128
+ *
+ * ```repl
+ * :check t4
+ * ```
+ */
+property t4 = Simon64_128::encrypt k pt == ct
+  where
+    k = 0x1b1a1918_13121110_0b0a0908_03020100
+    pt = 0x656b696c_20646e75
+    ct = 0x44c8fc20_b9dfa07a
+
+/**
+ * A test vector for Simon96_96
+ *
+ * ```repl
+ * :check t5
+ * ```
+ */
+property t5 = Simon96_96::encrypt k pt == ct
+  where
+    k = 0x0d0c0b0a0908_050403020100
+    pt = 0x2072616c6c69_702065687420
+    ct = 0x602807a462b4_69063d8ff082
+
+/**
+ * A test vector for Simon96_144
+ *
+ * ```repl
+ * :check t6
+ * ```
+ */
+property t6 = Simon96_144::encrypt k pt == ct
+  where
+    k = 0x151413121110_0d0c0b0a0908_050403020100
+    pt = 0x746168742074_73756420666f
+    ct = 0xecad1c6c451e_3f59c5db1ae9
+
+/**
+ * A test vector for Simon128_128
+ *
+ * ```repl
+ * :check t7
+ * ```
+ */
+property t7 = Simon128_128::encrypt k pt == ct
+  where
+    k = 0x0f0e0d0c0b0a0908_0706050403020100
+    pt = 0x6373656420737265_6c6c657661727420
+    ct = 0x49681b1e1e54fe3f_65aa832af84e0bbc
+
+/**
+ * A test vector for Simon128_128
+ *
+ * ```repl
+ * :check t8
+ * ```
+ */
+property t8 = Simon128_192::encrypt k pt == ct
+  where
+    k = 0x1716151413121110_0f0e0d0c0b0a0908_0706050403020100
+    pt = 0x206572656874206e_6568772065626972
+    ct = 0xc4ac61effcdc0d4f_6c9c8d6e2597b85b
+
+/**
+ * A test vector for Simon128_256
+ *
+ * ```repl
+ * :check t9
+ * ```
+ */
+property t9 = Simon128_256::encrypt k pt == ct
+  where
+    k = 0x1f1e1d1c1b1a1918_1716151413121110_0f0e0d0c0b0a0908_0706050403020100
+    pt = 0x74206e69206d6f6f_6d69732061207369
+    ct = 0x8d2b5579afc8a3a0_3bf72a87efe7b868
