@@ -12,8 +12,8 @@
  * @editor Marcella Hastings <marcella@galois.com>
  */
 module Primitive::Keyless::Hash::SHA3::SHA3 where
-import Primitive::Keyless::Hash::KeccakBitOrdering as KBO
-import Primitive::Keyless::Hash::Keccak where
+import Primitive::Keyless::Hash::SHA3::KeccakBitOrdering as KBO
+import Primitive::Keyless::Hash::SHA3::Specification where
     type b = 1600
     type nr = 24
     type c = 2 * digest

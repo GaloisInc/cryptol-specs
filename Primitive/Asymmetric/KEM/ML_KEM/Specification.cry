@@ -55,10 +55,10 @@
  */
 module Primitive::Asymmetric::KEM::ML_KEM::Specification where
 
-import Primitive::Keyless::Hash::SHAKE::SHAKE256 as SHAKE256
-import Primitive::Keyless::Hash::SHAKE::SHAKE128 as SHAKE128
-import Primitive::Keyless::Hash::SHA3::SHA3_256 as SHA3_256
-import Primitive::Keyless::Hash::SHA3::SHA3_512 as SHA3_512
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE256 as SHAKE256
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE128 as SHAKE128
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_256 as SHA3_256
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_512 as SHA3_512
 
 private
     /*

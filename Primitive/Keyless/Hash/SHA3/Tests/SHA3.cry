@@ -26,14 +26,14 @@
  */
 module Primitive::Keyless::Hash::SHA3::Tests where
 
-import Primitive::Keyless::Hash::KeccakBitOrdering as KBO
+import Primitive::Keyless::Hash::SHA3::KeccakBitOrdering as KBO
 
 /**
  * CAVP test vectors for SHA3-224. These are drawn from the
  * `SHA3_224ShortMsg.rsp` file.
  */
 submodule SHA3_224 where
-    import Primitive::Keyless::Hash::SHA3::SHA3_224 as SHA3_224
+    import Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_224 as SHA3_224
 
     /**
      * This is from the bitwise tests.
@@ -85,7 +85,7 @@ submodule SHA3_224 where
  * `SHA3_256ShortMsg.rsp` file.
  */
 submodule SHA3_256 where
-    import Primitive::Keyless::Hash::SHA3::SHA3_256 as SHA3_256
+    import Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_256 as SHA3_256
 
     /**
      * This is from the bitwise tests.
@@ -147,7 +147,7 @@ submodule SHA3_256 where
  * `SHA3_384ShortMsg.rsp` file.
  */
 submodule SHA3_384 where
-    import Primitive::Keyless::Hash::SHA3::SHA3_384 as SHA3_384
+    import Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_384 as SHA3_384
 
     /**
      * This is from the bitwise tests.
@@ -193,7 +193,7 @@ submodule SHA3_384 where
  * `SHA3_512ShortMsg.rsp` file.
  */
 submodule SHA3_512 where
-    import Primitive::Keyless::Hash::SHA3::SHA3_512 as SHA3_512
+    import Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_512 as SHA3_512
 
     /**
      * This is from the bitwise tests.

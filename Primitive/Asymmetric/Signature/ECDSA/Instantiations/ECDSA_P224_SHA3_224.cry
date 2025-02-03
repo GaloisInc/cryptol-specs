@@ -7,5 +7,5 @@
 module Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P224_SHA3_224 =
     Primitive::Asymmetric::Signature::ECDSA::Specification {
         EC = Common::EC::PrimeField::Instantiations::P224,
-        Hash = Primitive::Keyless::Hash::SHA3::SHA3_224
+        Hash = Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_224
     }

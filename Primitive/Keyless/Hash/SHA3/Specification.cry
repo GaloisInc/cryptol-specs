@@ -12,7 +12,7 @@
  * @author Marcella Hastings <marcella@galois.com>
  *
  */
-module Primitive::Keyless::Hash::Keccak where
+module Primitive::Keyless::Hash::SHA3::Specification where
 
 parameter
     /**

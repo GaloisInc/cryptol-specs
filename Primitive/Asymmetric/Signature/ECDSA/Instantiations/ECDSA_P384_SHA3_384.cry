@@ -7,5 +7,5 @@
 module Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P384_SHA3_384 =
     Primitive::Asymmetric::Signature::ECDSA::Specification {
         EC = Common::EC::PrimeField::Instantiations::P384,
-        Hash = Primitive::Keyless::Hash::SHA3::SHA3_384
+        Hash = Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_384
     }

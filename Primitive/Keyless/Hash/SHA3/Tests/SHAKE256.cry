@@ -1,0 +1,65 @@
+/**
+ * CAVP test vectors for SHAKE256.
+ *
+ * These can be downloaded from:
+ * @see https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/shakebittestvectors.zip
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+
+module Primitive::Keyless::Hash::SHA3::Tests::SHAKE256 where
+
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE256
+
+/**
+ * ```repl
+ * :prove k5
+ * ```
+ */
+property k5 = xof [] == expected_result where
+    expected_result = join [
+        0x46b9dd2b0ba88d13233b3feb743eeb24,
+        0x3fcd52ea62b81b82b50c27646ed5762f,
+        0xd75dc4ddd8c0f200cb05019d67b592f6,
+        0xfc821c49479ab48640292eacb3b7c4be
+    ]
+
+/**
+ * ```repl
+ * :prove k6
+ * ```
+ */
+property k6 = xof 0b0 == expected_result where
+    expected_result = join [
+        0x1e20b13f3bdb730d286913335c092bce,
+        0xc0eb1aff2798c05736faa93bd665807a,
+        0x48ed7652aefd600427e9f797d647b9b3,
+        0x55d30410d71b8e275a676545600f1c35
+    ]
+
+/**
+ * ```repl
+ * :prove k7
+ * ```
+ */
+property k7 = xof 0b11 == expected_result where
+    expected_result = join [
+        0x4f86b0eb85f7a9f6dc38b622706948ad,
+        0xb2beb6dd6911b5e9d865fd1f9667b5c0,
+        0x2a0dbb39c488b040a18ff3885f04ef95,
+        0x7c98f3948e6b7959a9b8950ffd6345d5
+    ]
+
+/**
+ * ```repl
+ * :prove k8
+ * ```
+ */
+property k8 = xof 0b110 == expected_result where
+    expected_result = join [
+        0x27b5f40b3645215e370472ebb06817ae,
+        0xbddbe2cbd3a9a3ba3914da88e5853e70,
+        0x83630e6d51d7a009017d8176c3067329,
+        0xbec8e5f65591d65c5894c40132f1a2ab
+    ]

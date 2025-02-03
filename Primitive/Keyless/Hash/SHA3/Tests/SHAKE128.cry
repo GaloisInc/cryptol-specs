@@ -1,0 +1,98 @@
+/**
+ * CAVP test vectors for SHAKE128, and a demonstration on how to use
+ * the `KeccakBitOrdering` module.
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Keyless::Hash::SHA3::Tests::SHAKE128 where
+
+import Primitive::Keyless::Hash::SHA3::KeccakBitOrdering as KBO
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE128
+
+/**
+ * The CAVP test vectors provide input in MSB order as hex strings with an
+ * even number of digits; each test is for a specific bit-length input.
+ * This aligns with the encoding scheme described in [FIPS-202] Appendix B.
+ *
+ * The SHAKE-128 API does not require inputs to be encoded in that
+ * format. In order to use the `xof` function, we need to truncate the "padding"
+ * bits that are used to extend the input into an even number of hex digits
+ * (e.g. a multiple of 8 bits).
+ *
+ * @see https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/shakebittestvectors.zip
+ */
+computeCavpTestVector : {k, l} (fin k, fin l) => [8 * (k /^ 8)] -> [l] -> Bool
+computeCavpTestVector msg expectedResult = result == expectedResult where
+    result = xof (KBO::truncate`{k, 8 * (k /^ 8)} msg)
+
+/**
+ * ```repl
+ * :prove k0
+ * ```
+ */
+property k0 = computeCavpTestVector`{0} [] expected_result where
+    expected_result = join [
+        0x7f9c2ba4e88f827d616045507605853e,
+        0xd73b8093f6efbc88eb1a6eacfa66ef26,
+        0x3cb1eea988004b93103cfb0aeefd2a68,
+        0x6e01fa4a58e8a3639ca8a1e3f9ae57e2
+    ]
+
+/**
+ * ```repl
+ * :prove k1
+ * ```
+ */
+property k1 = computeCavpTestVector`{1} 0x00 expected_result where
+    expected_result = join [
+        0xe78b86559a9ccdc72288bf7bcf8e11d5,
+        0x74543a2922978913a02be149e89d03ca,
+        0xe63d2c36e2cf6906791b187d7e371d4f,
+        0x21ebe59dcfc249a510b82255a18250dd
+    ]
+/**
+ * ```repl
+ * :prove k2
+ * ```
+ */
+property k2 = computeCavpTestVector`{2} 0x03 expected_result where
+    expected_result = join [
+        0xf6b6c4093f0a2ceba61b9f2c2fea2ca2,
+        0x38ce9005edcd588c380405070532ddd0,
+        0x0cbd3a3a7448017d874c52c9e383fa3d,
+        0xb1c184e023181fcc8550f53ac92feca5
+    ]
+
+/**
+ * ```repl
+ * :prove k3
+ * ```
+ */
+property k3 = computeCavpTestVector`{3} 0x06 expected_result where
+    expected_result = join [
+        0x178afb3be00c33b682f0c920520699e3,
+        0xb7e4c360274fd8b41cdeaa8d3c675bdc,
+        0x079be55d4513e7479aa903169430f0a0,
+        0xbf60169becd0ff9ff3ff6be24bc6fd83
+    ]
+
+/**
+ * This is one of the CAVP test vectors from `SHAKE128ShortMsg.rsp`.
+ * ```repl
+ * :prove k265
+ * ```
+ */
+property k265 = computeCavpTestVector`{265} msg expected_output where
+    msg = 0xa4fb52a45c1e49e1805ccbe419ef3c57b773d84eaa478ed07536129480572e080d01
+    expected_output = 0xf5e3f9934cfa817d75e8db5dce000977
+
+/**
+ * This is one of the CAVP test vectors from `SHAKE128ShortMsg.rsp`.
+ * ```repl
+ * :prove k266
+ * ```
+ */
+property k266 = computeCavpTestVector`{266} msg expectedResult where
+    msg = 0x01de90ca986e1abd50d28ad9f82cc77b45ebd99d19fa4bab0437d3930c27351ca900
+    expectedResult = 0xc47bb657d4f474cd5fa0f29537b85a7a
