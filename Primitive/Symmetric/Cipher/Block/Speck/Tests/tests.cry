@@ -8,6 +8,7 @@
  * [SPECK]: Beaulieu, Shors, Smith, Treatman-Clark, Weeks, Wingers
  *          The Simon and Speck Families of Lightweight Block Ciphers
  *          19 June 2013
+ * @see https://eprint.iacr.org/2013/404.pdf
  */
 
 module Primitive::Symmetric::Cipher::Block::Speck::Tests::tests where
