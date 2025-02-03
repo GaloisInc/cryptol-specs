@@ -1,14 +1,11 @@
 /*
-   @copyright Galois Inc. 2020
-   @author Brett Boston
-   www.cryptol.net
-*/
-
-/*
  * This is a simple implementation of HMAC with SHA-384
+ *
+ * @copyright Galois Inc. 2020
+ * @author Brett Boston
+ * www.cryptol.net
  */
-
-module Primitive::Keyless::Hash::HMAC where
+module Primitive::Symmetric::MAC::HMAC_SHA384 where
 
 import Primitive::Keyless::Hash::SHA2Internal::SHA384
 
