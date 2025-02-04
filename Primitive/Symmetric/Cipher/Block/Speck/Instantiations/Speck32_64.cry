@@ -10,6 +10,4 @@ module Primitive::Symmetric::Cipher::Block::Speck::Instantiations::Speck32_64 =
 
 type n = 16
 type m = 4
-type α = 7
-type β = 2
 type T = 22

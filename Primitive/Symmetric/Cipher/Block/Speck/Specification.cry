@@ -35,18 +35,6 @@ parameter
     type m : #
 
     /**
-     * `α` is a rotation constant.
-     */
-    type α : #
-    type constraint (α >= 7, α <= 8)
-
-    /**
-     * `β` is a rotation constant.
-     */
-    type β : #
-    type constraint (β >= 2, β <= 3)
-
-    /**
      * `T` is the number of rounds.
      */
     type T : #
@@ -56,8 +44,9 @@ parameter
      * They admit all valid Speck instantiations.
      * They do not exclude all invalid instantiations.
      */
-    type constraint (fin n, fin T, fin m, n >= width α, n >= width β)
+    type constraint (fin n, fin T, fin m)
     type constraint (m >= 2, m <= 4, T >= 2, n >= width T)
+    type constraint (n >= 16)
 
 /**
  * The Speck encryption function is the composition of `T` round functions.
@@ -120,31 +109,43 @@ private
 
     /**
      * Left circular shift by the rotation constant α.
+     * The rotation constant can be derived from the word size.
      *
      * Reference: [SPECK], Section 4.1.
      */
-    Sα x = S `{α} x
+    Sα: [n] -> [n]
+    Sα x | n == 16 => S `{7} x
+         | n >= 16 => S `{8} x
 
     /**
      * Left circular shift by the rotation constant β.
+     * The rotation constant can be derived from the word size.
      *
      * Reference: [SPECK], Section 4.1.
      */
-    Sβ x = S `{β} x
+    Sβ : [n] -> [n]
+    Sβ x | n == 16 => S `{2} x
+         | n >= 16 => S `{3} x
 
     /**
      * Right circular shift by the rotation constant α.
+     * The rotation constant can be derived from the word size.
      *
      * Reference: [SPECK], Section 4.1.
      */
-    Sα_Inv x = S_Inv `{α} x
+    Sα_Inv : [n] -> [n]
+    Sα_Inv x | n == 16 => S_Inv `{7} x
+             | n >= 16 => S_Inv `{8} x
 
     /**
      * Right circular shift by the rotation constant β.
+     * The rotation constant can be derived from the word size.
      *
      * Reference: [SPECK], Section 4.1.
      */
-    Sβ_Inv x = S_Inv `{β} x
+    Sβ_Inv : [n] -> [n]
+    Sβ_Inv x | n == 16 => S_Inv `{2} x
+             | n >= 16 => S_Inv `{3} x
 
     /**
      * The Speck round function. This function is parameterized by a key.
