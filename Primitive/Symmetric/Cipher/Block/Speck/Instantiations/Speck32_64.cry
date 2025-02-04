@@ -1,0 +1,13 @@
+/**
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ *
+ * These parameters are taken from table 4.1 of the Speck documentation.
+ */
+
+module Primitive::Symmetric::Cipher::Block::Speck::Instantiations::Speck32_64 =
+    Primitive::Symmetric::Cipher::Block::Speck::Specification where
+
+type n = 16
+type m = 4
+type T = 22

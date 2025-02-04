@@ -1,0 +1,155 @@
+/**
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ *
+ * Test vectors for Speck.
+ * These test vectors were taken Appendix C of:
+ *
+ * [SPECK]: Beaulieu, Shors, Smith, Treatman-Clark, Weeks, Wingers
+ *          The Simon and Speck Families of Lightweight Block Ciphers
+ *          19 June 2013
+ * @see https://eprint.iacr.org/2013/404.pdf
+ */
+
+module Primitive::Symmetric::Cipher::Block::Speck::Tests::tests where
+
+import Primitive::Symmetric::Cipher::Block::Speck::Instantiations::Speck32_64 as Speck32_64
+import Primitive::Symmetric::Cipher::Block::Speck::Instantiations::Speck48_72 as Speck48_72
+import Primitive::Symmetric::Cipher::Block::Speck::Instantiations::Speck48_96 as Speck48_96
+import Primitive::Symmetric::Cipher::Block::Speck::Instantiations::Speck64_96 as Speck64_96
+import Primitive::Symmetric::Cipher::Block::Speck::Instantiations::Speck64_128 as Speck64_128
+import Primitive::Symmetric::Cipher::Block::Speck::Instantiations::Speck96_96 as Speck96_96
+import Primitive::Symmetric::Cipher::Block::Speck::Instantiations::Speck96_144 as Speck96_144
+import Primitive::Symmetric::Cipher::Block::Speck::Instantiations::Speck128_128 as Speck128_128
+import Primitive::Symmetric::Cipher::Block::Speck::Instantiations::Speck128_192 as Speck128_192
+import Primitive::Symmetric::Cipher::Block::Speck::Instantiations::Speck128_256 as Speck128_256
+
+/**
+ * Test vector for Speck32_64
+ *
+ * ```repl
+ * :prove t0
+ * ```
+ */
+property t0 = Speck32_64::encrypt k p == c
+    where
+        k = 0x1918_1110_0908_0100
+        p = 0x6574_694c
+        c = 0xa868_42f2
+
+/**
+ * Test vector for Speck48_72
+ *
+ * ```repl
+ * :prove t1
+ * ```
+ */
+property t1 = Speck48_72::encrypt k p == c
+    where
+        k = 0x121110_0a0908_020100
+        p = 0x20796c_6c6172
+        c = 0xc049a5_385adc
+
+/**
+ * Test vector for Speck48_96
+ *
+ * ```repl
+ * :prove t2
+ * ```
+ */
+property t2 = Speck48_96::encrypt k p == c
+    where
+        k = 0x1a1918_121110_0a0908_020100
+        p = 0x6d2073_696874
+        c = 0x735e10_b6445d
+
+/**
+ * Test vector for Speck64_96
+ *
+ * ```repl
+ * :prove t3
+ * ```
+ */
+property t3 = Speck64_96::encrypt k p == c
+    where
+        k = 0x13121110_0b0a0908_03020100
+        p = 0x74614620_736e6165
+        c = 0x9f7952ec_4175946c
+
+/**
+ * Test vector for Speck64_128
+ *
+ * ```repl
+ * :prove t4
+ * ```
+ */
+property t4 = Speck64_128::encrypt k p == c
+    where
+        k = 0x1b1a1918_13121110_0b0a0908_03020100
+        p = 0x3b726574_7475432d
+        c = 0x8c6fa548_454e028b
+
+/**
+ * Test vector for Speck96_96
+ *
+ * ```repl
+ * :prove t5
+ * ```
+ */
+property t5 = Speck96_96::encrypt k p == c
+    where
+        k = 0x0d0c0b0a0908_050403020100
+        p = 0x65776f68202c_656761737520
+        c = 0x9e4d09ab7178_62bdde8f79aa
+
+/**
+ * Test vector for Speck96_144
+ *
+ * ```repl
+ * :prove t6
+ * ```
+ */
+property t6 = Speck96_144::encrypt k p == c
+    where
+        k = 0x151413121110_0d0c0b0a0908_050403020100
+        p = 0x656d6974206e_69202c726576
+        c = 0x2bf31072228a_7ae440252ee6
+
+/**
+ * Test vector for Speck128_128
+ *
+ * ```repl
+ * :prove t7
+ * ```
+ */
+property t7 = Speck128_128::encrypt k p == c
+    where
+        k = 0x0f0e0d0c0b0a0908_0706050403020100
+        p = 0x6c61766975716520_7469206564616d20
+        c = 0xa65d985179783265_7860fedf5c570d18
+
+/**
+ * Test vector for Speck128_192
+ *
+ * ```repl
+ * :prove t8
+ * ```
+ */
+property t8 = Speck128_192::encrypt k p == c
+    where
+        k = 0x1716151413121110_0f0e0d0c0b0a0908_0706050403020100
+        p = 0x7261482066656968_43206f7420746e65
+        c = 0x1be4cf3a13135566_f9bc185de03c1886
+
+/**
+ * Test vector for Speck128_256
+ *
+ * ```repl
+ * :prove t9
+ * ```
+ */
+property t9 = Speck128_256::encrypt k p == c
+    where
+        k = 0x1f1e1d1c1b1a1918_1716151413121110_0f0e0d0c0b0a0908_0706050403020100
+        p = 0x65736f6874206e49_202e72656e6f6f70
+        c = 0x4109010405c0f53e_4eeeb48d9c188f43
