@@ -37,8 +37,7 @@ type Nk = 4 + 2 * Mode
 type Nr = 6 + Nk
 
 /** The keys for all the rounds */
-type KeySchedule = (RoundKey, [Nr-1]RoundKey, RoundKey)
-
+type KeySchedule = [inf]RoundKey
 /**
  * The general function for executing AES with 128-, 192-, or 256-bit keys.
  *
@@ -50,16 +49,16 @@ type KeySchedule = (RoundKey, [Nr-1]RoundKey, RoundKey)
  * switch the order of the input and keys.
  */
 cipher: KeySchedule -> [128] -> [128]
-cipher (kInit,ks,kFinal) pt = stateToMsg final_state // Line 13
+cipher keys pt = stateToMsg final_state // Line 13
   where
     // Lines 2-3
-    state0 = AddRoundKey kInit (msgToState pt)
+    state0 = AddRoundKey (keys @ 0) (msgToState pt)
     // Line 4
-    state4 = foldl transform state0 ks
+    state4 = foldl transform state0 (keys @@ [1 .. (Nr - 1)])
     // Lines 5-8
     transform state w = AddRoundKey w (MixColumns (ShiftRows (SubBytes state)))
     // Lines 10-12
-    final_state = AddRoundKey kFinal (ShiftRows (SubBytes (state4)))
+    final_state = AddRoundKey (keys @ `Nr) (ShiftRows (SubBytes (state4)))
 
 /**
  * SubBytes applies an invertible, non-linear transformation to the state.
@@ -105,16 +104,16 @@ AddRoundKey w state = w ^ state
  * switch the order of the input and keys.
  */
 invCipher: KeySchedule -> [128] -> [128]
-invCipher (kInit, ks, kFinal) ct = stateToMsg final_state // Line 13
+invCipher keys ct = stateToMsg final_state // Line 13
   where
     // Lines 2-3
-    state0 = AddRoundKey kFinal ( msgToState ct)
+    state0 = AddRoundKey (keys @ `Nr) ( msgToState ct)
     // Line 4
-    state4 = foldl transform state0 (reverse ks)
+    state4 = foldl transform state0 (reverse (keys @@ [1 .. (Nr - 1)]))
     // Lines 5-8
     transform state w = InvMixColumns (AddRoundKey w (InvSubBytes (InvShiftRows state)))
     // Lines 10-12
-    final_state = AddRoundKey kInit (InvSubBytes (InvShiftRows (state4)))
+    final_state = AddRoundKey (keys @ 0) (InvSubBytes (InvShiftRows (state4)))
 
 /**
  * Inverts the `ShiftRows` function.

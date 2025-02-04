@@ -72,11 +72,8 @@ SubWord [a0, a1, a2, a3] =
  * to the original spec in an attempt at readability.
  * `w_{i-1}` is denoted `w_1`, and `w_{i-Nk}` is denoted `w_nk`.
  */
-keyExpansion : [32 * Nk] -> (RoundKey, [Nr-1]RoundKey, RoundKey)
-keyExpansion key = ( keys @ 0
-                , keys @@ [1 .. (Nr - 1)]
-                , keys @ `Nr
-                )
+keyExpansion : [32 * Nk] -> [inf]RoundKey
+keyExpansion key = keys
   where
     // Lines 2-6: The first `Nk` words of the expanded key are the key itself
     seed : [Nk][4]GF28
