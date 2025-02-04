@@ -44,21 +44,21 @@ type KeySchedule = [inf]RoundKey
  * Corresponds to [FIPS-197u1] Section 5.1, Algorithm 1.
  *
  * In the spec, the three inputs to `Cipher` are the input data, the number of
- * rounds `Nr`, and the round keys. In this implementation, we don't explicitly
+ * rounds `Nr`, and the round keys `w`. In this implementation, we don't explicitly
  * pass `Nr` as a parameter; instead it's defined as a type above. We also
  * switch the order of the input and keys.
  */
 cipher: KeySchedule -> [128] -> [128]
-cipher keys pt = stateToMsg final_state // Line 13
+cipher w pt = stateToMsg final_state // Line 13
   where
     // Lines 2-3
-    state0 = AddRoundKey (keys @ 0) (msgToState pt)
+    state0 = AddRoundKey (w @ 0) (msgToState pt)
     // Line 4
-    state4 = foldl transform state0 (keys @@ [1 .. (Nr - 1)])
+    state4 = foldl transform state0 (w @@ [1 .. (Nr - 1)])
     // Lines 5-8
-    transform state w = AddRoundKey w (MixColumns (ShiftRows (SubBytes state)))
+    transform state word = AddRoundKey word (MixColumns (ShiftRows (SubBytes state)))
     // Lines 10-12
-    final_state = AddRoundKey (keys @ `Nr) (ShiftRows (SubBytes (state4)))
+    final_state = AddRoundKey (w @ `Nr) (ShiftRows (SubBytes (state4)))
 
 /**
  * SubBytes applies an invertible, non-linear transformation to the state.
@@ -99,21 +99,21 @@ AddRoundKey w state = w ^ state
  * Corresponds to [FIPS-197u1] Section 5.3, Algorithm 3.
  *
  * In the spec, the three inputs to `InvCipher` are the input data, the number of
- * rounds `Nr`, and the round keys. In this implementation, we don't explicitly
+ * rounds `Nr`, and the round keys `w`. In this implementation, we don't explicitly
  * pass `Nr` as a parameter; instead it's defined as a type above. We also
  * switch the order of the input and keys.
  */
 invCipher: KeySchedule -> [128] -> [128]
-invCipher keys ct = stateToMsg final_state // Line 13
+invCipher w ct = stateToMsg final_state // Line 13
   where
     // Lines 2-3
-    state0 = AddRoundKey (keys @ `Nr) ( msgToState ct)
+    state0 = AddRoundKey (w @ `Nr) ( msgToState ct)
     // Line 4
-    state4 = foldl transform state0 (reverse (keys @@ [1 .. (Nr - 1)]))
+    state4 = foldl transform state0 (reverse (w @@ [1 .. (Nr - 1)]))
     // Lines 5-8
-    transform state w = InvMixColumns (AddRoundKey w (InvSubBytes (InvShiftRows state)))
+    transform state word = InvMixColumns (AddRoundKey word (InvSubBytes (InvShiftRows state)))
     // Lines 10-12
-    final_state = AddRoundKey (keys @ 0) (InvSubBytes (InvShiftRows (state4)))
+    final_state = AddRoundKey (w @ 0) (InvSubBytes (InvShiftRows (state4)))
 
 /**
  * Inverts the `ShiftRows` function.
