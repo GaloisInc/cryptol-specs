@@ -48,7 +48,7 @@ BVtoZ : {p, a} (fin p, p >= 1, fin a) => [a] -> Z p
 BVtoZ x = (fromInteger (toInteger x))
 
 /**
- * Convert between `Z` types defined over different prime moduli.
+ * Convert between `Z` types defined over different moduli.
  */
 ZtoZ : {p, q} (fin p, fin q, p >= 1, q >= 1) => Z p -> Z q
 ZtoZ x = (fromInteger (fromZ x))
@@ -124,18 +124,23 @@ half x = fromInteger (if isEven xint then xint/2 else ((xint + `p) / 2))
 
 /**
  * Verify that `half` is correct.
+ * ```repl
+ * :prove half_correct `{7}
+ * ```
  */
 half_correct : {p} (fin p, p >= 3, isOdd p) => Z p -> Bit
 property half_correct x = half x + half x == x
 
 /**
  * Function composition, specialized to functions from `(a -> a)`.
+ * In particular, `(compose f g) x == g (f x)`.
  */
 compose : {a} () => (a -> a) -> (a -> a) -> a -> a
 compose f g = \x -> g (f x)
 
 /**
  * Composition of many functions from `(a -> a)`.
+ * In particular, `(composeMany [a, b, c]) x == c (b (a x))`.
  */
 composeMany : {nf, a} () => [nf](a -> a) -> a -> a
 composeMany fcns
