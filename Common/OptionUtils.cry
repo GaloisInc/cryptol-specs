@@ -3,6 +3,7 @@
  *
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
+ * @author Ryan Scott <rscott@galois.com>
  */
 module Common::OptionUtils where
 
@@ -22,6 +23,18 @@ optApply : {a, b} (a -> b) -> Option a -> Option b
 optApply f opt = case opt of
     Some x -> Some (f x)
     None -> None
+
+/**
+ * The `optFold` function takes a default value, a function, and an `Option`
+ * value. If the `Option` value is `None`, then return the default value.
+ * Otherwise, apply the function to the value inside the `Some` and return the
+ * result.
+ */
+optFold : {a, b} b -> (a -> b) -> Option a -> b
+optFold def f opt =
+  case opt of
+    Some x -> f x
+    None   -> def
 
 /**
  * Flatten a nested `Option` into a single `Option` that is `Some` only if

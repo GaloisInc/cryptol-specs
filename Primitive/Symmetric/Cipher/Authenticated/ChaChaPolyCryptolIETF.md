@@ -1,3 +1,10 @@
+<!---
+ - @copyright Galois, Inc.
+ - @author Yoav Nir
+ - @author Adam Langley
+ - @author Dylan McNamee
+ - @editor Ryan Scott <rscott@galois.com>
+ --->
 % ChaCha20 and Poly1305 for IETF protocols
 % Y. Nir (Check Point),  A. Langley (Google Inc),  D. McNamee (Galois, Inc)
 % July 28, 2014
@@ -88,6 +95,8 @@ The elements in this vector or matrix are 32-bit unsigned integers.
 
 ```cryptol
 module Primitive::Symmetric::Cipher::Authenticated::ChaChaPolyCryptolIETF where
+
+import Common::OptionUtils
 
 type ChaChaState = [16][32]
 ```
@@ -1100,8 +1109,8 @@ AEAD_CHACHA20_POLY1305_DECRYPT : {m, n} (fin m, fin n
                                  ,64 >= width m, 64 >= width n)
                                  => [256] -> [96]
                                     -> [m+16][8] -> [n][8]
-                                    -> ([m][8], Bit)
-AEAD_CHACHA20_POLY1305_DECRYPT k nonce ct ad = (pt, valid) where
+                                    -> Option ([m][8])
+AEAD_CHACHA20_POLY1305_DECRYPT k nonce ct ad = if valid then Some pt else None where
     inTag = drop`{m}ct
     inCt = take`{m}ct
     PolyKey = GeneratePolyKeyUsingChaCha k nonce 0
@@ -1266,10 +1275,10 @@ property AeadTag_correct = AeadTag == AeadTagTestVector
 
 property AeadConstruction_correct = (AeadConstruction AeadAAD AeadCT) == AeadConstructionTestVector
 
-property AeadDecrypt_correct = ptMatches /\ isValid where
-    (pt,isValid) = AEAD_CHACHA20_POLY1305_DECRYPT AeadKey (AeadIV # AeadC) cipherText AeadAAD
-    cipherText   = (AEAD_CHACHA20_POLY1305 AeadKey (AeadIV # AeadC) AeadPt AeadAAD)
-    ptMatches    = AeadPt == pt
+property AeadDecrypt_correct = ptMatches where
+    opt        = AEAD_CHACHA20_POLY1305_DECRYPT AeadKey (AeadIV # AeadC) cipherText AeadAAD
+    cipherText = (AEAD_CHACHA20_POLY1305 AeadKey (AeadIV # AeadC) AeadPt AeadAAD)
+    ptMatches  = optFold False (\pt -> AeadPt == pt) opt
 
 ```
 
@@ -1979,10 +1988,10 @@ particular protocol, we’ll assume that there is no padding of the
 plaintext.
 
 ```cryptol
-AEAD_correct key nonce cipherText tag AAD = ptMatches /\ isValid where
-    (pt,isValid) = AEAD_CHACHA20_POLY1305_DECRYPT key nonce cipherText AAD
-    cipherText   = (AEAD_CHACHA20_POLY1305 key nonce AeadPt AAD)
-    ptMatches    = tag == pt
+AEAD_correct key nonce cipherText tag AAD = ptMatches where
+    opt        = AEAD_CHACHA20_POLY1305_DECRYPT key nonce cipherText AAD
+    cipherText = (AEAD_CHACHA20_POLY1305 key nonce AeadPt AAD)
+    ptMatches  = optFold False (\pt -> tag == pt) opt
 ```
 
 ```cryptol
@@ -2093,8 +2102,9 @@ TV1_plaintext = [
 
 TV1_calculate_plaintext = AEAD_CHACHA20_POLY1305_DECRYPT TV1_AEAD_key TV1_AEAD_nonce (TV1_AEAD_cipherText # TV1_AEAD_tag) TV1_AEAD_AAD
 
-property TV1_plaintext_correct = isValid /\ pt == TV1_plaintext where
-	(pt,isValid) = TV1_calculate_plaintext
+property TV1_plaintext_correct = ptMatches where
+	opt       = TV1_calculate_plaintext
+	ptMatches = optFold False (\pt -> pt == TV1_plaintext) opt
 
 property decryption_vector_correct =
 	TV1_plaintext_correct /\
