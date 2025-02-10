@@ -1,0 +1,58 @@
+/*
+ * Parameters for the XMSS signature scheme.
+ *
+ * @copyright Galois, Inc
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+interface module Primitive::Asymmetric::Signature::XMSS::Parameters where
+
+/**
+ * Height of the XMSS tree.
+ * [RFC-8391] Section 4.1.1.
+ */
+type h : #
+type constraint (fin h)
+
+/**
+ * The length (in bytes) of the message digest, as well as each node.
+ * [RFC-8391] Section 4.1.1.
+ */
+type n : #
+type constraint (fin n)
+
+/**
+ * A cryptographic hash function that takes a key and a message.
+ * [RFC-8391] Section 4.1.2.
+ */
+H : [n][8] -> [2 * n][8] -> [n][8]
+
+/**
+ * Maximum width in bits for a message under the hash function used to
+ * instantiate `H_msg`.
+ *
+ * `H_msg` allows arbitrary-length messages, but in practice, the hash
+ * functions used to instantiate it may limit their input to some maximum
+ * width.
+ */
+type MessageUpperBound: #
+
+/**
+ * Width of the non-message bits passed to the hash function in `H_msg`.
+ *
+ * In the approved instantiations defined in [RFC-8391] and [SP-800-208],
+ * this includes domain separation and a fixed-length key.
+ * This is used to enforce the max message width constraint.
+ */
+type PaddingWidth : #
+
+/**
+ * A cryptographic hash function that takes a key and an arbitrary-length
+ * message.
+ * [RFC-8391] Section 4.1.2.
+ *
+ * Note: Some approved instantiations of this function use hash functions that
+ * have a maximum width for messages. The type constraint enforces this by
+ * limiting the length of the hashed message to the maximum width.
+ */
+H_msg : {m} (fin m, (PaddingWidth + width (8 * m)) < MessageUpperBound)
+    => [3 * n][8] -> [m][8] -> [n][8]

@@ -20,14 +20,12 @@
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
  */
-module Primitive::Asymmetric::Signature::XMSS::Instantiations::WOTSP_SHA2_256 =
-    Primitive::Asymmetric::Signature::XMSS::Wots where
+module Primitive::Asymmetric::Signature::WOTS::Instantiations::WOTSP_SHA2_256 =
+    Primitive::Asymmetric::Signature::WOTS::Specification where
         import Primitive::Keyless::Hash::SHA2::Instantiations::SHA256 as SHA256
 
-        type n = 32
-        type w = 16
+        type n' = 32
+        type w' = 16
 
-        F KEY M = SHA256::hashBytes ((zero : [32][8]) # KEY # M)
-        PRF KEY M = SHA256::hashBytes ((zero : [31][8]) # [(3 : [8])] # KEY # M)
-
-
+        F' KEY M = SHA256::hashBytes ((zero : [32][8]) # KEY # M)
+        PRF' KEY M = SHA256::hashBytes ((zero : [31][8]) # [(3 : [8])] # KEY # M)

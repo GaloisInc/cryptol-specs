@@ -1,9 +1,13 @@
 /**
  * WOTS+: One-Time Signatures.
  *
- * This signature primitive is used in the XMSS signature scheme. In WOTS+,
- * a private key can be used to sign any message, but each private key can
- * be used only once.
+ * WOTS+ is a signature scheme. A notable limitation of WOTS+ is that a given
+ * key pair can produce exactly ONE signature; repeated signatures with a
+ * single key pair will compromise the private key!!
+ *
+ * This scheme should typically be used as a component of a less limited
+ * signature scheme, like XMSS or SPHINCS+.
+ *
  * Warning: If a private key is used to sign two different messages, the scheme
  * becomes insecure! Cryptol cannot protect against this failure mode!
  *
@@ -22,8 +26,7 @@
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
  */
-module Primitive::Asymmetric::Signature::XMSS::Wots where
-
+module Primitive::Asymmetric::Signature::WOTS::Specification where
 
 parameter
     /**
@@ -32,8 +35,8 @@ parameter
      * of a public key, and a signature element (in bytes).
      * [RFC-8391] Section 3.1.1.
      */
-    type n : #
-    type constraint (fin n)
+    type n' : #
+    type constraint (fin n')
 
     /**
      * The Winternitz parameter. This must be either 4 or 16.
@@ -43,20 +46,20 @@ parameter
      * `w` is in the range `[0, 16]`, is divisible by 4 (`{0, 4, 8, 12, 16}`),
      * and is congruent to 1 mod 3 (`{4, 16}`).
      */
-    type w : #
-    type constraint (fin w, w % 4 == 0, w % 3 == 1, w <= 16)
+    type w' : #
+    type constraint (fin w', w' % 4 == 0, w' % 3 == 1, w' <= 16)
 
     /**
      * A keyed cryptographic hash function that takes a key and a message.
      * [RFC-8391] Section 3.1.1.1.
      */
-    F : [n][8] -> [n][8] -> [n][8]
+    F' : [n'][8] -> [n'][8] -> [n'][8]
 
     /**
      * A pseudorandom function that takes a key and an index.
      * [RFC-8391] Section 3.1.1.1.
      */
-    PRF : [n][8] -> [32][8] -> [n][8]
+    PRF' : [n'][8] -> [32][8] -> [n'][8]
 
     /**
      * A length value (fixed with respect to `n` and `w`).
@@ -65,15 +68,15 @@ parameter
      * The type constraint is drawn from Algorithm 5, where a computed checksum
      * of length `len_1 * (w - 1) * 2^8` must fit in 32 bits for correctness.
      */
-    type len_1 = (8 * n) /^ (lg2 w)
-    type constraint (width (len_1 * (w - 1) * 2^^8) <= 32)
+    type len_1 = (8 * n') /^ (lg2 w')
+    type constraint (width (len_1 * (w' - 1) * 2^^8) <= 32)
 
     /**
      * A length value (fixed with respect to `n` and `w`).
      * [RFC-8391] Section 3.1.1.
      */
 
-    type len_2 = lg2 (len_1 * (w - 1)) / lg2 w + 1
+    type len_2 = lg2 (len_1 * (w' - 1)) / lg2 w' + 1
 
     /**
      * The number of `n`-byte string elements in a WOTS+ private key, public key,
@@ -97,6 +100,11 @@ parameter
      * parameter sets in Section 5.2.
      */
     type constraint (32 >= width len)
+
+type n = n'
+type w = w'
+F = F'
+PRF = PRF'
 
 /**
  * A byte is a sequence of 8 bits using big-endian representation.

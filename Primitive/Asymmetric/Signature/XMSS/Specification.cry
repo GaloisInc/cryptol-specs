@@ -1,0 +1,18 @@
+/*
+ * XMSS: eXtended Merkle Signature Scheme.
+ *
+ * References:
+ * [RFC-8391]: Andreas Huelsing, Denis Butin, Stefan-Lukas Gazdag, Joost
+ *     Rijneveld, and Aziz Mohaisen. XMSS: eXtended Merkle Signature Scheme.
+ *     Internet Requests for Comments (RFC) 8391. May 2018.
+ *     @see https://datatracker.ietf.org/doc/rfc8391
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Asymmetric::Signature::XMSS::Specification where
+
+import interface Primitive::Asymmetric::Signature::XMSS::Parameters
+import interface Primitive::Asymmetric::Signature::WOTS::Interface as WOTS
+
+interface constraint (n == WOTS::n)
