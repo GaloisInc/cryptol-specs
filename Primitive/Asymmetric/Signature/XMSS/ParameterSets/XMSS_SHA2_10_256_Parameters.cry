@@ -16,7 +16,7 @@ where
     H KEY M = split (SHA256::hash ((1 : [32 * 8]) # join (KEY # M)))
 
     // The maximum message width is defined by SHA256.
-    type MaxMessageWidth = SHA256::MaxMessageWidth
+    type MessageUpperBound = SHA256::MessageUpperBound
 
     // The padding in this instantiation includes the domain separator (32
     // bytes) and the key (3n bytes).

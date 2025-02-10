@@ -1,0 +1,9 @@
+/**
+ * Instantiation of SHA3-224.
+ *
+ * @copyright Galois Inc.
+ * @author Ajay Kumar Eeralla
+ */
+module Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_224 =
+    Primitive::Keyless::Hash::SHA3::SHA3 where
+        type digest = 224

@@ -1,0 +1,21 @@
+/**
+ * Instantiation of the ML-DSA-44 parameter set.
+ * [FIPS-204] Section 4, Table 1.
+ *
+ * This is in security strength category 2.
+ *
+ * @copyright Galois Inc
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Asymmetric::Signature::ML_DSA::Instantiations::ML_DSA_44 =
+    Primitive::Asymmetric::Signature::ML_DSA::ML_DSA where
+
+        type q = 8380417
+        type τ = 39
+        type λ = 128
+        type γ1 = 2 ^^ 17
+        type γ2 = (q - 1) / 88
+        type k = 4
+        type ell = 4
+        type η = 2
+        type ω = 80

@@ -1,0 +1,52 @@
+/**
+ * Properties demonstrating equivalence of the spec-adherent `SHA2`
+ * implementation and the alternative `SHA2Internal` implementation.
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+import Primitive::Keyless::Hash::SHA2::Instantiations::SHA256 as SHA_256
+import Primitive::Keyless::Hash::SHA2Internal::SHA256 as SHAI_256
+
+import Primitive::Keyless::Hash::SHA2::Instantiations::SHA384 as SHA_384
+import Primitive::Keyless::Hash::SHA2Internal::SHA384 as SHAI_384
+
+/**
+ * The `internal` version of SHA256 matches the spec-adherent version.
+ * ```repl
+ * :exhaust sha256ImplsAreEquivalent`{10}
+ * :check sha256ImplsAreEquivalent`{256}
+ * ```
+ */
+sha256ImplsAreEquivalent : {m} (fin m, width m < SHA_256::MessageUpperBound) => [m] -> Bit
+property sha256ImplsAreEquivalent m = SHA_256::hash m == SHAI_256::sha m
+
+/**
+ * The byte-wise APIs for the two SHA256 implementations match.
+ * ```repl
+ * :exhaust sha256BytewiseImplsAreEquivalent`{1}
+ * :check sha256BytewiseImplsAreEquivalent`{256}
+ * ```
+ */
+sha256BytewiseImplsAreEquivalent : {m} (fin m, width (8 * m) < SHA_256::MessageUpperBound) => [m][8] -> Bit
+property sha256BytewiseImplsAreEquivalent m = join (SHA_256::hashBytes m) == SHAI_256::SHAImp m
+
+/**
+ * The `internal` version of SHA384 matches the spec-adherent version.
+ * ```repl
+ * :exhaust sha384ImplsAreEquivalent`{10}
+ * :check sha384ImplsAreEquivalent`{256}
+ * ```
+ */
+sha384ImplsAreEquivalent : {m} (fin m, width m < SHA_384::MessageUpperBound) => [m] -> Bit
+property sha384ImplsAreEquivalent m = SHA_384::hash m == SHAI_384::sha m
+
+/**
+ * The byte-wise APIs for the two SHA384 implementations match.
+ * ```repl
+ * :exhaust sha384BytewiseImplsAreEquivalent`{1}
+ * :check sha384BytewiseImplsAreEquivalent`{256}
+ * ```
+ */
+sha384BytewiseImplsAreEquivalent : {m} (fin m, width (8 * m) < SHA_384::MessageUpperBound) => [m][8] -> Bit
+property sha384BytewiseImplsAreEquivalent m = join (SHA_384::hashBytes m) == SHAI_384::SHAImp m

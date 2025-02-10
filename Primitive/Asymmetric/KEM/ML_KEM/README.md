@@ -1,19 +1,10 @@
-# Cryptol Specifications for ML-KEM (FIPS 203)
+This directory contains the Cryptol specifications for the ML-KEM (Module-Lattice-Based Key-Encapsulation Mechanism) as defined in the specification [FIPS 203](https://doi.org/10.6028/NIST.FIPS.203).
 
-## Description
-This directory contains the Cryptol specifications for the ML-KEM (Module-Lattice-Based Key-Encapsulation Mechanism) as outlined in the final draft of FIPS 203. Although the original LaTeX files from the standard were not available during this development, the Cryptol code in this executable specification was carefully developed to closely resemble the standard.
+The Cryptol code in this executable specification was developed to closely resemble the standard; it prioritizes readability and obvious correctness over efficiency.
 
-The full specification is available at:
-https://doi.org/10.6028/NIST.FIPS.203
-
-## Requirements
+### Requirements
 - Cryptol Version: 3.2.0 or later
 - Environment variable CRYPTOLPATH should contain the path to the Cryptol specs repo.
-
-## References
-- [FIPS 203](https://doi.org/10.6028/NIST.FIPS.203)
-- [Known Answer Tests (KATs) for ML-KEM](https://github.com/post-quantum-cryptography/KAT/tree/main/MLKEM) (produced by a third party).
-- [CAVP KATs](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files).
 
 ## Testing and Correctness
 The Cryptol specifications have been tested to ensure correctness. All properties related to correctness of the algorithms (such as decryption of encryption equaling identity and decoding of encoding equaling identity) pass successfully. Internal properties and other correctness checks can be run by loading any instantiation of ML-KEM and checking the docstrings (it will take some time to run, but should be less than 10 minutes) in the Cryptol REPL:
@@ -36,3 +27,11 @@ True
 [...]
 ```
 The `kat.awk` file runs ML_KEM-512 by default; to test other instantiations you will have to modify that script and download the corresponding RSPs.
+
+### Sources for KATs
+- [Known Answer Tests (KATs) for ML-KEM](https://github.com/post-quantum-cryptography/KAT/tree/main/MLKEM) (produced by a third party).
+- [CAVP KATs](https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files).
+
+## Previous versions
+This repo previously contained an implementation of CRYSTALS-Kyber from the NIST PQ competition, version 3.01. It was removed in the commit with hash:
+> [ecddcbd1f63f3ac4bff69625da493f3314ee8618](https://github.com/GaloisInc/cryptol-specs/commit/ecddcbd1f63f3ac4bff69625da493f3314ee8618)

@@ -39,9 +39,13 @@ parameter
      *
      * Allowable values for each word size `w` are defined in [FIPS-180-4]
      * Section 1, Figure 1.
+     *
+     * The spec does not explicitly require that the digest size is a multiple
+     * of 8, but all the allowable sizes are; adding this explicit constraint
+     * allows us to define a hash function that operates over bytes.
      */
     type DigestSize : #
-    type constraint (8 * w >= DigestSize)
+    type constraint (8 * w >= DigestSize, DigestSize % 8 == 0)
 
     /**
      * Initial hash value.
@@ -51,10 +55,26 @@ parameter
 
 /**
  * Upper bound on the width of messages that can be processed.
- * [FIPS-180-4] Section 1, Figure 1.
+ * [FIPS-180-4] Section 1, Figure 1, "Message Size (bits)"
  */
-type MaxMessageWidth = 2 * w
-type constraint ValidMessageLength L = width L < MaxMessageWidth
+type MessageUpperBound = 2 * w
+type constraint ValidMessageLength L = width L < MessageUpperBound
+
+/**
+ * Length of the hash digest.
+ *
+ * This is made public to instantiate the `HashInterface`.
+ */
+type DigestLength = DigestSize
+
+/**
+ * Security strength (in bits) of the hash function.
+ * @see NIST SP 800-107 (to be withdrawn): https://csrc.nist.gov/pubs/sp/800/107/r1/final
+ * @see Hash functions webpage: https://csrc.nist.gov/projects/hash-functions
+ *
+ * This is made public to instantiate the `HashInterface`.
+ */
+type SecurityStrength = DigestSize / 2
 
 private
     /**
@@ -360,3 +380,13 @@ hash M = take (join (digest ! 0)) where
             c' = b
             b' = a
             a' = T1 + T2
+
+/**
+ * Secure hash function, computed over bytes.
+ *
+ * This is not explicitly part of the spec, but many applications represent
+ * their input and output over byte strings (rather than bit strings as used
+ * in the spec itself).
+ */
+hashBytes: {l} (ValidMessageLength (8 * l)) => [l][8] -> [DigestSize / 8][8]
+hashBytes M = groupBy`{8} (hash (join M))

@@ -1,9 +1,0 @@
-/**
- * Instantiation of SHA3-512.
- *
- * @copyright Galois Inc.
- * @author Ajay Kumar Eeralla
- */
-module Primitive::Keyless::Hash::SHA3::SHA3_512 =
-    Primitive::Keyless::Hash::SHA3::SHA3 where
-        type digest = 512

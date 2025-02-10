@@ -1,3 +1,7 @@
+/**
+ * @copyright Galois, Inc.
+ * @author Marios Georgiou <marios@galois.com>
+ */
 module falcon_parameterized where
 
 parameter
@@ -35,20 +39,20 @@ dowhile condition body initial_state =
 CMul : (C, C) -> C
 CMul(x, y) = (x.0*y.0-x.1*y.1, x.0*y.1+x.1*y.0)
 
-CAdd : (C, C) -> C 
+CAdd : (C, C) -> C
 CAdd(x, y) = (x.0 + x.1, y.0 + y.1)
 
-CAddList : {n} (fin n) => [n]C -> C 
+CAddList : {n} (fin n) => [n]C -> C
 CAddList(l) = sums ! 0
-    where sums = [zero] # [CAdd(el,sums') | el <- l 
+    where sums = [zero] # [CAdd(el,sums') | el <- l
                                           | sums' <- sums
                           ]
 
 Cinv : C -> C
-Cinv((a,b)) = (a/.denominator, -(b/.denominator)) where 
+Cinv((a,b)) = (a/.denominator, -(b/.denominator)) where
     denominator = a^^2 + b^^2
 
-Conjugate : C -> C 
+Conjugate : C -> C
 Conjugate((x, y)) = (x, -y)
 
 PolyConj : {k, n} (ispoweroftwo k n) => Poly n C -> Poly n C
@@ -123,7 +127,7 @@ PolyMulInZ(f, g) = zero // TODO!
 PolyDivInZ : {k, n} (ispoweroftwo k n) => ((Poly n ZZ), (Poly n ZZ)) -> (Poly n Q)
 PolyDivInZ(f, g) = zero // TODO!
 
-innerProduct : {k, n} (ispoweroftwo k n) => ((Poly n C), (Poly n C)) -> C 
+innerProduct : {k, n} (ispoweroftwo k n) => ((Poly n C), (Poly n C)) -> C
 innerProduct(f, g) = zero // TODO!
 
 norm_sq : {k, n} (ispoweroftwo k n) => (Poly n C) -> Float64
@@ -169,7 +173,7 @@ get_rightchild : {k, n} (ispoweroftwo k n, k > 0) => falconTree k -> falconTree 
 get_rightchild T = right where
     children = resize (drop`{n} T): [2*2^^(k-1)*k]C
     [left, right] = split`{2,2^^(k-1)*k} children
-    
+
 newTree : {k, n} (ispoweroftwo k n, k >= 1) => (Poly n C, falconTree (k-1), falconTree (k-1)) -> falconTree k
 newTree(value, leftchild, rightchild) = T where
     T = zero
@@ -179,7 +183,7 @@ newTree(value, leftchild, rightchild) = T where
 newLeaf : C -> falconTree 0
 newLeaf sigma_leaf = [sigma_leaf]
 
-get_leaves : {k, n} (ispoweroftwo k n) => falconTree k -> [2^^k]C 
+get_leaves : {k, n} (ispoweroftwo k n) => falconTree k -> [2^^k]C
 get_leaves T | k == 0 => T
              | k >  0 => resize leaves where
                 left_child = get_leftchild`{k} T : falconTree (k-1)
@@ -190,9 +194,9 @@ get_leaves T | k == 0 => T
 
 set_leaves : {k, n} (ispoweroftwo k n) => (falconTree k, [2^^k]C) -> falconTree k
 set_leaves(T, leaves) | k == 0 => leaves
-                      | k >  0 => newTree`{k}(value, newleftchild, newrightchild) where 
+                      | k >  0 => newTree`{k}(value, newleftchild, newrightchild) where
                         value = getValue`{k} T
-                        leftchild = get_leftchild`{k} T 
+                        leftchild = get_leftchild`{k} T
                         rightchild = get_rightchild`{k} T
                         [leftleaves, rightleaves] = split`{2,2^^(k-1)} (resize leaves)
                         newleftchild = set_leaves`{k-1}(leftchild, leftleaves)
@@ -205,7 +209,7 @@ Decompress : [slen] -> Poly _n ZZ
 Decompress str = zero
 
 
-import Primitive::Keyless::Hash::SHAKE::SHAKE256
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE256
 HashToPoint : {q', k, n, len} (q' <= 2^^16, q' >= 1, ispoweroftwo k n, fin len) => [len] -> Poly n (Z q')
 HashToPoint str = [c i | i <- [0..(n-1)]] where
     k = 2^^16 / `q
@@ -248,12 +252,12 @@ NTRUSolve : {k, n} (ispoweroftwo k n) => (Poly n ZZ, Poly n ZZ) -> (Poly n ZZ, P
 NTRUSolve(f, g) | k == 0 => ([F], [G]) where
                                 (gcd, u, v) = eGCD(f@0, g@0)
                                 (F, G) = (u*`q, v*`q)
-                | k >  0 => (_F, _G) where 
+                | k >  0 => (_F, _G) where
                                 f' = N`{k}(f)
                                 g' = N`{k}(g)
                                 (F', G') = NTRUSolve`{k-1}(f',g')
                                 F = PolyMulInZ`{k}(xSquared`{k-1}(F'), minusx`{k}(g))
-                                G = PolyMulInZ`{k}(xSquared`{k-1}(G'), minusx`{k}(f)) 
+                                G = PolyMulInZ`{k}(xSquared`{k-1}(G'), minusx`{k}(f))
                                 (_F, _G) = Reduce`{k}(f,g,F,G)
 
 eGCD : (ZZ, ZZ) -> (ZZ, ZZ, ZZ)
@@ -264,10 +268,10 @@ eGCD(a, b) =
         (g, s, t) = eGCD((b%a), a)
 
 Reduce : {k, n} (ispoweroftwo k n) => (Poly n ZZ, Poly n ZZ, Poly n ZZ, Poly n ZZ) -> (Poly n ZZ, Poly n ZZ)
-Reduce(f,g,F,G) = (_F, _G) where 
+Reduce(f,g,F,G) = (_F, _G) where
     numerator = PolyMulInZ`{k}(F, adjoint`{k}(f)) + PolyMulInZ`{k}(G, adjoint`{k}(g))
     denominator = PolyMulInZ`{k}(f, adjoint`{k}(f)) + PolyMulInZ`{k}(g, adjoint`{k}(g))
-    _k = map roundToEven (PolyDivInZ`{k}(numerator, denominator)): Poly n ZZ        
+    _k = map roundToEven (PolyDivInZ`{k}(numerator, denominator)): Poly n ZZ
     F' = F - PolyMulInZ`{k}(_k,f)
     G' = G - PolyMulInZ`{k}(_k, g)
     (_F, _G, _) = Reduce'`{k}(_k,f,g,F',G')
@@ -279,7 +283,7 @@ Reduce' : {k, n} (ispoweroftwo k n) => (Poly n ZZ, Poly n ZZ, Poly n ZZ, Poly n 
 Reduce'(_k,f,g,F,G) =
     if _k == zero
     then (F, G, _k)
-    else Reduce'`{k}(_k', f, g, F', G') where 
+    else Reduce'`{k}(_k', f, g, F', G') where
         numerator = PolyMulInZ`{k}(F, adjoint`{k}(f)) + PolyMulInZ`{k}(G, adjoint`{k}(g))
         denominator = PolyMulInZ`{k}(f, adjoint`{k}(f)) + PolyMulInZ`{k}(g, adjoint`{k}(g))
         _k' = map roundToEven (PolyDivInZ`{k}(numerator, denominator)): Poly n ZZ
@@ -290,7 +294,7 @@ one : {k, n} (ispoweroftwo k n) => FFT n
 one = [(1.0,0.0) | i <- [0 .. (n-1)]]
 
 LDL : {k, n} (ispoweroftwo k n) => [2][2](FFT n) -> (([2][2](FFT n)), ([2][2](FFT n)))
-LDL(G) = (L, D) where 
+LDL(G) = (L, D) where
     D00 = G@0@0
     L10 = HadamardDivision(G@1@0,G@0@0): FFT n
     D11 = G@1@1 - dot(L10,dot(PolyConj`{k}(L10),G@0@0))
@@ -318,7 +322,7 @@ ffLDL(G) | k == 1 => T where
 
 type signature = ([320], [slen])
 Sign : {len} (fin len) => ([len], privateKey, Integer, [320]) -> signature
-Sign(m, sk, beta, r) = zero where 
+Sign(m, sk, beta, r) = zero where
     (Bhat, T) = sk
     c = HashToPoint`{q,_k}(r#m)
     [[FFTg,FFT_f],[FFTG,FFT_F]] = Bhat // Bhat stores them in FFT representation (some are negated)
@@ -335,7 +339,7 @@ Sign(m, sk, beta, r) = zero where
         norm_greater_than_beta : FFT _n -> Bit
         norm_greater_than_beta(_ss) = norm_sq`{_k}(_ss) > (fromInteger beta)
         body'' : FFT _n -> FFT _n
-        body''(_ss) = zero where 
+        body''(_ss) = zero where
             zz = ffSampling`{_k}(tt, T) : [2](FFT _n)
             // _ss' = [ dot`{_n}((tt_ - zz_),Bhat_) | tt_ <- tt | zz_ <- zz | Bhat_ <- Bhat]
         _ss_final = dowhile norm_greater_than_beta body'' ss_init
@@ -373,24 +377,24 @@ RCDT = [
 ] : [19][72]
 
 BaseSampler : [72] -> ZZ
-BaseSampler(u) = z0 where 
+BaseSampler(u) = z0 where
     z0 = zero
 
 import Float
 ApproxExp : (Float64, Float64) -> [64]
-ApproxExp(x, ccs) = y'' where 
+ApproxExp(x, ccs) = y'' where
     C = [
             0x00000004741183A3,
             0x00000036548CFC06,
             0x0000024FDCBF140A,
             0x0000171D939DE045,
-            0x0000D00CF58F6F84, 
-            0x000680681CF796E3, 
-            0x002D82D8305B0FEA, 
+            0x0000D00CF58F6F84,
+            0x000680681CF796E3,
+            0x002D82D8305B0FEA,
             0x011111110E066FD0,
-            0x0555555555070F00, 
-            0x155555555581FF00, 
-            0x400000000002B400, 
+            0x0555555555070F00,
+            0x155555555581FF00,
+            0x400000000002B400,
             0x7FFFFFFFFFFF4800,
             0x8000000000000000
         ]
@@ -401,7 +405,7 @@ ApproxExp(x, ccs) = y'' where
     y'' = (z'*y')>>63
 
 BerExp : (Float64, Float64) -> Bit
-BerExp(x, ccs) = w < 0 where 
+BerExp(x, ccs) = w < 0 where
     ln2 = 0.69314718056
     s = x /. ln2
     r = floor(x - s * ln2)
@@ -410,10 +414,10 @@ BerExp(x, ccs) = w < 0 where
     w = zero
 
 SamplerZ : (Float64, Float64) -> ZZ
-SamplerZ(m, sigma') = z where 
+SamplerZ(m, sigma') = z where
     z = zero
 
 Verify : {len} (fin len) => ([len], signature, publicKey, Integer) -> Bit
-Verify(m, sig, pk, beta) = norm^^2 <= beta where 
+Verify(m, sig, pk, beta) = norm^^2 <= beta where
     norm = zero
 

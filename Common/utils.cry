@@ -15,90 +15,136 @@ General utility functions for use across implementations.
 */
 module Common::utils where
 
+/**
+ * A functional view of the while loop.
+ * `condition` and `body` are functions applied to `initial_state`.
+ * `body` is applied to the state if `condition initial_state` is `True`.
+ */
 while : {a} (a -> Bit) -> (a -> a) -> a -> a
 while condition body initial_state =
   if(condition initial_state) then while condition body (body initial_state)
   else initial_state
 
+/**
+ * A functional view of the do-while loop.
+ * Like the `while` function, except `body` is guaranteed to be applied
+ * on the first iteration.
+ */
 dowhile : {a} (a -> Bit) -> (a -> a) -> a -> a
 dowhile condition body initial_state =
   if(condition next_state) then while condition body next_state else next_state
   where next_state = body initial_state
 
+/**
+ * Convert a `Z` type to a bitvector.
+ */
 ZtoBV : {p, a} (fin p, p >= 1, fin a) => Z p -> [a]
 ZtoBV x = (fromInteger (fromZ x))
 
+/**
+ * Convert a bitvector to a `Z` type.
+ */
 BVtoZ : {p, a} (fin p, p >= 1, fin a) => [a] -> Z p
 BVtoZ x = (fromInteger (toInteger x))
 
+/**
+ * Convert between `Z` types defined over different moduli.
+ */
 ZtoZ : {p, q} (fin p, fin q, p >= 1, q >= 1) => Z p -> Z q
 ZtoZ x = (fromInteger (fromZ x))
 
+/**
+ * Convert an integer to a bitvector.
+ */
 integerToBV : {m} (fin m) => Integer -> [m]
 integerToBV x = fromInteger x
 
+/**
+ * Convert a bitvector to an integer.
+ */
 integerFromBV : {m} (fin m) => [m] -> Integer
 integerFromBV x = toInteger x
 
+/**
+ * Convert an integer to a bitvector.
+ * If the result of the conversion is less than 3,
+ * return 3 instead of the conversion result.
+ */
 integerModulusFromBV : {m} (fin m) => [m] -> Integer
 integerModulusFromBV x = if (integerFromBV x) < 3 then 3 else (integerFromBV x)
 
+/**
+ * Check if an integer is even.
+ */
 isEven : Integer -> Bit
 isEven x = ~((fromInteger x) : [1]) ! 0
 
+/**
+ * Calculate the absolute value of an integer.
+ */
 abs : Integer -> Integer
 abs x = if x >= zero then x else zero-x
 
+/**
+ * Unzip a sequence of tuples into a tuple of sequences.
+ */
 unzip : {a,f,s} [a](f,s) -> ([a]f,[a]s)
 unzip tuples = (map (\x -> x.0) tuples , map (\x -> x.1) tuples)
 
+/**
+ * "Multiply" `x` by `2` in an additive group.
+ */
 mul2 x = x + x
+
+/**
+ * "Multiply" `x` by `3` in an additive group.
+ */
 mul3 x = x + mul2 x
+
+/**
+ * "Multiply" `x` by `4` in an additive group.
+ */
 mul4 x = mul2(mul2 x)
+
+/**
+ * "Multiply" `x` by `8` in an additive group.
+ */
 mul8 x = mul2(mul4 x)
 
 type constraint isOdd a = (a / 2) * 2 == a - 1
 
+/**
+ * Calculate "half" of a quantity in a mod `p` context.
+ * I.e., `half x + half x == x`.
+ */
 half : {p} (fin p, p >= 3, isOdd p) => Z p -> Z p
 half x = fromInteger (if isEven xint then xint/2 else ((xint + `p) / 2))
   where
     xint = fromZ x
 
+/**
+ * Verify that `half` is correct.
+ * ```repl
+ * :prove half_correct `{7}
+ * ```
+ */
 half_correct : {p} (fin p, p >= 3, isOdd p) => Z p -> Bit
 property half_correct x = half x + half x == x
 
 /**
- * Binary algorithm for inversion in Z n, for a prime `n`.
- *
- * [HMV] Algorithm 2.22. [MATH-2008] recommends this algorithm because all the
- * divisions are by 2, so they could be implemented as right shifts. In this
- * implementation, we don't take advantage of that optimization.
- *
- * [HMV]: D. Hankerson, A. Menezes, S. Vanstone, Guide to Elliptic Curve
- * Cryptography. Springer-Verlag, New York, 2004.
- * Preview of the book with this algorithm available on Google Books:
- * https://www.google.com/books/edition/Guide_to_Elliptic_Curve_Cryptography/V5oACAAAQBAJ
+ * Function composition, specialized to functions from `(a -> a)`.
+ * In particular, `(compose f g) x == g (f x)`.
  */
-mp_mod_inv : {p} (fin p, p >= 1) => Z p -> Z p
-mp_mod_inv c = if c == 0 then error "Zero does not have a multiplicative inverse"
-               else fromInteger (if u'' == 1 then x1'' else x2'')
-  where
-    innercond (a, x) = isEven a
-    innerbody (a, x) = (a / 2, if isEven x then x / 2 else (x + `p) / 2)
-
-    outtercond (u, v, x1, x2) = (u != 1) /\ (v != 1)
-    outterbody (u, v, x1, x2) = if(u' >= v') then (u' - v', v', x1' - x2' % `p, x2')
-                                             else (u', v' - u', x1', x2' - x1' % `p)
-      where
-        (u', x1') = while innercond innerbody (u, x1)
-        (v', x2') = while innercond innerbody (v, x2)
-
-    (u'', _, x1'', x2'') = while outtercond outterbody (fromZ c, `p, 1, 0)
+compose : {a} () => (a -> a) -> (a -> a) -> a -> a
+compose f g = \x -> g (f x)
 
 /**
- * The inverse must be correct.
- * This property will only hold when the modulus is prime!
- * It must be `:check`ed.
+ * Composition of many functions from `(a -> a)`.
+ * In particular, `(composeMany [a, b, c]) x == c (b (a x))`.
  */
-mp_mod_inv_correct : {a} (fin a, prime a, a >=2) => Z a -> Bit
-property mp_mod_inv_correct x = x != 0 ==> x * mp_mod_inv x == 1
+composeMany : {nf, a} () => [nf](a -> a) -> a -> a
+composeMany fcns
+    | nf == 0 => \x -> x
+    | nf == 1 => fcns@0
+    | nf == 2 => compose (fcns@0) (fcns@1)
+    | nf > 2  => compose (fcns@0) (composeMany (drop `{1} fcns))

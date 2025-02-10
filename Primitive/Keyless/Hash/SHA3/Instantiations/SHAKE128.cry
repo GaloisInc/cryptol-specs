@@ -1,0 +1,73 @@
+/*
+ * Instantiation of SHAKE128, a SHA-3 extendable-output function, as specified
+ * in [FIPS-202].
+ *
+ * [FIPS-202]: National Institute of Standards and Technology. SHA-3 Standard:
+ *     Permutation-Based Hash and Extendable-Output Functions. (Department of
+ *     Commerce, Washington, D.C.), Federal Information Processing Standards
+ *     Publication (FIPS) NIST FIPS 202. August 2015.
+ *     @see https://dx.doi.org/10.6028/NIST.FIPS.202
+ *
+ * @copyright Galois, Inc.
+ * @author Ajay Kumar Eeralla
+ * @editor Marcella Hastings <marcella@galois.com>
+ *
+ */
+module Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE128 where
+import Primitive::Keyless::Hash::SHA3::Specification where
+    type b = 1600
+    type nr = 24
+    // The capacity is double the security level, so this provides a security
+    // level of 128 (as the name suggests).
+    type c = 256
+import Primitive::Keyless::Hash::SHA3::KeccakBitOrdering as KBO
+
+/**
+ * SHAKE128 extendable-output function.
+ * [FIPS-202] Section 6.2.
+ *
+ * This supports any output length `d`, including infinite length.
+ *
+ * Note that the specification of `c` is above, in the instantiation of the
+ * `keccak` module.
+ *
+ * This expects input and produces output in the bit ordering used by the
+ * `Keccak` spec, where bytes are in MSB order and the bits in each byte are
+ * in LSB order. Use the `KeccakBitOrdering::toBytes` function to transform
+ * the input and output to Cryptol-standard MSB order:
+ * ```repl
+ * join (KBO::toBytes (shake128 (join (KBO::toBytes 0x49ae)))) == 0x88c605024011d2f7bc28b3d40fa0f100
+ * ```
+ */
+shake128 : {d, m} (fin m) => [m] -> [d]
+shake128 M = Keccak (M # 0b1111)
+
+/**
+ * SHAKE128 extendable-output function.
+ * [FIPS-202] Section 6.2.
+ *
+ * This supports any output length `d`, including infinite length.
+ *
+ * This expects input and output in MSB order. It handles conversion to and
+ * from the bit ordering expected by `Keccak`. If input is provided in the
+ * format described in [FIPS-202] Appendix B (a hex string with an even
+ * number of digits and an actual length `n`), use the `KOB::truncate` function
+ * to get the correct input:
+ * ```repl
+ * xof 0x49ae == 0x88c605024011d2f7bc28b3d40fa0f100
+ * xof (KBO::truncate`{15} 0xc310) == 0x0c963b6211057ecbb66cca211be09cdd
+ * ```
+ */
+xof : {d, m} (fin m) => [m] -> [d]
+xof M = KBO::reverseBitOrdering (Keccak ((KBO::reverseBitOrdering M) # 0b1111))
+
+/**
+ * SHAKE128 extendable-output function over byte-delimited inputs.
+ *
+ * Note that `d` is specified in _bits_. The `dBytes` parameter allows us to
+ * have infinite output. The alternative approach, requiring `d % 8 == 0`,
+ * is only possible when `d` is finite due to a type constraint on
+ * the mod operation.
+ */
+xofBytes : {d, m, dBytes} (fin m, dBytes * 8 == d) => [m][8] -> [dBytes][8]
+xofBytes M = split (xof (join M))

@@ -1,0 +1,426 @@
+/**
+ * Specification of the Keccak (SHA-3) hash function.
+ *
+ * [FIPS-202]: National Institute of Standards and Technology. SHA-3 Standard:
+ *     Permutation-Based Hash and Extendable-Output Functions. (Department of
+ *     Commerce, Washington, D.C.), Federal Information Processing Standards
+ *     Publication (FIPS) NIST FIPS 202. August 2015.
+ *     @see https://dx.doi.org/10.6028/NIST.FIPS.202
+ *
+ * @copyright Galois, Inc. 2013 - 2024
+ * @author David Lazar <lazard@galois.com>
+ * @author Marcella Hastings <marcella@galois.com>
+ *
+ */
+module Primitive::Keyless::Hash::SHA3::Specification where
+
+parameter
+    /**
+     * Width: the fixed length of the strings that are permuted.
+     *
+     * The type constraint restricts `b` to the valid permutation widths:
+     * 25, 50, 100, 200, 400, 800, and 1600.
+     * In particular, the final constraint enforces that `b / 25` is exactly a
+     * power of two, so 0 and any other multiple of 25 are invalid.
+     *
+     * [FIPS-202] Section 3 (intro).
+     */
+    type b : #
+    type constraint (fin b, b % 25 == 0, b <= 1600, (2 ^^ (lg2 (b / 25))) * 25 == b)
+
+    /**
+     * Rounds: the number of iterations of an internal transformation (any
+     * positive integer).
+     * [FIPS-202] Section 3 (intro).
+     */
+    type nr : #
+    type constraint (fin nr, nr > 0)
+
+    /**
+     * Capacity parameter for the sponge construction.
+     * [FIPS-202] Section 4.
+     */
+    type c : #
+    type constraint (fin c, c < b, c > 0)
+
+/**
+ * Keccak family of sponge functions.
+ *
+ * At this time, the implementation is not generic with respect to the sponge
+ * construction; this implementation "inlines" the sponge algorithm (Alg 8)
+ * with the specific functions for Keccak (Sec 5.2).
+ * [FIPS-202] Section 4, Algorithm 8; instantiated as in Section 5.2.
+ */
+Keccak : {d, m} (fin m) => [m] -> [d]
+Keccak M = digest where
+    // Step 1.
+    P = M # pad `{x = r, m = m}
+    // Step 2. Note than `len(P)` is not necessarily _exactly_ `m + 2`; that's
+    // the minimum length of `P`. We use round-up division `/^` to compute the
+    // correct number of `r`-length strings.
+    type n = (m + 2) /^ r
+    // Step 3. `c` is a parameter for this module.
+    // Step 4. Ps = P_0, ..., P_{n-1}.
+    Ps = split P : [n][r]
+    // Step 5.
+    S = zero : [b]
+    // Step 6. We create a list `Ss` instead of overwriting the variable `S`.
+    Ss = [S] # [Keccak_p (S' ^ (Pi # (zero : [c]))) | Pi <- Ps | S' <- Ss]
+    // Steps 7 - 10. This step is sometimes known as "squeeze".
+    // The truncation in Step 8 is handled here with `take`{r}`
+    // The truncation in Step 9 is below with `take`{front=d, back=inf}`.
+    extend : [b] -> [inf]
+    extend Z = (take`{r} Z) # extend (Keccak_p Z)
+    digest = take`{front=d, back=inf} (extend (Ss ! 0))
+
+private
+    /**
+     * Rate parameter for the sponge construction.
+     * [FIPS-202] Section 4.
+     */
+    type r = b - c
+
+    /**
+     * State width of the permutation.
+     * [FIPS-202] Section 3.1.
+     */
+    type w = b / 25
+
+    /**
+     * The binary logarithm of the lane size; used to determine the size of
+     * the round constant.
+     * [FIPS-202] Section 3.1.
+     */
+    type ell = lg2 w
+
+    /**
+     * State for Keccak-p[b, nr], represented as an array.
+     * [FIPS-202] Section 3.1.
+     */
+    type State = [5][5][w]
+
+    /**
+     * Convert a string into a state array.
+     * [FIPS-202] Section 3.1.2.
+     *
+     * Note: The spec describes this in terms of all three coordinates
+     * `(x, y, z)`. Since the lanes determined by a pair `(x, y)` are composed
+     * of consecutive bits, we don't index into them separately; instead, we
+     * separate `S` into 25 lanes of length `w` and then place those lanes in
+     * the correct order according to the `(x, y)` coordinates.
+     * For ease of implementation of the subsequent step mappings, the bits of
+     * each lane are reversed.
+     */
+    unflatten : [b] -> State
+    unflatten S = [[ Lanes@((5 * y + x))
+        | y <- [0..4]]
+        | x <- [0..4]] where
+        Lanes = map reverse (split`{25} S)
+
+    /**
+     * Convert a string into a state array, but without indexing.
+     * Equivalent to [FIPS-202] Section 3.1.2.
+     */
+    unflatten_noindex : [b] -> State
+    unflatten_noindex S = transpose (groupBy (reverse (groupBy`{w} (reverse S))))
+
+    /**
+     * ```repl
+     * :prove unflattens_match
+     * ```
+     */
+    property unflattens_match S = unflatten S == unflatten_noindex S
+
+    /**
+     * Convert a state array into a string.
+     * [FIPS-202] Section 3.1.3.
+     */
+    flatten : State -> [b]
+    flatten A = S where
+        // No explicit appending or joining is needed to compute the Lanes.
+        // But we do need to accomodate the lane reversal that happened in the
+        // inverse `unflatten` function.
+        Lanes = [[ reverse (A@i@j)
+            | j <- [0..4]]
+            | i <- [0..4]]
+        Planes = [ Lanes@0@j # Lanes@1@j # Lanes@2@j # Lanes@3@j # Lanes@4@j
+            | j <- [0..4]]
+        S = join Planes
+
+    /**
+     * Convert a state array into a string, but without indexing.
+     * Equivalent to [FIPS-202] Section 3.1.3.
+     */
+    flatten_noindex : State -> [b]
+    flatten_noindex A = reverse (join (reverse (join (transpose A))))
+
+    /**
+     * ```repl
+     * :prove flattens_match
+     * ```
+     */
+    property flattens_match A = flatten A == flatten_noindex A
+
+    /**
+     * One of the step mappings that's part of a round of Keccak-p.
+     *
+     * The effect of this mapping is to XOR each bit in the state with the
+     * parity of two columns in the array. `C` computes the parities, `D`
+     * combines two of the parities for each column, and `A'` completes the
+     * transformation.
+     * [FIPS-202] Section 3.2.1.
+     */
+    θ : State -> State
+    θ A = A' where
+        C = [ A@x@0 ^ A@x@1 ^ A@x@2 ^ A@x@3 ^ A@x@4
+            | x <- [0..4]]
+        D = [ C @ ((x - 1) % 5) ^ (C @ ((x + 1) % 5) <<< 1)
+            | x <- [0..4]]
+        A' = [[ A@x@y ^ D@x
+            | y <- [0..4]]
+            | x <- [0..4] ]
+
+    /**
+     * One of the step mappings that's part of a round of Keccak-p.
+     *
+     * The effect of this mapping is to rotate the bits of each lane by a
+     * an _offset_ (computed in `set_lane`) that depends on the `x` and `y`
+     * coordinates of that lane.
+     * [FIPS-202] Section 3.2.2.
+     */
+    ρ : State -> State
+    ρ A = A' where
+        // Step 1.
+        A1 = [[ if (x == 0) && (y == 0) then A@0@0 else zero
+            | y <- [0..4]]
+            | x <- [0..4]]
+        // Step 2-3.
+        As = [((1,0), A1)] #
+            [ ((y, (2*x + 3*y) % 5), set_lane x y t Ai)
+            | ((x, y), Ai) <- As
+            | t <- [0..23]]
+        (_, A') = As ! 0
+
+        // Step 3a. Update the lane defined by x' and y'.
+        set_lane x' y' t Ai = [[
+            if (x' == x) && (y' == y) then A@x@y <<< ((t+1)*(t+2)/2)
+            else Ai@x@y
+            | y <- [0..4]]
+            | x <- [0..4]]
+
+    /**
+     * Optimized and hard-coded version of `ρ`.
+     *
+     * This optimizes the hard-codable parts of `ρ` in the following ways:
+     * - Pre-computes the offsets `(t+1)*(t+2) / 2`
+     * - Pre-computes the corresponding sequence of lane indexes (e.g. the
+     *   series defined by `(y, (2x + 3y) % 5))`
+     * - Re-orders the offsets and the lane indexes to be in the same order
+     *   that we get if we iterate over the lanes generated by `join A` (e.g.
+     *   (0,0), (0,1), (0,2), ...)
+     * - Maps directly over A, rotating each lane by the expected offset,
+     *   instead of iteratively updating the lanes
+     *
+     * This provides a 2x speedup.
+     *
+     * Equivalent to [FIPS-202] Section 3.2.2, Algorithm 2.
+     */
+    ρ_hardcoded : State -> State
+    ρ_hardcoded A = A' where
+        A' = groupBy [ a <<< offset | a <- join A | offset <- t_offsets]
+
+        // This is technically equivalent to Table 2, but we index in the
+        // "normal" way e.g. the top-left corner is (0, 0) and the bottom-right
+        // is (4, 4), unlike the the table.
+        // We also write these in hex instead of base-10.
+        t_offsets = [
+            0x000, 0x024, 0x003, 0x069, 0x0d2,
+            0x001, 0x12c, 0x00a, 0x02d, 0x042,
+            0x0be, 0x006, 0x0ab, 0x00f, 0x0fd,
+            0x01c, 0x037, 0x099, 0x015, 0x078,
+            0x05b, 0x114, 0x0e7, 0x088, 0x04e
+        ]
+
+    /**
+     * Prove that the hardcoded version of `ρ` is correct.
+     * ```repl
+     * :prove hardcoded_rho_is_correct
+     * ```
+     */
+    property hardcoded_rho_is_correct A = ρ A == ρ_hardcoded A
+
+    /**
+     * One of the step mappings that's part of a round of Keccak-p.
+     *
+     * The effect of this mapping is to rearrange the position of the lanes,
+     * based on an offset of the `x` and `y` coordinates.
+     * [FIPS-202] Section 3.2.3.
+     */
+    π : State -> State
+    π A = [[ A @((x + 3 * y) % 5) @x
+        | y <- [0..4]]
+        | x <- [0..4]]
+
+    /**
+     * One of the step mappings that's part of a round of Keccak-p.
+     *
+     * The effect of this mapping is to XOR each bit with a non-linear function
+     * of two other bits in its row.
+     * [FIPS-202] Section 3.2.4.
+     *
+     * Note: in the first line, XOR 1 on a single bit is equivalent to bitwise
+     * NOT. Since we operate over the whole slice defined by each z-coordinate,
+     * it's nicer to use `~`. You can see the NOT gates in Figure 6.
+     */
+    χ : State -> State
+    χ A = [[ A @x @y ^ (~A @((x + 1) % 5) @y && A @((x + 2) % 5) @y)
+        | y <- [0..4]]
+        | x <- [0..4]]
+
+    /**
+     * Compute the round constant for the `t`th lane.
+     *
+     * [FIPS-202] Section 3.2.5, Algorithm 5.
+     */
+    rc : Integer -> Bit
+    rc t = if (t % 255) == 0 then 1 // Step 1.
+         else Rs @ (t % 255) @0 // Step 4.
+         where
+             // Step 2 - 3.
+             Rs = [0b10000000] # [lfsr R | R <- Rs ]
+             // Step 3. Linear feedback shift register.
+             // The truncation in step f is done manually in the return value.
+             lfsr : [8] -> [8]
+             lfsr Rin = [R0, R@1, R@2, R@3, R4, R5, R6, R@7]
+                 where
+                     R = 0b0 # Rin
+                     R0 = R@0 ^ R@8
+                     R4 = R@4 ^ R@8
+                     R5 = R@5 ^ R@8
+                     R6 = R@6 ^ R@8
+
+    /**
+     * Hardcode the round constant values.
+     *
+     * Since the `rc` function doesn't depend on any of the functor parameters,
+     * this hardcoded value is correct for all instantiations.
+     * We computed the value `constants` with:
+     * ```cryptol
+     * [rc i | i <- [0..255]]
+     * ```
+     *
+     * This provides a 4x speedup.
+     *
+     * Equivalent to [FIPS-202] Section 3.2.5, Algorithm 5.
+     */
+    rc_hardcoded : Integer -> Bit
+    rc_hardcoded t = constants @ (t % 255) where
+        constants = join [
+            0x80b1e87f90a7d57062b32fde6ee54a25,
+            0xa339e361175edf0d35b504ec9303a471
+        ]
+
+    /**
+     * Prove that the hardcoded round constants are correct.
+     * ```repl
+     * :prove round_constants_correctly_hardcoded
+     * ```
+     */
+    property round_constants_correctly_hardcoded t = rc_hardcoded t == rc t
+
+    /**
+     * One of the step mappings that's part of a round of Keccak-p.
+     *
+     * The effect is to modify some of the bits of the Lane defined by
+     * `(0, 0)` according to the round index.
+     * [FIPS-202] Section 3.2.5, Algorithm 6.
+     */
+    ι : State -> Integer -> State
+    ι A ir = A'' where
+        // Step 1.
+        A' = A
+        // Step 2.
+        RC0 = zero : [w]
+        // Step 3. 0 is the identity for XOR, so we iteratively set the
+        // `2^j-1`th element by XORing the previously-set bits of RC with the
+        // correct value at the desired index.
+        RCs = [RC0] # [RC' ^ (zext`{w} [rc_hardcoded (toInteger j + 7 * ir)] << (2^^j - 1))
+            | RC' <- RCs
+            | j <- [0..ell] ]
+        RC = (RCs ! 0) : [w]
+        // Step 4.
+        A'' = [[ if (x == 0) && (y == 0) then A'@0@0 ^ RC else A'@x@y
+            | y <- [0..4]]
+            | x <- [0..4]]
+
+    /**
+     * Padding rule `pad10*1`.
+     *
+     * This function produces padding e.g. a string with an appropriate length
+     * to append to another string.
+     * [FIPS-202] Section 5.1.
+     *
+     * Note: The spec says the output length is a positive multiple of `x` and
+     * defines it to be, basically: `(- m - 2) mod x + 2`. We can't encode this
+     * exactly as-is in the type signature because Cryptol doesn't support
+     * negative numbers in types (`-m`). Instead, we do the following:
+     *      (m + 2)           : The minimum length of the original message and
+     *                        : the padding
+     *      (m + 2) /^ x      : The multiplier of `x` that determines the
+     *                        : ultimate length of the message + padding
+     * x * ((m + 2) /^ x)     : The total length of the message + padding
+     * x * ((m + 2) /^ x) - m : The total length of the padding alone
+     */
+    pad : {x, m} (fin x, fin m, x >= 1) => [x * ((m + 2) /^ x) - m]
+    pad = [1] # zero # [1]
+
+    /**
+     * The Keccak-p[b, nr] permutation.
+     * [FIPS-202] Section 3.3, Algorithm 7.
+     */
+    Keccak_p : [b] -> [b]
+    Keccak_p S = S' where
+        // The round transformation is defined in [FIPS-202] Section 3.3.
+        Rnd A ir = ι (χ (π (ρ_hardcoded (θ A)))) ir
+
+        // Step 1.
+        A0 = unflatten_noindex S
+        // Step 2.
+        // The round index `ir` is allowed to be negative, but Cryptol types
+        // must be non-negative. Thus we iterate over the number of rounds and
+        // compute the round index as a value, rather than a type.
+        As = [A0] # [ Rnd A ir where
+                ir = 12 + 2 * `ell - r
+            | A <- As
+            | r <- [nr, nr - 1 .. 1]]
+        // Step 3.
+        S' = flatten_noindex (As ! 0)
+
+    /**
+     * Keccak-f family of permutations.
+     *
+     * This specializes `Keccak-p` to the case where `nr = 12 + 2*ell`; we
+     * enforce this in the type constraint on this function.
+     * [FIPS-202] Section 3.4.
+     */
+    Keccak_f : (nr == 12 + 2 * ell) => [b] -> [b]
+    Keccak_f = Keccak_p
+
+/**
+ * See https://keccak.team/files/Keccak-reference-3.0.pdf, Section 1.2
+ * ```repl
+ * :prove unflatten_correct
+ * ```
+ */
+unflatten_correct : [12] -> [12] -> [12] -> [b] -> Bit
+property unflatten_correct x y z p =
+    x < 5 ==> y < 5 ==> z < (`w:[12]) ==>
+    p@((5*y + x)*`w + z) == unflatten p @ x @ y ! z
+
+/**
+ * Flatten and unflatten must be each other's inverses.
+ * ```repl
+ * :prove flatten_correct
+ * ```
+ */
+property flatten_correct s = unflatten (flatten s) == s

@@ -1,0 +1,524 @@
+/**
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ * @author David Lazar
+ * www.cryptol.net
+ *
+ * This provides the basic Simon block cipher, abstracted over the key length,
+ * plaintext size, number of rounds, and constant sequence.
+ *
+ * Simon is presented in two ways in the reference documentation.
+ * Firstly, it is presented as a mathematical function derived from a root key.
+ * Secondly, it is presented as an imperative algorithm.
+ * This specification prefers the former presentation, but encodes both.
+ *
+ * Test vectors for particular instances of this parameterized specification
+ * are located in a bespoke test file.
+ *
+ * References
+ * [SIMON]: Beaulieu, Shors, Smith, Treatman-Clark, Weeks, Wingers
+ *   The Simon and Speck Families of Lightweight Block Ciphers
+ *   19 June 2013
+ *   @see https://eprint.iacr.org/2013/404.pdf
+ */
+
+module Primitive::Symmetric::Cipher::Block::Simon::Specification where
+
+parameter
+
+  /*
+   * The Simon block cipher is parameterized by two integers `n` and `m`,
+   * a sequence `z_j`, and a number of rounds, `T`.
+   */
+
+  /**
+   * `n` is the word length in bits.
+   * A Simon block is two words.
+   */
+  type n : #
+
+  /**
+   * `m` is the number of `n`-bit words in a Simon key.
+   * `m` takes the value4 2, 3, or 4.
+   */
+  type m : #
+
+  /**
+   * This type contraint satifies Cryptol's type checker, and
+   * admits all valid parameterizations of Simon. It does not
+   * exclude all invalid parameterizations of Simon.
+   */
+  type constraint (fin n, fin m, n >= 4, m >= 2, m <= 4)
+
+  /**
+   * There are five possible constant sequences `z_j`.
+   */
+  type j : #
+  type constraint (j >= 0, j < 5)
+
+  /**
+   * `T` is the number of rounds.
+   * `T` may take on the values specified in Table 3.1 of [SIMON].
+   */
+  type T : #
+
+  /**
+   * This type constraint satifies Cryptol's type checker, but
+   * does not exclude invalid numbers of rounds.
+   */
+  type constraint (fin T, T > 4)
+
+/**
+ * The Simon encryption function.
+ * Described in Section 3.1 of [SIMON].
+ * Simon encryption is the composition of T round functions
+ * derived from the key schedule applied to the plaintext.
+ * Simon keys are length `m * n` bits for appropriate choices of `m` and `n`.
+ * Simon plaintexts are length `2 * n` bits for appropriate choice of `n`.
+ */
+encrypt : [m * n] -> [2 * n] -> [2 * n]
+encrypt key plaintext = ciphertext
+  where
+    Simon_k = composeMany Rks
+    // The Simon specification parses the key LSB first.
+    // Cryptol takes a MSB first convention, so the key is reversed.
+    Rks = map R (keySchedule (reverse (split key)))
+    ciphertext = join (Simon_k (split plaintext))
+
+/**
+ * The Simon decryption function. Simon decryption is the same as Simon
+ * encryption from a structural point of view, except that the inverse
+ * round function is used rather than the round function.
+ */
+decrypt : [m * n] -> [2 * n] -> [2 * n]
+decrypt key ciphertext = plaintext
+  where
+    Simon_k = composeMany (reverse Rks)
+    // The Simon specification parses the key LSB first.
+    // Cryptol takes a MSB first convention, so the key is reversed.
+    Rks = map R_Inv (keySchedule (reverse (split key)))
+    plaintext = join (Simon_k (split ciphertext))
+
+private
+
+  /**
+   * This property encodes the fact that Simon decryption is the inverse of
+   * Simon encryption.
+   *
+   * ```repl
+   * :check decryptInvertsEncrypt
+   * ```
+   */
+  property decryptInvertsEncrypt k pt = pt == decrypt k (encrypt k pt)
+
+  /**
+   * Simon is described in psuedocode.
+   *
+   * Reference: [SIMON] Figure 3.3.
+   */
+  encrypt' : [m * n] -> [2 * n] -> [2 * n]
+  encrypt' key plaintext = join (rounds ! 0)
+    where
+      [x, y] = split plaintext
+      ks     = keySchedule' (reverse (split key))
+      // there are T round keys
+      // So, the following list comprehension runs over i = 0..T-1
+      rounds = [[x, y]] # [R k p | k <- ks | p <- rounds]
+
+  /**
+   * Likewise, the decryption can be calculated in a more imperative fashion.
+   */
+  decrypt' : [m * n] -> [2 * n] -> [2 * n]
+  decrypt' key ciphertext = join (rounds ! 0)
+    where
+      [x, y] = split ciphertext
+      ks = keySchedule' (reverse (split key))
+      rounds = [[x, y]] # [R_Inv k ct | k <- (reverse ks) | ct <- rounds]
+
+  /**
+   * The two formulations of encryption are functionally equiavalent.
+   *
+   * ```repl
+   * :check encryptsEquivalent
+   * ```
+   */
+  property encryptsEquivalent k p = encrypt k p == encrypt' k p
+
+  /**
+   * The two formulations of decryption are functionally equiavalent.
+   *
+   * ```repl
+   * :check decryptsEquivalent
+   * ```
+   */
+  property decryptsEquivalent k p = decrypt k p == decrypt' k p
+
+  /**
+   * Left circular shift by `i` bits.
+   * `i` is chosen over `j`, which the specification uses, to avoid shadowing.
+   * Although this is built-in, we choose the name `S`
+   * since this notation is used in Section 3.1 of [SIMON].
+   */
+  S : {i} (fin i) => [n] -> [n]
+  S x = x <<< `i
+
+  /**
+   * Right circular shift by `i` bits.
+   * `i` is chosen over `j`, which the specification uses, to avoid shadowing.
+   * Although this is built-in, we choose the name `S_Inv`.
+   * This is chosen to avoid arithmetic strangeness with signed bitvectors.
+   */
+  S_Inv : {i} (fin i) => [n] -> [n]
+  S_Inv x = x >>> `i
+
+  /**
+   * The specification uses the notation `S^(-i)` to notate
+   * right circular shift by `i` bits, the inverse of left
+   * circular shift. This property verifies that
+   * `S` is the inverse of `S_Inv`.
+   *
+   * ```repl
+   * :prove SInvertible `{8}
+   * :prove SInvertible `{3}
+   * :prove SInvertible `{2}
+   * :prove SInvertible `{1}
+   * ```
+   */
+  SInvertible : {i} (fin i) => [n] -> Bit
+  property SInvertible x = S_Inv `{i} (S `{i} x) == x
+
+  /**
+   * The function `f` is a constituent function of the encryption and decryption
+   * round functions.
+   *
+   * Reference: [SIMON] Section 3.1.
+   */
+  f : [n] -> [n]
+  f x = (S `{1} x && S `{8} x) ^ S `{2} x
+
+  /**
+   * The Simon (encryption) round function is defined in Section 3.1 of [SIMON].
+   * It is defined on `n`-bit words, which can be thought of as "halves" of
+   * the plaintext block being processed.
+   * The round function is parameterized by the choice of round key, `k`.
+   */
+  R : [n] -> [2][n] -> [2][n]
+  R k [x, y] = [y ^ f x ^ k, x]
+
+  /**
+   * The Simon (decryption) round function is defined in Section 3.1 of [SIMON].
+   * It is defined on `n`-bit words, which can be thought of as "halves" of
+   * the ciphertext block being processed.
+   * The round function is parameterized by the choice of round key, `k`.
+   */
+  R_Inv : [n] -> [2][n] -> [2][n]
+  R_Inv k [x, y] = [y, x ^ f y ^ k]
+
+  /**
+   * This property encodes the fact that `R_Inv` is the inverse of `R`
+   * for corresponding choices of round key.
+   *
+   * ```repl
+   * :prove RInvertible
+   * ```
+   */
+  property RInvertible k x = x == R_Inv k (R k x)
+
+  /**
+   * `u` is a periodic sequence with period 31.
+   * `u` is used in the definition of the Simon key schedule, and
+   * is decribed in Section 3.2 of [SIMON].
+   */
+  u : [inf]
+  u = 0b1111101000100101011000011100110 # u
+
+  /**
+   * `v` is a periodic sequence with period 31
+   * `v` is used in the definition of the Simon key schedule, and
+   * is decribed in Section 3.2 of [SIMON].
+   */
+  v : [inf]
+  v = 0b1000111011111001001100001011010 # v
+
+  /**
+   * `w` is a periodic sequence with period 31
+   * `w` is used in the definition of the Simon key schedule, and
+   * is decribed in Section 3.2 of [SIMON].
+   */
+  w : [inf]
+  w = 0b1000010010110011111000110111010 # w
+
+  /**
+   * `t` is a periodic sequence with period 2.
+   *
+   * Reference: [SIMON] Section 3.2.
+   */
+  t : [inf]
+  t = 0b01 # t
+
+  /**
+   * The sequence `z0` is an alternative name of the sequence `u`.
+   *
+   * Reference: [SIMON] Section 3.2.
+   */
+  z0 = u
+
+  /**
+   * The sequence `z1` is an alternative name of the sequence `v`.
+   *
+   * Reference: [SIMON] Section 3.2.
+   */
+  z1 = v
+
+  /**
+   * The sequence `z2` is the bitwise XOR of `u` and `t`.
+   *
+   * Reference: [SIMON] Section 3.2.
+   */
+  z2 = u ^ t
+
+  /**
+   * The sequence `z3` is the bitwise XOR of `v` and `t`.
+   *
+   * Reference: [SIMON] Section 3.2.
+   */
+  z3 = v ^ t
+
+  /**
+   * The sequence `z4` is the bitwise XOR of `w` and `t`.
+   *
+   * Reference: [SIMON] Section 3.2.
+   */
+  z4 = w ^ t
+
+  /**
+   * Convert an infinite sequence of bits into an infinite sequence of `n`-bit
+   * vectors, where the `i`th vector has the same value as the `i`th bit.
+   *
+   * This does not appear explicitly in [SIMON]. Cryptol only supports bitwise
+   * XOR between bit vectors of the same length, but the round key formulae in
+   * [SIMON] computes the XOR of an individual bit from an infinite sequence
+   * with an n-bit word. We apply this function to the relevant infinite
+   * sequences to support the XOR.
+   */
+  extend : [inf] -> [inf][n]
+  extend s = map (zext `{n}) (split `{inf, 1} s)
+
+  /**
+   * The list of sequences `zj` with the zero-extension applied.
+   */
+  zjs = map extend [z0, z1, z2, z3, z4]
+
+  /**
+   * The particular sequence `zj` of the instance.
+   * These indices are the same as [SIMON].
+   */
+  zj = zjs@`j
+
+  /**
+   * `c` is a bitvector of length `n`.
+   * It's length is implied by the shift register diagrams
+   * in Figure 3.2 of [SIMON] and usage in the key schedule
+   * recursive formulae.
+   */
+  c : [n]
+  c = fromInteger (2 ^^ `n - 4)
+
+  /**
+   * `IS_Inv` is a function defined for convenience of this specification.
+   * The recursive formulae defining the key schedule include a
+   * quantity that is bitwise XORed with a right shift of itself.
+   * This is notated distributively in the original specification.
+   */
+  IS_Inv : [n] -> [n]
+  IS_Inv x = x ^ S_Inv `{1} x
+
+  /**
+   * The Simon key schedule is defined by recursively expanding
+   * the initial key material according to the formulae in Section 3.2
+   * of [SIMON]. There is a different formula depending on how many
+   * words, `m`, make up the key.
+   */
+  keySchedule : [m][n] -> [T][n]
+  keySchedule k0
+    | m == 2 => k where
+      k = k0 # [
+      c ^ zji ^ (k @ i) ^ IS_Inv (S_Inv `{3} (k @ (i+1)))
+      | i <- [0..T-m-1]
+      | zji <- zj
+      ]
+    | m == 3 => k where
+      k = k0 # [
+      c ^ zji ^ (k@i) ^ IS_Inv (S_Inv `{3} (k@(i+2)))
+      | i <- [0..T-m-1]
+      | zji <- zj
+      ]
+    | m == 4 => k where
+      k  = k0 # [
+      c ^ zji ^ (k@i) ^ IS_Inv (S_Inv `{3} (k@(i+3)) ^ (k@(i+1)))
+      | i <- [0..T-m-1]
+      | zji <- zj
+      ]
+
+  /**
+   * The Simon key schedule is described in pseudo-code in [SIMON].
+   * This formulation might be preferred by some implementers. It is
+   * included here for documentary purposes, as well as for property checking.
+   */
+  keySchedule' : [m][n] -> [T][n]
+  keySchedule' k0 = k
+    where
+      k = k0 # [ ki where
+                  tmp0 = k @ (i - 1) >>> 3
+                  tmp1 = if `m == 4 then tmp0 ^ k @ (i - 3) else tmp0
+                  tmp2 = tmp1 ^ tmp1 >>> 1
+                  ki = ~ k @ (i - `m) ^ tmp2 ^ z ^ 3
+                  z = zj @ ((i - `m) % 62)
+            | i <- [m .. T - 1]
+            ]
+
+  /**
+   * This property encodes the fact that the key schedule is injective.
+   * That is, different round keys are produced for every choice of key.
+   *
+   * ```repl
+   * :prove keyScheduleInjective
+   * ```
+   */
+  property keyScheduleInjective k p = k != p ==> keySchedule k != keySchedule p
+
+  /**
+   * This property encodes the fact that the psuedocode formulation of the
+   * key schedule is functionally equivalent to formulaic definition.
+   *
+   * ```repl
+   * :check keySchedulesEquivalent
+   * ```
+   */
+  property keySchedulesEquivalent k = keySchedule k == keySchedule' k
+
+  /**
+   * Composition of functions `g` and `h`
+   * specialized to functions from `(a -> a)`.
+   */
+  compose : {a} () => (a -> a) -> (a -> a) -> a -> a
+  compose g h = \x -> h (g x)
+
+  /**
+   * Composition of many functions from `(a -> a)`
+   */
+  composeMany : {nf, a} (fin n) => [nf](a -> a) -> a -> a
+  composeMany fcns
+    | nf == 0 => \x -> x
+    | nf == 1 => fcns@0
+    | nf == 2 => compose (fcns@0) (fcns@1)
+    | nf > 2  => compose (fcns@0) (composeMany (drop `{1} fcns))
+
+
+  /**
+   * Multiplication of a row vector by a matrix
+   * This is not defined in the Simon specification.
+   * We take the straightforward approach of treating
+   * this as a linear combination of a subset of the
+   * matrix rows depending on which bits of the row vector are set.
+   */
+  linearMap : {rows, cols} (fin rows, fin cols) =>
+    [rows][cols] -> [rows] -> [cols]
+  linearMap matrix vector = foldl (^) zero matrix'
+    where
+      matrix' = map (\(i, vi) -> if i then vi else zero) (zip vector matrix)
+
+  /**
+   * A matrix form of a shift register
+   * that generates the sequence `u`
+   * if the initial fill `0b00001` is used.
+   */
+  U = [ 0b01000
+      , 0b00100
+      , 0b10010
+      , 0b00001
+      , 0b10001
+      ]
+
+  /**
+   * A matrix form of a shift register
+   * that generates the sequence `v`
+   * if the initial fill `0b00001` is used.
+   */
+  V = [ 0b01100
+      , 0b00100
+      , 0b10010
+      , 0b00001
+      , 0b10000
+      ]
+
+  /**
+   * A matrix form of a shift register
+   * that generates the sequence `w`
+   * if the initial fill `0b00001` is used.
+   */
+  W = [ 0b01000
+      , 0b00100
+      , 0b10010
+      , 0b00001
+      , 0b10000
+      ]
+
+  /**
+   * A function that treats row vector - matrix multiplication
+   * as a shift register, generating the sequence of shift
+   * register outputs for a given initial fill.
+   */
+  seqn : [5][5] -> [inf]
+  seqn matrix = map (\x -> x@4) steps
+    where
+      steps     = iterate (\x -> linearMap matrix x) 0b00001
+
+  /**
+   * A formal definition of the sequence `u`,
+   * given in Section 3.2 of [SIMON].
+   */
+  u' = seqn U
+
+  /**
+   * A formal definition of the sequence `v`,
+   * given in Section 3.2 of [SIMON].
+   */
+  v' = seqn V
+
+  /**
+   * A formal definition of the sequence `w`,
+   * given in Section 3.2 of [SIMON].
+   */
+  w' = seqn W
+
+  /**
+   * A property encoding that the formal and informal definitions of `u`
+   * are equivalent.
+   *
+   * ```repl
+   * :check uDefinitionEquivalence
+   * ```
+   */
+  property uDefinitionEquivalence = take `{100} u == take `{100} u'
+
+  /**
+   * A property encoding that the formal and informal definitions of `v`
+   * are equivalent.
+   *
+   * ```repl
+   * :check vDefinitionEquivalence
+   * ```
+   */
+  property vDefinitionEquivalence = take `{100} v == take `{100} v'
+
+  /**
+   * A property encoding that the formal and informal definitions of `w`
+   * are equivalent.
+   *
+   * ```repl
+   * :check wDefinitionEquivalence
+   * ```
+   */
+  property wDefinitionEquivalence = take `{100} w == take `{100} w'

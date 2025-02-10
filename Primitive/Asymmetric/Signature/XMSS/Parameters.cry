@@ -34,7 +34,7 @@ H : [n][8] -> [2 * n][8] -> [n][8]
  * functions used to instantiate it may limit their input to some maximum
  * width.
  */
-type MaxMessageWidth : #
+type MessageUpperBound: #
 
 /**
  * Width of the non-message bits passed to the hash function in `H_msg`.
@@ -54,5 +54,5 @@ type PaddingWidth : #
  * have a maximum width for messages. The type constraint enforces this by
  * limiting the length of the hashed message to the maximum width.
  */
-H_msg : {m} (fin m, (PaddingWidth + width (8 * m)) < MaxMessageWidth)
+H_msg : {m} (fin m, (PaddingWidth + width (8 * m)) < MessageUpperBound)
     => [3 * n][8] -> [m][8] -> [n][8]

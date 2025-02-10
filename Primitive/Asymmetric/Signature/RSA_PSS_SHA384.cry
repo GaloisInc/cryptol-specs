@@ -6,8 +6,9 @@
 
 module Primitive::Asymmetric::Signature::RSA_PSS_SHA384 = Primitive::Asymmetric::Signature::RSA_PSS where
 
-import Primitive::Keyless::Hash::SHA2Imperative::SHA384
+import Primitive::Keyless::Hash::SHA2::Instantiations::SHA384 as SHA384
 
 type hLen = 48
-hash = SHAImp
+hash m = join (SHA384::hashBytes m)
+type MessageUpperBound = SHA384::MessageUpperBound
 

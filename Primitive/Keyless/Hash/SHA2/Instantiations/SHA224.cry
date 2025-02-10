@@ -1,0 +1,26 @@
+/**
+ * Instantiation of the secure hash algorithm SHA-224 as specified in
+ * [FIPS-180-4], Section 5.3.3.
+ *
+ * @copyright Galois, Inc
+ * @author Marcella Hastings <marcella@galois.com>
+ *
+ * [FIPS-180-4]: National Institute of Standards and Technology. Secure Hash
+ *     Standard (SHS). (Department of Commerce, Washington, D.C.), Federal
+ *     Information Processing Standards Publication (FIPS) NIST FIPS 180-4.
+ *     August 2015.
+ *     @see https://doi.org/10.6028/NIST.FIPS.180-4
+ */
+module Primitive::Keyless::Hash::SHA2::Instantiations::SHA224 =
+    Primitive::Keyless::Hash::SHA2::Specification
+where
+    type w = 32
+
+    type DigestSize = 224
+
+    // Per [FIPS-180-4], these are the first 32 bits of the fractional
+    // parts of the square roots of the first 8 prime numbers.
+    H0 = [
+        0xc1059ed8, 0x367cd507, 0x3070dd17, 0xf70e5939,
+        0xffc00b31, 0x68581511, 0x64f98fa7, 0xbefa4fa4
+    ]

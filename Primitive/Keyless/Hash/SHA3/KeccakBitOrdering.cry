@@ -1,0 +1,315 @@
+/**
+ * Functions for converting bit string representations used in Keccak.
+ *
+ * This has methods for converting between the standard bit ordering in Cryptol
+ * (big endian, or most significant bit first (MSB)) and the bit ordering
+ * used in Keccak (bytes in MSB order, but the bits in each byte are in
+ * least significant bit first (LSB) order).
+ *
+ * @copyright Galois, Inc.
+ * @author Ajay Kumar Eeralla
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Keyless::Hash::SHA3::KeccakBitOrdering where
+/**
+ * Deprecated!!
+ * Splits a list of bits into bytes, using little-endian bit order.
+ */
+toBytes : {n} (fin n) => [8*n] -> [n][8]
+toBytes s = reverse (split (reverse s))
+
+/**
+ * Deprecated!!
+ * Joins a list of bytes into a list of bits, using little-endian bit order.
+ */
+fromBytes : {n} (fin n) => [n][8] -> [8*n]
+fromBytes bs = reverse (join (reverse bs))
+
+/**
+ * This converts between a bit vector in MSB order and a bit vector in SHA-3
+ * bit ordering (the bytes are in MSB order; the bits in each byte are in LSB
+ * order).
+ *
+ * For arbitrary-length strings, the conversion is symmetric. This can be used
+ * to convert from SHA-3 strings into MSB strings, or from MSB strings into
+ * SHA-3 strings.
+ *
+ * This function does not have an explicit equivalent in the [FIPS-202]. It
+ * differs from the conversion functions in Appendix B.1 in several ways:
+ * - The h2b and b2h functions expect the non-SHA-3 bit vector to be a
+ *   hexadecimal string with an even number of digits. This function
+ *   can handle a non-SHA-3 bit vector of any length (including infinite
+ *   length).
+ * - The h2b and b2h functions take a separate parameter `n` specifying the
+ *   "actual" length of the non-SHA-3 bit vector. `h2b` truncates the SHA-3 bit
+ *   vector to exactly `n` bits; `b2h` pads the non-SHA-3 bit vector to a
+ *   multiple of 8 bits. This function assumes the input bit vector
+ *   has no padding and that the output bit vector is exactly the same length
+ *   as the input bit vector.
+ * - `b2h` and `h2b` require finite input. This function allows infinite input.
+ *   This isn't relevant for `h2b` since all the SHA3 functions take finite
+ *   input, but it allows callers of the extendable output SHAKE functions to
+ *   interact lazily with an infinite stream instead of specifying the output
+ *   length at call time.
+ *
+ * [FIPS-202] does not specify when these conversion functions are expected to
+ * be used. The CAVP test vectors provided by NIST use the format consumed by
+ * `h2b` and `b2h` of hexadecimal strings with an even number of digits.
+ * However, we anticipate that many applications will produce exact-length
+ * messages to use with SHA-3 functions (e.g. they will not pad their inputs
+ * to a multiple of 8 bits).
+ *
+ * Sources:
+ * A blog post with some references to other versions of the spec, explaining
+ * the overall bit ordering scheme:
+ * @see https://cryptologie.net/article/387/byte-ordering-and-bit-numbering-in-keccak-and-sha-3/
+ * The CAVP test vectors from NIST:
+ * @see https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing#sha3vsha3vss
+ * The CSAG examples and intermediate values from NIST:
+ * @see https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values#Hashing
+ */
+reverseBitOrdering : {m} [m] -> [m]
+reverseBitOrdering msg
+    | m == inf => join (map reverse (groupBy`{8} msg))
+    | fin m => (flipped_full_bytes # flipped_remainder) where
+        // This is number of bits in the set of "complete" bytes in the input
+        // There are `m % 8` bits remaining.
+        type Bytes = 8 * (m / 8)
+        flipped_full_bytes = join (map reverse (groupBy`{each=8, parts=m / 8} (take`{Bytes} msg)))
+        flipped_remainder = reverse (drop`{Bytes} msg)
+
+/**
+ * The conversion between SHA-3 strings and MSB strings is its own inverse.
+ * ```repl
+ * :prove reverseBitOrderingInvolutes`{100}
+ * ```
+ */
+reverseBitOrderingInvolutes : {m} (fin m) => [m] -> Bit
+property reverseBitOrderingInvolutes msg = reReverse == msg where
+    reReverse = reverseBitOrdering (reverseBitOrdering msg)
+
+/**
+ * This computes the truncation step from `h2b`.
+ *
+ * This is designed to be used in applications where the input for a SHA-3
+ * function is provided in the even-number-of-hex-digits format described in
+ * [FIPS-202] Appendix B.1.
+ */
+truncate : {n, m} (fin m, fin n, m >= n, m % (2 * HexDigit) == 0) => [m] -> [n]
+truncate msg = reverseBitOrdering (take (reverseBitOrdering msg))
+
+/**
+ * The `reverseBitOrdering` function is the same as `h2b` when:
+ * - there's no padding on the message (e.g. in `h2b`, the output length `n` is
+ *   the same as the input length `2 * m * HexDigit`); and
+ * - the input length is finite.
+ *
+ * ```repl
+ * :prove reverseMatchesh2b`{10}
+ * :prove reverseMatchesh2b`{100}
+ * ```
+ */
+reverseMatchesh2b : {m} (fin m, m > 0) => [2 * m * HexDigit] -> Bool
+property reverseMatchesh2b msg = h2b msg == reverseBitOrdering msg
+
+/**
+ * If there is padding on the message passed to `h2b`, truncating that input
+ * and passing to `reverseBitOrdering` is the same as passing directly to `h2b`.
+ *
+ * ```repl
+ * :prove truncateAndReverseMatchesh2b`{3, 17}
+ * :prove truncateAndReverseMatchesh2b`{3, 18}
+ * :prove truncateAndReverseMatchesh2b`{3, 19}
+ * :prove truncateAndReverseMatchesh2b`{3, 20}
+ * :prove truncateAndReverseMatchesh2b`{3, 21}
+ * :prove truncateAndReverseMatchesh2b`{3, 22}
+ * :prove truncateAndReverseMatchesh2b`{3, 23}
+ * :prove truncateAndReverseMatchesh2b`{3, 24}
+ */
+truncateAndReverseMatchesh2b : {m, n} (fin m, m > 0, n > 0, 2 * HexDigit * m >= n) => [2 * m * HexDigit] -> Bool
+property truncateAndReverseMatchesh2b msg = h2b_result == rt_result where
+    h2b_result = h2b`{n} msg
+    rt_result = reverseBitOrdering (truncate`{n} msg)
+
+/**
+ * The `reverseBitOrdering` function is the same as `b2h` if:
+ * - there's no padding needed on the message (e.g. the message length `n`
+ *   divides evenly by 8 (an even number of hex digits)); and
+ * - the output length is finite.
+ * ```repl
+ * :prove reverseMatchesb2h`{10}
+ * :prove reverseMatchesb2h`{100}
+ * ```
+ */
+reverseMatchesb2h : {n} (fin n, n > 0) => [2 * n * HexDigit] -> Bool
+reverseMatchesb2h msg = b2h msg == reverseBitOrdering msg
+
+/**
+ * If there is padding needed for the message produced by `b2h`, calling the
+ * `truncate` function on that output is the same as calling
+ * `reverseBitOrdering`.
+ *
+ * ```repl
+ * :prove reverseAndTruncateMatchesb2h`{17}
+ * :prove reverseAndTruncateMatchesb2h`{18}
+ * :prove reverseAndTruncateMatchesb2h`{19}
+ * :prove reverseAndTruncateMatchesb2h`{20}
+ * :prove reverseAndTruncateMatchesb2h`{21}
+ * :prove reverseAndTruncateMatchesb2h`{22}
+ * :prove reverseAndTruncateMatchesb2h`{23}
+ * :prove reverseAndTruncateMatchesb2h`{24}
+ */
+reverseAndTruncateMatchesb2h : {n} (fin n, n > 0) => [n] -> Bool
+property reverseAndTruncateMatchesb2h bits = b2h_result == rev_result where
+    b2h_result = truncate`{n} (b2h bits)
+    rev_result = reverseBitOrdering bits
+
+/*
+ * A hex digit is represented in Cryptol as a 4-bit vector.
+ */
+type HexDigit = 4
+
+/**
+ * Converts a hexadecimal string with an even number of digits into a SHA-3
+ * string.
+ *
+ * The bit ordering expected by Keccak has bytes in MSB order, and the bits in
+ * each byte in LSB order. (Cryptol's default interprets both bits and bytes
+ * in MSB order).
+ *
+ * [FIPS-202] Appendix B.1, Algorithm 10.
+ */
+h2b: {n, m} (fin m, m > 0, n > 0, n <= 8 * m) => [2 * m * HexDigit] -> [n]
+h2b msg = S where
+    // Step 1.
+    H = groupBy`{HexDigit} msg
+    // Type conversion: expand each 4-bit digit into an 8-bit vector to support
+    // subsequent operations.
+    H8 = map zext H : [2 * m][8]
+    // Step 2a.
+    hs = [16 * H8 @ (2 * i) + H8 @ (2 * i + 1) | i <- [0..m-1]]
+    // Step 2b.
+    // Cryptol defaults to MSB order; this step arranges the bits in LSB order.
+    bs = map reverse hs
+    // Step 3.
+    T = join bs
+    // Step 4.
+    S = take`{n} T
+
+/**
+ * This is the example in [FIPS-202] Appendix B, Table 5.
+ * ```repl
+ * :prove h2bExampleWorks
+ * ```
+ */
+property h2bExampleWorks = h2b`{14} H == S where
+    H = 0xA32E
+    S = 0b11000101011101
+
+/**
+ * Converts a SHA-3 string into a hexadecimal string with an even number of
+ * digits.
+ *
+ * [FIPS-202] Appendix B.1, Algorithm 11.
+ *
+ * Note that this is not a particularly efficient way to do this in Cryptol.
+ * Cryptol does not distinguish between bit vectors and hexadecimal strings,
+ * so some of the transformations in this function are a little arbitrary.
+ */
+b2h : {n} (fin n, n > 0) => [n] -> [2 * (n /^ 8) * HexDigit]
+b2h S = H where
+    // Step 1: we use Cryptol's `n syntax to get the value of the type.
+    // Step 2. See `zero_length_is_correct` for an explanation of the type.
+    T = S # (zero : [(8 - (n % 8)) % 8]) // Equivalently, -n % 8.
+    type m = n /^ 8
+    // Step 3.
+    b = [[ T@(8 * i + j) | j <- [0..7]] | i <- [0..m-1]]
+    // Step 4a.
+    h = [reverse bs | bs <- b]
+    // Step 4b.
+    Hs = [split`{2, HexDigit} hi | hi <- h]
+    H = join (join Hs)
+
+/**
+ * Helper property to prove the equivalence from b2h is correct.
+ * This exists because we can't use negative numbers in types.
+ * ```repl
+ * :prove zero_length_is_correct
+ * ```
+ */
+zero_length_is_correct : Integer -> Bool
+property zero_length_is_correct n = (-n) % 8 == (8 - (n % 8)) % 8
+
+/**
+ * Prove these things invert each other for inputs that "fill" the hex string.
+ * ```repl
+ * :prove h2bAndb2hInvert`{1}
+ * :prove h2bAndb2hInvert`{10}
+ * :prove h2bAndb2hInvert`{100}
+ * :prove h2bAndb2hInvert`{1000}
+ * ```
+ */
+h2bAndb2hInvert : {m} (fin m, m > 0) => [2 * m * HexDigit] -> Bool
+property h2bAndb2hInvert msg = b2h (h2b`{2 * m * HexDigit} msg) == msg
+
+/**
+ * Prove these things invert each other for inputs that are padded.
+ * In fact, they're not guaranteed to invert each other because there's no
+ * standard for the padding on h2b -- the "extra" bytes that are between `n`
+ * and `8m` get truncated in h2b, and are replaced specifically with 0s in b2h.
+ * So it's possible to have different hexadecimal strings that parse as the
+ * same SHA-3 strings.
+ *
+ * That said, it still seems useful to demonstrate that if the padding is all
+ * zeros, the input itself is still preserved between the two functions.
+ * So, we take inputs of a "short" length (e.g. a length that is not divisible
+ * by 8), then pad them to the correct length (`hexMsg`), then convert to bits
+ * and back.
+ *
+ * We pad the strings using our `reverseBitOrdering` function; the padding goes
+ * to the "inside" of the last byte. This matches the convention in the CAVP
+ * test vectors. E.g. if `-` is the actual message and `P` is the padding, a
+ * vector with 3 bits of padding looks like:
+ * `-------- -------- -------- PPP-----`
+ *
+ * The type parameters are:
+ * - `m`: the number of pairs of hex digits in the input string
+ * - `n`: the number of actual bits in the input string
+ *
+ * So, there are 8 potential padding lengths (0 through 7 bits of padding).
+ * Here's a set of tests checking all the padding lengths for a string of
+ * 3 pairs of hex digits; it will work for any number of pairs.
+ * ```repl
+ * type pairs = 3
+ * :prove h2bAndb2hInvertForShortStrings`{pairs, 8 * pairs - 7}
+ * :prove h2bAndb2hInvertForShortStrings`{pairs, 8 * pairs - 6}
+ * :prove h2bAndb2hInvertForShortStrings`{pairs, 8 * pairs - 5}
+ * :prove h2bAndb2hInvertForShortStrings`{pairs, 8 * pairs - 4}
+ * :prove h2bAndb2hInvertForShortStrings`{pairs, 8 * pairs - 3}
+ * :prove h2bAndb2hInvertForShortStrings`{pairs, 8 * pairs - 2}
+ * :prove h2bAndb2hInvertForShortStrings`{pairs, 8 * pairs - 1}
+ * :prove h2bAndb2hInvertForShortStrings`{pairs, 8 * pairs - 0}
+ * ```
+ */
+h2bAndb2hInvertForShortStrings : {m, n} (fin m, m > 0, n > 0, n /^ (2 * HexDigit) == m) => [n] -> Bool
+property h2bAndb2hInvertForShortStrings msg = b2h (h2b`{n} hexMsg) == hexMsg where
+    hexMsg = reverseBitOrdering ((reverseBitOrdering msg) # zero) : [2 * m * HexDigit]
+
+/**
+ * This is the arguably simpler version of `h2bAndb2hInvertForShortStrings`
+ * where we start on the bits side instead of the hex side...
+ *
+ * ```repl
+ * type pairs = 3
+ * :prove b2hAndh2bInvert`{8 * pairs - 7}
+ * :prove b2hAndh2bInvert`{8 * pairs - 6}
+ * :prove b2hAndh2bInvert`{8 * pairs - 5}
+ * :prove b2hAndh2bInvert`{8 * pairs - 4}
+ * :prove b2hAndh2bInvert`{8 * pairs - 3}
+ * :prove b2hAndh2bInvert`{8 * pairs - 2}
+ * :prove b2hAndh2bInvert`{8 * pairs - 1}
+ * :prove b2hAndh2bInvert`{8 * pairs - 0}
+ * ```
+ */
+b2hAndh2bInvert: {n} (fin n, n > 0) => [n] -> Bool
+property b2hAndh2bInvert msg = h2b (b2h msg) == msg

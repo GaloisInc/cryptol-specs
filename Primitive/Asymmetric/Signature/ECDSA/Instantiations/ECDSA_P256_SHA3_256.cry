@@ -1,0 +1,11 @@
+/*
+ * Instantiate ECDSA with curve P-256 and SHA3-256.
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P256_SHA3_256 =
+    Primitive::Asymmetric::Signature::ECDSA::Specification {
+        EC = Common::EC::PrimeField::Instantiations::P256,
+        Hash = Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_256
+    }

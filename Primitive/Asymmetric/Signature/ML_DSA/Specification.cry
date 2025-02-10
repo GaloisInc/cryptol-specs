@@ -1,0 +1,1525 @@
+/**
+ * ML-DSA (CRYSTALS-Dilithium) signature scheme components.
+ *
+ * This provides an algorithm for digital signatures with non-repudiation,
+ * designed to be secure against an adversary with a large-scale quantum
+ * computer.
+ *
+ * This executable specification matches the final version of [FIPS-204].
+ * This file _excludes_ the external functions in Section 5.
+ *
+ * References:
+ * [FIPS-204]: National Institute of Standards and Technology. Module-Lattice-
+ *     Based Digital Signature Standard. (Department of Commerce, Washington,
+ *     D.C.), Federal Information Processing Standards Publication (FIPS) NIST
+ *     FIPS 204. August 2024.
+ *     @see https://doi.org/10.6028/NIST.FIPS.204
+ * [NTT-Guide]: Ardianto Satriawan, Rella Mareta, and Hanho Lee. A Complete
+ *     Beginner Guide to the Number Theoretic Transform (NTT). Cryptology
+ *     ePrint Archive. 2024.
+ *     @see https://eprint.iacr.org/2024/585.pdf
+ *
+ * @copyright Galois Inc
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Asymmetric::Signature::ML_DSA::Specification where
+
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE128 as SHAKE128
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE256 as SHAKE256
+
+/**
+ * The set {0, 1, ..., 255} of integers represented by a byte, denoted 𝔹 in
+ * the spec.
+ * [FIPS-204] Section 2.3, "𝔹".
+ */
+type Byte = [8]
+
+/**
+ * The `bitlen` function defined in the spec is equivalent to the Cryptol
+ * built-in `width` function on types. We use `width` throughout this
+ * executable spec so that we can operate over types.
+ * [FIPS-204] Section 2.3, "bitlen a".
+ * ```repl
+ * :prove bitlenIsWidth
+ * ```
+ */
+property bitlenIsWidth = (`(width 32) == 6) && (`(width 31) == 5)
+
+/**
+ * Ring defined as the product of 256 elements in `Z q`, used for NTT.
+ * [FIPS-204] Section 2.3 and Section 2.4.1.
+ */
+type Tq = [256](Z q)
+
+/**
+ * Ring of single-variable polynomials over the integers mod `X^256 + 1`.
+ * [FIPS-204] Section 2.3 and Section 2.4.1.
+ *
+ * The `i`th element of this list represents the coefficient for the degree-`i`
+ * term.
+ */
+type R = [256]Integer
+
+/**
+ * The ring of single-variable polynomials over the integers mod 2, modulo
+ * `X^256 + 1`.
+ * [FIPS-204] Section 2.3 and Section 2.4.1.
+ *
+ * We represent individual elements in `ℤ_2` as bits, so this is just a bit
+ * array.
+ */
+type R2 = [256]
+
+/**
+ * The ring of single-variable polynomials over the integers mod `q`, modulo
+ * `X^256 + 1`.
+ * [FIPS-204] Section 2.3 and Section 2.4.1.
+ */
+type Rq = [256](Z q)
+
+/**
+ * Compute the centered-mod function (denoted `mod±` in the spec).
+ * [FIPS-204] Section 2.3, "mod±".
+ */
+modPlusMinus : {α} (fin α) => Z q -> Integer
+modPlusMinus m = m' where
+    m_int = (fromZ m) % `α
+    m' = if m_int > (`α / 2) then m_int - `α
+        else m_int
+
+/**
+ * The `mod±` function satisfies the functionality described in the spec.
+ * [FIPS-204] Section 2.3, "mod±".
+ *
+ * The lower bound computes `−⌈𝛼/2⌉` by simplifying the ceiling division
+ * equation `⌈a / b⌉ = (a + b - 1) / b`.
+ *
+ * The parameters chosen here are all the values of `α` used in the spec.
+ * ```repl
+ * :prove modPlusMinusWorks`{2^^d}
+ * :prove modPlusMinusWorks`{q}
+ * :prove modPlusMinusWorks`{2 * γ2}
+ * ```
+ */
+modPlusMinusWorks : {α} (fin α) => Z q -> Bit
+property modPlusMinusWorks m = inRange && congruent where
+    m' = modPlusMinus`{α} m
+    lower_bound = - ((`α + 1) / 2)
+    inRange = (lower_bound < m') && (m' <= (`α / 2))
+    congruent = ((fromZ m) % `α) == (m' % `α)
+
+/**
+ * Compute the infinity norm over a list of elements in `Rq`.
+ * [FIPS-204] Section 2.3, "‖⋅‖∞".
+ */
+infNormRq : {m} (fin m) => [m]Rq -> Integer
+infNormRq w = maxList [ maxList [ abs (modPlusMinus`{q} wij)
+    | wij <- wi]
+    | wi <- w]
+
+/**
+ * Compute the infinity norm over a list of elements in `R`.
+ * [FIPS-204] Section 2.3, "‖⋅‖∞".
+ */
+infNormR : {m} (fin m) => [m]R -> Integer
+infNormR w = maxList [ maxList [ abs wij | wij <- wi] | wi <- w]
+
+/**
+ * Typecasts elements in `R` to `Rq` by taking the unique congruence class
+ * modulo `q` tht contains each coefficient.
+ * [FIPS-204] Section 2.4.1.
+ */
+castToRq : {m} (fin m) => [m]R -> [m]Rq
+castToRq v = [map fromInteger vi | vi <- v]
+
+private
+    /**
+     * Compute the max of a list of non-negative elements, as in
+     * [FIPS-204] Section 2.3, "‖⋅‖∞".
+     */
+    maxList : {n, a} (fin n, Literal 0 a, Cmp a) => [n]a -> a
+    maxList list = foldl max 0 list
+
+/**
+ * Apply `NTT` and `NTTInv` entry-wise over a vector of polynomials.
+ * [FIPS-204] Section 2.5.
+ *
+ * The spec overloads the names `NTT` and `NTTInv` for both the single
+ * application to a polynomial in `Rq` and the vector application to every
+ * entry in a vector. Since Cryptol does not support user-defined overloaded
+ * names, we define the following functions.
+ */
+NTT_Vec = map NTT
+NTTInv_Vec = map NTTInv
+
+/**
+ * Wrapper function around SHAKE256, specifying the length `l` in bytes.
+ * [FIPS-204] Section 3.7.
+ *
+ * The spec also defines a 3-part API for interacting with `H` (`Init`,
+ * `Absorb`, `Squeeze`); we simulate this by generating an infinite output
+ * and lazily taking things from it for each call to `Squeeze`, as described
+ * in the same section.
+ */
+H : {l, m} (fin m) => [m][8] -> [l][8]
+H str = SHAKE256::xofBytes`{8 * l} str
+
+/**
+ * Wrapper function around SHAKE256 that takes bit strings as input.
+ * [FIPS-204] Section 3.7.
+ *
+ *
+ */
+HBits : {l, m} (fin m) => [m] -> [l][8]
+HBits str = split (SHAKE256::xof`{8 * l} (str))
+
+/**
+ * Wrapper function around SHAKE128, specifying the length `l` in bytes.
+ * [FIPS-204] Section 3.7.
+ *
+ * The spec also defines a 3-part API for interacting with `G` (`Init`,
+ * `Absorb`, `Squeeze`); we simulate this by generating an infinite output
+ * and lazily taking things from it for each call to `Squeeze`, as described
+ * in the same section.
+ */
+G : {l, m} (fin m) => [m][8] -> [l][8]
+G str = SHAKE128::xofBytes`{8 * l} str
+
+// [FIPS-204] Section 4 is largely defined in this interface.
+import interface Primitive::Asymmetric::Signature::ML_DSA::Parameters
+
+/**
+ * A 512th root of unity in `Z_q`.
+ * [FIPS-204] Section 4, Table 1.
+ */
+ζ : Z q
+ζ = 1753
+
+/**
+ * Number of dropped bits from `t` (this compresses the public key for
+ * a performance optimization).
+ * [FIPS-204] Section 4, Table 1.
+ */
+type d = 13
+
+/**
+ * Allowable error range for signature components. In signing, this is used to
+ * determine if a candidate signature is valid.
+ * [FIPS-204] Section 4, Table 1.
+ */
+β = `(η * τ) : Integer
+
+/**
+ * Public key for the ML-DSA scheme.
+ * [FIPS-204] Section 5.1, Algorithm 1 (and throughout).
+ */
+type PublicKey = [32 + 32 * k * (width (q - 1) - d)]Byte
+
+/**
+ * Private key for the ML-DSA scheme.
+ * [FIPS-204] Section 5.1, Algorithm 1 (and throughout).
+ */
+type PrivateKey = [32 + 32 + 64 + 32 * ((k + ell) * width (2 * η) + d * k)]Byte
+
+/**
+ * Signature generated by the ML-DSA scheme.
+ * [FIPS-204] Section 5.2, Algorithm 2 (and throughout).
+ */
+type Signature = [λ / 4 + ell * 32 * (1 + width (γ1 - 1)) + ω + k]Byte
+
+/**
+ * Generate a public-private key pair from a seed.
+ * [FIPS-204] Section 6.1, Algorithm 6.
+ *
+ * Warning: This interface must not be made available to applications (other
+ * than for testing purposes)! Implementations must manually verify that this
+ * interface is not public.
+ * The randomness `ξ` passed to this function should be generated by a
+ * cryptographic module.
+ */
+KeyGen_internal : [32]Byte -> (PublicKey, PrivateKey)
+KeyGen_internal ξ = (pk, sk) where
+    // Step 1.
+    (ρ # ρ' # K) = H`{128} (ξ # IntegerToBytes`{1} `k # IntegerToBytes`{1} `ell)
+
+    // Step 3.
+    A_hat = ExpandA ρ
+    // Step 4.
+    (s1, s2) = ExpandS ρ'
+
+    // Explicitly typecast vectors in `R` to `Rq`.
+    s1' = castToRq s1
+    s2' = castToRq s2
+
+    // Step 5.
+    t = NTTInv_Vec (A_hat ∘∘ NTT_Vec s1') + s2'
+    // Step 6.
+    (t1, t0) = Power2Round t
+
+    // Step 8.
+    pk = pkEncode ρ t1
+    // Step 9.
+    tr = H`{64} pk
+    // Step 10.
+    sk = skEncode ρ K tr s1 s2 t0
+
+
+/**
+ * Deterministic algorithm to generate a signature for a formatted message `M'`.
+ * [FIPS-204] Section 6.2, Algorithm 7.
+ *
+ * Warning: This interface must not be made available to applications (other
+ * than for testing purposes)! Implementations must manually verify that this
+ * interface is not public.
+ * The randomness `rnd` passed to this function should be generated by a
+ * cryptographic module.
+ */
+Sign_internal : {m} (fin m) => PrivateKey -> [m] -> [32]Byte -> Signature
+Sign_internal sk M' rnd = σ where
+    // Step 1.
+    (ρ, K, tr, s1, s2, t0) = skDecode sk
+
+    // Steps 2 - 5.
+    s1_hat = NTT_Vec (castToRq s1)
+    s2_hat = NTT_Vec (castToRq s2)
+    t0_hat = NTT_Vec (castToRq t0)
+    A_hat = ExpandA ρ
+
+    // Step 6. We use `join` instead of `BytesToBits`, which produces the same
+    // byte string, but with the bits in each byte reversed. I think we have to
+    // do this to support the call to `HBits`, which expects the bit-order and
+    // byte-order to be the same.
+    μ = HBits`{64} (join tr # M')
+
+    // Step 7.
+    ρ''= H`{64} (K # rnd # μ)
+
+    // Steps 10 - 32. The rejection sampling loop in the spec is implemented
+    // here using recursion.
+    rejection_sample: Integer -> ([λ / 4]Byte, ([ell]Rq, [k]R2))
+    rejection_sample κ = case maybe_zh of
+            Some zh -> (c_til, zh)
+            None -> rejection_sample (κ + `ell)
+        where
+            y = castToRq (ExpandMask ρ'' κ)
+            w = NTTInv_Vec (A_hat ∘∘ (NTT_Vec y))
+            w1 = HighBits w
+            c_til = H`{λ / 4} (μ # w1Encode w1)
+            [c] = castToRq [(SampleInBall c_til)]
+            c_hat = NTT c
+            cs1 = NTTInv_Vec (c_hat ∘ s1_hat)
+            cs2 = NTTInv_Vec (c_hat ∘ s2_hat)
+            z = y + cs1
+            r0 = LowBits (w - cs2)
+            maybe_zh = if (infNormRq z >= `γ1 - β) || (infNormR r0 >= `γ2 - β)
+                then None
+                else maybe_zh' where
+                    ct0 = NTTInv_Vec (c_hat ∘ t0_hat)
+                    h = MakeHint (-ct0) (w - cs2 + ct0)
+                    maybe_zh' =
+                        if (infNormRq ct0 >= `γ2) || (numberOf1sInh > `ω)
+                        then None
+                        else Some (z, h)
+
+                    // Compute the number of 1s in the hint by converting each
+                    // bit to an integer and summing them.
+                    numberOf1sInh = sum [if b then 1 else 0 | b <- join h]
+
+    // Step 8 - 32.
+    (c_tilFinal, (zFinal, hFinal)) = rejection_sample 0
+
+    // In Step 33, `modPlusMinus` is applied componentwise to the vector `z`.
+    modPlusMinus_Vec v = [map modPlusMinus`{q} vi | vi <- v]
+
+    // Step 33.
+    σ = sigEncode c_tilFinal (modPlusMinus_Vec zFinal) hFinal
+
+/**
+ * Internal function to verify a signature for a formatted message.
+ * [FIPS-204] Section 6.3, Algorithm 8.
+ *
+ * This interface should not be provided to applications (other than for
+ * testing purposes).
+ *
+ * If an implementation accepts inputs for the public key or the signature of
+ * any length other than those defined by `PublicKey` and `Signature`, this
+ * function should reject them.
+ */
+Verify_internal : {m} (fin m) => PublicKey -> [m] -> Signature -> Bool
+Verify_internal pk M' σ = isValid where
+    // Step 1 - 2.
+    (rho, t1) = pkDecode pk
+    (c_til, z, h) = sigDecode σ
+
+    // Step 5.
+    A_hat = ExpandA rho
+    // Step 6.
+    tr = H`{64} pk
+    // Step 7. We use `join` instead of `BytesToBits`, which produces the same
+    // byte string, but with the bits in each byte reversed. I think we have to
+    // do this to support the call to `HBits`, which expects the bit-order and
+    // byte-order to be the same.
+    mu = HBits`{64} (join tr # M')
+
+    // Step 8.
+    [c] = castToRq [(SampleInBall c_til)]
+
+    // These casts are implicit in Step 9 in the sepc.
+    t1' = castToRq t1
+    z' = castToRq z
+    // The spec uses the shorthand `t1 * 2^d`; in Cryptol, we need to create
+    // a matrix with the same dimensions as `t1` where every element is `2^d`.
+    two_d = repeat (repeat (2^^`d))
+
+    // Step 9.
+    wApprox' = NTTInv_Vec (A_hat ∘∘ NTT_Vec z' - (NTT c ∘ NTT_Vec (t1' * two_d)))
+
+    // Steps 3 - 4, 10 - 13.
+    isValid = case h of
+        None -> False
+        Some h' -> (infNormR z < `γ1 - β) && (c_til == c_til') where
+            w1' = UseHint h' wApprox'
+            c_til' = H`{λ / 4} (mu # w1Encode w1')
+
+/**
+ * Compute a base-2 representation of the input mod `2^α` using little-endian
+ * order.
+ * [FIPS-204] Section 7.1, Algorithm 9.
+ */
+IntegerToBits : {α} (fin α, α > 0) => Integer -> [α]
+IntegerToBits x = y' where
+    // Step 3. Compute the value of each `y_i`.
+    y = [x' % 2 | x' <- xs' | i <- [0..α - 1]]
+
+    // Step 4. Compute value of `x'` at each iteration of the loop.
+    // In Cryptol, integer division takes the floor by default.
+    xs' = [x] # [x' / 2 | x' <- xs']
+
+    // Cryptol-specific conversion: convert each Integer-typed bit to an actual
+    // bit and join into a single vector.
+    y' = join [(fromInteger yi) : [1] | yi <- y]
+
+/**
+ * Compute the integer value expressed by a bit string using little-endian
+ * order.
+ * [FIPS-204] Section 7.1, Algorithm 10.
+ */
+BitsToInteger : {α} (fin α, α > 0) => [α] -> Integer
+BitsToInteger y = xs ! 0 where
+    // Cryptol-specific conversion: separate the input into α 1-bit vectors,
+    // then convert each to an integer.
+    y' = map toInteger (split`{α} y)
+
+    // Steps 1 - 4. Compute the value of `x` at each iteration of the loop.
+    xs = [0] # [2 * x + y' @ (`α - i)
+        | x <- xs
+        | i <- [1..α]]
+
+/**
+ * The integer / bit conversion functions must invert each other.
+ * This is not explicit in the spec, but we define the property anyway.
+ * The parameter choices are approximately the same as some of the use cases
+ * in the spec.
+ * ```repl
+ * :check BitsToIntegersInverts`{44}
+ * :exhaust BitsToIntegersInverts`{10}
+ * ```
+ */
+BitsToIntegersInverts : {α} (fin α, α > 0) => [α] -> Bit
+property BitsToIntegersInverts x = IntegerToBits (BitsToInteger x) == x
+
+/**
+ * Compute a base-256 representation of `x mod 256^α` using little-endian byte
+ * order.
+ * [FIPS-204] Section 7.1, Algorithm 11.
+ */
+IntegerToBytes : {α} (fin α, α > 0) => Integer -> [α]Byte
+IntegerToBytes x = y where
+    // Step 2 - 3.
+    y = [fromInteger (x' % 256) | x' <- xs' | i <- [0..α - 1]]
+
+    // Step 4. Compute the value of `x'` at each iteration of the loop.
+    xs' = [x] # [x' / 256 | x' <- xs']
+
+/**
+ * Convert a bit string into a byte string using little-endian order.
+ * [FIPS-204] Section 7.1, Algorithm 12.
+ */
+BitsToBytes : {α} (fin α) => [α]Bit -> [α /^ 8]Byte
+BitsToBytes y
+    // A zero-length input will produce a zero-length output.
+    | α == 0 => zero
+    | α > 0 => z where
+        // Compute the values of `y[i]` and `i` at each iteration of the loop.
+        // To simplify the next step, this also:
+        // - Groups the `y[i]` bits into sets of 8 for each `z[⌊i / 8⌋]`, and
+        // - Pads each bit of `y[i]` into a byte to support subsequent operations.
+        y' = groupBy`{8} ([(zext [yi], i)
+            | yi <- y
+            | i <- [0..α - 1]] # zero)
+
+        // Steps 2 - 4. We compute the `y` terms separately then `sum` them
+        // for each byte in `z`.
+        z = [sum [yi * (2 ^^ (i % 8))
+                | (yi, i) <- yi8]
+            | yi8 <- y']
+
+/**
+ * Convert a byte string into a bit string using little-endian order.
+ * [FIPS-204] Section 7.1, Algorithm 13.
+ */
+BytesToBits : {α} (fin α) => [α]Byte -> [8 * α]Bit
+BytesToBits z
+    | α == 0 => []
+    | α > 0 => join [[ y8ij where
+            // Step 4. Taking the last bit is the same as modding by 2. (See
+            // `mod2IsFinalBit`).
+            y8ij = zi' ! 0
+            // Step 5. Shifting right is the same as the iterative
+            // division (see `div2IsShiftR`). This accounts for all the
+            // divisions "up to this point" (e.g. none when `j = 0`), which
+            // is why we use `zi'` to evaluate `y8ij` above.
+            zi' = zi >> j
+        // Step 3.
+        | j <- [0..7]]
+        // Step 2. We iterate over `z` directly instead of indexing into it.
+        | zi <- z ]
+
+private
+    /**
+     * The iterative division by 2 in `BytesToBits` is the same as shifting
+     * right.
+     * ```repl
+     * :prove div2IsShiftR
+     * ```
+     */
+    div2IsShiftR : Byte -> Bit
+    div2IsShiftR C = take (d2 C) == shl where
+        // Note: division here is floor'd by default.
+        d2 c = [c] # d2 (c / 2)
+        shl = [C >> j | j <- [0..7]]
+
+/**
+ * The conversions between bits and bytes are each others' inverses, for
+ * lengths that are a multiple of 8.
+ * This isn't explicit in the spec, but we include the property anyway.
+ * This takes ~10 seconds.
+ * ```repl
+ * :prove B2B2BInverts`{320}
+ * :prove B2B2BInverts`{32 * 44}
+ * ```
+ */
+B2B2BInverts : {α} (fin α) => [8 * α] -> Bit
+property B2B2BInverts y = BytesToBits (BitsToBytes y) == y
+
+/**
+ * Generate an element in the integers mod `q` or a failure indicator.
+ * [FIPS-204] Section 7.1, Algorithm 14.
+ */
+CoeffFromThreeBytes : Byte -> Byte -> Byte -> Option (Z q)
+CoeffFromThreeBytes b0 b1 b2 = maybe_z where
+    // Steps 1 - 4.
+    b2' = if b2 > 127 then b2 - 128 else b2
+
+    // We have to explicitly expand the byte strings to support the
+    // operations in the next step. 32 bits gives us plenty of space.
+    [bq0, bq1, bq2'] = map zext`{32} [b0, b1, b2']
+
+    // Step 5.
+    z = 2^^16 * bq2' + 2^^8 * bq1 + bq0
+
+    // Step 6 - 7. We have to convert `z` into `Z q` manually in the successful
+    // case -- note that we can't do it sooner because otherwise the condition
+    // is moot.
+    maybe_z = if z < `q then Some (toZ z) else None
+
+    toZ : [32] -> Z q
+    toZ b = fromInteger (toInteger b)
+
+/**
+ * Generate an element of {-η, -η + 1, ..., η} or a failure indicator.
+ * [FIPS-204] Section 7.1, Algorithm 15.
+ */
+CoeffFromHalfByte : [4] -> Option Integer
+CoeffFromHalfByte b =
+    if (`η == 2) && (b < 15) then Some (2 - (toInteger b % 5))
+    else
+        if (`η == 4) && (b < 9) then Some (4 - toInteger b)
+        else None
+
+/**
+ * Encode a polynomial `w` into a byte string.
+ * [FIPS-204] Section 7.1, Algorithm 16.
+ *
+ * This function assumes that all the coefficients of `w` are in the range
+ * `[0, b]`.
+ */
+SimpleBitPack : {b} (fin b, width b > 0) => R -> [32 * width b]Byte
+SimpleBitPack w = BitsToBytes z where
+    z = join [IntegerToBits`{width b} (w@i) | i <- [0..255]]
+
+/**
+ * Encode a polynomial `w` into a byte string.
+ * [FIPS-204] Section 7.1, Algorithm 17.
+ *
+ * This function assumes that all the coefficients of `w` are in the range
+ * `[-a, b]`.
+ */
+BitPack : {a, b} (fin a, fin b, width (a + b) > 0) =>
+    R -> [32 * width (a + b)]Byte
+BitPack w = BitsToBytes z where
+    z = join [IntegerToBits`{width (a + b)} (`b - w@i) | i <- [0..255]]
+
+/**
+ * Reverses the procedure `SimpleBitPack`.
+ * [FIPS-204] Section 7.1, Algorithm 18.
+ *
+ * For some choices of `b`, there are inputs that will cause this function to
+ * output polynomials whose coefficients are not in the range `[0, b]`.
+ */
+SimpleBitUnpack : {b} (fin b, width b > 0) => [32 * width b]Byte -> R
+SimpleBitUnpack v = w where
+    type c = width b
+    z = BytesToBits v
+    // Separate `z` into the sets `[z[ic], z[ic + 1], ... , z[ic + c - 1]]` for
+    // `i` in the range `[0..255]`.
+    z_ics = split z : [256][c]
+    w = [BitsToInteger`{c} (z_ics@i) | i <- [0..255]]
+
+/**
+ * `SimpleBitUnpack` reverses `SimpleBitPack`.
+ * To ensure the precondition for `SimpleBitPack`, we take the input as an set
+ * of integers mod `b` and convert to integers.
+ * [FIPS-204] Section 7.1, comment on Algorithm 18.
+ * ```repl
+ * :check SimplePackingInverts`{10}
+ * ```
+ */
+SimplePackingInverts : {b} (fin b, width b > 0) => [256](Z b) -> Bit
+property SimplePackingInverts w_inRange = simplePackInverts where
+    w = map fromZ w_inRange
+    simplePackInverts = SimpleBitUnpack`{b} (SimpleBitPack`{b} w) == w
+
+/**
+ * Reverse the procedure `BitPack`.
+ * [FIPS-204] Section 7.1, Algorithm 19.
+ *
+ * For some choices of `a` and `b`, there are malformed byte strings that will
+ * cause this function to output polynomials whose coefficients are not in the
+ * range `[-a, b]`.
+ */
+BitUnpack : {a, b} (fin a, fin b, width (a + b) > 0) =>
+    [32 * width (a + b)]Byte -> R
+BitUnpack v = w where
+    type c = width (a + b)
+    z = BytesToBits v
+
+    // Split `z` into the sets `[z[ic], z[ic + 1], ... , z[ic + c - 1]]` for
+    // `i` in the range `[0..255]`.
+    z_ics = split z : [256][c]
+
+    w = [`b - BitsToInteger`{c} (z_ics@i)| i <- [0..255]]
+
+/**
+ * `BitUnpack` reverses `BitPack`.
+ * To ensure the precondition for `BitPack`, we take the input as an set
+ * of integers mod `a + b `, convert to integers, then shift them down to the
+ * interval `[-a, b]`.
+ * [FIPS-204] Section 7.1, comment on Algorithm 19.
+ * ```repl
+ * :check PackingInverts`{10, 10}
+ * ```
+ */
+PackingInverts : {a, b} (fin a, fin b, width (a + b) > 0) =>
+    [256](Z (a + b)) -> Bit
+property PackingInverts w_inRange = packInverts where
+    // Shift from `[0, a + b]` to `[-a, b]`.
+    w = [(fromZ wi) - `a | wi <- w_inRange]
+    packInverts = BitUnpack`{a, b} (BitPack`{a, b} w) == w
+
+/**
+ * Encode a polynomial vector `h` with binary coefficients into a byte string.
+ * [FIPS-204] Section 7.1, Algorithm 20.
+ */
+HintBitPack : [k]R2 -> [ω + k]Byte
+HintBitPack h = yFinal where
+    // Step 1.
+    y0 = zero : [ω + k]Byte
+    // Step 2.
+    Index0 = 0
+    // Steps 3 - 11. This builds a list with all the intermediate values of
+    // `y` and `Index`...
+    yAndIndex = [(y0, Index0)] # [ (y'', Index') where
+            // Steps 5 - 8.
+            (y', Index') = if (h @i @j) != 0 then
+                    (update y Index j, Index + 1)
+                else (y, Index)
+
+            // Step 10.
+            y'' = if j == 255 then
+                    update y' (`ω + i) Index'
+                else y'
+        | (y, Index) <- yAndIndex
+        // Step 3 - 4.
+        | i <- [0..k-1], j <- [0..255]
+    ]
+    // Step 12. ...we return the last `y`.
+    (yFinal, _) = yAndIndex ! 0
+
+/**
+ * Reverses the procedure `HintBitPack`.
+ * [FIPS-204] Section 7.1, Algorithm 21.
+ *
+ * This diverges slightly from the spec:
+ * - To simplify updating `h`, we treat it as a single array of size `256k`.
+ *   We separate it into the correct `[k]R2` representation in the final step.
+ *   We access the array in "the natural way" -- that is, in Step 12, the
+ *   element `h[i]_y[Index]` is at index `i * 256 + y[Index]` in our array.
+ * - We cannot "return early" when we encounter an error case. Instead, we use
+ *   options to indicate whether a failure has occurred and skip further
+ *   computation when the option is `None`.
+ * - The for loop in Step 3 is executed with a list comprehension. The while
+ *   loop in Step 7 is executed with recursion. The for loop in Step 16 is
+ *   executed with recursion.
+ */
+HintBitUnpack : [ω + k]Byte -> Option ([k]R2)
+HintBitUnpack y = hFinal where
+    // Step 1.
+    h0 = zero : [k * 256]
+    // Step 2.
+    Index0 = 0
+
+    // Step 3. Construct a list comprising the values of `h` and `Index`
+    // at the end of each iteration of the loop in Steps 3 - 15.
+    hAndIndexes = [Some (h0, Index0)] # [
+            // Call Steps 4-5 if we haven't encountered an error yet.
+            case maybe_hAndIndex of
+                Some hAndIndex -> Step4_5 hAndIndex i
+                None -> None
+        | maybe_hAndIndex <- hAndIndexes
+        | i <- [0..k-1]
+    ]
+
+    // Steps 4 - 5.
+    Step4_5 (h, Index) i = if (y@(`ω + i) < Index) || (y@(`ω + i) > `ω) then
+            None
+        else Step6_15 (h, Index) i
+
+    // Steps 6 - 15.
+    Step6_15 (h, Index) i = Step7_14 (h, Index) where
+        // Step 6.
+        First = Index
+
+        // Steps 7 - 14.
+        Step7_14 (h', Index') =
+            // Step 7 (condition).
+            if Index' < (y@(`ω + i)) then
+                // Step 8 - 11.
+                // The `/\` is a short-cutting `and`, equivalent to the nested
+                // `if` statements in the spec.
+                if ((Index' > First) /\ (y@(Index' - 1) >= y@Index')) then None
+                // Step 7 (recursive call -- equivalent to continuing the loop).
+                else Step7_14
+                    // Step 12.
+                    (update h' (i*256 + (toInteger (y@Index'))) 1,
+                    // Step 13.
+                    Index' + 1)
+            // If the loop condition is no longer true, return the current
+            // values of `h` and `Index`.
+            else Some (h', Index')
+
+    // Get the values of `h` and `Index` after the loop in Steps 3 - 15.
+    maybe_hAndIndex' = hAndIndexes ! 0
+
+    // Step 16 - 20.
+    hFinal = case maybe_hAndIndex' of
+        Some hAndIndex -> if checkLeftoverBytes then
+                // This `split` converts back to the spec-adherent
+                // representation of `h`.
+                Some (split`{k} h)
+            else None
+            where
+                (h, Index) = hAndIndex
+                // This helper reads any "leftover" bytes (e.g. beyond `Index`)
+                // in the first `ω` bytes of `y`; it returns `True` if all of
+                // them are zero.
+                checkLeftoverBytes = and [i >= Index ==> y@i == 0
+                    | i <- [0..ω - 1]]
+
+        None -> None
+
+/**
+ * Verify that `HintBitUnpack` is the reverse of `HintBitPack`.
+ *
+ * This takes a list of indexes indicating the non-zero elements and constructs
+ * a valid, sparse `h` -- rejection sampling is not a valid option because
+ * sparse-enough `h`s were too rare.
+ *
+ * We test the case where we have the maximum number of 1s, a medium number, and
+ * a case where at least one vector should have no non-zero terms at all.
+ * In practice, the hint may fall anywhere in this range.
+ * This takes about 1 minute.
+ * ```repl
+ * :check HintPackingInverts`{ω}
+ * :check HintPackingInverts`{ω / 2}
+ * :check HintPackingInverts`{3}
+ * ```
+ *
+ * Note that this does not test the error cases for `HintBitUnpack`.
+ */
+HintPackingInverts : {w} (w <= ω) => [w][lg2 (256 * k)] -> Bit
+property HintPackingInverts h_Indexes =
+    case HintBitUnpack (HintBitPack h) of
+        Some h' -> h == h'
+        None -> False
+    where
+        h = buildHint h_Indexes
+
+private
+    /**
+     * Creates a hint with `w` non-zero entries at the indices specified in
+     * the parameter.
+     * This is for testing functions that take a hint as a parameter and assume
+     * it is appropriately sparse.
+     */
+    buildHint : {w} (w <= ω) => [w][lg2 (256 * k)] -> [k]R2
+    buildHint h_Indexes = h where
+        h = split`{k} [if elem idx h_Indexes then 1 else 0 | idx <- [0..(256 * k) - 1]]
+
+/**
+ * Encode a public key for ML-DSA into a byte string.
+ * [FIPS-204] Section 7.2, Algorithm 22.
+ *
+ * This assumes that `t1` has coefficients in the range
+ * `[0, 2^(bitlen(q-1) - d) - 1]`.
+ */
+pkEncode : [32]Byte -> [k]R -> PublicKey
+pkEncode ρ t1 = pk where
+    pk = ρ # join [SimpleBitPack`{2 ^^ (width (q - 1) - d) - 1} (t1@i) | i <- [0..k-1]]
+
+/**
+ * Reverse the procedure `pkEncode`.
+ * [FIPS-204] Section 7.2, Algorithm 23.
+ *
+ * This produces a `t1` with coefficients in the range
+ * `[0, 2^(bitlen(q-1) - d) - 1]`.
+ */
+pkDecode : PublicKey -> ([32]Byte, [k]R)
+pkDecode pk = (ρ, t1) where
+    // Step 1. We split off the single `ρ` byte, then separate the remaining
+    // bytes into the `k` components as described.
+    (ρ # zBytes) = pk
+    z = split zBytes
+    // Steps 2 - 4.
+    t1 = [SimpleBitUnpack`{2 ^^ (width (q - 1) - d) - 1} (z@i) | i <- [0..k-1]]
+
+private
+    /**
+     * `pkDecode` must reverse the procedure `pkEncode`.
+     * This takes about 30s.
+     * ```repl
+     * :set tests=20
+     * :check pkCodingInverts
+     * ```
+     */
+    pkCodingInverts : [32]Byte -> [k][256][width (q - 1) - d] -> Bit
+    pkCodingInverts ρ t1_inRange = inverts where
+        // `t1_inRange` is typed to ensure that all the coefficients will be
+        // in the range `[0, 2^^(width (q-1)-d) - 1]`.
+        t1 = [map toInteger t1_i | t1_i <- t1_inRange]
+        (ρ', t1') = pkDecode (pkEncode ρ t1)
+        inverts = (ρ == ρ') && (t1 == t1')
+
+/**
+ * Encodes a secret key for ML-DSA into a byte string.
+ * [FIPS-204] Secetion 7.2, Algorithm 24.
+ */
+skEncode : [32]Byte -> [32]Byte -> [64]Byte -> [ell]R -> [k]R -> [k]R
+    -> PrivateKey
+skEncode ρ K tr s1 s2 t0 = sk9 where
+    // Note: `sk#` indicates the value of `sk` at Step `#`.
+    // Step 1.
+    sk1 = ρ # K # tr
+    // Steps 2 - 4.
+    sk3 = sk1 # join [BitPack`{η, η} (s1@i) | i <- [0..ell-1]]
+    // Steps 5 - 7.
+    sk6 = sk3 # join [BitPack`{η, η} (s2@i) | i <- [0..k-1]]
+    // Steps 8 - 10.
+    sk9 = sk6 #
+        join [BitPack`{2^^(d - 1) - 1, 2^^(d - 1)} (t0@i) | i <- [0..k-1]]
+
+/**
+ * Reverse the procedure `skEncode`.
+ * [FIPS-204] Section 7.2, Algorithm 25.
+ *
+ * Warning: there exist malformed inputs that can cause `skDecode` to return
+ * values that are not in the correct range! `skDecode` must only be run on
+ * inputs that come from trusted sources!
+ */
+skDecode : PrivateKey -> ([32]Byte, [32]Byte, [64]Byte, [ell]R, [k]R, [k]R)
+skDecode sk = (ρ, K, tr, s1, s2, t0) where
+    // Step 1. We split off the six components, then further separate `y`, `z`,
+    // and `w` into their two dimensions.
+    (ρ # K # tr # yBytes # zBytes # wBytes) = sk
+    y = split`{ell} yBytes
+    z = split`{k} zBytes
+    w = split`{k} wBytes
+
+    // Steps 2 - 4.
+    s1 = [BitUnpack`{η, η} (y@i) | i <- [0..ell-1]]
+    // Steps 5 - 7.
+    s2 = [BitUnpack`{η, η} (z@i) | i <- [0..k-1]]
+    // Steps 8 - 10.
+    t0 = [BitUnpack`{2^^(d - 1) - 1, 2^^(d - 1)} (w@i) | i <- [0..k-1]]
+
+private
+    /**
+     * The `skDecode` function must be the inverse of `skEncode`.
+     * [FIPS-204] Section 7.3, comment on Algorithm 25.
+     *
+     * This test enforces the range requirements on the inputs to
+     * `skEncode` by taking parameters in the integers mod groups, then
+     * converting to unbounded integers and shifting to be in the expected
+     * range.
+     *
+     * This takes about 1 minute.
+     * ```repl
+     * :set tests=20
+     * :check skCodingInverts
+     * ```
+     */
+    skCodingInverts : [32]Byte -> [32]Byte -> [64]Byte
+        -> [ell][256](Z (2 * η))
+        -> [k][256](Z (2 * η))
+        -> [k][256](Z (2 ^^ d - 1))
+        -> Bit
+    skCodingInverts ρ K tr s1_inRange s2_inRange t0_inRange = inverts where
+        // Adjust to be in the correct range and of the correct type.
+        s1 = [[(fromZ s1_ij) - `η | s1_ij <- s1_j ] | s1_j <- s1_inRange]
+        s2 = [[(fromZ s2_ij) - `η | s2_ij <- s2_j ] | s2_j <- s2_inRange]
+        t0 = [[(fromZ t0_ij) - (2 ^^ (`d-1) - 1)
+            | t0_ij <- t0_j ]
+            | t0_j <- t0_inRange]
+
+        (ρ', K', tr', s1', s2', t0') = skDecode (skEncode ρ K tr s1 s2 t0)
+        inverts = (ρ == ρ') && (K == K') && (tr == tr')
+            && (s1 == s1') && (s2 == s2') && (t0 == t0')
+
+/**
+ * Encode a signature into a byte string.
+ * [FIPS-204] Section 7.3, Algorithm 26.
+ *
+ * The parameter `z` must have coefficients in `[-γ1 + 1, γ1]`.
+ */
+sigEncode : [λ / 4]Byte -> [ell]R -> [k]R2 -> Signature
+sigEncode c_til z h = σ where
+    // Note that `σ#` indicates the value of `σ` at Step `#`.
+    // Step 1.
+    σ1 = c_til
+    // Step 2 - 4.
+    σ3 = σ1 # join [BitPack`{γ1 - 1, γ1} (z@i) | i <- [0..ell-1]]
+    // Step 5.
+    σ = σ3 # HintBitPack h
+
+/**
+ * Reverse the procedure `sigEncode`.
+ * [FIPS-204] Section 7.3, Algorithm 27.
+ */
+sigDecode : Signature -> ([λ / 4]Byte, [ell]R, Option ([k]R2))
+sigDecode σ = (c_til, z, h) where
+    // Step 1. We separate into bytes, then further split `x` into its two
+    // dimensions.
+    (c_til # xBytes # y) = σ
+    x = split`{ell} xBytes
+
+    // Step 2 - 4.
+    z = [BitUnpack`{γ1 - 1, γ1} (x@i) | i <- [0..ell-1]]
+    // Step 5.
+    h = HintBitUnpack y
+
+private
+    /**
+     * `sigDecode` must be the reverse of `sigEncode`.
+     * [FIPS-204] Section 7.3, comment on Algorithm 27.
+     *
+     * The parameter `w` defines the number of non-zero entries in the hint.
+     * It can be any number in the range `[0, ω - 1]`. In practice, it's
+     * dependent on many factors, so we choose the middle of the range for convenience.
+     * This takes about 45 seconds.
+     * ```repl
+     * :set test=20
+     * :check sigCodingInverts`{ω / 2}
+     * ```
+     */
+    sigCodingInverts : {w} (w < ω) =>
+        [λ / 4]Byte -> [ell][256](Z (2 * γ1 - 1)) -> [w][lg2 (256 * k)] -> Bit
+    property sigCodingInverts c_til z_inRange h_Indexes = inverts where
+        // The coefficients of `z` must be in the range `[-γ1 + 1, γ1]`.
+        // Convert to correct type and adjust them to the correct range.
+        z = [[(fromZ zij) - (`γ1 - 1) | zij <- zi ] | zi <- z_inRange]
+
+        // The hint must not have more than `ω` non-zero indexes. `buildHint`
+        // makes sure this is true.
+        h = buildHint h_Indexes
+
+        (c_til', z', maybe_h') = sigDecode (sigEncode c_til z h)
+        h_matches = case maybe_h' of
+            Some h' -> h == h'
+            None -> False
+        inverts = (c_til == c_til') && (z == z') && h_matches
+/**
+ * Encode a polynomial vector `w1` into a byte string.
+ * [FIPS-204] Section 7.3, Algorithm 28.
+ *
+ * The polynomial coordinates of `w1` must be in the range
+ * `[0, (q - 1) / (2 * γ2) - 1]`.
+ */
+w1Encode : [k]R -> [32 * k * width ((q - 1) / (2 * γ2) - 1)]Byte
+w1Encode w1 = w1_til where
+    w1_til = join
+        [SimpleBitPack`{(q - 1) / (2 * γ2) - 1} (w1@i) | i <- [0..k-1]]
+
+/**
+ * Sample a polynomial in `R` with coefficients from `{-1, 0, 1}` and Hamming
+ * weight `τ`.
+ * [FIPS-204] Section 7.3, Algorithm 29.
+ */
+SampleInBall : [λ / 4]Byte -> R
+SampleInBall ρ = cFinal where
+    // Step 1.
+    c0 = zero
+    // Steps 2 - 3.
+    ctx_0 = H`{inf} ρ
+    // Step 4.
+    ((s : [8]Byte) # ctx_1) = ctx_0
+    // Step 5.
+    h = BytesToBits s
+
+    // Steps 7 - 10. Uses recursion instead of a loop to sample bytes from the
+    // hash stream, returning the first one that's in the range `[0, i]`.
+    sample : [inf]Byte -> Byte -> (Byte, [inf]Byte)
+    sample ([j] # ctx) i =
+        if j > i then
+            sample ctx i
+        else (j, ctx)
+
+    // Steps 6 - 13. Computes the value of `c` and the updated `ctx` at each
+    // iteration of the loop.
+    cAndCtx = [(c0, ctx_1)] # [(c'', ctx') where
+            // Steps 7 - 10.
+            (j, ctx') = sample ctx (fromInteger i)
+            // Step 11.
+            c' = update c i (c@j)
+            // Step 12. In Cryptol, we need to manually convert the exponent
+            // from a `Bit` to a numeric type.
+            hiτ = if (h @ (i + `τ - 256)) then 1 else 0 : Integer
+            c'' = update c' j ((-1)^^hiτ)
+
+        | i <- [256 - τ..255]
+        | (c, ctx) <- cAndCtx]
+
+    (cFinal, _) = cAndCtx ! 0
+
+/**
+ * Sample a polynomial in the ring `Tq`.
+ * [FIPS-204] Section 7.3, Algorithm 30.
+ */
+RejNTTPoly : [34]Byte -> Tq
+RejNTTPoly ρ = a_hat where
+    // Step 2 - 3.
+    ctx0 = G ρ
+
+    // Step 4, 11. The `take` here replaces the loop condition.
+    a_hat = take`{256} (sample ctx0)
+
+    sample : [inf][8] -> [inf](Z q)
+    sample GSqueeze = a_hat' where
+        // Step 5. This pops the first 3 bytes off the pseudorandom stream.
+        (s, ctx) = splitAt`{3} GSqueeze
+
+        // Step 6.
+        a_hat_j = CoeffFromThreeBytes (s@0) (s@1) (s@2)
+
+        // Step 7 - 9. The recursive call here replaces the `while` loop.
+        a_hat' = case a_hat_j of
+            Some aj -> [aj] # (sample ctx)
+            // In the spec, the sample `a_hat_j` is always added to the list,
+            // and `j` is only increased if the sample was not rejected (so a
+            // rejected value is overwritten in the next iteration). Here,
+            // we only add `a_hat_j` if it's valid.
+            None -> sample ctx
+
+/**
+ * Sample an element in `R` with coefficients in the range [-η, η].
+ * [FIPS-204] Section 7.3, Algorithm 31.
+ */
+RejBoundedPoly: [66]Byte -> R
+RejBoundedPoly ρ = a where
+    // Steps 2 - 3.
+    ctx0 = H ρ
+
+    // Step 4, 17. The `take` replaces the loop condition.
+    a = take`{256} (sample ctx0)
+
+    sample : [inf][8] -> [inf]Integer
+    sample HSqueeze = a' where
+        // Step 5. This pops one byte off the pseudorandom stream.
+        ([z] # ctx) = HSqueeze
+
+        // Step 6 - 8. We use Cryptol-native functions instead of dividing
+        // and modding `z`. See `TakeAndDropAreDivAndMod` for the equivalence.
+        z0 = CoeffFromHalfByte (drop`{4} z)
+        z1 = CoeffFromHalfByte (take`{4} z)
+
+        // Step 8 - 15. The recursive calls replace the `while` loop.
+        // In order to make the types work, we have to mash the two conditions
+        // together and make exactly one recursive call.
+        a' = case z0 of
+            Some z0' -> case z1 of
+                Some z1' -> [z0', z1'] # (sample ctx)
+                None -> [z0'] # (sample ctx)
+            None -> case z1 of
+                Some z1' -> [z1'] # (sample ctx)
+                None -> sample ctx
+
+/**
+ * Given a byte, the `take` function is equivalent to dividing by 16, and the
+ * `drop` function is equivalent to taking the value mod 16.
+ *
+ * We prefer the Cryptol functions because they automatically convert from a
+ * byte to a 4-bit value, which we need to call `CoeffFromHalfByte`. Here, we
+ * use `zext` pad the 4-bit-vector, so we can compare it to the byte.
+ * ```repl
+ * :prove TakeAndDropAreDivAndMod
+ * ```
+ */
+TakeAndDropAreDivAndMod : [8] -> Bool
+property TakeAndDropAreDivAndMod z = dropIsMod && takeIsDiv where
+    dropIsMod = z % 16 == zext (drop`{4} z)
+    // Division of bit vectors in Cryptol automatically takes the floor.
+    takeIsDiv = z / 16 == zext (take`{4} z)
+
+/**
+ * Sample a `k x l` matrix of elements of `T_q`.
+ * [FIPS-204] Section 7.3, Algorithm 32.
+ */
+ExpandA : [32]Byte -> [k][ell]Tq
+ExpandA ρ = A_hat where
+    A_hat = [[RejNTTPoly ρ' where
+            ρ' = ρ # IntegerToBytes`{1} s # IntegerToBytes`{1} r
+        | s <- [0..ell - 1]]
+        | r <- [0..k - 1]]
+
+/**
+ * Sample vectors in `R^ell` and `R^k`, each with polynomial coordinates whose
+ * coefficients are in the interval `[-η , η]`.
+ * [FIPS-204] Section 7.3, Algorithm 33.
+ */
+ExpandS : [64]Byte -> ([ell]R, [k]R)
+ExpandS ρ = (s1, s2) where
+    s1 = [RejBoundedPoly (ρ # IntegerToBytes`{2} r) | r <- [0..ell-1]]
+    s2 = [RejBoundedPoly (ρ # IntegerToBytes`{2} (r + `ell)) | r <- [0..k-1]]
+
+/**
+ * Sample a vector in `R^ell` such that each polynomial in `y` has coefficients
+ * in the range `[-γ1 + 1, γ1]`.
+ * [FIPS-204] Section 7.3, Algorithm 34.
+ *
+ * Note: This function requires that `μ` is non-negative.
+ */
+ExpandMask : [64]Byte -> Integer -> [ell]R
+ExpandMask ρ μ = y where
+    type c = 1 + width (γ1 - 1)
+
+    y = [BitUnpack`{γ1 - 1, γ1} v where
+            ρ' = ρ # IntegerToBytes`{2} (μ + r)
+            v = H`{32 * c} ρ'
+        | r <- [0..ell - 1]]
+
+/**
+ * Decompose a set of integers mod `q` into a pair `(r1, r0)` such that
+ * `r === r1 * 2^d + r0 mod q`.
+ *
+ * This applies the `Power2Round` function (Algorithm 35) coefficientwise to
+ * the polynomials in the vectors, per the description at the beginning of
+ * [FIPS-204] Section 7.4.
+ */
+Power2Round : [k]Rq -> ([k]R, [k]R)
+Power2Round r_vec = (r1_vec, r0_vec) where
+    // [FIPS-204] Section 7.4, Algorithm 35.
+    Power2Round_Single : Z q -> (Integer, Integer)
+    Power2Round_Single r = (r1, r0) where
+        r_plus = r
+        r0 = modPlusMinus`{2^^d} r_plus
+        r1 = ((fromZ r_plus) - r0) / (2^^`d)
+
+    // Apply the function coefficientwise to every polynomial.
+    zipped_r1r0 : [k][256](Integer, Integer)
+    zipped_r1r0 = [map Power2Round_Single r | r <- r_vec]
+
+    // Unzip the tuples.
+    r1_vec = [[r1_j | (r1_j, _) <- ri] | ri <- zipped_r1r0]
+    r0_vec = [[r0_j | (_, r0_j) <- ri] | ri <- zipped_r1r0]
+
+private
+    /**
+     * Property demonstrating that `Power2Round` does what it says it's
+     * supposed to do in the definition.
+     * [FIPS-204] Section 7.4, comment on Algorithm 35.
+     * ```repl
+     * :check power2RoundSatisfiesDefinition
+     * ```
+     */
+    power2RoundSatisfiesDefinition r_vec = validDecomp where
+        (r1_vec, r0_vec)= Power2Round r_vec
+        isValid (r, (r1, r0)) = (r1 * 2^^`d + r0) % `q == (fromZ r)
+        validDecomp = and [ and (map isValid (zip rs (zip r1s r0s)))
+            | r1s <- r1_vec
+            | r0s <- r0_vec
+            | rs <- r_vec]
+
+/**
+ * Decompose a set of integers mod `q` into a pair `(r1, r0)` such that
+ * `r === r1 (2 γ2) + r0 mod q`.
+ *
+ * This applies the `Decompose` function (Algorithm 36) coefficientwise to
+ * the polynomials in the vectors, per the description at the beginning of
+ * [FIPS-204] Section 7.4.
+ */
+Decompose : [k]Rq -> ([k]R, [k]R)
+Decompose r_vec = (r1_vec, r0_vec) where
+    // [FIPS-204] Section 7.4, Algorithm 36.
+    Decompose_Single : Z q -> (Integer, Integer)
+    Decompose_Single r = (r1, r0') where
+        r_plus = r
+        r0 = modPlusMinus`{2 * γ2} r_plus
+        (r1, r0') = if (fromZ r_plus) - r0 == `q - 1 then
+                (0, r0 - 1)
+            else
+                (((fromZ r_plus) - r0) / (2 * `γ2), r0)
+
+    // Apply the function coefficientwise to every polynomial.
+    zipped_r1r0 : [k][256](Integer, Integer)
+    zipped_r1r0 = [map Decompose_Single r | r <- r_vec]
+
+    // Unzip the tuples.
+    r1_vec = [[r1_j | (r1_j, _) <- ri] | ri <- zipped_r1r0]
+    r0_vec = [[r0_j | (_, r0_j) <- ri] | ri <- zipped_r1r0]
+
+private
+    /**
+     * Property demonstrating that `Decompose` does what it says it's
+     * supposed to do in the definition.
+     * [FIPS-204] Section 7.4, comment on Algorithm 36.
+     * ```repl
+     * :check decomposeSatisfiesDefinition
+     * ```
+     */
+    decomposeSatisfiesDefinition r_vec = validDecomp where
+        (r1_vec, r0_vec)= Decompose r_vec
+        isValid (r, (r1, r0)) = (r1 * 2 * `γ2 + r0) % `q == (fromZ r)
+        validDecomp = and [ and (map isValid (zip rs (zip r1s r0s)))
+            | r1s <- r1_vec
+            | r0s <- r0_vec
+            | rs <- r_vec]
+
+/**
+ * Returns `r1` from the output of `Decompose`.
+ * [FIPS-24] Section 7.4, Algorithm 37.
+ *
+ * This applies the `HighBits` function (Algorithm 37) coefficientwise to
+ * the polynomials in the vectors, per the description at the beginning of
+ * Section 7.4.
+ */
+HighBits : [k]Rq -> [k]R
+HighBits r = r1 where
+    (r1, _) = Decompose r
+
+/**
+ * Returns `r0` from the output of `Decompose`.
+ * [FIPS-24] Section 7.4, Algorithm 38.
+ *
+ * This applies the `LowBits` function (Algorithm 38) coefficientwise to
+ * the polynomials in the vectors, per the description at the beginning of
+ * Section 7.4.
+ */
+LowBits : [k]Rq -> [k]R
+LowBits r = r0 where
+    (_, r0) = Decompose r
+
+/**
+ * Compute the hint bits indiciating whether adding `z` to `r` alters the high
+ * bits of `r`.
+ * [FIPS-204] Section 7.4, Algorithm 39.
+ *
+ * This applies the `MakeHint` function coefficientwise to the polynomials in the
+ * vectors, per the description at the beginning of Section 7.4. The `HighBits`
+ * function operates over vectors of polynomials; then we compare the vectors of
+ * high bits coefficientwise.
+ */
+MakeHint : [k]Rq -> [k]Rq -> [k]R2
+MakeHint z_vec r_vec = hint where
+    r1_vec = HighBits r_vec
+    v1_vec = HighBits (r_vec + z_vec)
+
+    hint = [[r1 != v1
+        | r1 <- r1s | v1 <- v1s]
+        | r1s <- r1_vec | v1s <- v1_vec]
+
+/**
+ * Return the high bits of `r` adjusted according to hint `h`.
+ * [FIPS-204] Section 7.4, Algorithm 40.
+ *
+ * This applies the `UseHint` function coefficientwise to the polynomials in
+ * the vectors, per the description at the beginning of Section 7.4.
+ */
+UseHint : [k]R2 -> [k]Rq -> [k]R
+UseHint h_vec r_vec = r1'_vec where
+    // Step 1.
+    m = (`q - 1) / (2 * `γ2)
+    // Step 2.
+    (r1_vec, r0_vec) = Decompose r_vec
+
+    // Steps 3 - 5. This takes the decomposed integers instead of the original
+    // element in `Z q`.
+    adjustHighBits r1 r0 h =
+        if (h == 1) && (r0 > 0) then (r1 + 1) % m
+        | (h == 1) && (r0 <= 0) then (r1 - 1) % m
+        else r1
+
+    // Apply the function coefficientwise to the decomposed polynomials.
+    r1'_vec = [[adjustHighBits r1 r0 h
+            | r1 <- r1s | r0 <- r0s | h <- hs]
+        | r1s <- r1_vec | r0s <- r0_vec | hs <- h_vec]
+
+private
+    /**
+     * The output of `UseHint` must be within the range `[0, (q-1) / (2*γ2)]`.
+     * [FIPS-204] Section 7.4, comment on Algorithm 40.
+     *
+     * ```repl
+     * :check useHintIsInRange
+     * ```
+     * Alternately, this takes about 1 hour to prove.
+     */
+    property useHintIsInRange h_vec r_vec = r1InRange where
+        r1_vec = UseHint h_vec r_vec
+        inRange r1 = (0 <= r1) && (r1 <= (`q - 1) / (2 * `γ2))
+        // Apply check coefficientwise to the polynomial vector.
+        r1InRange = and [and (map inRange r1s) | r1s <- r1_vec]
+
+/**
+ * Number theoretic transform: compute the "NTT representation" in
+ * `T_q` of a polynomial in `R_q`.
+ *
+ * This is equivalent to [FIPS-204] Section 7.5, Algorithm 41. That particular
+ * formulation is difficult to implement in Cryptol. Instead, we use the naive
+ * NTT implementation described in [NTT-Guide] Section 3.3.2, Equation 16. Note
+ * that [NTT-Guide] uses different notation: their `ψ` is our `ζ`; their `a`
+ * is our `f`; and we set their `n = 256`.
+ *
+ * There is one divergence between [NTT-Guide] and [FIPS-204]: the spec uses
+ * bit-reversed indexes for the NTT representation, but the guide does not.
+ *
+ * @design Marcella Hastings <marcella@galois.com>: This is neither efficient
+ * nor obviously spec-adherent. We should aim to make it at least one of those.
+ * Ideally we will consolidate all the NTT implementations across the cryptol-
+ * specs repo into a single common, validated (by some means...) implementation
+ * and import it for use here and elsewhere.
+ * @see https://github.com/GaloisInc/cryptol-specs/issues/163
+ */
+NTT : Rq -> Tq
+NTT f = [f_hat_j j | j <- bitrev_indexes] where
+    f_hat_j j = sum [ (ζ ^^ (2 * i * j + i)) * fi | i <- [0..255] | fi <- f]
+
+    // Rearrange the indexes so that the NTT representation is in
+    // bit-reversed-index order.
+    bitrev_indexes = map toInteger (map reverse [0..255 : [8]])
+
+/**
+ * Inverse of the number theoretic transform: converts from the "NTT
+ * representation" in `T_q` to a polynomial in `R_q`.
+ *
+ * This is equivalent to [FIPS-204] Section 7.5, Algorithm 42. That particular
+ * formulation is difficult to implement in Cryptol. Instead, we use the naive
+ * NTT implementation described in [NTT-Guide] Section 3.3.3, Equation 18. Note
+ * that [NTT-Guide] uses different notation: their `ψ` is our `ζ`; their `a`
+ * is our `f`; and we set their `n = 256`.
+ *
+ * There is one divergence between [NTT-Guide] and [FIPS-204]: the spec uses
+ * bit-reversed indexes for the NTT representation, but the guide does not.
+ *
+ * @design Marcella Hastings <marcella@galois.com>: This is neither efficient
+ * nor obviously spec-adherent. We should aim to make it at least one of those.
+ * Ideally we will consolidate all the NTT implementations across the cryptol-
+ * specs repo into a single common, validated (by some means...) implementation
+ * and import it for use here and elsewhere.
+ * @see https://github.com/GaloisInc/cryptol-specs/issues/163
+ */
+NTTInv : Tq -> Rq
+NTTInv f_hat = [f_i j * inv_root | j <- [0..255]] where
+    inv_root = recip 256 : Z q
+    inv_ζ = recip ζ
+    f_i j = sum [ (inv_ζ ^^ (2 * i * j + j)) * f_hat_j
+        | i <- [0..255]
+        | f_hat_j <- indexReversedFHat]
+
+    // Rearrange the NTT representation to bit-reverse the indexes.
+    bitrev_indexes = map reverse [0..255 : [8]]
+    indexReversedFHat = [f_hat@i | i <- bitrev_indexes]
+
+private
+    /**
+     * This property demonstrates that `NTTInv` inverts `NTT`.
+     * This takes about 20s to check.
+     * ```repl
+     * :set tests=20
+     * :check NTT_Inverts
+     * ```
+     * Alternately, this proves in ~8 min with Z3 v4.13.3.
+     */
+    NTT_Inverts : Rq -> Bit
+    property NTT_Inverts f =  NTTInv (NTT f) == f
+
+    /**
+     * This property demonstrates that `NTT` inverts `NTTInv`.
+     * This takes about 20s to check.
+     * ```repl
+     * :set tests=20
+     * :check NTTInv_Inverts
+     * ```
+     */
+    NTTInv_Inverts : Tq -> Bit
+    property NTTInv_Inverts f =  NTT (NTTInv f) == f
+
+/**
+ * Compute the sum of two elemetns in `Tq`.
+ * [FIPS-204] Section 7.6, Algorithm 44.
+ */
+AddNTT : Tq -> Tq -> Tq
+AddNTT a b = c where
+    c = [a@i + b@i | i <- [0..255]]
+
+/**
+ * The definition of addition in the spec is the same as the built-in addition
+ * operator in Cryptol!
+ * ```repl
+ * :prove addNTTisPlus
+ * ```
+ */
+property addNTTisPlus a b = AddNTT a b == a + b
+
+/**
+ * Compute the product of two elements in `Tq`.
+ * [FIPS-204] Section 7.6, Algorithm 45.
+ */
+MultiplyNTT : Tq -> Tq -> Tq
+MultiplyNTT a b = c where
+    c = [a@i * b@i | i <- [0..255]]
+
+/**
+ * The definition of multiplication in the spec is the same as the built-in
+ * multiplication (*) operator in Cryptol!
+ * ```repl
+ * :prove multiplyNTTisStar
+ * ```
+ */
+property multiplyNTTisStar a b = MultiplyNTT a b == a * b
+
+/**
+ * Compute the sum of two vectors over `Tq`
+ * [FIPS-204] Section 7.6, Algorithm 46.
+ */
+AddVectorNTT : {l} (fin l, l > 0) => [l]Tq -> [l]Tq -> [l]Tq
+AddVectorNTT v w = u where
+    u = [AddNTT (v@i) (w@i) | i <- [0..l-1]]
+
+/**
+ * The defintion of vector addition in the spec is the same as the built-in
+ * addition operator in Cryptol!
+ * There's only one NTT vector addition that I could find in the spec and it's
+ * between vectors of length `k`:
+ * ```repl
+ * :prove addVectorNTTisPlus`{k}
+ * ```
+ */
+addVectorNTTisPlus : {r} (fin r, r > 0) => [r]Tq -> [r]Tq -> Bit
+property addVectorNTTisPlus v w = AddVectorNTT v w == v + w
+
+/**
+ * Compute the product of a scalar and a vector over `Tq`.
+ * [FIPS-204] Section 7.6, Algorithm 47.
+ */
+ScalarVectorNTT : {l} (fin l, l > 0) => Tq -> [l]Tq -> [l]Tq
+ScalarVectorNTT c v = w where
+    w = [MultiplyNTT c (v@i) | i <- [0..l-1]]
+
+/**
+ * Custom operator for computing the product of a scalar and a vector.
+ *
+ * The spec overloads the ring operator `∘` to mean several operations,
+ * in `Tq`, including the product of two elements, the product of a scalar
+ * and a vector, and the product of a matrix and a vector.
+ * Cryptol does not support user-defined overloaded symbols, so we define
+ * `∘` to be the function with the most usage in the spec.
+ *
+ * This implements a more efficient version of `ScalarVectorNTT`.
+ */
+(∘) : {l} (fin l, l > 0) => Tq -> [l]Tq -> [l]Tq
+(∘) c v = [c * vi | vi <- v]
+
+/**
+ * The optimized scalar vector multiplication operator `∘` is equivalent to
+ * `ScalarVectorNTT`.
+ *
+ * These parameters are the only ones used for this operation in the spec:
+ * ```repl
+ * :prove ringIsScalarVectorNTT`{k}
+ * :prove ringIsScalarVectorNTT`{ell}
+ * ```
+ */
+ringIsScalarVectorNTT : {l} (fin l, l > 0) => Tq -> [l]Tq -> Bit
+property ringIsScalarVectorNTT c v = c ∘ v == ScalarVectorNTT c v
+
+/**
+ * Compute the product of a matrix and a vector over `Tq`.
+ * [FIPS-204] Section 7.6, Algorithm 48.
+ *
+ * Note: The spec defines this operation for a matrix with dimensions
+ * `k x ell`, where `k` and `ell` are natural numbers. This actually overloads
+ * those names, since they're also the dimensions that are part of the
+ * parameterization of the algorithm. In fact, we only ever use this
+ * function for the matrix `A_hat` with dimensions `k x ell` (the parameters).
+ * So, this isn't implemented over arbitrary matrix dimensions, although I
+ * think it could be.
+ */
+MatrixVectorNTT : [k][ell]Tq -> [ell]Tq -> [k]Tq
+MatrixVectorNTT M v = w where
+    // We use the `sum` built-in function instead of iteratively applying
+    // `AddNTT`. See `addNTTisPlus` property for the equivalence.
+    w = [sum [ MultiplyNTT (M@i@j) (v@j)
+        | j <- [0..ell-1]]
+        | i <- [0..k-1] ]
+
+/**
+ * Custom operator for computing the product of a matrix and a vector.
+ *
+ * The spec overloads the ring operator `∘` to mean several operations in
+ * `Tq`. In this executable spec, we define `∘` to mean scalar-vector
+ * multiplication. Cryptol does not support user-defined overloaded symbols,
+ * but for readability, it's nice to have an infix operator for this function.
+ *
+ * This implements a more efficient verison of `ScalarVectorNTT`.
+ */
+(∘∘) : [k][ell]Tq -> [ell]Tq -> [k]Tq
+(∘∘) M v = [sum [Mij * vj | Mij <- Mi | vj <- v] | Mi <- M]
+
+/**
+ * The optimized matrix vector multiplication operator `∘∘` is equivalent to
+ * `MatrixVectorNTT`.
+ * ```repl
+ * :prove doubleRingIsMatrixVectorNTT
+ * ```
+ */
+doubleRingIsMatrixVectorNTT : [k][ell]Tq -> [ell]Tq -> Bit
+property doubleRingIsMatrixVectorNTT M v = (M ∘∘ v) == MatrixVectorNTT M v

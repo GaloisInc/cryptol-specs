@@ -1,0 +1,54 @@
+/*
+ * Test vectors for ECDSA with curve P384.
+ *
+ * [RFC6979]: Thomas Pornin. Deterministic Usage of the Digital Siganture
+ *    Algorithm (DSA) and Elliptic Curve Digital Signature Algorithm (ECDSA).
+ *    Internet Requests for Comments (RFC) 6979. August 2013.
+ *    @see https://datatracker.ietf.org/doc/html/rfc6979
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+import Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P384_SHA384 as ECDSA
+import Common::utils(BVtoZ)
+
+property checkSignature d msg k expected_r expected_s =
+    signIsCorrect && verifyIsCorrect where
+
+    sig = ECDSA::sign msg d k
+    signIsCorrect = case sig of
+        Some (r,s) -> (expected_r == r) && (expected_s == s)
+        None -> False
+
+    Q = ECDSA::publicKey d
+    verifyIsCorrect = case sig of
+        Some (r,s) -> ECDSA::verify msg (r,s) Q
+        None -> False
+
+/**
+ * Test vector for ECDSA with curve P-384 and SHA-384 as the hash.
+ * [RFC6979] Appendix A.2.6.
+ * ```repl
+ * :prove sampleVector
+ * ```
+ */
+property sampleVector = checkSignature d M k expected_r expected_s where
+    M = join "sample"
+    d = BVtoZ 0x6B9D3DAD2E1B8C1C05B19875B6659F4DE23C3B667BF297BA9AA47740787137D896D5724E4C70A825F872C9EA60D2EDF5
+    k = BVtoZ 0x94ED910D1A099DAD3254E9242AE85ABDE4BA15168EAF0CA87A555FD56D10FBCA2907E3E83BA95368623B8C4686915CF9
+    expected_r = BVtoZ 0x94EDBB92A5ECB8AAD4736E56C691916B3F88140666CE9FA73D64C4EA95AD133C81A648152E44ACF96E36DD1E80FABE46
+    expected_s = BVtoZ 0x99EF4AEB15F178CEA1FE40DB2603138F130E740A19624526203B6351D0A3A94FA329C145786E679E7B82C71A38628AC8
+
+/**
+ * Test vector for ECDSA with curve P-384 and SHA-384 as the hash.
+ * [RFC6979] Appendix A.2.6.
+ * ```repl
+ * :prove testVector
+ * ```
+ */
+property testVector = checkSignature d M k expected_r expected_s where
+    M = join "test"
+    d = BVtoZ 0x6B9D3DAD2E1B8C1C05B19875B6659F4DE23C3B667BF297BA9AA47740787137D896D5724E4C70A825F872C9EA60D2EDF5
+    k = BVtoZ 0x015EE46A5BF88773ED9123A5AB0807962D193719503C527B031B4C2D225092ADA71F4A459BC0DA98ADB95837DB8312EA
+    expected_r = BVtoZ 0x8203B63D3C853E8D77227FB377BCF7B7B772E97892A80F36AB775D509D7A5FEB0542A7F0812998DA8F1DD3CA3CF023DB
+    expected_s = BVtoZ 0xDDD0760448D42D8A43AF45AF836FCE4DE8BE06B485E9B61B827C2F13173923E06A739F040649A667BF3B828246BAA5A5

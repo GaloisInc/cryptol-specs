@@ -1,6 +1,10 @@
+/**
+ * @copyright Galois, Inc.
+ * @author Marios Georgiou <marios@galois.com>
+ */
 module sphincsplus256s=specification where
 
-import Primitive::Keyless::Hash::SHAKE::SHAKE256
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE256
 
 type n = 32
 type h = 64

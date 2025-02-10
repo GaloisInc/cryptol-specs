@@ -56,7 +56,8 @@ RotWord [a0, a1, a2, a3] = [a1, a2, a3, a0]
  * [FIPS-197u1] Equation 5.11.
  */
 SubWord : [4]GF28 -> [4]GF28
-SubWord as = [ Sbox::sbox @ a | a <- as ]
+SubWord [a0, a1, a2, a3] = 
+      [ Sbox::sbox a0, Sbox::sbox a1, Sbox::sbox a2, Sbox::sbox a3 ]
 
 /**
  * KeyExpansion() routine.
