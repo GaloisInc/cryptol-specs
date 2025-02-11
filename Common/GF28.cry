@@ -1,20 +1,20 @@
-//
-// Implementation of the finite field GF(2^8).
-//
-// @copyright Galois, Inc
-// @author Nichole Schimanski <nls@galois.com>
-// @author Alannah Carr
-// @author Marcella Hastings <marcella@galois.com>
-//
-// This implementation is drawn from the description of the Galois Field
-// GF(2^8) in [FIPS-197u1], Section 4.
-//
-// References
-// [FIPS-197u1]: Morris J. Dworkin, Elaine B. Barker, James R. Nechvatal,
-// James Foti, Lawrence E. Bassham, E. Roback, and James F. Dray Jr.
-// Advanced Encryption Standard (AES). Federal Inf. Process. Stds. (NIST FIPS)
-// 197, update 1. May 2023.
-//
+/**
+ * Implementation of the finite field GF(2^8).
+ *
+ * @copyright Galois, Inc
+ * @author Nichole Schimanski <nls@galois.com>
+ * @author Alannah Carr
+ * @author Marcella Hastings <marcella@galois.com>
+ *
+ * This implementation is drawn from the description of the Galois Field
+ * GF(2^8) in [FIPS-197u1], Section 4.
+ *
+ * References
+ * [FIPS-197u1]: Morris J. Dworkin, Elaine B. Barker, James R. Nechvatal,
+ * James Foti, Lawrence E. Bassham, E. Roback, and James F. Dray Jr.
+ * Advanced Encryption Standard (AES). Federal Inf. Process. Stds. (NIST FIPS)
+ * 197, update 1. May 2023.
+ */
 module Common::GF28 where
 
 /**
@@ -48,12 +48,11 @@ mult x y = pmod (pmult x y) irreducible
 
 /** A GF28 value to a scalar power */
 pow : GF28 -> [8] -> GF28
-pow n k = pow' k
-  where   sq x  = mult x x
-          pow' i = if i == 0 then 1
-                  else if i ! 0  // if odd
-                       then mult n (sq (pow' (i >> 1)))
-                       else sq (pow' (i >> 1))
+pow n k = vals ! 0 where
+    sq x = mult x x
+    vals = [1] # [ if i then mult n (sq acc) else sq acc
+        | acc <- vals
+        | i   <- k]
 
 /** Dot product of two vectors */
 dotProduct : {n} (fin n) => [n]GF28 -> [n]GF28 -> GF28
@@ -66,10 +65,9 @@ vectorMult v ms = [ dotProduct v m | m <- ms ]
 /**
  * Multiply two matrices. [FIPS-197u1] Section 4.3
  */
-matrixMult : {n, m, k} (fin m)
-              => [n][m]GF28 -> [m][k]GF28 -> [n][k]GF28
+matrixMult : {n, m, k} (fin m) => [n][m]GF28 -> [m][k]GF28 -> [n][k]GF28
 matrixMult xss yss = [ vectorMult xs yss' | xs <- xss ]
-   where yss' = transpose yss
+    where yss' = transpose yss
 
 /**
  * [FIPS-197u1] Section 4.4, Algorithm 4.10
@@ -78,8 +76,8 @@ matrixMult xss yss = [ vectorMult xs yss' | xs <- xss ]
  * ```
  */
 property inverseDefined x =
-  if x == 0 then inverse x == 0
-  else mult x (inverse x) == 1
+    if x == 0 then inverse x == 0
+    else mult x (inverse x) == 1
 
 /**
  * Compute the inverse of a value. [FIPS-197u1 Section 4.4, Algorithm 4.11
