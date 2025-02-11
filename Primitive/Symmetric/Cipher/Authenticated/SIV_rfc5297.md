@@ -1,7 +1,14 @@
+<!---
+ - @copyright Galois, Inc.
+ - @author Nichole Schimanski <nls@galois.com>
+ - @author Brian Huffman
+ - @editor Marcella Hastings <marcella@galois.com>
+ --->
 ```
 module Primitive::Symmetric::Cipher::Authenticated::SIV_rfc5297 where
 
 import Primitive::Symmetric::Cipher::Block::AES128 as AES128
+import Common::OptionUtils(optFold)
 
 type Key = [AES128::KeySize]
 ```
@@ -727,8 +734,8 @@ sivEncrypt K ad P = V # C
 >      }
 
 ```
-sivDecrypt : {p, ad} (2^^71 - 128 >= p, fin ad) => [256] -> [ad] -> [p+128] -> (Bit, [p])
-sivDecrypt K ad Z = (T == V, P)
+sivDecrypt : {p, ad} (2^^71 - 128 >= p, fin ad) => [256] -> [ad] -> [p+128] -> Option [p]
+sivDecrypt K ad Z = if T == V then Some P else None
  where
  V = take `{128} Z
  C = drop `{back=p} Z
@@ -1095,7 +1102,9 @@ property KAT1 =
       == 0x85632d07c6e8f37f950acd320a2ecc9340c02b9690c4dc04daef7f6afe5c
 
 enc_dec : {ad,p} (fin ad, fin p, 2^^71 - 128 >= p) => [256] -> [ad] -> [p] -> Bit
-property enc_dec k ad p = (sivDecrypt k ad (sivEncrypt k ad p)).1 == p
+property enc_dec k ad p = pMatches where
+   decryption = sivDecrypt k ad (sivEncrypt k ad p)
+   pMatches = optFold False (\pActual -> p == pActual) decryption
 
 // `encrypt . decrypt ~ ident` for inputs larger, equal to, and smaller than the block size
 // Expect ~20 minutes for ABC to prove each property
@@ -1109,7 +1118,9 @@ property enc_dec_ls k ad p = enc_dec `{140,18} k ad p
 property enc_dec_ee k ad p = enc_dec `{128,128} k ad p
 property enc_dec_ss k ad p = enc_dec `{50,80} k ad p
 
-property enc_dec_block k ad p = (sivDecrypt k (ad : [50]) (sivEncrypt k ad p)).1 == (p : [500])
+property enc_dec_block k ad p = pMatches where
+   decryption = sivDecrypt k (ad : [50]) (sivEncrypt k ad p)
+   pMatches = optFold False (\pActual -> (p : [500]) == pActual) decryption
 ```
 
    S2V-CMAC-AES
