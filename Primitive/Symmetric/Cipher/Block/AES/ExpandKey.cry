@@ -39,10 +39,35 @@ parameter
 
 /**
  * Key expansion depends on 10 fixed words denoted by `Rcon`.
- * [FIPS-197u1] Table 5.
+ * [FIPS-197u1] Section 5.2, Table 5.
+ *
+ * This function requires `1 <= j <= 10`.
  */
 Rcon : [8] -> [4]GF28
-Rcon j = [ GF28::pow <| x |> (j-1), 0, 0, 0]
+Rcon j = constants @ (j - 1) where
+    constants = [
+        [0x01, 0x00, 0x00, 0x00],
+        [0x02, 0x00, 0x00, 0x00],
+        [0x04, 0x00, 0x00, 0x00],
+        [0x08, 0x00, 0x00, 0x00],
+        [0x10, 0x00, 0x00, 0x00],
+        [0x20, 0x00, 0x00, 0x00],
+        [0x40, 0x00, 0x00, 0x00],
+        [0x80, 0x00, 0x00, 0x00],
+        [0x1b, 0x00, 0x00, 0x00],
+        [0x36, 0x00, 0x00, 0x00]
+    ]
+
+/**
+ * The value of the left-most byte of `Rcon[j]` in polynomial form is `x^(j-1)`.
+ * [FIPS-197u1] Section 5.2.
+ * ```repl
+ * :prove RconIsExponentiation
+ * ```
+ */
+RconIsExponentation : [8] -> Bit
+property RconIsExponentation j = (1 <= j) && (j <= 10) ==>
+    (Rcon j)@0 == GF28::pow <| x |> (j-1)
 
 /**
  * Transformation on words for key expansion.
@@ -56,7 +81,7 @@ RotWord [a0, a1, a2, a3] = [a1, a2, a3, a0]
  * [FIPS-197u1] Equation 5.11.
  */
 SubWord : [4]GF28 -> [4]GF28
-SubWord [a0, a1, a2, a3] = 
+SubWord [a0, a1, a2, a3] =
       [ Sbox::sbox a0, Sbox::sbox a1, Sbox::sbox a2, Sbox::sbox a3 ]
 
 /**
