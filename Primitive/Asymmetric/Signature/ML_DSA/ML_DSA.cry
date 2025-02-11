@@ -36,7 +36,7 @@
 module Primitive::Asymmetric::Signature::ML_DSA::ML_DSA where
 
 import interface Primitive::Asymmetric::Signature::ML_DSA::Parameters as P
-import Primitive::Asymmetric::Signature::ML_DSA::Specification { interface P }
+import Primitive::Asymmetric::Signature::ML_DSA::OptimizedSpecification { interface P }
 
 /**
  * Generate a public-private key pair.
@@ -98,7 +98,7 @@ Verify pk M sigma ctx
 
 // We expose the internal functions for testing purposes only.
 submodule TestAPI where
-    import Primitive::Asymmetric::Signature::ML_DSA::Specification { interface P } as Spec
+    import Primitive::Asymmetric::Signature::ML_DSA::OptimizedSpecification { interface P } as Spec
 
     KeyGen_internal = Spec::KeyGen_internal
     Sign_internal = Spec::Sign_internal
