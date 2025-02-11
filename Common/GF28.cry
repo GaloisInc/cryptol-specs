@@ -48,12 +48,11 @@ mult x y = pmod (pmult x y) irreducible
 
 /** A GF28 value to a scalar power */
 pow : GF28 -> [8] -> GF28
-pow n k = pow' k
-  where   sq x  = mult x x
-          pow' i = if i == 0 then 1
-                  else if i ! 0  // if odd
-                       then mult n (sq (pow' (i >> 1)))
-                       else sq (pow' (i >> 1))
+pow n k = vals ! 0 where
+    sq x = mult x x
+    vals = [1] # [ if i then mult n (sq acc) else sq acc
+        | acc <- vals
+        | i   <- k]
 
 /** Dot product of two vectors */
 dotProduct : {n} (fin n) => [n]GF28 -> [n]GF28 -> GF28

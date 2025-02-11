@@ -14,13 +14,11 @@ gf24Mult x y = pmod (pmult x y) irreducible
 
 // Define a power of an element in GF24
 gf24Pow : GF24 -> GF24 -> GF24
-gf24Pow n k = pow k
-    where
-        sq x = gf24Mult x x
-        pow i = if i == 0 then 1
-                else if i ! 0
-                     then gf24Mult n (sq (pow (i >> 1)))
-                     else sq (pow (i >> 1))
+gf24Pow n k = vals ! 0 where
+    sq x = gf24Mult x x
+    vals = [1] # [ if i then gf24Mult n (sq acc) else sq acc
+        | acc <- vals
+        | i   <- k]
 
 // Self adding gives zero
 polySelfAdd' : GF24 -> Bit
