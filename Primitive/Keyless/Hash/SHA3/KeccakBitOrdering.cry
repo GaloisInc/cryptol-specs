@@ -68,10 +68,8 @@ fromBytes bs = reverse (join (reverse bs))
  * The CSAG examples and intermediate values from NIST:
  * @see https://csrc.nist.gov/projects/cryptographic-standards-and-guidelines/example-values#Hashing
  */
-reverseBitOrdering : {m} [m] -> [m]
-reverseBitOrdering msg
-    | m == inf => join (map reverse (groupBy`{8} msg))
-    | fin m => (flipped_full_bytes # flipped_remainder) where
+reverseBitOrdering : {m} fin m => [m] -> [m]
+reverseBitOrdering msg = (flipped_full_bytes # flipped_remainder) where
         // This is number of bits in the set of "complete" bytes in the input
         // There are `m % 8` bits remaining.
         type Bytes = 8 * (m / 8)

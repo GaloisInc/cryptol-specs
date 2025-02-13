@@ -68,10 +68,9 @@ Keccak M = digest where
     Ss = [S] # [Keccak_p (S' ^ (Pi # (zero : [c]))) | Pi <- Ps | S' <- Ss]
     // Steps 7 - 10. This step is sometimes known as "squeeze".
     // The truncation in Step 8 is handled here with `take`{r}`
-    // The truncation in Step 9 is below with `take`{front=d, back=inf}`.
-    extend : [b] -> [inf]
-    extend Z = (take`{r} Z) # extend (Keccak_p Z)
-    digest = take`{front=d, back=inf} (extend (Ss ! 0))
+    // The truncation in Step 9 is below with `take`{d}`.
+    extends = [Ss ! (0:[1])] # [Keccak_p prev | prev <- extends]
+    digest = take`{d} (join (map (take`{r}) extends))
 
 private
     /**
@@ -99,6 +98,11 @@ private
      */
     type State = [5][5][w]
 
+    type T = max 8 (width (max nr (max 12 ell)))
+
+    (@*) : {a, n} [n]a -> [5] -> a
+    (@*) = (@)
+
     /**
      * Convert a string into a state array.
      * [FIPS-202] Section 3.1.2.
@@ -112,7 +116,7 @@ private
      * each lane are reversed.
      */
     unflatten : [b] -> State
-    unflatten S = [[ Lanes@((5 * y + x))
+    unflatten S = [[ Lanes@*((5 * y + x))
         | y <- [0..4]]
         | x <- [0..4]] where
         Lanes = map reverse (split`{25} S)
@@ -140,10 +144,10 @@ private
         // No explicit appending or joining is needed to compute the Lanes.
         // But we do need to accomodate the lane reversal that happened in the
         // inverse `unflatten` function.
-        Lanes = [[ reverse (A@i@j)
+        Lanes = [[ reverse (A@*i@*j)
             | j <- [0..4]]
             | i <- [0..4]]
-        Planes = [ Lanes@0@j # Lanes@1@j # Lanes@2@j # Lanes@3@j # Lanes@4@j
+        Planes = [ Lanes@*0@*j # Lanes@*1@*j # Lanes@*2@*j # Lanes@*3@*j # Lanes@*4@*j
             | j <- [0..4]]
         S = join Planes
 
@@ -172,11 +176,11 @@ private
      */
     θ : State -> State
     θ A = A' where
-        C = [ A@x@0 ^ A@x@1 ^ A@x@2 ^ A@x@3 ^ A@x@4
+        C = [ A@*x@*0 ^ A@*x@*1 ^ A@*x@*2 ^ A@*x@*3 ^ A@*x@*4
             | x <- [0..4]]
-        D = [ C @ ((x - 1) % 5) ^ (C @ ((x + 1) % 5) <<< 1)
+        D = [ C @* ((x + 4) % 5) ^ (C @* ((x + 1) % 5) <<< (1:[1]))
             | x <- [0..4]]
-        A' = [[ A@x@y ^ D@x
+        A' = [[ A@*x@*y ^ D@*x
             | y <- [0..4]]
             | x <- [0..4] ]
 
@@ -191,20 +195,20 @@ private
     ρ : State -> State
     ρ A = A' where
         // Step 1.
-        A1 = [[ if (x == 0) && (y == 0) then A@0@0 else zero
-            | y <- [0..4]]
-            | x <- [0..4]]
+        A1 = [[ if (x == 0) && (y == 0) then A@*0@*0 else zero
+            | y <- [0..4:[3]]]
+            | x <- [0..4:[3]]]
         // Step 2-3.
         As = [((1,0), A1)] #
             [ ((y, (2*x + 3*y) % 5), set_lane x y t Ai)
             | ((x, y), Ai) <- As
-            | t <- [0..23]]
-        (_, A') = As ! 0
+            | t <- [0..23:[64]]]
+        (_, A') = As ! (0:[1])
 
         // Step 3a. Update the lane defined by x' and y'.
         set_lane x' y' t Ai = [[
-            if (x' == x) && (y' == y) then A@x@y <<< ((t+1)*(t+2)/2)
-            else Ai@x@y
+            if (x' == x) && (y' == y) then A@*x@*y <<< ((t+1)*(t+2)/2)
+            else Ai@*x@*y
             | y <- [0..4]]
             | x <- [0..4]]
 
@@ -257,7 +261,7 @@ private
      * [FIPS-202] Section 3.2.3.
      */
     π : State -> State
-    π A = [[ A @((x + 3 * y) % 5) @x
+    π A = [[ A @*((x + 3 * y) % 5) @* x
         | y <- [0..4]]
         | x <- [0..4]]
 
@@ -273,7 +277,7 @@ private
      * it's nicer to use `~`. You can see the NOT gates in Figure 6.
      */
     χ : State -> State
-    χ A = [[ A @x @y ^ (~A @((x + 1) % 5) @y && A @((x + 2) % 5) @y)
+    χ A = [[ A @* x @* y ^ (~A @* ((x + 1) % 5) @y && A @* ((x + 2) % 5) @* y)
         | y <- [0..4]]
         | x <- [0..4]]
 
@@ -282,22 +286,22 @@ private
      *
      * [FIPS-202] Section 3.2.5, Algorithm 5.
      */
-    rc : Integer -> Bit
+    rc : [T] -> Bit
     rc t = if (t % 255) == 0 then 1 // Step 1.
-         else Rs @ (t % 255) @0 // Step 4.
+         else Rs @ (t % 255) @* 0 // Step 4.
          where
              // Step 2 - 3.
              Rs = [0b10000000] # [lfsr R | R <- Rs ]
              // Step 3. Linear feedback shift register.
              // The truncation in step f is done manually in the return value.
              lfsr : [8] -> [8]
-             lfsr Rin = [R0, R@1, R@2, R@3, R4, R5, R6, R@7]
+             lfsr Rin = [R0, R@*1, R@*2, R@*3, R4, R5, R6, R@*7]
                  where
                      R = 0b0 # Rin
-                     R0 = R@0 ^ R@8
-                     R4 = R@4 ^ R@8
-                     R5 = R@5 ^ R@8
-                     R6 = R@6 ^ R@8
+                     R0 = R@*0 ^ R@*8
+                     R4 = R@*4 ^ R@*8
+                     R5 = R@*5 ^ R@*8
+                     R6 = R@*6 ^ R@*8
 
     /**
      * Hardcode the round constant values.
@@ -313,7 +317,7 @@ private
      *
      * Equivalent to [FIPS-202] Section 3.2.5, Algorithm 5.
      */
-    rc_hardcoded : Integer -> Bit
+    rc_hardcoded : [T] -> Bit
     rc_hardcoded t = constants @ (t % 255) where
         constants = join [
             0x80b1e87f90a7d57062b32fde6ee54a25,
@@ -335,7 +339,7 @@ private
      * `(0, 0)` according to the round index.
      * [FIPS-202] Section 3.2.5, Algorithm 6.
      */
-    ι : State -> Integer -> State
+    ι : State -> [T] -> State
     ι A ir = A'' where
         // Step 1.
         A' = A
@@ -344,12 +348,12 @@ private
         // Step 3. 0 is the identity for XOR, so we iteratively set the
         // `2^j-1`th element by XORing the previously-set bits of RC with the
         // correct value at the desired index.
-        RCs = [RC0] # [RC' ^ (zext`{w} [rc_hardcoded (toInteger j + 7 * ir)] << (2^^j - 1))
+        RCs = [RC0] # [RC' ^ (zext`{w} [rc_hardcoded (j + 7 * ir)] << ((2:[8])^^j - 1))
             | RC' <- RCs
-            | j <- [0..ell] ]
-        RC = (RCs ! 0) : [w]
+            | j <- [0..ell : [T]] ]
+        RC = (RCs ! (0:[1])) : [w]
         // Step 4.
-        A'' = [[ if (x == 0) && (y == 0) then A'@0@0 ^ RC else A'@x@y
+        A'' = [[ if (x == 0) && (y == 0) then A'@*0@*0 ^ RC else A'@*x@*y
             | y <- [0..4]]
             | x <- [0..4]]
 
@@ -394,7 +398,7 @@ private
             | A <- As
             | r <- [nr, nr - 1 .. 1]]
         // Step 3.
-        S' = flatten_noindex (As ! 0)
+        S' = flatten_noindex (As ! (0:[1]))
 
     /**
      * Keccak-f family of permutations.
