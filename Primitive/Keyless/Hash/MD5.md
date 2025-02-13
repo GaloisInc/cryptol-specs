@@ -1,3 +1,7 @@
+<!---
+ - @copyright Galois, Inc.
+ - @author Alannah Carr
+ --->
 # The MD5 Message-Digest Algorithm
 
 ## Welcome
@@ -194,7 +198,7 @@ T =
 Do the following:
 
 ```cryptol
-round1_op : Buffer -> [32] -> Integer -> [32] -> Buffer
+round1_op : Buffer -> [32] -> [5] -> [32] -> Buffer
 round1_op [a, b, c, d] Xk s Ti = [a', b, c, d]
     where
         a' = b + ((a + (F b c d) + Xk + Ti) <<< s)
