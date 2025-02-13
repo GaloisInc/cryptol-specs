@@ -37,7 +37,7 @@ type Nk = 4 + 2 * Mode
 type Nr = 6 + Nk
 
 /** The keys for all the rounds */
-type KeySchedule = [inf]RoundKey
+type KeySchedule = [Nr+1]RoundKey
 /**
  * The general function for executing AES with 128-, 192-, or 256-bit keys.
  *
