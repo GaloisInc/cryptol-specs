@@ -1,3 +1,7 @@
+<!---
+ - @copyright Galois, Inc.
+ - @author Alannah Carr
+ --->
 # The MD5 Message-Digest Algorithm
 
 ## Welcome
