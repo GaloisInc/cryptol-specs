@@ -14,7 +14,7 @@
 // 197, update 1. May 2023.
 //
 
-module Primitive::Symmetric::Cipher::Block::AES::Algorithm where
+module Primitive::Symmetric::Cipher::Block::AES::Cipher where
 
 import Primitive::Symmetric::Cipher::Block::AES::State (State, RoundKey,
   msgToState, stateToMsg)
@@ -37,29 +37,28 @@ type Nk = 4 + 2 * Mode
 type Nr = 6 + Nk
 
 /** The keys for all the rounds */
-type KeySchedule = (RoundKey, [Nr-1]RoundKey, RoundKey)
-
+type KeySchedule = [Nr+1]RoundKey
 /**
  * The general function for executing AES with 128-, 192-, or 256-bit keys.
  *
  * Corresponds to [FIPS-197u1] Section 5.1, Algorithm 1.
  *
  * In the spec, the three inputs to `Cipher` are the input data, the number of
- * rounds `Nr`, and the round keys. In this implementation, we don't explicitly
+ * rounds `Nr`, and the round keys `w`. In this implementation, we don't explicitly
  * pass `Nr` as a parameter; instead it's defined as a type above. We also
  * switch the order of the input and keys.
  */
 cipher: KeySchedule -> [128] -> [128]
-cipher (kInit,ks,kFinal) pt = stateToMsg final_state // Line 13
+cipher w pt = stateToMsg final_state // Line 13
   where
     // Lines 2-3
-    state0 = AddRoundKey kInit (msgToState pt)
+    state0 = AddRoundKey (w @ 0) (msgToState pt)
     // Line 4
-    rounds = [state0] # [ transform w state | w <- ks | state <- rounds ]
+    state4 = foldl transform state0 (w @@ [1 .. (Nr - 1)])
     // Lines 5-8
-    transform w state = AddRoundKey w (MixColumns (ShiftRows (SubBytes state)))
+    transform state word = AddRoundKey word (MixColumns (ShiftRows (SubBytes state)))
     // Lines 10-12
-    final_state = AddRoundKey kFinal (ShiftRows (SubBytes (rounds ! 0)))
+    final_state = AddRoundKey (w @ `Nr) (ShiftRows (SubBytes (state4)))
 
 /**
  * SubBytes applies an invertible, non-linear transformation to the state.
@@ -100,21 +99,21 @@ AddRoundKey w state = w ^ state
  * Corresponds to [FIPS-197u1] Section 5.3, Algorithm 3.
  *
  * In the spec, the three inputs to `InvCipher` are the input data, the number of
- * rounds `Nr`, and the round keys. In this implementation, we don't explicitly
+ * rounds `Nr`, and the round keys `w`. In this implementation, we don't explicitly
  * pass `Nr` as a parameter; instead it's defined as a type above. We also
  * switch the order of the input and keys.
  */
 invCipher: KeySchedule -> [128] -> [128]
-invCipher (kInit, ks, kFinal) ct = stateToMsg final_state // Line 13
+invCipher w ct = stateToMsg final_state // Line 13
   where
     // Lines 2-3
-    state0 = AddRoundKey kFinal ( msgToState ct)
+    state0 = AddRoundKey (w @ `Nr) ( msgToState ct)
     // Line 4
-    rounds = [state0] # [ transform w state | w <- (reverse ks) | state <- rounds ]
+    state4 = foldl transform state0 (reverse (w @@ [1 .. (Nr - 1)]))
     // Lines 5-8
-    transform w state = InvMixColumns (AddRoundKey w (InvSubBytes (InvShiftRows state)))
+    transform state word = InvMixColumns (AddRoundKey word (InvSubBytes (InvShiftRows state)))
     // Lines 10-12
-    final_state = AddRoundKey kInit (InvSubBytes (InvShiftRows (rounds ! 0)))
+    final_state = AddRoundKey (w @ 0) (InvSubBytes (InvShiftRows (state4)))
 
 /**
  * Inverts the `ShiftRows` function.

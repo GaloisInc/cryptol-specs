@@ -17,7 +17,7 @@
 
 module Primitive::Symmetric::Cipher::Block::AES_specification where
 
-import Primitive::Symmetric::Cipher::Block::AES::Algorithm as AES where
+import Primitive::Symmetric::Cipher::Block::AES::Cipher as AES where
    // The AES implementation uses the `Mode` type to compute other parameters.
    // The mode corresponds directly to the key size:
    // Mode 0 = 128 bits; Mode 1 = 192 bits; Mode 2 = 256 bits
@@ -61,7 +61,7 @@ property aesIsCorrect k pt = decrypt k (encrypt k pt) == pt
 type ExpandedKey = AES::KeySchedule
 
 keyExpansion: [KeySize] -> ExpandedKey
-keyExpansion = ExpandKey::expandKey
+keyExpansion = ExpandKey::keyExpansion
 
 encryptWithSchedule :  ExpandedKey -> [BlockSize] -> [BlockSize]
 encryptWithSchedule = AES::cipher
