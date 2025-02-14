@@ -1,0 +1,7 @@
+modules = [
+    "Specification.cry",
+    "Instantiations/SHA224.cry",
+    "Instantiations/SHA256.cry",
+    "Instantiations/SHA384.cry",
+    "Instantiations/SHA512.cry",
+]

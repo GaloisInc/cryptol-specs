@@ -1,0 +1,42 @@
+version = 1
+
+[[modules]]
+fingerprint = "2f671b21f2933a006b6a843c7f281388e6b8227f9944b111f87711dc9ca8448f"
+foreign_fingerprints = []
+include_fingerprints = []
+memory = "Cryptol"
+
+[[modules]]
+docstring_result = true
+file = "/Users/marcella/mtv/cryptol-specs/Primitive/Keyless/Hash/SHA2/Instantiations/SHA224.cry"
+fingerprint = "53cccc7ab55b1fd7dc12e6667d68f84052bb1fbcb5036b8a9004f7dfa03fb4c4"
+foreign_fingerprints = []
+include_fingerprints = []
+
+[[modules]]
+docstring_result = true
+file = "/Users/marcella/mtv/cryptol-specs/Primitive/Keyless/Hash/SHA2/Instantiations/SHA256.cry"
+fingerprint = "dcf21954c173fecb61d9f2daedac9e8265efd066cdcb307dc0521b5594374480"
+foreign_fingerprints = []
+include_fingerprints = []
+
+[[modules]]
+docstring_result = true
+file = "/Users/marcella/mtv/cryptol-specs/Primitive/Keyless/Hash/SHA2/Instantiations/SHA384.cry"
+fingerprint = "a4df601c73237d6618652ec30bcb682c9298c5241852e719a1418ade86dd5b6d"
+foreign_fingerprints = []
+include_fingerprints = []
+
+[[modules]]
+docstring_result = true
+file = "/Users/marcella/mtv/cryptol-specs/Primitive/Keyless/Hash/SHA2/Instantiations/SHA512.cry"
+fingerprint = "759f2e3ce644865b4b3ec62eb7aad6fb670f2e5e91b25481d10f95f3703c4aed"
+foreign_fingerprints = []
+include_fingerprints = []
+
+[[modules]]
+docstring_result = true
+file = "/Users/marcella/mtv/cryptol-specs/Primitive/Keyless/Hash/SHA2/Specification.cry"
+fingerprint = "fe7ce2ecde6882574496f22fb5b901622a2c4483e7719653f0c64a95fbfa7d55"
+foreign_fingerprints = []
+include_fingerprints = []
