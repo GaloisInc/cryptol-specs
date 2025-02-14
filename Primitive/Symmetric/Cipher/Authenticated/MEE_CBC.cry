@@ -39,8 +39,8 @@ pad msg tag = split `{each=blkBytes} (msg # tag # padding)
 
 unpad : {n, p, b}
         (fin n, 8 >= width p, p == blkBytes*b - n, blkBytes*b >= n) =>
-        [b+2]Blk -> ([n][8], Tag, Bit)
-unpad ct = (m, t, good)
+        [b+2]Blk -> Option ([n][8], Tag)
+unpad ct = if good then Some (m, t) else None
   where
     padded = join ct
     m = take `{n} padded
@@ -48,8 +48,15 @@ unpad ct = (m, t, good)
     p = drop `{n + tagBytes} padded
     good = p == ((repeat `p) : [p][8]) /* /\ 1 <= p /\ p <= 16 */
 
+/**
+ * ```repl
+ * :prove unpad_pad_good_1000_256
+ * ```
+ */
 property unpad_pad_good_1000_256 msg tag =
-  unpad (pad `{n=1000,p=104} msg tag) == (msg, tag, True)
+  case unpad (pad `{n=1000,p=104} msg tag) of
+    Some (m', t') -> (m' == msg) && (t' == tag)
+    None -> False
 
 mee_enc : {n, p, b}
           (fin n, p == blkBytes*b - n, 8 >= width p, b >= 1, 16*b >= n) =>
@@ -63,11 +70,16 @@ mee_dec : {n, p, b}
           (fin n, p == blkBytes*b - n, 8 >= width (32 + p), b >= 1, 16*b >= n)
        => (EKey -> Blk -> Blk)
        -> (SKey -> [n][8] -> Tag)
-       -> EKey -> SKey -> Blk -> [b+2]Blk -> ([n][8], Bit)
-mee_dec dec sign ekey skey iv ct = (m, good /\ sign skey m == t)
-  where
-    (m, t, good) = unpad (cbc_dec dec ekey iv ct)
+       -> EKey -> SKey -> Blk -> [b+2]Blk -> Option ([n][8])
+mee_dec dec sign ekey skey iv ct = maybe_m where
+  unpadded = unpad (cbc_dec dec ekey iv ct)
+  maybe_m = case unpadded of
+    Some (m, t) -> if (sign skey m == t) then Some m else None
+    None -> None
 
-property mee_enc_dec_good_1000 enc dec sign ekey skey iv msg =
-  mee_dec `{n=1000,p=104} dec sign ekey skey iv ct == (msg, True)
-    where ct = mee_enc `{n=1000,p=104} enc sign ekey skey iv msg
+property mee_enc_dec_good_1000 enc dec sign ekey skey iv msg = decWorks where
+    ct = mee_enc `{n=1000,p=104} enc sign ekey skey iv msg
+    maybe_msg = mee_dec `{n=1000,p=104} dec sign ekey skey iv ct
+    decWorks = case maybe_msg of
+      Some m' -> msg == m'
+      None -> False
