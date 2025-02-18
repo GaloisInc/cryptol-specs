@@ -1,4 +1,8 @@
 # Build and cache the collection of Suite B algorithms.
+#
+# @copyright Galois, Inc.
+# @author Marcella Hastings <marcella@galois.com>
+#
 modules = [
     # Elliptic curves for ECDH and ECDSA
     "Common/EC/PrimeField/Instantiations/*",
