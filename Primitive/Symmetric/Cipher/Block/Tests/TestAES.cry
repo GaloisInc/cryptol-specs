@@ -15,6 +15,7 @@
  *  @author Marcella Hastings <marcella@galois.com>
  *  www.cryptol.net
  */
+module Primitive::Symmetric::Cipher::Block::Tests::TestAES where
 import Primitive::Symmetric::Cipher::Block::AES192 as AES192
 import Primitive::Symmetric::Cipher::Block::AES128 as AES128
 import Primitive::Symmetric::Cipher::Block::AES256 as AES256
