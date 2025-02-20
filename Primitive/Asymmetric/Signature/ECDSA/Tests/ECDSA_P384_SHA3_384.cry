@@ -12,6 +12,7 @@
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
  */
+module Primitive::Asymmetric::Signature::ECDSA::Tests::ECDSA_P384_SHA3_384 where
 import Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P384_SHA3_384 as ECDSA
 import Common::utils(BVtoZ)
 import Common::EC::PrimeField::Instantiations::P384 as EC
