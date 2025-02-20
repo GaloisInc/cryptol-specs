@@ -5,6 +5,7 @@
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
  */
+module Primitive::Keyless::Hash::SHA2Internal::Equivalence where
 import Primitive::Keyless::Hash::SHA2::Instantiations::SHA256 as SHA_256
 import Primitive::Keyless::Hash::SHA2Internal::SHA256 as SHAI_256
 
