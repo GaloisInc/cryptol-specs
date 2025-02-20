@@ -7,7 +7,7 @@
  * @copyright Galois Inc
  * @author Marcella Hastings <marcella@galois.com>
  */
-
+module Primitive::Asymmetric::KEM::ML_KEM::Tests::ML_KEM512 where
 import Primitive::Asymmetric::KEM::ML_KEM::Instantiations::ML_KEM512 as ML_KEM
 
 /**
