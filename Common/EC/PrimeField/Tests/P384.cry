@@ -8,7 +8,7 @@ From [MATH-2008] Section 4.4.2.
 @author Marcella Hastings <marcella@galois.com>
 
 */
-
+module Common::EC::PrimeField::Tests::P384 where
 import Common::EC::PrimeField::Instantiations::P384 as P384
 import Common::utils(BVtoZ)
 
