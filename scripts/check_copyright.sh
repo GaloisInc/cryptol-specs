@@ -18,7 +18,8 @@ interesting_files() {
         case $fname in
             *README.md) continue ;;
 
-            *.cry | *.tex | *.md | *.bat | *.awk)
+
+            *.cry | *.tex | *.md | *.bat | *.awk | cryproject.toml)
                 echo $fname ;;
         esac
     done

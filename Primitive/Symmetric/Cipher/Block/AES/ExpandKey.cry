@@ -65,8 +65,8 @@ Rcon j = constants @ (j - 1) where
  * :prove RconIsExponentiation
  * ```
  */
-RconIsExponentation : [8] -> Bit
-property RconIsExponentation j = (1 <= j) && (j <= 10) ==>
+RconIsExponentiation : [8] -> Bit
+property RconIsExponentiation j = (1 <= j) && (j <= 10) ==>
     (Rcon j)@0 == GF28::pow <| x |> (j-1)
 
 /**

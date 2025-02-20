@@ -1,0 +1,40 @@
+# Build and cache the collection of Suite B algorithms.
+#
+# @copyright Galois, Inc.
+# @author Marcella Hastings <marcella@galois.com>
+#
+modules = [
+    # Elliptic curves for ECDH and ECDSA
+    "Common/EC/PrimeField/Instantiations/*",
+    "Common/EC/PrimeField/Tests/*",
+
+    # ECDH, instantiated with P-curves
+    "Primitive/Asymmetric/KEM/ECDH/Instantiations/*",
+    "Primitive/Asymmetric/KEM/ECDH/Tests/*",
+
+    # ECDSA, instantiated with P-curves and SHA2
+    "Primitive/Asymmetric/Signature/ECDSA/Instantiations/ECDSA_P224_SHA224.cry",
+    "Primitive/Asymmetric/Signature/ECDSA/Instantiations/ECDSA_P256_SHA256.cry",
+    "Primitive/Asymmetric/Signature/ECDSA/Instantiations/ECDSA_P384_SHA384.cry",
+    "Primitive/Asymmetric/Signature/ECDSA/Tests/ECDSA_P224_SHA224.cry",
+    "Primitive/Asymmetric/Signature/ECDSA/Tests/ECDSA_P256_SHA256.cry",
+    "Primitive/Asymmetric/Signature/ECDSA/Tests/ECDSA_P384_SHA384.cry",
+
+    # AES (standalone)
+    "Primitive/Symmetric/Cipher/Block/AES128.cry",
+    "Primitive/Symmetric/Cipher/Block/AES192.cry",
+    "Primitive/Symmetric/Cipher/Block/AES256.cry",
+    "Primitive/Symmetric/Cipher/Block/Tests/TestAES.cry",
+
+    # AES (counter mode)
+    "Primitive/Symmetric/Cipher/Block/Instantiations/AES*_CTR.cry",
+    "Primitive/Symmetric/Cipher/Block/Tests/TestAES_CTR.cry",
+
+    # AES (GCM mode)
+    "Primitive/Symmetric/Cipher/Authenticated/Instantiations/AES*_GCM.cry",
+    "Primitive/Symmetric/Cipher/Authenticated/Tests/*",
+
+    # SHA2
+    "Primitive/Keyless/Hash/SHA2/Instantiations/*",
+    "Primitive/Keyless/Hash/SHA2/Tests/*",
+]
