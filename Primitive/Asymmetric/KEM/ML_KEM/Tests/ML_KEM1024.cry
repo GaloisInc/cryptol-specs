@@ -8,6 +8,7 @@
  * @author Marcella Hastings <marcella@galois.com>
  */
 
+module Primitive::Asymmetric::KEM::ML_KEM::Tests::ML_KEM1024 where
 import Primitive::Asymmetric::KEM::ML_KEM::Instantiations::ML_KEM1024 as ML_KEM
 
 /**

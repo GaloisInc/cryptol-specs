@@ -11,7 +11,7 @@
  * @copyright Galois, Inc
  * @author Marcella Hastings <marcella@galois.com>
  */
-
+module Primitive::Asymmetric::KEM::ECDH::Tests::ECDH_P384 where
 import Primitive::Asymmetric::KEM::ECDH::Instantiations::ECDH_P384 as ECDH
 import Common::EC::PrimeField::Instantiations::P384 as P384
 import Common::utils(BVtoZ)
