@@ -18,6 +18,7 @@
  *     August 2015.
  *     @see https://doi.org/10.6028/NIST.FIPS.180-4
  */
+module Primitive::Keyless::Hash::SHA2::Tests::SHA384 where
 import Primitive::Keyless::Hash::SHA2::Instantiations::SHA384 as SHA384
 
 /**
