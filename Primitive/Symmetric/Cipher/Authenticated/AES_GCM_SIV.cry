@@ -33,7 +33,7 @@ parameter
  */
 type Mode = KeySize / 128 - 1
 type K  = 128 + 128 * Mode
-import Primitive::Symmetric::Cipher::Block::AES_specification as AES where
+import Primitive::Symmetric::Cipher::Block::AES::Specification as AES where
   type KeySize' = KeySize
 type KS = AES::ExpandedKey
 

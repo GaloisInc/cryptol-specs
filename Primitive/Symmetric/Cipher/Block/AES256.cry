@@ -1,4 +1,4 @@
 module Primitive::Symmetric::Cipher::Block::AES256 =
-    Primitive::Symmetric::Cipher::Block::AES_specification where
+    Primitive::Symmetric::Cipher::Block::AES::Specification where
     // This produces a key size of 256
     type KeySize' = 256

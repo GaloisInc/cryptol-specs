@@ -22,7 +22,7 @@ parameter
   type AESKeySize' : #
   type constraint (fin AESKeySize', AESKeySize' % 64 == 0, AESKeySize' / 64 >= 2, AESKeySize' / 64 <= 4)
 
-import Primitive::Symmetric::Cipher::Block::AES_specification as AES where
+import Primitive::Symmetric::Cipher::Block::AES::Specification as AES where
   type KeySize' = AESKeySize'
 
 // Make the key size parameter available outside the module
