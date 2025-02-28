@@ -1,0 +1,403 @@
+/*
+   @copyright Galois, Inc.
+   @author Marcella Hastings <marcella@galois.com>
+   www.cryptol.net
+
+   This provides the basic AES block cipher, abstracted over the key length.
+
+   It operates over 128-bit blocks. To use AES with any practical application,
+   use it with a mode of operation, like CTR or GCM-SIV.
+
+   References
+   [FIPS-197u1]: Morris J. Dworkin, Elaine B. Barker, James R. Nechvatal,
+   James Foti, Lawrence E. Bassham, E. Roback, and James F. Dray Jr.
+   Advanced Encryption Standard (AES). Federal Inf. Process. Stds. (NIST FIPS)
+   197, update 1. May 2023.
+*/
+
+module Primitive::Symmetric::Cipher::Block::AES::Specification where
+
+import Common::GF28 as GF28
+private type GF28 = GF28::GF28
+
+parameter
+   // This constraint enforces the standard key sizes of 128, 192, and
+   // 256-bits. [FIPS-197u1] Sections 1, 5, and 6.1.
+   type KeySize' : #
+   type constraint (fin KeySize', KeySize' % 64 == 0, KeySize' / 64 >= 2,
+      KeySize' / 64 <= 4)
+
+/**
+ * The number of words in the state is generic for the underlying Rijndael
+ * algorithm, but in the standard it is fixed to 4.
+ * [FIPS-197u1] Section 5.
+ */
+type Nb = 4
+
+// The AES implementation uses the `Mode` type to compute other parameters.
+// The mode corresponds directly to the key size:
+// Mode 0 = 128 bits; Mode 1 = 192 bits; Mode 2 = 256 bits
+type Mode = (KeySize / 64) - 2
+
+/** Key length: number of 32 bit words in the key */
+type Nk = 4 + 2 * Mode
+
+/** Number of rounds */
+type Nr = 6 + Nk
+
+// Make `KeySize` and `BlockSize` accessible outside the module.
+// This also lets us use AES as an instantiation of `CipherInterface`
+type KeySize = KeySize'
+type BlockSize = 128
+
+/**
+ * These are referred to as Cipher and InvCipher in [FIPS-197u1].
+ * See Algorithm 1 and Algorithm 3.
+ */
+encrypt : [KeySize] -> [BlockSize] -> [BlockSize]
+encrypt k = cipher (keyExpansion k)
+
+decrypt : [KeySize] -> [BlockSize] -> [BlockSize]
+decrypt k = invCipher (keyExpansion k)
+
+// The following methods should not be used in general. They are public
+// to support a confusing endianness issue in the implementation of
+// AES-GCM-SIV.
+
+type ExpandedKey = KeySchedule
+
+encryptWithSchedule :  ExpandedKey -> [BlockSize] -> [BlockSize]
+encryptWithSchedule = cipher
+
+/**
+ * This property must be true for each instantiation.
+ * With high probability, it will be extremely slow to prove.
+ *
+ * ```repl
+ * :check aesIsCorrect
+ * ```
+ */
+property aesIsCorrect k pt = decrypt k (encrypt k pt) == pt
+
+/**
+ * The algorithms for AES block ciphers are performed on a 4x4 array of bytes.
+ * [FIPS-197u1] Section 3.4.
+ */
+type State = [4][Nb]GF28
+
+/**
+ * In the specifications for AES, the first step is to copy the input array
+ * of 16 bytes into the state array.
+ *
+ * [FIPS-197u1] Section 3.4, Equation 3.6.
+ */
+msgToState : [128] -> State
+msgToState msg = transpose (split (split msg))
+
+/**
+ * After the state array is transformed, its final value is copied to the
+ * output array of bytes.
+ *
+ * [FIPS-197u1] Section 3.4, Equation 3.7.
+ */
+stateToMsg : State -> [128]
+stateToMsg st = join (join (transpose st))
+
+/**
+ * This demonstrates the property in [FIPS-197u1] Section 3.4, Figure 1.
+ * Note that we don't ever need this property in the execution of AES,
+ * but it should hold true anyway.
+ *
+ * ```repl
+ * :prove ioInverts
+ * ```
+ */
+property ioInverts msg = stateToMsg (msgToState msg) == msg
+
+/**
+ * The round key is a block that is usually represented as a sequence of four words.
+ * [FIPS-197u1] Section 5.
+ *
+ * A word is a sequence of four bytes. [FIPS-197u1] Section 3.5.
+ */
+type RoundKey = [4][4]GF28
+
+/** The keys for all the rounds */
+type KeySchedule = [Nr+1]RoundKey
+
+/**
+ * The general function for executing AES with 128-, 192-, or 256-bit keys.
+ *
+ * Corresponds to [FIPS-197u1] Section 5.1, Algorithm 1.
+ *
+ * In the spec, the three inputs to `Cipher` are the input data, the number of
+ * rounds `Nr`, and the round keys `w`. In this implementation, we don't explicitly
+ * pass `Nr` as a parameter; instead it's defined as a type above. We also
+ * switch the order of the input and keys.
+ */
+cipher: KeySchedule -> [128] -> [128]
+cipher w pt = stateToMsg final_state // Line 13
+  where
+    // Lines 2-3
+    state0 = AddRoundKey (w @ 0) (msgToState pt)
+    // Line 4
+    state4 = foldl transform state0 (w @@ [1 .. (Nr - 1)])
+    // Lines 5-8
+    transform state word = AddRoundKey word (MixColumns (ShiftRows (SubBytes state)))
+    // Lines 10-12
+    final_state = AddRoundKey (w @ `Nr) (ShiftRows (SubBytes (state4)))
+
+type SBox = [256] GF28
+
+/**
+ * The substitution table as given in Table 4. The table is pulled out here
+ * for efficiency, letting us compute the table once per access in AES.
+ */
+sboxTable : SBox
+private sboxTable = [ transform (GF28::inverse b) | b <- [0 .. 255] ] where
+    // Equation 5.3.
+    transform b = GF28::add [b, (b >>> 4), (b >>> 5), (b >>> 6), (b >>> 7), c]
+    // The constant byte {01100011}.
+    c = 0x63
+
+/**
+ * SBox: A non-linear substitution table for AES.
+ * [FIPS-197u1] Section 5.1.1.
+ *
+ * `GF28::inverse b` corresponds to Equation 5.2.
+ */
+sbox : GF28 -> GF28
+sbox b = sboxTable @ b
+
+/**
+ * Sbox example from p. 14
+ * ```repl
+ *  :prove sBox53
+ * ```
+ */
+property sBox53 = sbox 0x53 == 0xed
+
+/**
+ * SubBytes applies an invertible, non-linear transformation to the state.
+ * [FIPS-197u1] Section 5.1.1.
+ *
+ * It does so by applying the AES S-box independently to each byte in the state.
+ */
+SubBytes : State -> State
+SubBytes state = [ [ sbox b | b <- row ] | row <- state ]
+
+/**
+ * ShiftRows transforms the state by cycling the last three rows.
+ * [FIPS-197u1] Section 5.1.2.
+ */
+ShiftRows : State -> State
+ShiftRows state = [ row <<< i | row <- state | i : [2] <- [0 .. 3] ]
+
+/**
+ * MixColumns multiplies the state columns by a fixed matrix.
+ * [FIPS-197u1] Section 5.1.3.
+ */
+MixColumns : State -> State
+MixColumns state = GF28::matrixMult m state
+    where m = [ [2,3,1,1] >>> i | i <- [0 .. 3] ]
+
+/**
+ * AddRoundKey combines the state with a round key via the
+ * bitwise XOR operator
+ * [FIPS-197u1] Section 5.1.4
+ */
+AddRoundKey : RoundKey -> State -> State
+AddRoundKey w state = w ^ state
+
+/**
+ * Key expansion depends on 10 fixed words denoted by `Rcon`.
+ * [FIPS-197u1] Section 5.2, Table 5.
+ *
+ * This function requires `1 <= j <= 10`.
+ */
+Rcon : [8] -> [4]GF28
+Rcon j = constants @ (j - 1) where
+    constants = [
+        [0x01, 0x00, 0x00, 0x00],
+        [0x02, 0x00, 0x00, 0x00],
+        [0x04, 0x00, 0x00, 0x00],
+        [0x08, 0x00, 0x00, 0x00],
+        [0x10, 0x00, 0x00, 0x00],
+        [0x20, 0x00, 0x00, 0x00],
+        [0x40, 0x00, 0x00, 0x00],
+        [0x80, 0x00, 0x00, 0x00],
+        [0x1b, 0x00, 0x00, 0x00],
+        [0x36, 0x00, 0x00, 0x00]
+    ]
+
+/**
+ * The value of the left-most byte of `Rcon[j]` in polynomial form is `x^(j-1)`.
+ * [FIPS-197u1] Section 5.2.
+ * ```repl
+ * :prove RconIsExponentiation
+ * ```
+ */
+RconIsExponentiation : [8] -> Bit
+property RconIsExponentiation j = (1 <= j) && (j <= 10) ==>
+    (Rcon j)@0 == GF28::pow <| x |> (j-1)
+
+/**
+ * Transformation on words for key expansion.
+ * [FIPS-197u1] Equation 5.10.
+ */
+RotWord : [4]GF28 -> [4]GF28
+RotWord [a0, a1, a2, a3] = [a1, a2, a3, a0]
+
+/**
+ * Transformation on words for key expansion.
+ * [FIPS-197u1] Equation 5.11.
+ */
+SubWord : [4]GF28 -> [4]GF28
+SubWord [a0, a1, a2, a3] = [ sbox a0, sbox a1, sbox a2, sbox a3 ]
+
+/**
+ * KeyExpansion() routine.
+ * [FIPS-197u1] Algorithm 2.
+ *
+ * The algorithm in the spec returns the key as a single object `w`. For
+ * convenience at the point of use, we split it into three parts, separating
+ * the first and last keys from the main set of round keys:
+ * `w_0, [w_1, ..., w_{Nr-1}], w_{Nr}`.
+ *
+ * In generating the key stream, we use slightly different notation compared
+ * to the original spec in an attempt at readability.
+ * `w_{i-1}` is denoted `w_1`, and `w_{i-Nk}` is denoted `w_nk`.
+ */
+keyExpansion : [32 * Nk] -> [Nr+1]RoundKey
+keyExpansion key = keys
+  where
+    // Lines 2-6: The first `Nk` words of the expanded key are the key itself
+    seed : [Nk][4]GF28
+    seed = split (split key)
+
+    // Lines 7-16: A loop to recursively generate the key stream
+    ws : [inf][4]GF28
+    ws = seed # [ nextWord i w_1 w_nk
+       | i    <- [ `Nk ... ]
+       | w_1  <- drop`{Nk-1} ws
+       | w_nk <- ws
+       ]
+
+    // Generate a single word `w_i` in the key stream.
+    // Each word `w_i` is a function of the previous word `w_{i-1}`
+    // and the word `Nk` positions earlier `w_{i-Nk}`.
+    nextWord : [8] ->[4]GF28 -> [4]GF28 -> [4]GF28
+    nextWord i w_1 w_nk = w_i where
+      // Lines 8 - 13: Derive the mask `temp`.
+      temp =
+        // If `i` is a multiple of `Nk`:
+        if i % `Nk == 0 then
+          SubWord (RotWord w_1) ^ Rcon (i / `Nk)
+        // For AES-256 (Nk == 8), if `i + 4` is a multiple of 8:
+        else if (`Nk > 6) && (i % `Nk == 4) then
+          SubWord w_1
+        // For all other cases:
+        else w_1
+
+      // Line 14: Apply the mask to the `i-Nk`th word to get the `i`th word.
+      w_i = w_nk ^ temp
+
+    // Line 17: Return the resulting key stream
+    // This breaks the stream into correctly-shaped words
+    keys = take `{Nr+1} [ transpose g | g <- split ws ]
+
+/**
+ * The general function for inverting AES with 128-, 192-, or 256-bit keys.
+ *
+ * This inverts and reverses the order of the transformations in `cipher`.
+ * Corresponds to [FIPS-197u1] Section 5.3, Algorithm 3.
+ *
+ * In the spec, the three inputs to `InvCipher` are the input data, the number of
+ * rounds `Nr`, and the round keys `w`. In this implementation, we don't explicitly
+ * pass `Nr` as a parameter; instead it's defined as a type above. We also
+ * switch the order of the input and keys.
+ */
+invCipher: KeySchedule -> [128] -> [128]
+invCipher w ct = stateToMsg final_state // Line 13
+  where
+    // Lines 2-3
+    state0 = AddRoundKey (w @ `Nr) ( msgToState ct)
+    // Line 4
+    state4 = foldl transform state0 (reverse (w @@ [1 .. (Nr - 1)]))
+    // Lines 5-8
+    transform state word = InvMixColumns (AddRoundKey word (InvSubBytes (InvShiftRows state)))
+    // Lines 10-12
+    final_state = AddRoundKey (w @ 0) (InvSubBytes (InvShiftRows (state4)))
+
+/**
+ * Inverts the `ShiftRows` function.
+ * [FIPS-197u1] Section 5.3.1.
+ */
+InvShiftRows : State -> State
+InvShiftRows state = [ row >>> i | row <- state | i : [2] <- [0 .. 3] ]
+
+/**
+ * The substitution table as given in Table 6. The table is pulled out here
+ * for efficiency, letting us compute the table once per access in AES.
+ */
+sboxInvTable : SBox
+private sboxInvTable = [ GF28::inverse (transformInv b) | b <- [0 .. 255] ] where
+    transformInv b = GF28::add [(b >>> 2), (b >>> 5), (b >>> 7), d]
+    d = 0x05
+
+/**
+ * Inverted substitution table for AES.
+ * [FIPS-197u1] Section 5.3.2.
+ */
+sboxInv : GF28 -> GF28
+sboxInv b = sboxInvTable @ b
+
+/**
+ * S-box inversion must be correctly defined.
+ * ```repl
+ * :prove sBoxInverts
+ * ```
+ */
+property sBoxInverts b = sboxInv (sbox b) == b
+
+/**
+ * Inverts the `SubBytes` function.
+ * [FIPS-197u1] Section 5.3.2
+ */
+InvSubBytes : State -> State
+InvSubBytes state = [ [ sboxInv b | b <- row ] | row <- state ]
+
+/**
+ * Inverts the `MixColumns` function.
+ * [FIPS-197u1] Section 5.3.3.
+ */
+InvMixColumns : State -> State
+InvMixColumns state = GF28::matrixMult m state
+    where m = [[0x0e, 0x0b, 0x0d, 0x09] >>> i | i <- [0 .. 3] ]
+
+/**
+ * SubBytes inversion must be correctly defined.
+ * ```repl
+ * :prove subBytesInverts
+ * ```
+ */
+subBytesInverts : State -> Bool
+property subBytesInverts s = InvSubBytes (SubBytes s) == s
+
+/**
+ * ShiftRows inversion must be correctly defined.
+ * ```repl
+ * :prove shiftRowsInverts
+ * ```
+ */
+shiftRowsInverts : State -> Bool
+property shiftRowsInverts s = InvShiftRows (ShiftRows s) == s
+
+/**
+ * MixColumns inversion must be correctly defined.
+ * ```repl
+ * :check mixColumnsInverts
+ * ```
+ */
+mixColumnsInverts : State -> Bool
+property mixColumnsInverts s = InvMixColumns (MixColumns s) == s

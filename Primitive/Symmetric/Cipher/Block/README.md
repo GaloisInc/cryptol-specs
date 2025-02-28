@@ -40,6 +40,6 @@ parameter
   type KeySize : #
   type constraint (fin KeySize, KeySize % 64 == 0, KeySize / 64 >= 2, KeySize / 64 <= 4)
 
-import Primitive::Symmetric::Cipher::Block::AES_specification as AES where
+import Primitive::Symmetric::Cipher::Block::AES::Specification as AES where
   type KeySize' = KeySize
 ```
