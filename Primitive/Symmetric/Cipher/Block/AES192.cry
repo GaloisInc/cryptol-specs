@@ -1,3 +1,9 @@
+/*
+   @copyright Galois, Inc.
+   @author Marcella Hastings <marcella@galois.com>
+   www.cryptol.net
+ */
+
 module Primitive::Symmetric::Cipher::Block::AES192 =
     Primitive::Symmetric::Cipher::Block::AES::Specification where
     // This produces a key size of 192
