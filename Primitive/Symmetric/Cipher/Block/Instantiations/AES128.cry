@@ -1,4 +1,4 @@
-module Primitive::Symmetric::Cipher::Block::AES128 =
+module Primitive::Symmetric::Cipher::Block::Instantiations::AES128 =
     Primitive::Symmetric::Cipher::Block::AES::Specification where
     // This produces a key size of 128
     type KeySize' = 128

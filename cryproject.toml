@@ -21,9 +21,9 @@ modules = [
     "Primitive/Asymmetric/Signature/ECDSA/Tests/ECDSA_P384_SHA384.cry",
 
     # AES (standalone)
-    "Primitive/Symmetric/Cipher/Block/AES128.cry",
-    "Primitive/Symmetric/Cipher/Block/AES192.cry",
-    "Primitive/Symmetric/Cipher/Block/AES256.cry",
+    "Primitive/Symmetric/Cipher/Block/Instantiations/AES128.cry",
+    "Primitive/Symmetric/Cipher/Block/Instantiations/AES192.cry",
+    "Primitive/Symmetric/Cipher/Block/Instantiations/AES256.cry",
     "Primitive/Symmetric/Cipher/Block/Tests/TestAES.cry",
 
     # AES (counter mode)
