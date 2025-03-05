@@ -4,7 +4,7 @@
    www.cryptol.net
 */
 
-module Primitive::Symmetric::Cipher::Block::AES256 =
+module Primitive::Symmetric::Cipher::Block::Instantiations::AES256 =
     Primitive::Symmetric::Cipher::Block::AES::Specification where
     // This produces a key size of 256
     type KeySize' = 256
