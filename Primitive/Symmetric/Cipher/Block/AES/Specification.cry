@@ -16,10 +16,9 @@
 
 module Primitive::Symmetric::Cipher::Block::AES::Specification where
 
-import Primitive::Symmetric::Cipher::Block::AES::State (State, RoundKey,
-  msgToState, stateToMsg)
 import Primitive::Symmetric::Cipher::Block::AES::SBox
 import Common::GF28 as GF28
+private type GF28 = GF28::GF28
 
 parameter
   /** 0: AES128, 1: AES192, 2: AES256 */
@@ -35,6 +34,56 @@ type Nk = 4 + 2 * Mode
 
 /** Number of rounds */
 type Nr = 6 + Nk
+
+/**
+ * The number of words in the state is generic for the underlying Rijndael
+ * algorithm, but in the standard it is fixed to 4.
+ * [FIPS-197u1] Section 5.
+ */
+type Nb = 4
+
+/**
+ * The algorithms for AES block ciphers are performed on a 4x4 array of bytes.
+ * [FIPS-197u1] Section 3.4.
+ */
+type State = [4][Nb]GF28
+
+/**
+ * In the specifications for AES, the first step is to copy the input array
+ * of 16 bytes into the state array.
+ *
+ * [FIPS-197u1] Section 3.4, Equation 3.6.
+ */
+msgToState : [128] -> State
+msgToState msg = transpose (split (split msg))
+
+/**
+ * After the state array is transformed, its final value is copied to the
+ * output array of bytes.
+ *
+ * [FIPS-197u1] Section 3.4, Equation 3.7.
+ */
+stateToMsg : State -> [128]
+stateToMsg st = join (join (transpose st))
+
+/**
+ * This demonstrates the property in [FIPS-197u1] Section 3.4, Figure 1.
+ * Note that we don't ever need this property in the execution of AES,
+ * but it should hold true anyway.
+ *
+ * ```repl
+ * :prove ioInverts
+ * ```
+ */
+property ioInverts msg = stateToMsg (msgToState msg) == msg
+
+/**
+ * The round key is a block that is usually represented as a sequence of four words.
+ * [FIPS-197u1] Section 5.
+ *
+ * A word is a sequence of four bytes. [FIPS-197u1] Section 3.5.
+ */
+type RoundKey = [4][4]GF28
 
 /** The keys for all the rounds */
 type KeySchedule = [Nr+1]RoundKey
