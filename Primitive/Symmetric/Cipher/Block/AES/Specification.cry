@@ -20,13 +20,20 @@ import Common::GF28 as GF28
 private type GF28 = GF28::GF28
 
 parameter
-  /** 0: AES128, 1: AES192, 2: AES256 */
-  type Mode : #
-  type constraint (2 >= Mode)
+  // This constraint enforces the standard key sizes of 128, 192, and
+  // 256-bits. [FIPS-197u1] Sections 1, 5, and 6.1.
+  type KeySize' : #
+  type constraint (fin KeySize', KeySize' % 64 == 0, KeySize' / 64 >= 2,
+    KeySize' / 64 <= 4)
 
-/* The following section encodes [FIPS-197u1] Section 5, Table 3
- * The table is described in terms of the `Mode`.
- */
+/**
+ * The AES implementation uses the `Mode` type to compute other parameters.
+ * The mode corresponds directly to the key size:
+ * Mode 0 = 128 bits; Mode 1 = 192 bits; Mode 2 = 256 bits
+ */ 
+type Mode = (KeySize / 64) - 2
+
+// The following section encodes [FIPS-197u1] Section 5, Table 3
 
 /** Key length: number of 32 bit words in the key */
 type Nk = 4 + 2 * Mode
@@ -40,6 +47,40 @@ type Nr = 6 + Nk
  * [FIPS-197u1] Section 5.
  */
 type Nb = 4
+
+// Make `KeySize` and `BlockSize` accessible outside the module.
+// This also lets us use AES as an instantiation of `CipherInterface`
+type KeySize = KeySize'
+type BlockSize = 128
+
+/**
+ * These are referred to as Cipher and InvCipher in [FIPS-197u1].
+ * See Algorithm 1 and Algorithm 3.
+ */
+encrypt : [KeySize] -> [BlockSize] -> [BlockSize]
+encrypt k = cipher (keyExpansion k)
+
+decrypt : [KeySize] -> [BlockSize] -> [BlockSize]
+decrypt k = invCipher (keyExpansion k)
+
+/**
+ * This property must be true for each instantiation.
+ * With high probability, it will be extremely slow to prove.
+ *
+ * ```repl
+ * :check aesIsCorrect
+ * ```
+ */
+property aesIsCorrect k pt = decrypt k (encrypt k pt) == pt
+
+// The following methods should not be used in general. They are public
+// to support a confusing endianness issue in the implementation of
+// AES-GCM-SIV.
+
+type ExpandedKey = KeySchedule
+
+encryptWithSchedule :  ExpandedKey -> [BlockSize] -> [BlockSize]
+encryptWithSchedule = cipher
 
 /**
  * The algorithms for AES block ciphers are performed on a 4x4 array of bytes.

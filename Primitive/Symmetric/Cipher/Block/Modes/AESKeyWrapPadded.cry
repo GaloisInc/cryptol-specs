@@ -24,7 +24,7 @@ type AESKeySize = AESKeySize'
 import Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap where
   type AESKeySize' = AESKeySize
 
-import Primitive::Symmetric::Cipher::Block::AES_specification as AES where
+import Primitive::Symmetric::Cipher::Block::AES::Specification as AES where
   type KeySize' = AESKeySize'
 
 // Most significant bits of alternate initial value (Section 3)
