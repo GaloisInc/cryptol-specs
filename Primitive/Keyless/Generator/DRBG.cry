@@ -5,7 +5,7 @@
 
 module Primitive::Keyless::Generator::DRBG where
 
-import Primitive::Symmetric::Cipher::Block::AES256 as AES256
+import Primitive::Symmetric::Cipher::Block::Instantiations::AES256 as AES256
 
 type keylen   = AES256::KeySize // bits
 type blocklen = 128 // bits
