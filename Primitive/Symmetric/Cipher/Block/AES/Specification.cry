@@ -14,7 +14,7 @@
 // 197, update 1. May 2023.
 //
 
-module Primitive::Symmetric::Cipher::Block::AES::Cipher where
+module Primitive::Symmetric::Cipher::Block::AES::Specification where
 
 import Primitive::Symmetric::Cipher::Block::AES::State (State, RoundKey,
   msgToState, stateToMsg)
