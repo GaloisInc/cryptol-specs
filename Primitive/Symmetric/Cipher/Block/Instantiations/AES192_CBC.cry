@@ -6,5 +6,5 @@
  */
 module Primitive::Symmetric::Cipher::Block::Instantiations::AES192_CBC =
     Primitive::Symmetric::Cipher::Block::Modes::CBC {
-        Primitive::Symmetric::Cipher::Block::AES192
+        Primitive::Symmetric::Cipher::Block::Instantiations::AES192
     }

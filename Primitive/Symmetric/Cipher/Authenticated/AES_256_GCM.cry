@@ -1,6 +1,6 @@
 module Primitive::Symmetric::Cipher::Authenticated::AES_256_GCM where
 
-import Primitive::Symmetric::Cipher::Block::AES256 as AES256
+import Primitive::Symmetric::Cipher::Block::Instantiation::AES256 as AES256
 
 aes_hw_encrypt : [16][8] -> [32][8] -> [16][8]
 aes_hw_encrypt in key = split (AES256::encrypt (join key) (join in))
