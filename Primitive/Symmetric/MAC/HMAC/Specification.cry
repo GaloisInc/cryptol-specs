@@ -1,0 +1,75 @@
+/**
+ * Implementation of Keyed-Hash Message Authentication Code (HMAC)
+ * as specified in [FIPS-198-1], Section 4.
+ *
+ * @copyright Galois, Inc
+ * @author Eric Mertens <emertens@galois.com>
+ *
+ * [FIPS-198-1]: National Institute of Standards and Technology.
+ *     The Keyed-Hash Message Authentication Code (HMAC)
+ *     (Department of Commerce, Washington, D.C.),
+ *     Federal Information Processing Standards Publication (FIPS) NIST FIPS 198-1.
+ *     July 2008.
+ *     @see https://doi.org/10.6028/NIST.FIPS.198-1
+ */
+module Primitive::Symmetric::MAC::HMAC::Specification where
+
+parameter
+  /** Block size (in bytes) of the input to the Approved hash function. */
+  type B : #
+
+  /** Block size (in bytes) of the output of the Approved hash function. */
+  type L : #
+
+  /** Byte-length of output of authenticator */
+  type A : #
+
+  /** Maximum size (in bytes) of the input to the Approved hash function. */
+  type M : #
+
+  type constraint (fin B, A <= L, L <= B, L <= M, B + L <= M)
+
+  /** An Approved hash function. */
+  H : {T} (T <= M) => [T][8] -> [L][8]
+
+/**
+ * Compute an pseudorandom block using the HMAC construction.
+ *
+ * # Parameters
+ * - K: Secret key
+ * - text: The data on which the HMAC is calculated.
+ */
+prf_hmac :
+  {K, T}
+  (fin K, fin L, K <= M, T + B <= M) =>
+  [K][8] -> [T][8] -> [L][8]
+prf_hmac K text =
+  H ((K' ^ opad) # H ((K' ^ ipad) # text))
+  where
+    K' = expand_key K
+
+/**
+ * Compute an authentication tag using the HMAC construction.
+ *
+ * # Parameters
+ * - K: Secret key shared between the originator and the intended receiver(s).
+ * - text: The data on which the HMAC is calculated.
+ */
+hmac : {T}
+  (fin L, T + B <= M) =>
+  [L][8] -> [T][8] -> [A][8]
+hmac K text = take`{A} (prf_hmac K text)
+
+private
+  /** Inner pad; the byte x‘36’ repeated B times. */
+  ipad : [B][8]
+  ipad = repeat 0x36
+
+  /** Outer pad; the byte x‘5c’ repeated B times. */
+  opad : [B][8]
+  opad = repeat 0x5c
+
+  expand_key : {K} (K <= M) => [K][8] -> [B][8]
+  expand_key K
+    | K <= B => K # zero
+    | K > B => H K # zero

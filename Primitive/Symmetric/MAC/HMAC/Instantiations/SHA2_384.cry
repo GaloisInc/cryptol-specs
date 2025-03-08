@@ -1,0 +1,17 @@
+/**
+ * HMAC instantiated with SHA2-384 as defined in [RFC-4868].
+ *
+ * @copyright Galois, Inc
+ * @author Eric Mertens <emertens@galois.com>
+ *
+ * [RFC-4868] @see https://datatracker.ietf.org/doc/html/rfc4868
+ */
+module Primitive::Symmetric::MAC::HMAC::Instantiations::SHA2_384 =
+  Primitive::Symmetric::MAC::HMAC::Specification where
+
+  import Primitive::Keyless::Hash::SHA2::Instantiations::SHA384
+  type B = 128
+  type L = 48
+  type A = 24
+  type M = 2^^124 - 1
+  H = hashBytes

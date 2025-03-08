@@ -37,4 +37,8 @@ modules = [
     # SHA2
     "Primitive/Keyless/Hash/SHA2/Instantiations/*",
     "Primitive/Keyless/Hash/SHA2/Tests/*",
+
+    # HMAC
+    "Primitive/Symmetric/MAC/HMAC/Instantiations/*",
+    "Primitive/Symmetric/MAC/HMAC/Tests/*",
 ]
