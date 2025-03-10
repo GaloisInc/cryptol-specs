@@ -1,3 +1,11 @@
+<!---
+ - @copyright Galois, Inc.
+ - @author Nichole Schimanski <nls@galois.com>
+ - @author Marcella Hastings <marcella@galois.com>
+ -  www.cryptol.net
+ --->
+
+
 ```
 module Primitive::Symmetric::Cipher::Authenticated::SIV_rfc5297 where
 

@@ -1,6 +1,9 @@
-/*
-  Copyright (c) 2018, Galois Inc.
-  www.cryptol.net
+/**
+ * @copyright Galois Inc.
+ * @author Nichole Schimanski <nls@galois.com>
+ * @author Marcella Hastings <marcella@galois.com>
+ * @author Ryan Scott <rscott@galois.com>
+ * www.cryptol.net
 */
 
 module Primitive::Keyless::Generator::DRBG where

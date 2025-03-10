@@ -1,3 +1,9 @@
+/**
+ * @copyright Galois, Inc
+ * @author Andrei Stefanescu
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+
 module Primitive::Symmetric::Cipher::Authenticated::AES_256_GCM where
 
 import Primitive::Symmetric::Cipher::Block::Instantiations::AES256 as AES256
