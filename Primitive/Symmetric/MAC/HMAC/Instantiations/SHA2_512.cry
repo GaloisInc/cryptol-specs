@@ -12,6 +12,5 @@ module Primitive::Symmetric::MAC::HMAC::Instantiations::SHA2_512 =
   import Primitive::Keyless::Hash::SHA2::Instantiations::SHA512
   type B = 128
   type L = 64
-  type A = 32
   type M = 2^^124 - 1
   H = hashBytes

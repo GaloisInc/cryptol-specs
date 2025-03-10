@@ -5,6 +5,11 @@
  * @copyright Galois, Inc
  * @author Eric Mertens <emertens@galois.com>
  *
+ * For discussion on security considerations while using HMAC, please see NIST SP 800-107.
+ * This has important security notes about choosing key lengths, truncation, and the overall
+ * security strength of the algorithm.
+ * @see https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-107r1.pdf
+ *
  * [FIPS-198-1]: National Institute of Standards and Technology.
  *     The Keyed-Hash Message Authentication Code (HMAC)
  *     (Department of Commerce, Washington, D.C.),
@@ -21,13 +26,10 @@ parameter
   /** Block size (in bytes) of the output of the Approved hash function. */
   type L : #
 
-  /** Byte-length of output of authenticator */
-  type A : #
-
   /** Maximum size (in bytes) of the input to the Approved hash function. */
   type M : #
 
-  type constraint (fin B, A <= L, L <= B, L <= M, B + L <= M)
+  type constraint (fin B, L <= B, L <= M, B + L <= M)
 
   /** An Approved hash function. */
   H : {T} (T <= M) => [T][8] -> [L][8]
@@ -39,14 +41,11 @@ parameter
  * - K: Secret key
  * - text: The data on which the HMAC is calculated.
  */
-prf_hmac :
-  {K, T}
-  (fin K, fin L, K <= M, T + B <= M) =>
-  [K][8] -> [T][8] -> [L][8]
-prf_hmac K text =
-  H ((K' ^ opad) # H ((K' ^ ipad) # text))
+prf_hmac : {K, T} (fin K, fin L, K <= M, T + B <= M) => [K][8] -> [T][8] -> [L][8]
+prf_hmac k text =
+  H ((k' ^ opad) # H ((k' ^ ipad) # text))
   where
-    K' = expand_key K
+    k' = expand_key k
 
 /**
  * Compute an authentication tag using the HMAC construction.
@@ -55,10 +54,8 @@ prf_hmac K text =
  * - K: Secret key shared between the originator and the intended receiver(s).
  * - text: The data on which the HMAC is calculated.
  */
-hmac : {T}
-  (fin L, T + B <= M) =>
-  [L][8] -> [T][8] -> [A][8]
-hmac K text = take`{A} (prf_hmac K text)
+hmac : {T, λ} (T + B <= M, λ <= L) => [L][8] -> [T][8] -> [λ][8]
+hmac k text = take`{λ} (prf_hmac k text)
 
 private
   /** Inner pad; the byte x‘36’ repeated B times. */
@@ -70,6 +67,6 @@ private
   opad = repeat 0x5c
 
   expand_key : {K} (K <= M) => [K][8] -> [B][8]
-  expand_key K
-    | K <= B => K # zero
-    | K > B => H K # zero
+  expand_key k
+    | k <= B => k # zero
+    | k > B => H k # zero
