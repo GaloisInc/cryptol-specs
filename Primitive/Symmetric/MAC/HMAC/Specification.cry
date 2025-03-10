@@ -68,5 +68,5 @@ private
 
   expand_key : {K} (K <= M) => [K][8] -> [B][8]
   expand_key k
-    | k <= B => k # zero
-    | k > B => H k # zero
+    | K <= B => k # zero
+    | K > B => H k # zero
