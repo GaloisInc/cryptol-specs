@@ -35,7 +35,7 @@ parameter
   H : {T} (T <= M) => [T][8] -> [L][8]
 
 /**
- * Compute an pseudorandom block using the HMAC construction as
+ * Compute a pseudorandom block using the HMAC construction as
  * specified in FIPS-198-1 Section 4.
  *
  * Truncation is implemented as defined in FIPS-198-1 Section 5.
