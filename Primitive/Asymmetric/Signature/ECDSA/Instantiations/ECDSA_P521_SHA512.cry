@@ -1,0 +1,11 @@
+/*
+ * Instantiate ECDSA with curve P-521 (also known as secp521p1) and SHA512.
+ *
+ * @copyright Galois, Inc.
+ * @author Eric Mertens <emertens@galois.com>
+ */
+module Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P521_SHA512 =
+    Primitive::Asymmetric::Signature::ECDSA::Specification {
+        EC = Common::EC::PrimeField::Instantiations::P521,
+        Hash = Primitive::Keyless::Hash::SHA2::Instantiations::SHA512
+    }
