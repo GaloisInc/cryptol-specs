@@ -38,16 +38,19 @@ parameter
  * Compute an pseudorandom block using the HMAC construction as
  * specified in FIPS-198-1 Section 4.
  *
+ * Truncation is implemented as defined in FIPS-198-1 Section 5.
+ *
  * # Type parameters
- * - K: Length of secret key
- * - T: Length of input text
+ * - λ: Length of output (in bytes)
+ * - K: Length of secret key (in bytes)
+ * - T: Length of input text (in bytes)
  *
  * # Parameters
  * - k: Secret key
  * - text: The data on which the HMAC is calculated.
  */
-hmac : {K, T} (K <= M, T + B <= M) => [K][8] -> [T][8] -> [L][8]
-hmac k text = H ((k' ^ opad) # H ((k' ^ ipad) # text))
+hmac : {λ, K, T} (λ <= L, K <= M, T + B <= M) => [K][8] -> [T][8] -> [λ][8]
+hmac k text = take (H ((k' ^ opad) # H ((k' ^ ipad) # text)))
   where
     k' = expand_key k
 

@@ -29,7 +29,7 @@ type AuthTest T =
 sha1_auth_test : {T} (T < 256) => AuthTest T -> Bit
 sha1_auth_test params =
   hmac params.Key params.Data == split params.PRF_HMAC_SHA_1 /\
-  take (hmac params.Key params.Data) == split params.HMAC_SHA_1_96
+  hmac params.Key params.Data == split params.HMAC_SHA_1_96
 
 /**
  * ```repl
