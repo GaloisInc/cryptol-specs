@@ -6,6 +6,6 @@
  */
 module Primitive::Symmetric::Cipher::Block::Instantiations::AES256_CTR =
     Primitive::Symmetric::Cipher::Block::Modes::CTR {
-        Primitive::Symmetric::Cipher::Block::AES256
+        Primitive::Symmetric::Cipher::Block::Instantiations::AES256
     }
 

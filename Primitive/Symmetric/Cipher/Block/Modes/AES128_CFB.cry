@@ -6,7 +6,7 @@
 
 module Primitive::Symmetric::Cipher::Block::Modes::AES128_CFB where
 import Primitive::Symmetric::Cipher::Block::Modes::CFB
-import Primitive::Symmetric::Cipher::Block::AES128 as AES128
+import Primitive::Symmetric::Cipher::Block::Instantiations::AES128 as AES128
 
 AES128_CFB_encrypt: {n} (fin n) => [AES128::KeySize] -> iv -> [n]block -> [n]block
 AES128_CFB_encrypt = cfbEnc AES128::encrypt
