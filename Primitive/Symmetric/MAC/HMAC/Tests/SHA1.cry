@@ -17,8 +17,7 @@ type PrfParams K D =
   }
 
 prf_test : {K, D} (K < 256, D < 256) => PrfParams K D -> Bit
-prf_test params =
-  prf_hmac params.Key params.Data == split params.PRF_HMAC_SHA_1
+prf_test params = hmac params.Key params.Data == split params.PRF_HMAC_SHA_1
 
 type AuthTest T =
   { Key : [20][8]
@@ -29,8 +28,8 @@ type AuthTest T =
 
 sha1_auth_test : {T} (T < 256) => AuthTest T -> Bit
 sha1_auth_test params =
-  prf_hmac params.Key params.Data == split params.PRF_HMAC_SHA_1 /\
-  hmac params.Key params.Data == split params.HMAC_SHA_1_96
+  hmac params.Key params.Data == split params.PRF_HMAC_SHA_1 /\
+  take (hmac params.Key params.Data) == split params.HMAC_SHA_1_96
 
 /**
  * ```repl

@@ -22,9 +22,9 @@ type PrfParams K D =
 
 prf_test : {K, D} (K < 256, D < 256) => PrfParams K D -> Bit
 prf_test params =
-  H256::prf_hmac params.Key params.Data == split params.PRF_HMAC_SHA_256 /\
-  H384::prf_hmac params.Key params.Data == split params.PRF_HMAC_SHA_384 /\
-  H512::prf_hmac params.Key params.Data == split params.PRF_HMAC_SHA_512
+  H256::hmac params.Key params.Data == split params.PRF_HMAC_SHA_256 /\
+  H384::hmac params.Key params.Data == split params.PRF_HMAC_SHA_384 /\
+  H512::hmac params.Key params.Data == split params.PRF_HMAC_SHA_512
 
 /**
  * ```repl
@@ -169,8 +169,8 @@ type AuthTest256 T =
 
 sha2_256_auth_test : {T} (T < 256) => AuthTest256 T -> Bit
 sha2_256_auth_test params =
-  H256::prf_hmac params.Key params.Data == split params.PRF_HMAC_SHA_256 /\
-  H256::hmac params.Key params.Data == split params.HMAC_SHA_256_128
+  H256::hmac params.Key params.Data == split params.PRF_HMAC_SHA_256 /\
+  take (H256::hmac params.Key params.Data) == split params.HMAC_SHA_256_128
 
 /**
  * ```repl
@@ -242,8 +242,8 @@ type AuthTest384 T =
 
 sha2_384_auth_test : {T} (T < 256) => AuthTest384 T -> Bit
 sha2_384_auth_test params =
-  H384::prf_hmac params.Key params.Data == split params.PRF_HMAC_SHA_384 /\
-  H384::hmac params.Key params.Data == split params.HMAC_SHA_384_192
+  H384::hmac params.Key params.Data == split params.PRF_HMAC_SHA_384 /\
+  take (H384::hmac params.Key params.Data) == split params.HMAC_SHA_384_192
 
 /**
  * ```repl
@@ -325,8 +325,8 @@ type AuthTest512 T =
 
 sha2_512_auth_test : {T} (T < 256) => AuthTest512 T -> Bit
 sha2_512_auth_test params =
-  H512::prf_hmac params.Key params.Data == split params.PRF_HMAC_SHA_512 /\
-  H512::hmac params.Key params.Data == split params.HMAC_SHA_512_256
+  H512::hmac params.Key params.Data == split params.PRF_HMAC_SHA_512 /\
+  take (H512::hmac params.Key params.Data) == split params.HMAC_SHA_512_256
 
 /**
  * ```repl

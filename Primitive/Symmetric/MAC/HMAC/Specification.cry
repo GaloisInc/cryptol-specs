@@ -35,27 +35,21 @@ parameter
   H : {T} (T <= M) => [T][8] -> [L][8]
 
 /**
- * Compute an pseudorandom block using the HMAC construction.
+ * Compute an pseudorandom block using the HMAC construction as
+ * specified in FIPS-198-1 Section 4.
+ *
+ * # Type parameters
+ * - K: Length of secret key
+ * - T: Length of input text
  *
  * # Parameters
- * - K: Secret key
+ * - k: Secret key
  * - text: The data on which the HMAC is calculated.
  */
-prf_hmac : {K, T} (fin K, fin L, K <= M, T + B <= M) => [K][8] -> [T][8] -> [L][8]
-prf_hmac k text =
-  H ((k' ^ opad) # H ((k' ^ ipad) # text))
+hmac : {K, T} (K <= M, T + B <= M) => [K][8] -> [T][8] -> [L][8]
+hmac k text = H ((k' ^ opad) # H ((k' ^ ipad) # text))
   where
     k' = expand_key k
-
-/**
- * Compute an authentication tag using the HMAC construction.
- *
- * # Parameters
- * - K: Secret key shared between the originator and the intended receiver(s).
- * - text: The data on which the HMAC is calculated.
- */
-hmac : {T, λ} (T + B <= M, λ <= L) => [L][8] -> [T][8] -> [λ][8]
-hmac k text = take`{λ} (prf_hmac k text)
 
 private
   /** Inner pad; the byte x‘36’ repeated B times. */
@@ -66,6 +60,7 @@ private
   opad : [B][8]
   opad = repeat 0x5c
 
+  /** Key expansion as defined in FIPS-198-1 Section 3. */
   expand_key : {K} (K <= M) => [K][8] -> [B][8]
   expand_key k
     | K <= B => k # zero
