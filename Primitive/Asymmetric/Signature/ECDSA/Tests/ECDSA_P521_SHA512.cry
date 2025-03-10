@@ -1,0 +1,55 @@
+/*
+ * Test vectors for ECDSA with curve P521.
+ *
+ * [RFC6979]: Thomas Pornin. Deterministic Usage of the Digital Siganture
+ *    Algorithm (DSA) and Elliptic Curve Digital Signature Algorithm (ECDSA).
+ *    Internet Requests for Comments (RFC) 6979. August 2013.
+ *    @see https://datatracker.ietf.org/doc/html/rfc6979
+ *
+ * @copyright Galois, Inc.
+ * @author Eric Mertens <emertens@galois.com>
+ */
+module Primitive::Asymmetric::Signature::ECDSA::Tests::ECDSA_P521_SHA512 where
+import Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P521_SHA512 as ECDSA
+import Common::utils(BVtoZ)
+
+checkSignature d msg k expected_r expected_s =
+    signIsCorrect && verifyIsCorrect where
+
+    sig = ECDSA::sign msg d k
+    signIsCorrect = case sig of
+        Some (r,s) -> (expected_r == r) && (expected_s == s)
+        None -> False
+
+    Q = ECDSA::publicKey d
+    verifyIsCorrect = case sig of
+        Some (r,s) -> ECDSA::verify msg (r,s) Q
+        None -> False
+
+/**
+ * Test vector for ECDSA with curve P-521 and SHA-512 as the hash.
+ * [RFC6979] Appendix A.2.7.
+ * ```repl
+ * :prove sampleVector
+ * ```
+ */
+property sampleVector = checkSignature d M k expected_r expected_s where
+    M = join "sample"
+    d = BVtoZ 0x0FAD06DAA62BA3B25D2FB40133DA757205DE67F5BB0018FEE8C86E1B68C7E75CAA896EB32F1F47C70855836A6D16FCC1466F6D8FBEC67DB89EC0C08B0E996B83538
+    k = BVtoZ 0x1DAE2EA071F8110DC26882D4D5EAE0621A3256FC8847FB9022E2B7D28E6F10198B1574FDD03A9053C08A1854A168AA5A57470EC97DD5CE090124EF52A2F7ECBFFD3
+    expected_r = BVtoZ 0x0C328FAFCBD79DD77850370C46325D987CB525569FB63C5D3BC53950E6D4C5F174E25A1EE9017B5D450606ADD152B534931D7D4E8455CC91F9B15BF05EC36E377FA
+    expected_s = BVtoZ 0x0617CCE7CF5064806C467F678D3B4080D6F1CC50AF26CA209417308281B68AF282623EAA63E5B5C0723D8B8C37FF0777B1A20F8CCB1DCCC43997F1EE0E44DA4A67A
+
+/**
+ * Test vector for ECDSA with curve P-384 and SHA-384 as the hash.
+ * [RFC6979] Appendix A.2.6.
+ * ```repl
+ * :prove testVector
+ * ```
+ */
+property testVector = checkSignature d M k expected_r expected_s where
+    M = join "test"
+    d = BVtoZ 0x0FAD06DAA62BA3B25D2FB40133DA757205DE67F5BB0018FEE8C86E1B68C7E75CAA896EB32F1F47C70855836A6D16FCC1466F6D8FBEC67DB89EC0C08B0E996B83538
+    k = BVtoZ 0x16200813020EC986863BEDFC1B121F605C1215645018AEA1A7B215A564DE9EB1B38A67AA1128B80CE391C4FB71187654AAA3431027BFC7F395766CA988C964DC56D
+    expected_r = BVtoZ 0x13E99020ABF5CEE7525D16B69B229652AB6BDF2AFFCAEF38773B4B7D08725F10CDB93482FDCC54EDCEE91ECA4166B2A7C6265EF0CE2BD7051B7CEF945BABD47EE6D
+    expected_s = BVtoZ 0x1FBD0013C674AA79CB39849527916CE301C66EA7CE8B80682786AD60F98F7E78A19CA69EFF5C57400E3B3A0AD66CE0978214D13BAF4E9AC60752F7B155E2DE4DCE3
