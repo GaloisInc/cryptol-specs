@@ -16,7 +16,7 @@ sha256Wrap msg = SHA256::hash (join msg)
 hmacSHA256 : {pwBytes, msgBytes}
              (fin pwBytes, fin msgBytes
              , 32 >= width msgBytes
-             , 64 > width (8*pwBytes)
+             , 64 >= width (8*pwBytes)
              , 64 >= width (8 * (64 + msgBytes))
              ) => [pwBytes][8] -> [msgBytes][8] -> [256]
 hmacSHA256 = hmac `{blockLength=64} sha256Wrap sha256Wrap sha256Wrap
