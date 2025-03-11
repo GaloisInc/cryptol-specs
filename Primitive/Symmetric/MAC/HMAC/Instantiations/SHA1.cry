@@ -10,5 +10,4 @@ module Primitive::Symmetric::MAC::HMAC::Instantiations::SHA1 =
   import Primitive::Keyless::Hash::SHA1
   type B = 64
   type L = 20
-  type A = 12
   H text = split (sha1 text)
