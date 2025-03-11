@@ -1,0 +1,67 @@
+/**
+ * Implementation of Keyed-Hash Message Authentication Code (HMAC)
+ * as specified in [FIPS-198-1], Section 4.
+ *
+ * @copyright Galois, Inc
+ * @author Eric Mertens <emertens@galois.com>
+ *
+ * For discussion on security considerations while using HMAC, please see NIST SP 800-107.
+ * This has important security notes about choosing key lengths, truncation, and the overall
+ * security strength of the algorithm.
+ * @see https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-107r1.pdf
+ *
+ * [FIPS-198-1]: National Institute of Standards and Technology.
+ *     The Keyed-Hash Message Authentication Code (HMAC)
+ *     (Department of Commerce, Washington, D.C.),
+ *     Federal Information Processing Standards Publication (FIPS) NIST FIPS 198-1.
+ *     July 2008.
+ *     @see https://doi.org/10.6028/NIST.FIPS.198-1
+ */
+module Primitive::Symmetric::MAC::HMAC::Specification where
+
+parameter
+  /** Block size (in bytes) of the input to the Approved hash function. */
+  type B : #
+
+  /** Block size (in bytes) of the output of the Approved hash function. */
+  type L : #
+
+  type constraint (fin B, L <= B, width (8 * L) <= B, width (8 * (B + L)) <= B)
+
+  /** An Approved hash function. */
+  H : {T} (width (8 * T) <= B) => [T][8] -> [L][8]
+
+/**
+ * Compute a pseudorandom block using the HMAC construction as
+ * specified in FIPS-198-1 Section 4.
+ *
+ * Truncation is implemented as defined in FIPS-198-1 Section 5.
+ *
+ * # Type parameters
+ * - λ: Length of output (in bytes)
+ * - k: Length of secret key (in bytes)
+ * - n: Length of input text (in bytes)
+ *
+ * # Parameters
+ * - K: Secret key
+ * - text: The data on which the HMAC is calculated.
+ */
+hmac : {λ, k, n} (λ <= L, width (8 * k) <= B, width (8 * (n + B)) <= B) => [k][8] -> [n][8] -> [λ][8]
+hmac K text = take (H ((K₀ ^ opad) # H ((K₀ ^ ipad) # text)))
+  where
+    K₀ = expand_key K
+
+private
+  /** Inner pad; the byte x‘36’ repeated B times. */
+  ipad : [B][8]
+  ipad = repeat 0x36
+
+  /** Outer pad; the byte x‘5c’ repeated B times. */
+  opad : [B][8]
+  opad = repeat 0x5c
+
+  /** Key expansion as defined in FIPS-198-1 Section 3. */
+  expand_key : {k} (width (8 * k) <= B) => [k][8] -> [B][8]
+  expand_key K
+    | k <= B => K # zero
+    | k > B => H K # zero

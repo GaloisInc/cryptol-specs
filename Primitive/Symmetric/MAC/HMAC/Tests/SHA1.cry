@@ -1,0 +1,110 @@
+/**
+ * Test vectors found in [RFC-2202].
+ *
+ * @copyright Galois, Inc
+ * @author Eric Mertens <emertens@galois.com>
+ *
+ * [RFC-2202] @see https://datatracker.ietf.org/doc/html/rfc2202
+ */
+module Primitive::Symmetric::MAC::HMAC::Tests::SHA1 where
+
+import Primitive::Symmetric::MAC::HMAC::Instantiations::SHA1
+
+type PrfParams K D =
+  { Key : [K][8]
+  , Data: [D][8]
+  , PRF_HMAC_SHA_1 : [160]
+  }
+
+prf_test : {K, D} (K < 256, D < 256) => PrfParams K D -> Bit
+prf_test params = hmac params.Key params.Data == split params.PRF_HMAC_SHA_1
+
+type AuthTest T =
+  { Key : [20][8]
+  , Data : [T][8]
+  , PRF_HMAC_SHA_1 : [160]
+  , HMAC_SHA_1_96 : [96]
+  }
+
+sha1_auth_test : {T} (T < 256) => AuthTest T -> Bit
+sha1_auth_test params =
+  hmac params.Key params.Data == split params.PRF_HMAC_SHA_1 /\
+  hmac params.Key params.Data == split params.HMAC_SHA_1_96
+
+/**
+ * ```repl
+ * :check rfc_2202_3_1
+ * ```
+ */
+property rfc_2202_3_1 = prf_test
+  { Key = repeat`{20} 0x0b
+  , Data = "Hi There"
+  , PRF_HMAC_SHA_1 = 0xb617318655057264e28bc0b6fb378c8ef146be00
+  }
+
+/**
+ * ```repl
+ * :check rfc_2202_3_2
+ * ```
+ */
+property rfc_2202_3_2 = prf_test
+  { Key = "Jefe"
+  , Data = "what do ya want for nothing?"
+  , PRF_HMAC_SHA_1 = 0xeffcdf6ae5eb2fa2d27416d5f184df9c259a7c79
+  }
+
+/**
+ * ```repl
+ * :check rfc_2202_3_3
+ * ```
+ */
+property rfc_2202_3_3 = prf_test
+  { Key = repeat`{20} 0xaa
+  , Data = repeat`{50} 0xdd
+  , PRF_HMAC_SHA_1 = 0x125d7342b9ac11cd91a39af48aa17b4f63f175d3
+  }
+
+/**
+ * ```repl
+ * :check rfc_2202_3_4
+ * ```
+ */
+property rfc_2202_3_4 = prf_test
+  { Key = split 0x0102030405060708090a0b0c0d0e0f10111213141516171819
+  , Data = repeat`{50} 0xcd
+  , PRF_HMAC_SHA_1 = 0x4c9007f4026250c6bc8414f9bf50c86c2d7235da
+  }
+
+/**
+ * ```repl
+ * :check rfc_2202_3_5
+ * ```
+ */
+property rfc_2202_3_5 = sha1_auth_test
+  { Key = repeat`{20} 0x0c
+  , Data = "Test With Truncation"
+  , PRF_HMAC_SHA_1 = 0x4c1a03424b55e07fe7f27be1d58bb9324a9a5a04
+  , HMAC_SHA_1_96 = 0x4c1a03424b55e07fe7f27be1
+  }
+
+/**
+ * ```repl
+ * :check rfc_2202_3_6
+ * ```
+ */
+property rfc_2202_3_6 = prf_test
+  { Key = repeat`{80} 0xaa
+  , Data = "Test Using Larger Than Block-Size Key - Hash Key First"
+  , PRF_HMAC_SHA_1 = 0xaa4ae5e15272d00e95705637ce8a3b55ed402112
+  }
+
+/**
+ * ```repl
+ * :check rfc_2202_3_7
+ * ```
+ */
+property rfc_2202_3_7 = prf_test
+  { Key = repeat`{80} 0xaa
+  , Data = "Test Using Larger Than Block-Size Key and Larger Than One Block-Size Data"
+  , PRF_HMAC_SHA_1 = 0xe8e99d0f45237d786d6bbaa7965c7808bbff1a91
+  }

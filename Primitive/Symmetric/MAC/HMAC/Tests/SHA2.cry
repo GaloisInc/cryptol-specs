@@ -1,0 +1,406 @@
+/**
+ * Test vectors found in [RFC-4868].
+ *
+ * @copyright Galois, Inc
+ * @author Eric Mertens <emertens@galois.com>
+ *
+ * [RFC-4868] @see https://datatracker.ietf.org/doc/html/rfc4868
+ */
+module Primitive::Symmetric::MAC::HMAC::Tests::SHA2 where
+
+import Primitive::Symmetric::MAC::HMAC::Instantiations::SHA2_256 as H256
+import Primitive::Symmetric::MAC::HMAC::Instantiations::SHA2_384 as H384
+import Primitive::Symmetric::MAC::HMAC::Instantiations::SHA2_512 as H512
+
+type PrfParams K D =
+  { Key : [K][8]
+  , Data: [D][8]
+  , PRF_HMAC_SHA_256 : [256]
+  , PRF_HMAC_SHA_384 : [384]
+  , PRF_HMAC_SHA_512 : [512]
+  }
+
+prf_test : {K, D} (K < 256, D < 256) => PrfParams K D -> Bit
+prf_test params =
+  H256::hmac params.Key params.Data == split params.PRF_HMAC_SHA_256 /\
+  H384::hmac params.Key params.Data == split params.PRF_HMAC_SHA_384 /\
+  H512::hmac params.Key params.Data == split params.PRF_HMAC_SHA_512
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_1
+ * ```
+ */
+property rfc_4868_2_7_1_1 = prf_test
+  { Key = repeat`{20} 0x0b
+  , Data = "Hi There"
+  , PRF_HMAC_SHA_256 =
+      0xb0344c61d8db38535ca8afceaf0bf12b #
+      0x881dc200c9833da726e9376c2e32cff7
+  , PRF_HMAC_SHA_384 =
+      0xafd03944d84895626b0825f4ab46907f #
+      0x15f9dadbe4101ec682aa034c7cebc59c #
+      0xfaea9ea9076ede7f4af152e8b2fa9cb6
+  , PRF_HMAC_SHA_512 =
+      0x87aa7cdea5ef619d4ff0b4241a1d6cb0 #
+      0x2379f4e2ce4ec2787ad0b30545e17cde #
+      0xdaa833b7d6b8a702038b274eaea3f4e4 #
+      0xbe9d914eeb61f1702e696c203a126854
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_2
+ * ```
+ */
+property rfc_4868_2_7_1_2 = prf_test
+  { Key = "Jefe"
+  , Data = "what do ya want for nothing?"
+  , PRF_HMAC_SHA_256 =
+      0x5bdcc146bf60754e6a042426089575c7 #
+      0x5a003f089d2739839dec58b964ec3843
+  , PRF_HMAC_SHA_384 =
+      0xaf45d2e376484031617f78d2b58a6b1b #
+      0x9c7ef464f5a01b47e42ec3736322445e #
+      0x8e2240ca5e69e2c78b3239ecfab21649
+  , PRF_HMAC_SHA_512 =
+      0x164b7a7bfcf819e2e395fbe73b56e0a3 #
+      0x87bd64222e831fd610270cd7ea250554 #
+      0x9758bf75c05a994a6d034f65f8f0e6fd #
+      0xcaeab1a34d4a6b4b636e070a38bce737
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_3
+ * ```
+ */
+property rfc_4868_2_7_1_3 = prf_test
+  { Key = repeat`{20} 0xaa
+  , Data = repeat`{50} 0xdd
+  , PRF_HMAC_SHA_256 =
+      0x773ea91e36800e46854db8ebd09181a7 #
+      0x2959098b3ef8c122d9635514ced565fe
+  , PRF_HMAC_SHA_384 =
+      0x88062608d3e6ad8a0aa2ace014c8a86f #
+      0x0aa635d947ac9febe83ef4e55966144b #
+      0x2a5ab39dc13814b94e3ab6e101a34f27
+  , PRF_HMAC_SHA_512 =
+      0xfa73b0089d56a284efb0f0756c890be9 #
+      0xb1b5dbdd8ee81a3655f83e33b2279d39 #
+      0xbf3e848279a722c806b485a47e67c807 #
+      0xb946a337bee8942674278859e13292fb
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_4
+ * ```
+ */
+property rfc_4868_2_7_1_4 = prf_test
+  { Key = split 0x0102030405060708090a0b0c0d0e0f10111213141516171819
+  , Data = repeat`{50} 0xcd
+  , PRF_HMAC_SHA_256 =
+      0x82558a389a443c0ea4cc819899f2083a #
+      0x85f0faa3e578f8077a2e3ff46729665b
+  , PRF_HMAC_SHA_384 =
+      0x3e8a69b7783c25851933ab6290af6ca7 #
+      0x7a9981480850009cc5577c6e1f573b4e #
+      0x6801dd23c4a7d679ccf8a386c674cffb
+  , PRF_HMAC_SHA_512 =
+      0xb0ba465637458c6990e5a8c5f61d4af7 #
+      0xe576d97ff94b872de76f8050361ee3db #
+      0xa91ca5c11aa25eb4d679275cc5788063 #
+      0xa5f19741120c4f2de2adebeb10a298dd
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_5
+ * ```
+ */
+property rfc_4868_2_7_1_5 = prf_test
+  { Key = repeat`{131} 0xaa
+  , Data = "Test Using Larger Than Block-Size Key - Hash Key First"
+  , PRF_HMAC_SHA_256 =
+      0x60e431591ee0b67f0d8a26aacbf5b77f #
+      0x8e0bc6213728c5140546040f0ee37f54
+
+  , PRF_HMAC_SHA_384 =
+      0x4ece084485813e9088d2c63a041bc5b4 #
+      0x4f9ef1012a2b588f3cd11f05033ac4c6 #
+      0x0c2ef6ab4030fe8296248df163f44952
+
+  , PRF_HMAC_SHA_512 =
+      0x80b24263c7c1a3ebb71493c1dd7be8b4 #
+      0x9b46d1f41b4aeec1121b013783f8f352 #
+      0x6b56d037e05f2598bd0fd2215d6a1e52 #
+      0x95e64f73f63f0aec8b915a985d786598
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_6
+ * ```
+ */
+property rfc_4868_2_7_1_6 = prf_test
+  { Key = repeat`{131} 0xaa
+  , Data = "This is a test using a larger than block-size key and a larger than block-size data. The key needs to be hashed before being used by the HMAC algorithm."
+  , PRF_HMAC_SHA_256 =
+      0x9b09ffa71b942fcb27635fbcd5b0e944 #
+      0xbfdc63644f0713938a7f51535c3a35e2
+  , PRF_HMAC_SHA_384 =
+      0x6617178e941f020d351e2f254e8fd32c #
+      0x602420feb0b8fb9adccebb82461e99c5 #
+      0xa678cc31e799176d3860e6110c46523e
+  , PRF_HMAC_SHA_512 =
+      0xe37b6a775dc87dbaa4dfa9f96e5e3ffd #
+      0xdebd71f8867289865df5a32d20cdc944 #
+      0xb6022cac3c4982b10d5eeb55c3e4de15 #
+      0x134676fb6de0446065c97440fa8c6a58
+  }
+
+type AuthTest256 T =
+  { Key : [32][8]
+  , Data : [T][8]
+  , PRF_HMAC_SHA_256 : [256]
+  , HMAC_SHA_256_128 : [128]
+  }
+
+sha2_256_auth_test : {T} (T < 256) => AuthTest256 T -> Bit
+sha2_256_auth_test params =
+  H256::hmac params.Key params.Data == split params.PRF_HMAC_SHA_256 /\
+  H256::hmac params.Key params.Data == split params.HMAC_SHA_256_128
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_1_1
+ * ```
+ */
+property rfc_4868_2_7_2_1_1 = sha2_256_auth_test
+  { Key = repeat`{32} 0x0b
+  , Data = "Hi There"
+  , PRF_HMAC_SHA_256 =
+      0x198a607eb44bfbc69903a0f1cf2bbdc5 #
+      0xba0aa3f3d9ae3c1c7a3b1696a0b68cf7
+  , HMAC_SHA_256_128 =
+      0x198a607eb44bfbc69903a0f1cf2bbdc5
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_1_2
+ * ```
+ */
+property rfc_4868_2_7_2_1_2 = sha2_256_auth_test
+  { Key = "JefeJefeJefeJefeJefeJefeJefeJefe"
+  , Data = "what do ya want for nothing?"
+  , PRF_HMAC_SHA_256 =
+      0x167f928588c5cc2eef8e3093caa0e87c #
+      0x9ff566a14794aa61648d81621a2a40c6
+  , HMAC_SHA_256_128 =
+      0x167f928588c5cc2eef8e3093caa0e87c
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_1_3
+ * ```
+ */
+property rfc_4868_2_7_2_1_3 = sha2_256_auth_test
+   { Key = repeat`{32} 0xaa
+   , Data = repeat`{50} 0xdd
+   , PRF_HMAC_SHA_256 =
+      0xcdcb1220d1ecccea91e53aba3092f962 #
+      0xe549fe6ce9ed7fdc43191fbde45c30b0
+   , HMAC_SHA_256_128 =
+      0xcdcb1220d1ecccea91e53aba3092f962
+   }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_1_4
+ * ```
+ */
+property rfc_4868_2_7_2_1_4 = sha2_256_auth_test
+  { Key = split 0x0102030405060708090a0b0c0d0e0f10 #
+          split 0x1112131415161718191a1b1c1d1e1f20
+  , Data = repeat`{50} 0xcd
+  , PRF_HMAC_SHA_256 =
+      0x372efcf9b40b35c2115b1346903d2ef4 #
+      0x2fced46f0846e7257bb156d3d7b30d3f
+  , HMAC_SHA_256_128 =
+      0x372efcf9b40b35c2115b1346903d2ef4
+  }
+
+type AuthTest384 T =
+  { Key : [48][8]
+  , Data : [T][8]
+  , PRF_HMAC_SHA_384 : [384]
+  , HMAC_SHA_384_192 : [192]
+  }
+
+sha2_384_auth_test : {T} (T < 256) => AuthTest384 T -> Bit
+sha2_384_auth_test params =
+  H384::hmac params.Key params.Data == split params.PRF_HMAC_SHA_384 /\
+  H384::hmac params.Key params.Data == split params.HMAC_SHA_384_192
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_2_1
+ * ```
+ */
+property rfc_4868_2_7_2_2_1 = sha2_384_auth_test
+  { Key = repeat`{48} 0x0b
+  , Data = "Hi There"
+  , PRF_HMAC_SHA_384 =
+      0xb6a8d5636f5c6a7224f9977dcf7ee6c7 #
+      0xfb6d0c48cbdee9737a959796489bddbc #
+      0x4c5df61d5b3297b4fb68dab9f1b582c2
+  , HMAC_SHA_384_192 =
+      0xb6a8d5636f5c6a7224f9977dcf7ee6c7 #
+      0xfb6d0c48cbdee973
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_2_2
+ * ```
+ */
+property rfc_4868_2_7_2_2_2 = sha2_384_auth_test
+  { Key = "JefeJefeJefeJefeJefeJefeJefeJefeJefeJefeJefeJefe"
+  , Data = "what do ya want for nothing?"
+  , PRF_HMAC_SHA_384 =
+      0x2c7353974f1842fd66d53c452ca42122 #
+      0xb28c0b594cfb184da86a368e9b8e16f5 #
+      0x349524ca4e82400cbde0686d403371c9
+  , HMAC_SHA_384_192 =
+      0x2c7353974f1842fd66d53c452ca42122 #
+      0xb28c0b594cfb184d
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_2_3
+ * ```
+ */
+property rfc_4868_2_7_2_2_3 = sha2_384_auth_test
+  { Key = repeat`{48} 0xaa
+  , Data = repeat`{50} 0xdd
+  , PRF_HMAC_SHA_384 =
+      0x809f439be00274321d4a538652164b53 #
+      0x554a508184a0c3160353e3428597003d #
+      0x35914a18770f9443987054944b7c4b4a
+  , HMAC_SHA_384_192 =
+      0x809f439be00274321d4a538652164b53 #
+      0x554a508184a0c316
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_2_4
+ * ```
+ */
+property rfc_4868_2_7_2_2_4 = sha2_384_auth_test
+  { Key =
+      split 0x0102030405060708090a0b0c0d0e0f10 #
+      split 0x1112131415161718191a1b1c1d1e1f20 #
+      split 0x0a0b0c0d0e0f10111213141516171819
+  , Data = repeat`{50} 0xcd
+  , PRF_HMAC_SHA_384 =
+      0x5b540085c6e6358096532b2493609ed1 #
+      0xcb298f774f87bb5c2ebf182c83cc7428 #
+      0x707fb92eab2536a5812258228bc96687
+  , HMAC_SHA_384_192 =
+      0x5b540085c6e6358096532b2493609ed1 #
+      0xcb298f774f87bb5c
+  }
+
+type AuthTest512 T =
+  { Key : [64][8]
+  , Data : [T][8]
+  , PRF_HMAC_SHA_512 : [512]
+  , HMAC_SHA_512_256 : [256]
+  }
+
+sha2_512_auth_test : {T} (T < 256) => AuthTest512 T -> Bit
+sha2_512_auth_test params =
+  H512::hmac params.Key params.Data == split params.PRF_HMAC_SHA_512 /\
+  H512::hmac params.Key params.Data == split params.HMAC_SHA_512_256
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_3_1
+ * ```
+ */
+property rfc_4868_2_7_2_3_1 = sha2_512_auth_test
+  { Key = repeat`{64} 0x0b
+  , Data = "Hi There"
+  , PRF_HMAC_SHA_512 =
+      0x637edc6e01dce7e6742a99451aae82df #
+      0x23da3e92439e590e43e761b33e910fb8 #
+      0xac2878ebd5803f6f0b61dbce5e251ff8 #
+      0x789a4722c1be65aea45fd464e89f8f5b
+  , HMAC_SHA_512_256 =
+      0x637edc6e01dce7e6742a99451aae82df #
+      0x23da3e92439e590e43e761b33e910fb8
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_3_2
+ * ```
+ */
+property rfc_4868_2_7_2_3_2 = sha2_512_auth_test
+  { Key = "JefeJefeJefeJefeJefeJefeJefeJefeJefeJefeJefeJefeJefeJefeJefeJefe"
+  , Data = "what do ya want for nothing?"
+  , PRF_HMAC_SHA_512 =
+      0xcb370917ae8a7ce28cfd1d8f4705d614 #
+      0x1c173b2a9362c15df235dfb251b15454 #
+      0x6aa334ae9fb9afc2184932d8695e397b #
+      0xfa0ffb93466cfcceaae38c833b7dba38
+  , HMAC_SHA_512_256 =
+      0xcb370917ae8a7ce28cfd1d8f4705d614 #
+      0x1c173b2a9362c15df235dfb251b15454
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_3_3
+ * ```
+ */
+property rfc_4868_2_7_2_3_3 = sha2_512_auth_test
+  { Key = repeat`{64} 0xaa
+  , Data = repeat`{50} 0xdd
+  , PRF_HMAC_SHA_512 =
+      0x2ee7acd783624ca9398710f3ee05ae41 #
+      0xb9f9b0510c87e49e586cc9bf961733d8 #
+      0x623c7b55cebefccf02d5581acc1c9d5f #
+      0xb1ff68a1de45509fbe4da9a433922655
+  , HMAC_SHA_512_256 =
+      0x2ee7acd783624ca9398710f3ee05ae41 #
+      0xb9f9b0510c87e49e586cc9bf961733d8
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_3_4
+ * ```
+ */
+property rfc_4868_2_7_2_3_4 = sha2_512_auth_test
+  { Key =
+      // Corrected example from RFC
+      split 0x0102030405060708090a0b0c0d0e0f10 #
+      split 0x1112131415161718191a1b1c1d1e1f20 #
+      split 0x2122232425262728292a2b2c2d2e2f30 #
+      split 0x3132333435363738393a3b3c3d3e3f40
+  , Data = repeat`{50} 0xcd
+  , PRF_HMAC_SHA_512 =
+      0x5e6688e5a3daec826ca32eaea224eff5 #
+      0xe700628947470e13ad01302561bab108 #
+      0xb8c48cbc6b807dcfbd850521a685babc #
+      0x7eae4a2a2e660dc0e86b931d65503fd2
+  , HMAC_SHA_512_256 =
+      0x5e6688e5a3daec826ca32eaea224eff5 #
+      0xe700628947470e13ad01302561bab108
+  }

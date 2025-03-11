@@ -1,0 +1,13 @@
+/**
+ * HMAC instantiated with SHA1.
+ *
+ * @copyright Galois, Inc
+ * @author Eric Mertens <emertens@galois.com>
+ */
+module Primitive::Symmetric::MAC::HMAC::Instantiations::SHA1 =
+  Primitive::Symmetric::MAC::HMAC::Specification where
+
+  import Primitive::Keyless::Hash::SHA1
+  type B = 64
+  type L = 20
+  H text = split (sha1 text)
