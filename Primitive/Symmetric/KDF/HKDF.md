@@ -92,7 +92,7 @@ parameter
     type constraint validHMACSizes KeyLen MsgLen =
       ( fin KeyLen, fin MsgLen
           , 32 >= width MsgLen
-          , 64 > width (8 * KeyLen)
+          , 64 >= width (8 * KeyLen)
           , 64 >= width (8 * 64 + MsgLen))
 
 
