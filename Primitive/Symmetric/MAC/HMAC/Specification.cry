@@ -26,13 +26,10 @@ parameter
   /** Block size (in bytes) of the output of the Approved hash function. */
   type L : #
 
-  /** Maximum size (in bytes) of the input to the Approved hash function. */
-  type M : #
-
-  type constraint (fin B, L <= B, L <= M, B + L <= M)
+  type constraint (fin B, L <= B, width (8 * L) <= B, width (8 * (B + L)) <= B)
 
   /** An Approved hash function. */
-  H : {T} (T <= M) => [T][8] -> [L][8]
+  H : {T} (width (8 * T) <= B) => [T][8] -> [L][8]
 
 /**
  * Compute a pseudorandom block using the HMAC construction as
@@ -49,7 +46,7 @@ parameter
  * - k: Secret key
  * - text: The data on which the HMAC is calculated.
  */
-hmac : {λ, K, T} (λ <= L, K <= M, T + B <= M) => [K][8] -> [T][8] -> [λ][8]
+hmac : {λ, K, T} (λ <= L, width (8 * K) <= B, width (8 * (T + B)) <= B) => [K][8] -> [T][8] -> [λ][8]
 hmac k text = take (H ((k' ^ opad) # H ((k' ^ ipad) # text)))
   where
     k' = expand_key k
@@ -64,7 +61,7 @@ private
   opad = repeat 0x5c
 
   /** Key expansion as defined in FIPS-198-1 Section 3. */
-  expand_key : {K} (K <= M) => [K][8] -> [B][8]
+  expand_key : {K} (width (8 * K) <= B) => [K][8] -> [B][8]
   expand_key k
     | K <= B => k # zero
     | K > B => H k # zero
