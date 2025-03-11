@@ -1,0 +1,15 @@
+/*
+ * Instantiate ECDSA with curve P-521 (also known as secp521p1) and SHA3-512.
+ *
+ * Note that this uses `UnconstrainedSpec` because the security strength of the hash
+ * function is less than that of the elliptic curve! The overall security strength
+ * of this ECDSA instantiation is approximately 256 bits.
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@@galois.com>
+ */
+module Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P521_SHA3_512 =
+    Primitive::Asymmetric::Signature::ECDSA::UnconstrainedSpec {
+        EC = Common::EC::PrimeField::Instantiations::P521,
+        Hash = Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_512
+    }
