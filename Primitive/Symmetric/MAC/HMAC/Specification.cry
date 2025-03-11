@@ -39,17 +39,17 @@ parameter
  *
  * # Type parameters
  * - λ: Length of output (in bytes)
- * - K: Length of secret key (in bytes)
- * - T: Length of input text (in bytes)
+ * - k: Length of secret key (in bytes)
+ * - n: Length of input text (in bytes)
  *
  * # Parameters
- * - k: Secret key
+ * - K: Secret key
  * - text: The data on which the HMAC is calculated.
  */
-hmac : {λ, K, T} (λ <= L, width (8 * K) <= B, width (8 * (T + B)) <= B) => [K][8] -> [T][8] -> [λ][8]
-hmac k text = take (H ((k' ^ opad) # H ((k' ^ ipad) # text)))
+hmac : {λ, k, n} (λ <= L, width (8 * k) <= B, width (8 * (n + B)) <= B) => [k][8] -> [n][8] -> [λ][8]
+hmac K text = take (H ((K₀ ^ opad) # H ((K₀ ^ ipad) # text)))
   where
-    k' = expand_key k
+    K₀ = expand_key K
 
 private
   /** Inner pad; the byte x‘36’ repeated B times. */
@@ -61,7 +61,7 @@ private
   opad = repeat 0x5c
 
   /** Key expansion as defined in FIPS-198-1 Section 3. */
-  expand_key : {K} (width (8 * K) <= B) => [K][8] -> [B][8]
-  expand_key k
-    | K <= B => k # zero
-    | K > B => H k # zero
+  expand_key : {k} (width (8 * k) <= B) => [k][8] -> [B][8]
+  expand_key K
+    | k <= B => K # zero
+    | k > B => H K # zero
