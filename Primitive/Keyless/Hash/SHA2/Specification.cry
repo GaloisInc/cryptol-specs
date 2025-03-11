@@ -58,7 +58,7 @@ parameter
  * [FIPS-180-4] Section 1, Figure 1, "Message Size (bits)"
  */
 type MessageUpperBound = 2 * w
-type constraint ValidMessageLength L = width L < MessageUpperBound
+type constraint ValidMessageLength L = width L <= MessageUpperBound
 
 /**
  * Length of the hash digest.
