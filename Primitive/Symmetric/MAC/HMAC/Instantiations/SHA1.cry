@@ -11,5 +11,5 @@ module Primitive::Symmetric::MAC::HMAC::Instantiations::SHA1 =
   type B = 64
   type L = 20
   type A = 12
-  type M = 2^^60 - 1
+  type M = 2^^61 - 1
   H text = split (sha1 text)

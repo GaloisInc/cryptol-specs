@@ -12,5 +12,5 @@ module Primitive::Symmetric::MAC::HMAC::Instantiations::SHA2_384 =
   import Primitive::Keyless::Hash::SHA2::Instantiations::SHA384
   type B = 128
   type L = 48
-  type M = 2^^124 - 1
+  type M = 2^^125 - 1
   H = hashBytes
