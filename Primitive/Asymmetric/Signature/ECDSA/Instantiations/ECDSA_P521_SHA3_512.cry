@@ -6,7 +6,7 @@
  * of this ECDSA instantiation is approximately 256 bits.
  *
  * @copyright Galois, Inc.
- * @author Marcella Hastings <marcella@@galois.com>
+ * @author Marcella Hastings <marcella@galois.com>
  */
 module Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P521_SHA3_512 =
     Primitive::Asymmetric::Signature::ECDSA::UnconstrainedSpec {
