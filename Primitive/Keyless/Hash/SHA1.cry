@@ -1,90 +1,85 @@
 /*
-   Description of SHA1 at https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
-
-   Copyright (c) 2004, 2013-2018 Galois, Inc.
-   www.cryptol.net
+ * Implementation of the hash algorithms known as SHA1 from [FIPS-180-4].
+ *
+ * SHA1 is definitively considered to be inferior to other hash functions
+ * defined in [FIPS-180-4]. That being said, it is of historical interest
+ * and is used in some legacy applications.
+ *
+ * References
+ * [FIPS-180-4]: National Institute of Standards and Technology. Secure Hash
+ *     Standard (SHS). (Department of Commerce, Washington, D.C.), Federal
+ *     Information Processing Standards Publication (FIPS) NIST FIPS 180-4.
+ *     August 2015.
+ *     @see https://doi.org/10.6028/NIST.FIPS.180-4
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ *
  */
-
 
 module Primitive::Keyless::Hash::SHA1 where
 
-sha1 : {n} (width (8*n) <= 64) => [n][8] -> [160]
-sha1 msg = sha1' pmsg
-    where
-        pmsg = pad(join(msg))
-
-sha1' : {chunks} (fin chunks) => [chunks][512] -> [160]
-sha1' pmsg = join (Hs!0)
-  where
-    Hs = [[0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0]] #
-         [ block(H, split(M))
-         | H <- Hs
-         | M <- pmsg
-         ]
-
-/*
-As a summary, a "1" followed by m "0"s followed by a 64-
-   bit integer are appended to the end of the message to produce a
-   padded message of length 512 * n.  The 64-bit integer is the length
-   of the original message.  The padded message is then processed by the
-   SHA-1 as n 512-bit blocks.
+/**
+* `l` is the length of the message in bits.
+* For SHA1, `l` < 2 ^^ 64.
+*
+* References:
+* Sections 1, 2.2.1 [FIPS-180-4]
 */
+type constraint ValidMessageLength l = (l < 2 ^^ 64)
 
-pad : {msgLen}
-     ( fin msgLen
-     , 64 >= width msgLen                             // message width fits in a word
-     )
-     => [msgLen] -> [(msgLen + 65) /^ 512][512]
-pad msg = split (msg # [True] # (zero:[padLen]) # (`msgLen:[64]))
-    where type padLen     = (msgLen + 65) %^ 512
+/**
+* `w` is the number of bits in a word.
+* The word size for SHA1 is `32`.
+*
+* References:
+* Sections 1, 2.2.1 [FIPS-180-4]
+*/
+type w = 32
 
-f : ([8], [32], [32], [32]) -> [32]
-f (t, x, y, z) =
-       if (0 <= t)  /\ (t <= 19) then (x && y) ^ (~x && z)
-        | (20 <= t) /\ (t <= 39) then x ^ y ^ z
-        | (40 <= t) /\ (t <= 59) then (x && y) ^ (x && z) ^ (y && z)
-        | (60 <= t) /\ (t <= 79) then x ^ y ^ z
-        else error "f: t out of range"
+private
 
-Ks : [80][32]
-Ks = [ 0x5a827999 | t <- [0..19]  ]
-   # [ 0x6ed9eba1 | t <- [20..39] ]
-   # [ 0x8f1bbcdc | t <- [40..59] ]
-   # [ 0xca62c1d6 | t <- [60..79] ]
+  /**
+   * `Ch` is a function on three words.
+   * Its abbreviation is not expanded, however, it
+   * could be appropriately called "choose".
+   *
+   * References:
+   * Section 4.1.1 [FIPS-180-4]
+   */
+  Ch: [w] -> [w] -> [w] -> [w]
+  Ch x y z = (x && y) ^ (~x && z)
 
-block : ([5][32], [16][32]) -> [5][32]
-block ([H0, H1, H2, H3, H4], M) =
- [(H0+As@80), (H1+Bs@80), (H2+Cs@80), (H3+Ds@80), (H4+Es@80)]
-  where
-    Ws : [80][32]
-    Ws = M # [ (W3 ^ W8 ^ W14 ^ W16) <<< 1
-             | W16 <- drop`{16 - 16} Ws
-             | W14 <- drop`{16 - 14} Ws
-             | W8  <- drop`{16 - 8}  Ws
-             | W3  <- drop`{16 - 3}  Ws
-             | t <- [16..79]
-             ]
-    As = [H0] # TEMP
-    Bs = [H1] # As
-    Cs = [H2] # [ B <<< 30 | B <- Bs ]
-    Ds = [H3] # Cs
-    Es = [H4] # Ds
-    TEMP : [80][32]
-    TEMP = [ (A <<< 5) + f(t, B, C, D) + E + W + K
-           | A <- As | B <- Bs | C <- Cs | D <- Ds | E <- Es
-           | W <- Ws | K <- Ks
-           | t <- [0..79]
-           ]
+  /**
+   * `Parity` is a function on three words.
+   *
+   * References:
+   * Section 4.1.1 [FIPS-180-4]
+   */
+  Parity: [w] -> [w] -> [w] -> [w]
+  Parity x y z = x ^ y ^ z
 
+  /**
+   * `Maj` is a function on three words.
+   * Its abbreviation is not expanded, however, it
+   * could be appropriately called "majority vote".
+   *
+   * References:
+   * Section 4.1.1 [FIPS-180-4]
+   */
+  Maj: [w] -> [w] -> [w] -> [w]
+  Maj x y z = (x && y) ^ (x && z) ^ (y && z)
 
-t0 = sha1 "" == 0xda39a3ee5e6b4b0d3255bfef95601890afd80709
-
-// Sample messages and their digests from FIPS180-1 appendix.
-
-t1 = sha1 "abc" == 0xA9993E364706816ABA3E25717850C26C9CD0D89D
-t2 = sha1 "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq" ==
-     0x84983E441C3BD26EBAAE4AA1F95129E5E54670F1
-t3 = sha1 [ 'a' | i <- [1..1000000] ] ==
-     0x34AA973CD4C4DAA4F61EEB2BDBAD27316534016F
-
-property testsPass = and [t0, t1, t2, t3]
+  /**
+   * SHA1 is composed of `80` functions `f_t`.
+   * Each `f_t` is one of the functions `Ch`,
+   * `Maj`, or `Parity` depending on `t`.
+   *
+   * References:
+   * Section 4.1.1 [FIPS-180-4]
+   */
+  f: {t} (t <= 79) => [w] -> [w] -> [w] -> [w]
+  f x y z | t <= 19 => Ch x y z
+          | t <= 39 => Parity x y z
+          | t <= 59 => Maj x y z
+          | t <= 79 => Parity x y z
