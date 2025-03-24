@@ -4,9 +4,9 @@
  * Program (CAVP) sample files.
  * @see https://csrc.nist.gov/Projects/Cryptographic-Algorithm-Validation-Program/Secure-Hashing#shavs
  *
- * References:
- * [NIST-VECTORS]: Untitled Appendix FIPS 180-2
- * @see https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA1.pdf
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
  */
 
 module Primitive::Keyless::Hash::SHA1::Tests::CAVPLongBit where
