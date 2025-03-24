@@ -15,7 +15,7 @@
 module Primitive::Symmetric::Cipher::Block::SHACAL where
 
 import Primitive::Keyless::Hash::SHA2Internal::SHA256
-import Primitive::Keyless::Hash::SHA1
+import Primitive::Keyless::Hash::SHA1::Specification
 
 /**SHACAL1**/
 
@@ -95,3 +95,40 @@ tVector2 = [ (0x8#zero, zero, 0x361AB6322FA9E7A7BB23818D839E01BDDAFDF47305426EDD
            , (0x008#zero, zero, 0x09B3AB9332301D4E3C239D192A4221AFD43F6829A705D396FA96BDE1E716BC38)
            , (0x004#zero, zero, 0xD3B9AB867A6868C4400D200979055C8F9E3A6BFB40D1F9E376B9EC89223D7050)]
 
+f : ([8], [32], [32], [32]) -> [32]
+f (t, x, y, z) =
+       if (0 <= t)  /\ (t <= 19) then (x && y) ^ (~x && z)
+        | (20 <= t) /\ (t <= 39) then x ^ y ^ z
+        | (40 <= t) /\ (t <= 59) then (x && y) ^ (x && z) ^ (y && z)
+        | (60 <= t) /\ (t <= 79) then x ^ y ^ z
+        else error "f: t out of range"
+
+Ks : [80][32]
+Ks = [ 0x5a827999 | t <- [0..19]  ]
+   # [ 0x6ed9eba1 | t <- [20..39] ]
+   # [ 0x8f1bbcdc | t <- [40..59] ]
+   # [ 0xca62c1d6 | t <- [60..79] ]
+
+block : ([5][32], [16][32]) -> [5][32]
+block ([H0, H1, H2, H3, H4], M) =
+ [(H0+As@80), (H1+Bs@80), (H2+Cs@80), (H3+Ds@80), (H4+Es@80)]
+  where
+    Ws : [80][32]
+    Ws = M # [ (W3 ^ W8 ^ W14 ^ W16) <<< 1
+             | W16 <- drop`{16 - 16} Ws
+             | W14 <- drop`{16 - 14} Ws
+             | W8  <- drop`{16 - 8}  Ws
+             | W3  <- drop`{16 - 3}  Ws
+             | t <- [16..79]
+             ]
+    As = [H0] # TEMP
+    Bs = [H1] # As
+    Cs = [H2] # [ B <<< 30 | B <- Bs ]
+    Ds = [H3] # Cs
+    Es = [H4] # Ds
+    TEMP : [80][32]
+    TEMP = [ (A <<< 5) + f(t, B, C, D) + E + W + K
+           | A <- As | B <- Bs | C <- Cs | D <- Ds | E <- Es
+           | W <- Ws | K <- Ks
+           | t <- [0..79]
+           ]
