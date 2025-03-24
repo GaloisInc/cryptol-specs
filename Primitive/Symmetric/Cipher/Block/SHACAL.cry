@@ -15,7 +15,6 @@
 module Primitive::Symmetric::Cipher::Block::SHACAL where
 
 import Primitive::Keyless::Hash::SHA2Internal::SHA256
-import Primitive::Keyless::Hash::SHA1::Specification
 
 /**SHACAL1**/
 
