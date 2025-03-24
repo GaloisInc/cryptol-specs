@@ -32,7 +32,7 @@
  *
  */
 
-module Primitive::Keyless::Hash::SHA1 where
+module Primitive::Keyless::Hash::SHA1::Specification where
 
 /**
 * `l` is the length of the message in bits.
