@@ -181,7 +181,7 @@ private
   parse M = split M
 
   /**
-   * Convenience type
+   * Convenience type.
    */
   type LetterVars = ([w], [w], [w], [w], [w])
 
@@ -218,7 +218,10 @@ private
   sha1: {l} (ValidMessageLength l) => [l] -> [DigestSize]
   sha1 M = h0 # h1 # h2 # h3 # h4
     where
-      M_t = sha1_preprocessing M
+      // Step 1: The message is padded and parsed.
+      M_t = parse (pad M)
+      // Step 2: Each block is processed in order.
+      // The final message digest is the output.
       (h0, h1, h2, h3, h4) = foldl sha1_block H0 M_t
 
   /**
