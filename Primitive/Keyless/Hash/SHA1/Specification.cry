@@ -1,12 +1,15 @@
 /*
- * Implementation of the hash algorithms known as SHA1 from [FIPS-180-4].
+ * Implementation of the hash algorithms known as SHA-1 from [FIPS-180-4].
  *
- * SHA1 is definitively considered to be inferior to other hash functions
- * defined in [FIPS-180-4]. Practical attacks on SHA1 exist and can severely
- * compromise the security of systems that rely on SHA1 for collision resistance.
- * E.g., SHA1 is considered insecure as a primitive in digital signature schemes.
+ * SHA-1 is definitively considered to be inferior to other hash functions
+ * defined in [FIPS-180-4]. Practical attacks on SHA-1 exist and can severely
+ * compromise the security of systems that rely on SHA-1 for collision resistance.
+ * E.g., SHA-1 is considered insecure as a primitive in digital signature schemes.
  * That being said, it is of historical interest and is used in some legacy applications.
- * For more details, see [NIST-RETIREMENT]
+ * For more details, see [NIST-RETIREMENT].
+ *
+ * A practical attack on SHA-1 is demonstrated in [SHATTERED].
+ * This document also references earlier attacks and demonstrations.
  *
  * References
  * [FIPS-180-4]: National Institute of Standards and Technology. Secure Hash
@@ -15,9 +18,13 @@
  *     August 2015.
  *     @see https://doi.org/10.6028/NIST.FIPS.180-4
  *
- *  [NIST-RETIREMENT]: "NIST Retires SHA-1 Cryptographic Algorithm",
- *      B.Hayes, NIST Press Release December 15, 2022.
- *      @see https://www.nist.gov/news-events/news/2022/12/nist-retires-sha-1-cryptographic-algorithm
+ * [NIST-RETIREMENT]: "NIST Retires SHA-1 Cryptographic Algorithm",
+ *     B.Hayes, NIST Press Release December 15, 2022.
+ *     @see https://www.nist.gov/news-events/news/2022/12/nist-retires-sha-1-cryptographic-algorithm
+ *
+ * [SHATTERED]: "The frist collision attack for full SHA-1", Stevens, Bursztein,
+ *     Karpman, Albertini, Markov. February 23, 2017.
+ *     @see https://shattered.io/static/shattered.pdf
  *
  * @copyright Galois, Inc.
  * @author John Christensen <jchristensen@galois.com>
