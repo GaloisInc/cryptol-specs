@@ -1,0 +1,30 @@
+/**
+ * Tests for SHA-1.
+ */
+module Primitive::Keyless::Hash::SHA1::Tests::SHA1 where
+
+import Primitive::Keyless::Hash::SHA1::Specification as SHA1
+
+/**
+ * ```repl
+ * :prove emptyStringWorks
+ */
+property emptyStringWorks = SHA1::hash [] == r
+  where
+    r = 0xda39a3ee5e6b4b0d3255bfef95601890afd80709
+
+/**
+* `l` is the length of the message in bits.
+* For SHA1, `l` < 2 ^^ 64.
+*
+* References:
+* Sections 1, 2.2.1 [FIPS-180-4]
+*/
+type constraint ValidMessageLength l = (l < 2 ^^ 64)
+
+/**
+ * ```repl
+ * :prove interfaceEquivalence `{1}
+ */
+interfaceEquivalence: {l} (ValidMessageLength (8*l)) => [8*l] -> Bit
+property interfaceEquivalence x = SHA1::hash `{l*8} x == join (SHA1::hashBytes `{l} (split x))

@@ -205,8 +205,8 @@ private
    * References:
    * [FIPS-180-4] Section 6.1.1
    */
-  sha1_preprocessing: {l} (ValidMessageLength l) => [l] -> [NumBlocks l][BlockSize]
-  sha1_preprocessing M = parse (pad M)
+  sha1Preprocessing: {l} (ValidMessageLength l) => [l] -> [NumBlocks l][BlockSize]
+  sha1Preprocessing M = parse (pad M)
 
   /**
    * Computation of SHA1.
@@ -222,7 +222,7 @@ private
       M_t = parse (pad M)
       // Step 2: Each block is processed in order.
       // The final message digest is the output.
-      (h0, h1, h2, h3, h4) = foldl sha1_block H0 M_t
+      (h0, h1, h2, h3, h4) = foldl sha1Block H0 M_t
 
   /**
    * The SHA1 message schedule is recursively defined in terms of the
@@ -231,8 +231,8 @@ private
    * References:
    * [FIPS-180-4] Section 6.1.2 Part 1
    */
-  message_schedule: [BlockSize] -> [80][w]
-  message_schedule M_t = W
+  messageSchedule: [BlockSize] -> [80][w]
+  messageSchedule M_t = W
     where
       W = (groupBy `{w} M_t) # [
           ROTL `{1} (W@(t-3) ^ W@(t-8) ^ W@(t-14) ^ W@(t-16))
@@ -246,8 +246,8 @@ private
    * References:
    * [FIPS-180-4] Section 6.1.2 Part 3
    */
-  mix_one: {t} (t <= 79) => [w] -> LetterVars -> LetterVars
-  mix_one W_t (a, b, c, d, e) = (a', b', c', d', e')
+  mixOne: {t} (t <= 79) => LetterVars -> [w] -> LetterVars
+  mixOne (a, b, c, d, e) W_t = (a', b', c', d', e')
     where
       T = ROTL `{5} a + f `{t} b c d + e + K `{t} + W_t
       e' = d
@@ -258,14 +258,16 @@ private
 
   /**
    * The SHA1 hash state is mixed over `t` ranging
-   * from `0` to `79` inclusive.
+   * from `0` to `79` inclusive. This implementation
+   * is meant to be evocative of a "for loop" or `foldl`,
+   * but also tracks the type information `t`.
    *
    * References:
    * [FIPS-180-4] Section 6.1.2 Part 3
    */
-  mix: {t} (t <= 79) => [80][w] -> LetterVars -> LetterVars
-  mix W h | t < 79 => mix `{t + 1} W (mix_one `{t} (W@`t) h)
-          | t == 79 => mix_one `{t} (W@`t) h
+  mix: {t} (t <= 79) => LetterVars -> [80][w] -> LetterVars
+  mix h W | t < 79 => mix `{t + 1} (mixOne `{t} h (W@`t)) W
+          | t == 79 => mixOne `{t} h (W@`t)
 
   /**
    * SHA1 hashes computed over a state of `5` `32` bit words.
@@ -275,8 +277,8 @@ private
    * References:
    * [FIPS-180-4] Section 6.1.2
    */
-  sha1_block: LetterVars -> [BlockSize] -> LetterVars
-  sha1_block (h0, h1, h2, h3, h4) M_t = (a + h0, b + h1, c + h2, d + h3, e + h4)
+  sha1Block: LetterVars -> [BlockSize] -> LetterVars
+  sha1Block (h0, h1, h2, h3, h4) M_t = (a + h0, b + h1, c + h2, d + h3, e + h4)
     where
-      W = message_schedule M_t
-      (a, b, c, d, e) = mix `{0} W (h0, h1, h2, h3, h4)
+      W = messageSchedule M_t
+      (a, b, c, d, e) = mix `{0} (h0, h1, h2, h3, h4) W
