@@ -87,5 +87,7 @@ spongeCompliance:
     {L, L', P, P'} (Fin L L' P P') =>
     [P] -> [P'] -> [L] -> [L'] -> Bit
 spongeCompliance p p' M M'
-    | (L == L', L + P >= L' + P') => M != M' ==> (M # p) != (M' # p' # zero)
-    | (L == L', L + P < L' + P') => M != M' ==> (M' # p') != (M # p # zero)
+    | (L == L', P >= P') => M != M' ==> (M # p) != (M' # p' # zero)
+    | (L == L', P <  P') => M != M' ==> (M' # p') != (M # p # zero)
+    | (L + P >= L' + P') => (M # p) != (M' # p' # zero)
+    | (L + P <  L' + P') => (M' # p') != (M # p # zero)
