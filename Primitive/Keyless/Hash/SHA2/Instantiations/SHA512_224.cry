@@ -21,6 +21,7 @@ where
 
     // Per [FIPS-180-4], are the results of executing the SHA-512/t IV
     // Generation function with `t=224`.
+    // Ref: Section 5.3.6.1.
     H0 = [
        0x8C3D37C819544DA2
      , 0x73E1996689DCD4D6
