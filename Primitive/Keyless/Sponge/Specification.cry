@@ -76,14 +76,23 @@ type constraint Fin A B C D = (fin A, fin B, fin C, fin D)
  * that padding rules compliant with the sponge construction must be fully
  * determined from the message length and the block length.
  */
-spongeCompliance:
+spongeInequalityCondition:
     {L, L', P, P'} (Fin L L' P P') =>
     [P] -> [P'] -> [L] -> [L'] -> Bit
-spongeCompliance p p' M M'
+spongeInequalityCondition p p' M M'
     | (L == L', P >= P') => M != M' ==> (M # p) != (M' # p' # zero)
     | (L == L', P <  P') => M != M' ==> (M' # p') != (M # p # zero)
     | (L + P >= L' + P') => (M # p) != (M' # p' # zero)
     | (L + P <  L' + P') => (M' # p') != (M # p # zero)
+
+/**
+ * A sponge compliant padding rule must not return the empty bitstring
+ * for any message.
+ */
+spongeNonempty: {P} () => [P] -> Bit
+spongeNonempty _
+    | P == 0 => False
+    | P != 0 => True
 
 /**
  * Section 2.1.1 of [SPONGE] defines bitstrings considered as a sequence of
@@ -95,29 +104,69 @@ spongeCompliance p p' M M'
 type SimplyPadded L x = x - (L % x)
 
 /**
+ * Deal with a verbose type constraint.
+ * When `x >= 1`, the following facts are for all naturals `L`.
+ */
+type constraint ModFact L x = (
+      x >= L % x
+    , x - L % x >= 1
+    , x >= 1
+)
+
+/**
  * Definition 2 of Section 2.1.2 of [SPONGE] defines simple padding.
  * Here, `x` is the block length, and `L` is the length of the message.
  * `p` is the length of padding derived from `x` and `L`.
  *
  * Note that there is no dependence on the message.
  */
-simplePadding: {x, L} (fin x, x >= 1, x >= L % x, x - L % x >= 1, fin L) => [SimplyPadded L x]
+simplePadding: {x, L} (fin x, fin L, ModFact L x) => [SimplyPadded L x]
 simplePadding = [True] # zero
 
-///**
-// * Section 2.1.1 of [SPONGE] defines bitstrings considered as a sequence of
-// * blocks of some fixed length, denoted `x`, where the final block may have
-// * length less than `x`. Section 2.1.2 defines padding a bitstring to a length
-// * that is a multiple of `x`. We introduce the following type encoding the
-// * length of a padded bitstring computed by the "multi-rate" method.
-// */
-//type MultiRatePadded L x = (L + 2) /^ x
+/**
+ * Section 2.1.1 of [SPONGE] defines bitstrings considered as a sequence of
+ * blocks of some fixed length, denoted `x`, where the final block may have
+ * length less than `x`. Section 2.1.2 defines padding a bitstring to a length
+ * that is a multiple of `x`. We introduce the following type encoding the
+ * length of a padded bitstring computed by the "multi-rate" method.
+ */
+type MultiRatePadded L x = x - (L % x) + 1
 
-///**
-// * Definition 3 of Section 2.1.2 of [SPONGE] defines multi-rate padding.
-// * `x` and `L` are defined as in simple padding.
-// *
-// * Note there is no dependence on the message.
-// */
-//multiratePadding: {x, L} (fin x, x >= 2, fin L) => [MultiRatePadded L x]
-//multiratePadding = [True] # zero # [True]
+/**
+ * Definition 3 of Section 2.1.2 of [SPONGE] defines multi-rate padding.
+ * `x` and `L` are defined as in simple padding.
+ *
+ * Note that there is no dependence on the message.
+ */
+multiratePadding: {x, L} (fin x, x >= 1, fin L) => [MultiRatePadded L x]
+multiratePadding = [True] # zero # [True]
+
+/**
+ * Assert that simple padding is a sponge compliant padding rule
+ * for any non-zero block size `x`.
+ *
+ * ```
+ * :prove simplePaddingCompliance `{8, 8, 2}
+ * ```
+ */
+simplePaddingCompliance:
+    {L, L', x} (fin L, fin L', fin x, ModFact L x, ModFact L' x) =>
+    [L] -> [L'] -> Bit
+property simplePaddingCompliance M M' = b1 && spongeInequalityCondition p p' M M'
+    where
+        p = simplePadding `{x, L}
+        p' = simplePadding `{x, L'}
+        b1 = spongeNonempty p && spongeNonempty p'
+
+/**
+ * Assert that multi-rate padding is a sponge compliant padding rule
+ * for any non-zero block size `x`.
+ */
+multiratePaddingCompliance:
+    {L, L', x} (fin L, fin L', fin x, x >= 1) =>
+    [L] -> [L'] -> Bit
+property multiratePaddingCompliance M M' = b1 && spongeInequalityCondition p p' M M'
+    where
+        p = multiratePadding `{x, L}
+        p' = multiratePadding `{x, L'}
+        b1 = spongeNonempty p && spongeNonempty p'
