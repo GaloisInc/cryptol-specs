@@ -1,0 +1,34 @@
+/**
+ * Instantiation of the secure hash algorithm SHA-512/256 as specified in
+ * [FIPS-180-4], Section 6.7.
+ *
+ * @copyright Galois, Inc
+ * @author John Christensen <jchristensen@galois.com>
+ *
+ * [FIPS-180-4]: National Institute of Standards and Technology. Secure Hash
+ *     Standard (SHS). (Department of Commerce, Washington, D.C.), Federal
+ *     Information Processing Standards Publication (FIPS) NIST FIPS 180-4.
+ *     August 2015.
+ *     @see https://doi.org/10.6028/NIST.FIPS.180-4
+ */
+
+module Primitive::Keyless::Hash::SHA2::Instantiations::SHA512_256 =
+    Primitive::Keyless::Hash::SHA2::Specification
+where
+    type w = 64
+
+    type DigestSize = 256
+
+    // Per [FIPS-180-4], are the results of executing the SHA-512/t IV
+    // Generation function with `t=256`.
+    // Ref: Section 5.3.6.2
+    H0 = [
+        0x22312194FC2BF72C
+      , 0x9F555FA3C84C64C2
+      , 0x2393B86B6F53B151
+      , 0x963877195940EABD
+      , 0x96283EE2A88EFFE3
+      , 0xBE5E1E2553863992
+      , 0x2B0199FC2C85B8AA
+      , 0x0EB72DDC81C52CA2
+    ]
