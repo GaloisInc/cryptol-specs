@@ -1,0 +1,91 @@
+/**
+ * The sponge construction is a method of instantiating a function with
+ * arbitrary output length based upon a fixed-length transformation,
+ * such as a hash function. The sponge construction was famously used
+ * in the design of Keccak and SHA-3.
+ *
+ * The sponge construction in its generic form is interesting in its
+ * right. This module implements the sponge construction as a
+ * parameterized module.
+ *
+ * References:
+ * [SPONGE]
+ *    Cryptographic Sponge Functions (Version 0.1)
+ *    Bertoni, Daemen, Peeters, Van Assche
+ *    January 14, 2011
+ *    @see https://keccak.team/files/CSF-0.1.pdf
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ *
+ */
+
+module Primitive::Keyless::Sponge::Specification where
+
+parameter
+    /**
+     * The sponge construction is based on a fixed-length transformation.
+     * Optionally, this transformation is a permutation. The fixed length
+     * of the transformation is called the width of the transformation,
+     * and is denoted by `b` in Section 1.2 of [SPONGE].
+     *
+     * `b` is a number of bits.
+     */
+    type b: #
+
+    /**
+     * The sponge construction requires a value `r`, called the bitrate.
+     * This term is first used in Section 1.2 of [SPONGE].
+     */
+    type r: #
+
+    /**
+     * The sponge construction requires a value `c`, called the capacity.
+     * This term is first used in Section 1.2 of [SPONGE].
+     */
+    type c: #
+
+    /**
+     * The sponge construction operates on a state of `b` bits.
+     * In Section 1.2 of [SPONGE], it is defined that `b = r + c`.
+     */
+    type constraint (b == r + c)
+
+    /**
+     * The sponge construction is based on a fixed-length transformation.
+     * The particular transformation is called `f` in Section 1.2 of [SPONGE].
+     */
+    f : [b] -> [b]
+
+/**
+ * Section 2.1.1 of [SPONGE] defines bitstrings considered as a sequence of
+ * blocks of some fixed length, denoted `x`, where the final block may have
+ * length less than `x`. Section 2.1.2 defines padding a bitstring to a length
+ * that is a multiple of `x`. We introduce the following type encoding the
+ * length of a padded bitstring.
+ */
+type Padded L x = (L + 1) /^ x // This is for simple padding
+
+/**
+ * We introduce the type of padding function, that pads bitstrings to some
+ * block length. The padding rule is fully determined by the length of the
+ * message, `L`, and the block length `x`...not by any content of the message.
+ */
+type PaddingFcn L x = [Padded L x] // For simple padding
+
+/**
+ * Condense a verbose type constraint.
+ */
+type constraint Fin A B C D = (fin A, fin B, fin C, fin D)
+
+/**
+ * A padding rule used in the sponge construction must be sponge compliant.
+ * This notion is defined in Section 2.1.2 Definition 1 of [SPONGE], and
+ * is modeled here as a property of the specification.
+ */
+spongeCompliance:
+    {L, L', P, P'} (Fin L L' P P') =>
+    [P] -> [P'] -> [L] -> [L'] -> Bit
+spongeCompliance p p' M M'
+    | (L == L', L + P >= L' + P') => M != M' ==> (M # p) != (M' # p' # zero)
+    | (L == L', L + P < L' + P') => M != M' ==> (M' # p') != (M # p # zero)
