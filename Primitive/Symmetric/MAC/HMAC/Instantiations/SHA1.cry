@@ -7,7 +7,7 @@
 module Primitive::Symmetric::MAC::HMAC::Instantiations::SHA1 =
   Primitive::Symmetric::MAC::HMAC::Specification where
 
-  import Primitive::Keyless::Hash::SHA1
+  import Primitive::Keyless::Hash::SHA1::Specification as SHA1
   type B = 64
   type L = 20
-  H text = split (sha1 text)
+  H text = SHA1::hashBytes text
