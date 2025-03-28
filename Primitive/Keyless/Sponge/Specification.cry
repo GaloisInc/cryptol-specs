@@ -82,6 +82,13 @@ type constraint Fin A B C D = (fin A, fin B, fin C, fin D)
  * A padding rule used in the sponge construction must be sponge compliant.
  * This notion is defined in Section 2.1.2 Definition 1 of [SPONGE], and
  * is modeled here as a property of the specification.
+ *
+ * Here, `L` and `L'` represent the lengths of the messages in bits.
+ * `P` and `P'` represent the length of the padding returned by the padding
+ * function. We may replace the actual padding function with its output
+ * in this property without loss of soundness because Section 2.1.2 states
+ * that padding rules compliant with the sponge construction must be fully
+ * determined from the message length and the block length.
  */
 spongeCompliance:
     {L, L', P, P'} (Fin L L' P P') =>
