@@ -52,6 +52,11 @@ parameter
     type constraint (b == r + c)
 
     /**
+     * We constrain the parameters further to satisfy Cryptol's type checker.
+     */
+    type constraint (fin r, r >= 1)
+
+    /**
      * The sponge construction is based on a fixed-length transformation.
      * The particular transformation is called `f` in Section 1.2 of [SPONGE].
      */
@@ -170,3 +175,22 @@ property multiratePaddingCompliance M M' = b1 && spongeInequalityCondition p p' 
         p = multiratePadding `{x, L}
         p' = multiratePadding `{x, L'}
         b1 = spongeNonempty p && spongeNonempty p'
+
+/**
+ * The absorbing function `r` bit input blocks and XORs them into
+ * the first `r` bits of an initial state. This operation is interleaved with
+ * the application of the transformation `f`. At the end of the absorption
+ * function, the state is returned.
+ */
+absorb: {n} (n % r == 0, fin n) => [n*r] -> [b]
+absorb P = foldl absorb_f_r s_init (split `{n} P)
+    where
+        // The initial state is a bitstring of length `b`.
+        s_init = zero `{[b]}
+        // Each block `p` is length `r`.
+        // To XOR with a state of length `b`, we must pad `p`
+        // by `b - r`.
+        zb = zero `{[b - r]}
+        // The following function is iterated over the blocks
+        // of `P`.
+        absorb_f_r = \s p -> f (s ^ p # zb)
