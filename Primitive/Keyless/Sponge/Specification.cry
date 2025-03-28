@@ -52,9 +52,11 @@ parameter
     type constraint (b == r + c)
 
     /**
-     * We constrain the parameters further to satisfy Cryptol's type checker.
+     * The `absorb` function expects the input to be in blocks
+     * of size `r`. Both the `absorb` and `squeeze` functions
+     * require `r < b`.
      */
-    type constraint (fin r, r >= 1)
+    type constraint (fin r, r >= 1, r < b)
 
     /**
      * The sponge construction is based on a fixed-length transformation.
@@ -194,3 +196,23 @@ absorb P = foldl absorb_f_r s_init (split `{n} P)
         // The following function is iterated over the blocks
         // of `P`.
         absorb_f_r = \s p -> f (s ^ p # zb)
+
+/**
+ * The squeezing function iteratively returns the first `r` bits of state
+ * interleaved with applications of the transformation `f` a number of times
+ * determined by the caller.
+ */
+squeeze: {l} () => [b] -> [l]
+squeeze s = Zl
+    where
+        // Iterate `f` over `s`, taking the first `r` bits of each iterate.
+        Zs = map (take `{r}) (iterate f s)
+        // Treat the whole list as a bitstring, and take the first `l` bits.
+        Zl = take (join Zs)
+
+/**
+ * The sponge construction is the subsequent application of the padding rule,
+ * the aborbing function, and the squeezing function.
+ */
+sponge: {l, n, x} () => [n] -> [l]
+sponge M = undefined
