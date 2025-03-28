@@ -58,22 +58,6 @@ parameter
     f : [b] -> [b]
 
 /**
- * Section 2.1.1 of [SPONGE] defines bitstrings considered as a sequence of
- * blocks of some fixed length, denoted `x`, where the final block may have
- * length less than `x`. Section 2.1.2 defines padding a bitstring to a length
- * that is a multiple of `x`. We introduce the following type encoding the
- * length of a padded bitstring.
- */
-type Padded L x = (L + 1) /^ x // This is for simple padding
-
-/**
- * We introduce the type of padding function, that pads bitstrings to some
- * block length. The padding rule is fully determined by the length of the
- * message, `L`, and the block length `x`...not by any content of the message.
- */
-type PaddingFcn L x = [Padded L x] // For simple padding
-
-/**
  * Condense a verbose type constraint.
  */
 type constraint Fin A B C D = (fin A, fin B, fin C, fin D)
@@ -81,7 +65,9 @@ type constraint Fin A B C D = (fin A, fin B, fin C, fin D)
 /**
  * A padding rule used in the sponge construction must be sponge compliant.
  * This notion is defined in Section 2.1.2 Definition 1 of [SPONGE], and
- * is modeled here as a property of the specification.
+ * is partially modeled here as a property of the specification.
+ * Specifically, this models compliance with the formula 2.1
+ * of Definition 1.
  *
  * Here, `L` and `L'` represent the lengths of the messages in bits.
  * `P` and `P'` represent the length of the padding returned by the padding
@@ -98,3 +84,40 @@ spongeCompliance p p' M M'
     | (L == L', P <  P') => M != M' ==> (M' # p') != (M # p # zero)
     | (L + P >= L' + P') => (M # p) != (M' # p' # zero)
     | (L + P <  L' + P') => (M' # p') != (M # p # zero)
+
+/**
+ * Section 2.1.1 of [SPONGE] defines bitstrings considered as a sequence of
+ * blocks of some fixed length, denoted `x`, where the final block may have
+ * length less than `x`. Section 2.1.2 defines padding a bitstring to a length
+ * that is a multiple of `x`. We introduce the following type encoding the
+ * length of a padding returned by the "simple" method.
+ */
+type SimplyPadded L x = x - (L % x)
+
+/**
+ * Definition 2 of Section 2.1.2 of [SPONGE] defines simple padding.
+ * Here, `x` is the block length, and `L` is the length of the message.
+ * `p` is the length of padding derived from `x` and `L`.
+ *
+ * Note that there is no dependence on the message.
+ */
+simplePadding: {x, L} (fin x, x >= 1, x >= L % x, x - L % x >= 1, fin L) => [SimplyPadded L x]
+simplePadding = [True] # zero
+
+///**
+// * Section 2.1.1 of [SPONGE] defines bitstrings considered as a sequence of
+// * blocks of some fixed length, denoted `x`, where the final block may have
+// * length less than `x`. Section 2.1.2 defines padding a bitstring to a length
+// * that is a multiple of `x`. We introduce the following type encoding the
+// * length of a padded bitstring computed by the "multi-rate" method.
+// */
+//type MultiRatePadded L x = (L + 2) /^ x
+
+///**
+// * Definition 3 of Section 2.1.2 of [SPONGE] defines multi-rate padding.
+// * `x` and `L` are defined as in simple padding.
+// *
+// * Note there is no dependence on the message.
+// */
+//multiratePadding: {x, L} (fin x, x >= 2, fin L) => [MultiRatePadded L x]
+//multiratePadding = [True] # zero # [True]
