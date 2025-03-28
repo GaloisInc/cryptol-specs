@@ -1,6 +1,6 @@
 /**
  * Instantiation of the secure hash algorithm SHA-512/224 as specified in
- * [FIPS-180-4]. Truncation of a message digest is described in section 7.
+ * [FIPS-180-4], Section 6.6.
  *
  * @copyright Galois, Inc
  * @author John Christensen <jchristensen@galois.com>
