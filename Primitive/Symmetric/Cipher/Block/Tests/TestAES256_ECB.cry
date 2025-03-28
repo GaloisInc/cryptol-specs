@@ -1,8 +1,15 @@
 /**
  * Test vectors for AES256
  * These are drawn from the NIST CAVP project.
+ * In particular, these test vectors are from the `ECBVarTxt256.rsp` and
+ * `ECBVarKey256.rsp` sample files.
+ *
  * Note conformance to these vectors does not constitute validation by CAVP.
  * @see https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/block-ciphers#AES
+ *
+ * In ECB mode, each block of plaintext/ciphertext is encrypted/decrypted
+ * independently with the same key, and there is no IV. Thus, ECB mode tests
+ * are equivalent to testing the basic cipher.
  *
  *  @copyright Galois Inc.
  *  @author John Christensen <jchristensen@galois.com>
