@@ -64,6 +64,29 @@ parameter
      */
     f : [b] -> [b]
 
+    /**
+     * The sponge construction requires a padding function that
+     * takes the length of the message in bits (`L`) and some block length (`x`)
+     * and returns a bitstring. The padding function must return a number of
+     * bits that is fully determined by these two parameters, according to
+     * Section 2.1.2.
+     */
+    pad : {L, x} (PadAssumptions L x) => [PadLength L x]
+
+    /**
+     * These are assumptions that the padding function must satisfy in order
+     * to satisfy Cryptol's type checker. These may vary across padding schmes,
+     * and hence are taken as parameters.
+     */
+    type PadAssumptions : Prop
+
+    /**
+     * This is the length of padding returned by the padding function
+     * for a given block length `x` and message length `L`. This may
+     * vary across padding schemes, so is taken as a parameter.
+     */
+    type PadLength: # -> # -> #
+
 /**
  * Condense a verbose type constraint.
  */
