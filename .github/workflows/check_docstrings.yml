@@ -73,7 +73,7 @@ jobs:
           git config --global --add safe.directory '*'
           echo "Check which caches exist, for sanity."
           gh cache list
-          # bash scripts/check_docstrings.sh .
+          bash scripts/check_docstrings.sh .
           # if the cache doesn't exist for this branch, no sweat!
           # we will just upload the one we create.
           set +e
