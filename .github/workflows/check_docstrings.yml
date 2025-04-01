@@ -22,7 +22,7 @@ jobs:
       # This is the relative path to the Cryptol project directory.
       CRYPTOL_PROJECT: .
       # This is the relative path to the Cryptol cache.
-      CRYPTOL_CACHE: .cryproject/loadcache.toml
+      CRYPTOL_CACHE: ${{ github.workspace }}/.cryproject/loadcache.toml
       # This is the key for the cache.
       # Note that GITHUB_HEAD_REF is only available on pull requests.
       # If we want to expand the scope of caching beyond these
@@ -44,16 +44,16 @@ jobs:
       - id: load-cache
         uses: actions/cache/restore@v4
         with:
-          path: $CRYPTOL_CACHE
-          key: $CRYPTOL_CACHE_KEY
+          path: ${{ env.CRYPTOL_CACHE }}
+          key: ${{ env.CRYPTOL_CACHE_KEY }}
       # If the cache has missed, attempt to load
       # the cache from the master branch.
       - id: load-cache-fallback
         uses: actions/cache/restore@v4
         if: steps.load-cache.outputs.cache-hit != 'true'
         with:
-          path: $CRYPTOL_CACHE
-          key: $CRYPTOL_DEFAULT_KEY
+          path: ${{ env.CRYPTOL_CACHE }}
+          key: ${{ env.CRYPTOL_DEFAULT_KEY }}
       # Run the check-docstrings script, regardless of cache load.
       - name: "Run the check-docstrings script."
         run: |
@@ -67,5 +67,5 @@ jobs:
       - id: save-cache
         uses: actions/cache/save@v4
         with:
-          path: $CRYPTOL_CACHE
-          key: $CRYPTOL_CACHE_KEY
+          path: ${{ env.CRYPTOL_CACHE }}
+          key: ${{ env.CRYPTOL_CACHE_KEY }}
