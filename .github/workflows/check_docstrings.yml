@@ -1,7 +1,5 @@
 # Checks the docstring tests pass.
 # Leverages cached dependencies and dependency analysis to speed this up.
-# TODO: Right now, this uses Cryptol's dependency analysis but no cache.
-# Deal with that next.
 #
 # @copyright Galois, Inc
 # @author John Christensen <jchristensen@galois.com>
