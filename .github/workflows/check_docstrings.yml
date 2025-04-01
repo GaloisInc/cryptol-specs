@@ -55,7 +55,9 @@ jobs:
       # Run the check-docstrings script, regardless of cache load.
       - name: "Run the check-docstrings script."
         run: |
-          # Right now there is no cache. Add this later.
+          # Sanity check: ensure the cache is loaded.
+          echo "Cache path: ${{ env.CRYPTOL_CACHE }}"
+          cat ${{ env.CRYPTOL_CACHE }}
           bash scripts/check_docstrings.sh .
       # Cache the .cryproject/* files.
       # Cache is scoped to branch, commit, and cache version.
