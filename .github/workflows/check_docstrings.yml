@@ -29,5 +29,4 @@ jobs:
       - name: "Run the check-docstrings script."
         run: |
           # Right now there is no cache. Add this later.
-          echo `pwd`
-          bash scripts/check_docstrings.sh
+          bash scripts/check_docstrings.sh .
