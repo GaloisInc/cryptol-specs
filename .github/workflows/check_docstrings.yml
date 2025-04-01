@@ -1,0 +1,33 @@
+# Checks the docstring tests pass.
+# Leverages cached dependencies and dependency analysis to speed this up.
+# TODO: Right now, this uses Cryptol's dependency analysis but no cache.
+# Deal with that next.
+#
+# @copyright Galois, Inc
+# @author John Christensen <jchristensen@galois.com>
+#
+
+# This job only runs on pull requests to the master branch.
+# We may expand this to other situations in the future.
+name: Check docstrings
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  check-docstrings:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/galoisinc/cryptol:nightly
+      options: --user root
+    steps:
+      - id: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: "Run the check-docstrings script."
+        run: |
+          # Right now there is no cache. Add this later.
+          echo `pwd`
+          bash scripts/check_docstrings.sh
