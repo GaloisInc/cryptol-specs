@@ -18,15 +18,54 @@ on:
 jobs:
   check-docstrings:
     runs-on: ubuntu-latest
+    env:
+      # This is the relative path to the Cryptol project directory.
+      CRYPTOL_PROJECT: .
+      # This is the relative path to the Cryptol cache.
+      CRYPTOL_CACHE: .cryproject/loadcache.toml
+      # This is the key for the cache.
+      # Note that GITHUB_HEAD_REF is only available on pull requests.
+      # If we want to expand the scope of caching beyond these
+      # circumstances, we'll need to rethink the keying strategy.
+      CRYPTOL_CACHE_KEY: $GITHUB_HEAD_REF
+      CRYPTOL_DEFAULT_KEY: master
     container:
       image: ghcr.io/galoisinc/cryptol:nightly
       options: --user root
     steps:
+      # Check out the code.
       - id: checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      # Check if this branch has a cache.
+      # We do not use the 'restore-keys' option to implicitly load
+      # a backup if this fails, instead preferring the explicit check.
+      - id: load-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: $CRYPTOL_CACHE
+          key: $CRYPTOL_CACHE_KEY
+      # If the cache has missed, attempt to load
+      # the cache from the master branch.
+      - id: load-cache-fallback
+        uses: actions/cache/restore@v4
+        if: steps.load-cache.outputs.cache-hit != 'true'
+        with:
+          path: $CRYPTOL_CACHE
+          key: $CRYPTOL_DEFAULT_KEY
+      # Run the check-docstrings script, regardless of cache load.
       - name: "Run the check-docstrings script."
         run: |
           # Right now there is no cache. Add this later.
           bash scripts/check_docstrings.sh .
+      # Cache the .cryproject/* files.
+      # Cache is scoped to branch, commit, and cache version.
+      # Note that GITHUB_HEAD_REF only available on pull requests.
+      # If we want to expand the scope of caching beyond these
+      # circumstances, we'll need to rethink the keying strategy.
+      - id: save-cache
+        uses: actions/cache/save@v4
+        with:
+          path: $CRYPTOL_CACHE
+          key: $CRYPTOL_CACHE_KEY
