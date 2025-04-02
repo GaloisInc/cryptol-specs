@@ -2,6 +2,10 @@
  * Cipher Feedback (CFB) mode of operation, as defined in [NIST-SP-800-38A],
  * Section 6.3.
  *
+ * CFB mode utilizes an integer parameter, denoted by `s`, such that
+ * `1 ≤ s ≤ BlockSize`. The parameter `s` specifies the plaintext / ciphertext
+ * block length; that is, each plaintext / ciphertext block is `s` bits long.0
+ *
  * ⚠️ Warning ⚠️: To ensure confidentiality, CFB mode requires that the
  * initialization vector (IV) must be "unpredictable". This specification does
  * not verify IV generation; implementors must manually verify that their IVs
