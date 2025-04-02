@@ -76,10 +76,8 @@ jobs:
           bash scripts/check_docstrings.sh .
           # if the cache doesn't exist for this branch, no sweat!
           # we will just upload the one we create.
-          set +e
           echo "Deleting cache key: ${{ env.CRYPTOL_CACHE_KEY }}"
-          gh cache delete ${{ env.CRYPTOL_CACHE_KEY }}
-          set -e
+          gh cache delete ${{ env.CRYPTOL_CACHE_KEY }} || true
       # Cache the .cryproject/* files.
       # Cache is scoped to branch, commit, and cache version.
       # Note that GITHUB_HEAD_REF only available on pull requests.
