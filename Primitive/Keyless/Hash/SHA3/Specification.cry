@@ -284,10 +284,9 @@ private
      */
     rc : Integer -> Bit
     rc t = if (t % 255) == 0 then 1 // Step 1.
-         else Rs @ (t'') @0 // Step 4.
+         else Rs @ (t') @0 // Step 4.
          where
-             t' = t % 255
-             t'' = fromInteger t' : [8]
+             t' = fromInteger (t % 255) : [8]
              // Step 2 - 3.
              Rs = [0b10000000] # [lfsr R | R <- Rs ]
              // Step 3. Linear feedback shift register.
@@ -316,13 +315,12 @@ private
      * Equivalent to [FIPS-202] Section 3.2.5, Algorithm 5.
      */
     rc_hardcoded : Integer -> Bit
-    rc_hardcoded t = constants @ (t'') where
+    rc_hardcoded t = constants @ (t') where
         constants = join [
             0x80b1e87f90a7d57062b32fde6ee54a25,
             0xa339e361175edf0d35b504ec9303a471
         ]
-        t' = t % 255
-        t'' = fromInteger t' : [8]
+        t' = fromInteger (t % 255) : [8]
 
     /**
      * Prove that the hardcoded round constants are correct.
