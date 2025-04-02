@@ -73,6 +73,55 @@ parameter
      */
     pad : {L, x, P} (fin L, fin P, P > 0, fin x, x > 0, (L + P) % x == 0) => [P]
 
+type constraint PadConstraint L x P = (
+    fin L, fin P, P > 0, fin x, x > 0, (L + P) % x == 0
+    )
+
+/**
+ * Cryptol's type system disallows comparing sequences that have different
+ * lengths. The padding compliance criterion allows sequences of different
+ * lengths to be compared. Emulate this as follows:
+ * - If the sequences have the same types (thereby lengths), use
+ *   the built-in comparison.
+ * - If the sequences have different types (thereby lengths), they
+ *   cannot possibly be equal.
+ *
+ * ```repl
+ * :prove comparisonHelper [True] [False] == False
+ * :prove comparisonHelper [True] [True] == True
+ * :prove comparisonHelper [True] [True, True] == False
+ * ```
+ */
+comparisonHelper :
+    {L1, L2, a} (fin L1, fin L2, Eq a)
+    => [L1]a -> [L2]a -> Bit
+comparisonHelper x y
+    | L1 == L2 => x == y
+    | L1 != L2 => False
+
+/**
+ * A padding rule is sponge compliant if it never returns the empty string
+ * and satisfies an "injectivity" criterion described in [SPONGE]
+ * Section 2.1.2 formula 2.1. The first constraint enforced by the type
+ * signature of `pad` (`P > 0`). The second constraint is encoded here.
+ *
+ * Here, `M` and `M'` are chosen from `Z_2^*`, the set of all bitstrings with
+ * finite length. `Ml` and `Ml'` are the lengths of `M` and `M'` respectively.
+ * `Pl` and `Pl'` is the length of padding returned by the function `pad` for
+ * the given length and the fixed block length `x`.
+ *
+ * The property states for all `n >= 0`, if `M != M'`, then, abusing notation
+ * `M # <pad for M> != M' # <pad for M'> # zeros`
+ */
+padCompliant :
+  {Ml, Ml', x, Pl, Pl', n}
+  (PadConstraint Ml x Pl, PadConstraint Ml' x Pl', fin n)
+  => [Ml] -> [Ml'] -> Bit
+property padCompliant M M' = ~comparisonHelper M M' ==> ~comparisonHelper Mp Mp'
+    where
+        Mp = M # pad `{Ml, x, Pl}
+        Mp' = M # pad `{Ml', x, Pl'} # zn
+        zn = zero `{[n * r]}
 
 /**
  * The absorbing function `r` bit input blocks and XORs them into
