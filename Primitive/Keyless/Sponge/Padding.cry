@@ -58,5 +58,5 @@ type Simple x m = x * ((m + 1) /^ x) - m
  *
  * See [SPONGE] Section 2.1.2 Definition 2.
  */
-simplePadding: {L, x} (fin L, x > 0, fin x) => [Simple x L]
+simplePadding: {L, x} (fin L, fin x, x > 0) => [Simple x L]
 simplePadding = [True] # zero
