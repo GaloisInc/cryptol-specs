@@ -56,6 +56,9 @@ type w = 32
 /**
  * `m` is the number of bits in a message block.
  * The block size for SHA1 is `512`.
+ *
+ * References:
+ # Section 1 Figure 1 [FIPS-180-4]
  */
 type m = 512
 
