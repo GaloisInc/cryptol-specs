@@ -31,8 +31,8 @@ modules = [
     "Primitive/Symmetric/Cipher/Block/Modes/Tests/TestAES_CTR.cry",
 
     # AES (GCM mode)
-    "Primitive/Symmetric/Cipher/Authenticated/Instantiations/AES*_GCM.cry",
-    "Primitive/Symmetric/Cipher/Authenticated/Tests/*",
+    "Primitive/Symmetric/Cipher/Authenticated/GCM/Instantiations/*.cry",
+    "Primitive/Symmetric/Cipher/Authenticated/GCM/Tests/*",
 
     # SHA2
     "Primitive/Keyless/Hash/SHA2/Instantiations/*",

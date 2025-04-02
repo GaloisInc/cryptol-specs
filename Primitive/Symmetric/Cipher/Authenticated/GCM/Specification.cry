@@ -31,7 +31,7 @@ enforce! These include:
   both algorithms.
 */
 
-module Primitive::Symmetric::Cipher::Authenticated::GCM where
+module Primitive::Symmetric::Cipher::Authenticated::GCM::Specification where
 import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
 /**
  * GCM mode is only defined for ciphers that operate over 128-bit blocks.

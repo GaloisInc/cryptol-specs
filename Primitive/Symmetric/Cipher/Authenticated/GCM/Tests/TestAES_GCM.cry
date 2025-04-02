@@ -4,9 +4,9 @@
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
  */
-module Primitive::Symmetric::Cipher::Authenticated::Tests::TestAES_GCM where
-import Primitive::Symmetric::Cipher::Authenticated::Instantiations::AES128_GCM as AES128_GCM
-import Primitive::Symmetric::Cipher::Authenticated::Instantiations::AES256_GCM as AES256_GCM
+module Primitive::Symmetric::Cipher::Authenticated::GCM::Tests::TestAES_GCM where
+import Primitive::Symmetric::Cipher::Authenticated::GCM::Instantiations::AES128_GCM as AES128_GCM
+import Primitive::Symmetric::Cipher::Authenticated::GCM::Instantiations::AES256_GCM as AES256_GCM
 
 /*
  Sources for test vectors:
