@@ -1,23 +1,97 @@
-// Cryptol CFB Implementation
-// Copyright (c) 2010-2018, Galois Inc.
-// www.cryptol.net
-// You can freely use this source code for educational purposes.
-// Author: Ajay Kumar Eeralla
+/*
+ * Cipher Feedback (CFB) mode of operation, as defined in [NIST-SP-800-38A],
+ * Section 6.3.
+ *
+ * ⚠️ Warning ⚠️: To ensure confidentiality, CFB mode requires that the
+ * initialization vector (IV) must be "unpredictable". This specification does
+ * not verify IV generation; implementors must manually verify that their IVs
+ * are chosen appropriately.
+ *
+ * For guidelines on generating IVs, see Appendix C of [NIST-SP-800-38A].
+ * For information on the importance of protecting IV integrity, see Appendix D
+ * of [NIST-SP-800-38A].
+ *
+ * @copyright Galois, Inc.
+ * @author Ajay Kumar Eeralla
+ * @author Alex J. Malozemoff <amaloz@galois.com>
+ * www.cryptol.net
+ *
+ * Sources:
+ * [NIST-SP-800-38A]: Morris Dworkin. Recommendation for Block Cipher
+ *     Modes of Operation: Methods and Techniques. NIST Special Publication
+ *     800-38A. December 2001.
+ *     @see https://doi.org/10.6028/NIST.SP.800-38A
+ */
 
 module Primitive::Symmetric::Cipher::Block::Modes::CFB where
+import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
 
-// set the sizes
-type iv = [128]
-type block = [128]
+/**
+ * CFB encryption: [NIST-SP-800-38A] Section 6.3.
+ *
+ * Parameters: key, initialization vector, plaintext
+ *
+ * NIST Specification (Section 6.3):
+ * 
+ *   I_1 = IV;
+ *   I_j = LSB_{b-s}(I_{j-1}) | C_{j-1}  for j = 2 ... n;
+ *   O_j = CIPH_K(I_j)                   for j = 1 ... n;
+ *   C_j = P_j ⊕ MSB_s(O_j)             for j = 1 ... n.
+ *
+ * ⚠️ Warning ⚠️: To ensure confidentiality, CFB mode requires that the
+ * initialization vector (IV) must be "unpredictable". This specification does
+ * not verify IV generation; implementors must manually verify that their IVs
+ * are chosen appropriately.
+ */
+encrypt : {s, n} (fin s, fin n, s >= 0, s <= C::BlockSize) => [C::KeySize] -> [C::BlockSize] -> [n][s] -> [n][s]
+encrypt K IV Ps = Cs
+    where
+        CIPH_K = C::encrypt K
+        Is = [ (drop`{s} I_j_1) # C_j_1
+             | I_j_1 <- [IV] # Is
+             | C_j_1 <- Cs
+             ]
+        Cs = [ P_j ^ (take`{s} (CIPH_K I_j))
+             | P_j <- Ps
+             | I_j <- [IV] # Is
+             ]
 
+/**
+ * CFB decryption: [NIST-SP-800-38A] Section 6.3.
+ *
+ * Parameters: key, initialization vector, ciphertext
+ *
+ * NIST Specification (Section 6.3):
+ *
+ *  I_1 = IV;
+ *  I_j = LSB_{b-s}(I_{j-1}) | C_{j-1}  for j = 2 ... n;
+ *  O_j = CIPH_K(I_j)                   for j = 1 ... n;
+ *  P_j = C_j ⊕ MSB_s(O_j)             for j = 1 ... n.
+ *
+ * ⚠️ Warning ⚠️: To ensure confidentiality, CFB mode requires that the
+ * initialization vector (IV) must be "unpredictable". This specification does
+ * not verify IV generation; implementors must manually verify that their IVs
+ * are chosen appropriately.
+ */
+decrypt : {s, n} (fin s, fin n, s >= 0, s <= C::BlockSize) => [C::KeySize] -> [C::BlockSize] -> [n][s] -> [n][s]
+decrypt K IV Cs = Ps
+    where
+        CIPH_K = C::encrypt K
+        Is = [ (drop`{s} I_j_1) # C_j_1 
+             | I_j_1 <- [IV] # Is
+             | C_j_1 <- Cs
+             ]
+        Ps = [ C_j ^ (take`{s} (CIPH_K I_j))
+             | C_j <- Cs
+             | I_j <- [IV] # Is
+             ]
 
-cfbEnc : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> iv -> [n]block -> [n]block
-cfbEnc enc k iv ps = cs
-    where cs = [ (enc k c')^p | p <- ps | c' <- [iv] # cs ]
-
-cfbDec : {n, k} (fin n, fin k) => ([k]->block -> block) -> [k] -> iv -> [n]block -> [n]block
-cfbDec enc k iv cs = [ (enc k c')^c | c <- cs | c' <- [iv] # cs ]
-
-// This will need to be parameterized with a specific encryption function before it can be proved
-property cfbEncCorrect encrypt k c ps = (cfbDec encrypt k c (cfbEnc encrypt k c ps)) == ps
-
+/**
+ * Decryption must be the inverse of encryption.
+ * With high probability, this will be incredibly slow to prove.
+ * ```repl
+ * :check encryptCorrect`{n=5}
+ * ```
+ */
+encryptCorrect : {s, n} (fin n, s >= 0, s <= C::BlockSize) => [C::KeySize] -> [C::BlockSize] -> [n][s] -> Bool
+property encryptCorrect K IV Ps = (decrypt K IV (encrypt K IV Ps)) == Ps
