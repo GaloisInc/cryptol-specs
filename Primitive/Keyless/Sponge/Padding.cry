@@ -1,0 +1,17 @@
+/**
+ * A couple instances of sponge compliant padding functions.
+ * These are described in [SPONGE].
+ *
+ * References:
+ * [SPONGE]
+ *    Cryptographic Sponge Functions (Version 0.1)
+ *    Bertoni, Daemen, Peeters, Van Assche
+ *    January 14, 2011
+ *    @see https://keccak.team/files/CSF-0.1.pdf
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ *
+ */
+
+module Primitive::Keyless::Sponge::Padding where
