@@ -71,21 +71,8 @@ parameter
      * bits that is fully determined by these two parameters, according to
      * Section 2.1.2.
      */
-    pad : {L, x} (PadAssumptions L x) => [PadLength L x]
+    pad : {L, x, P} (fin L, fin P, fin x, x > 0, (L + P) % x == 0) => [P]
 
-    /**
-     * These are assumptions that the padding function must satisfy in order
-     * to satisfy Cryptol's type checker. These may vary across padding schmes,
-     * and hence are taken as parameters.
-     */
-    type PadAssumptions : Prop
-
-    /**
-     * This is the length of padding returned by the padding function
-     * for a given block length `x` and message length `L`. This may
-     * vary across padding schemes, so is taken as a parameter.
-     */
-    type PadLength: # -> # -> #
 
 /**
  * Condense a verbose type constraint.
@@ -207,7 +194,7 @@ property multiratePaddingCompliance M M' = b1 && spongeInequalityCondition p p' 
  * the application of the transformation `f`. At the end of the absorption
  * function, the state is returned.
  */
-absorb: {n} (n % r == 0, fin n) => [n*r] -> [b]
+absorb: {n} (fin n) => [n*r] -> [b]
 absorb P = foldl absorb_f_r s_init (split `{n} P)
     where
         // The initial state is a bitstring of length `b`.
@@ -237,5 +224,9 @@ squeeze s = Zl
  * The sponge construction is the subsequent application of the padding rule,
  * the aborbing function, and the squeezing function.
  */
-sponge: {l, n, x} () => [n] -> [l]
-sponge M = undefined
+sponge: {l, n, p, z} (fin n, fin p, n+p % r == 0, z == (n + p) / r) => [n] -> [l]
+sponge M = Z
+    where
+        P = M # pad `{n, r, p}
+        s = absorb `{z} P
+        Z = squeeze `{l} s
