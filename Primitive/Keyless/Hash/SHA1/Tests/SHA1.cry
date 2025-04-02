@@ -1,0 +1,55 @@
+/**
+ * Tests for SHA-1.
+ * Some of these test vectors are taken from [NIST-VECTORS].
+ *
+ * References:
+ * [NIST-VECTORS]: Untitled Appendix FIPS 180-2
+ * @see https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA1.pdf
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ */
+module Primitive::Keyless::Hash::SHA1::Tests::SHA1 where
+
+import Primitive::Keyless::Hash::SHA1::Specification as SHA1
+
+/**
+ * ```repl
+ * :prove emptyStringWorks
+ * ```
+ */
+property emptyStringWorks = SHA1::hash [] == r
+  where
+    r = 0xda39a3ee5e6b4b0d3255bfef95601890afd80709
+
+/**
+ * ```repl
+ * :prove sample1Works
+ * ```
+ */
+property sample1Works = SHA1::hashBytes "abc" ==
+                        split 0xA9993E364706816ABA3E25717850C26C9CD0D89D
+
+/**
+ * ```repl
+ * :prove sample2Works
+ * ```
+ */
+property sample2Works = SHA1::hashBytes "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq" ==
+                        split 0x84983E441C3BD26EBAAE4AA1F95129E5E54670F1
+
+/**
+* `l` is the length of the message in bits.
+* For SHA1, `l` < 2 ^^ 64.
+*
+* References:
+* Sections 1, 2.2.1 [FIPS-180-4]
+*/
+type constraint ValidMessageLength l = (l < 2 ^^ 64)
+
+/**
+ * ```repl
+ * :prove interfaceEquivalence `{1}
+ */
+interfaceEquivalence: {l} (ValidMessageLength (8*l)) => [8*l] -> Bit
+property interfaceEquivalence x = SHA1::hash `{l*8} x == join (SHA1::hashBytes `{l} (split x))

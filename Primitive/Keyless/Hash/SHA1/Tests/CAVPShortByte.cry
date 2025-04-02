@@ -1,0 +1,728 @@
+/**
+ * Tests for SHA-1.
+ * These test vectors are taken from the Cryptographic Algorithm Validation
+ * Program (CAVP) sample files.
+ * @see https://csrc.nist.gov/Projects/Cryptographic-Algorithm-Validation-Program/Secure-Hashing#shavs
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ */
+
+module Primitive::Keyless::Hash::SHA1::Tests::CAVPShortByte where
+
+import Primitive::Keyless::Hash::SHA1::Specification as SHA1
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase0
+ * ```
+ */
+property testCase0 = SHA1::hash `{ l = 0 } msg == md
+  where
+    msg = take 0x00
+    md = 0xda39a3ee5e6b4b0d3255bfef95601890afd80709
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase1
+ * ```
+ */
+property testCase1 = SHA1::hash `{ l = 8 } msg == md
+  where
+    msg = take 0x36
+    md = 0xc1dfd96eea8cc2b62785275bca38ac261256e278
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase2
+ * ```
+ */
+property testCase2 = SHA1::hash `{ l = 16 } msg == md
+  where
+    msg = take 0x195a
+    md = 0x0a1c2d555bbe431ad6288af5a54f93e0449c9232
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase3
+ * ```
+ */
+property testCase3 = SHA1::hash `{ l = 24 } msg == md
+  where
+    msg = take 0xdf4bd2
+    md = 0xbf36ed5d74727dfd5d7854ec6b1d49468d8ee8aa
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase4
+ * ```
+ */
+property testCase4 = SHA1::hash `{ l = 32 } msg == md
+  where
+    msg = take 0x549e959e
+    md = 0xb78bae6d14338ffccfd5d5b5674a275f6ef9c717
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase5
+ * ```
+ */
+property testCase5 = SHA1::hash `{ l = 40 } msg == md
+  where
+    msg = take 0xf7fb1be205
+    md = 0x60b7d5bb560a1acf6fa45721bd0abb419a841a89
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase6
+ * ```
+ */
+property testCase6 = SHA1::hash `{ l = 48 } msg == md
+  where
+    msg = take 0xc0e5abeaea63
+    md = 0xa6d338459780c08363090fd8fc7d28dc80e8e01f
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase7
+ * ```
+ */
+property testCase7 = SHA1::hash `{ l = 56 } msg == md
+  where
+    msg = take 0x63bfc1ed7f78ab
+    md = 0x860328d80509500c1783169ebf0ba0c4b94da5e5
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase8
+ * ```
+ */
+property testCase8 = SHA1::hash `{ l = 64 } msg == md
+  where
+    msg = take 0x7e3d7b3eada98866
+    md = 0x24a2c34b976305277ce58c2f42d5092031572520
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase9
+ * ```
+ */
+property testCase9 = SHA1::hash `{ l = 72 } msg == md
+  where
+    msg = take 0x9e61e55d9ed37b1c20
+    md = 0x411ccee1f6e3677df12698411eb09d3ff580af97
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase10
+ * ```
+ */
+property testCase10 = SHA1::hash `{ l = 80 } msg == md
+  where
+    msg = take 0x9777cf90dd7c7e863506
+    md = 0x05c915b5ed4e4c4afffc202961f3174371e90b5c
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase11
+ * ```
+ */
+property testCase11 = SHA1::hash `{ l = 88 } msg == md
+  where
+    msg = take 0x4eb08c9e683c94bea00dfa
+    md = 0xaf320b42d7785ca6c8dd220463be23a2d2cb5afc
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase12
+ * ```
+ */
+property testCase12 = SHA1::hash `{ l = 96 } msg == md
+  where
+    msg = take 0x0938f2e2ebb64f8af8bbfc91
+    md = 0x9f4e66b6ceea40dcf4b9166c28f1c88474141da9
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase13
+ * ```
+ */
+property testCase13 = SHA1::hash `{ l = 104 } msg == md
+  where
+    msg = take 0x74c9996d14e87d3e6cbea7029d
+    md = 0xe6c4363c0852951991057f40de27ec0890466f01
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase14
+ * ```
+ */
+property testCase14 = SHA1::hash `{ l = 112 } msg == md
+  where
+    msg = take 0x51dca5c0f8e5d49596f32d3eb874
+    md = 0x046a7b396c01379a684a894558779b07d8c7da20
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase15
+ * ```
+ */
+property testCase15 = SHA1::hash `{ l = 120 } msg == md
+  where
+    msg = take 0x3a36ea49684820a2adc7fc4175ba78
+    md = 0xd58a262ee7b6577c07228e71ae9b3e04c8abcda9
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase16
+ * ```
+ */
+property testCase16 = SHA1::hash `{ l = 128 } msg == md
+  where
+    msg = take 0x3552694cdf663fd94b224747ac406aaf
+    md = 0xa150de927454202d94e656de4c7c0ca691de955d
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase17
+ * ```
+ */
+property testCase17 = SHA1::hash `{ l = 136 } msg == md
+  where
+    msg = take 0xf216a1cbde2446b1edf41e93481d33e2ed
+    md = 0x35a4b39fef560e7ea61246676e1b7e13d587be30
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase18
+ * ```
+ */
+property testCase18 = SHA1::hash `{ l = 144 } msg == md
+  where
+    msg = take 0xa3cf714bf112647e727e8cfd46499acd35a6
+    md = 0x7ce69b1acdce52ea7dbd382531fa1a83df13cae7
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase19
+ * ```
+ */
+property testCase19 = SHA1::hash `{ l = 152 } msg == md
+  where
+    msg = take 0x148de640f3c11591a6f8c5c48632c5fb79d3b7
+    md = 0xb47be2c64124fa9a124a887af9551a74354ca411
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase20
+ * ```
+ */
+property testCase20 = SHA1::hash `{ l = 160 } msg == md
+  where
+    msg = take 0x63a3cc83fd1ec1b6680e9974a0514e1a9ecebb6a
+    md = 0x8bb8c0d815a9c68a1d2910f39d942603d807fbcc
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase21
+ * ```
+ */
+property testCase21 = SHA1::hash `{ l = 168 } msg == md
+  where
+    msg = take 0x875a90909a8afc92fb7070047e9d081ec92f3d08b8
+    md = 0xb486f87fb833ebf0328393128646a6f6e660fcb1
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase22
+ * ```
+ */
+property testCase22 = SHA1::hash `{ l = 176 } msg == md
+  where
+    msg = take 0x444b25f9c9259dc217772cc4478c44b6feff62353673
+    md = 0x76159368f99dece30aadcfb9b7b41dab33688858
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase23
+ * ```
+ */
+property testCase23 = SHA1::hash `{ l = 184 } msg == md
+  where
+    msg = take 0x487351c8a5f440e4d03386483d5fe7bb669d41adcbfdb7
+    md = 0xdbc1cb575ce6aeb9dc4ebf0f843ba8aeb1451e89
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase24
+ * ```
+ */
+property testCase24 = SHA1::hash `{ l = 192 } msg == md
+  where
+    msg = take 0x46b061ef132b87f6d3b0ee2462f67d910977da20aed13705
+    md = 0xd7a98289679005eb930ab75efd8f650f991ee952
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase25
+ * ```
+ */
+property testCase25 = SHA1::hash `{ l = 200 } msg == md
+  where
+    msg = take 0x3842b6137bb9d27f3ca5bafe5bbb62858344fe4ba5c41589a5
+    md = 0xfda26fa9b4874ab701ed0bb64d134f89b9c4cc50
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase26
+ * ```
+ */
+property testCase26 = SHA1::hash `{ l = 208 } msg == md
+  where
+    msg = take 0x44d91d3d465a4111462ba0c7ec223da6735f4f5200453cf132c3
+    md = 0xc2ff7ccde143c8f0601f6974b1903eb8d5741b6e
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase27
+ * ```
+ */
+property testCase27 = SHA1::hash `{ l = 216 } msg == md
+  where
+    msg = take 0xcce73f2eabcb52f785d5a6df63c0a105f34a91ca237fe534ee399d
+    md = 0x643c9dc20a929608f6caa9709d843ca6fa7a76f4
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase28
+ * ```
+ */
+property testCase28 = SHA1::hash `{ l = 224 } msg == md
+  where
+    msg = take 0x664e6e7946839203037a65a12174b244de8cbc6ec3f578967a84f9ce
+    md = 0x509ef787343d5b5a269229b961b96241864a3d74
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase29
+ * ```
+ */
+property testCase29 = SHA1::hash `{ l = 232 } msg == md
+  where
+    msg = take 0x9597f714b2e45e3399a7f02aec44921bd78be0fefee0c5e9b499488f6e
+    md = 0xb61ce538f1a1e6c90432b233d7af5b6524ebfbe3
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase30
+ * ```
+ */
+property testCase30 = SHA1::hash `{ l = 240 } msg == md
+  where
+    msg = take 0x75c5ad1f3cbd22e8a95fc3b089526788fb4ebceed3e7d4443da6e081a35e
+    md = 0x5b7b94076b2fc20d6adb82479e6b28d07c902b75
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase31
+ * ```
+ */
+property testCase31 = SHA1::hash `{ l = 248 } msg == md
+  where
+    msg = take 0xdd245bffe6a638806667768360a95d0574e1a0bd0d18329fdb915ca484ac0d
+    md = 0x6066db99fc358952cf7fb0ec4d89cb0158ed91d7
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase32
+ * ```
+ */
+property testCase32 = SHA1::hash `{ l = 256 } msg == md
+  where
+    msg = take 0x0321794b739418c24e7c2e565274791c4be749752ad234ed56cb0a6347430c6b
+    md = 0xb89962c94d60f6a332fd60f6f07d4f032a586b76
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase33
+ * ```
+ */
+property testCase33 = SHA1::hash `{ l = 264 } msg == md
+  where
+    msg = take 0x4c3dcf95c2f0b5258c651fcd1d51bd10425d6203067d0748d37d1340d9ddda7db3
+    md = 0x17bda899c13d35413d2546212bcd8a93ceb0657b
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase34
+ * ```
+ */
+property testCase34 = SHA1::hash `{ l = 272 } msg == md
+  where
+    msg = take 0xb8d12582d25b45290a6e1bb95da429befcfdbf5b4dd41cdf3311d6988fa17cec0723
+    md = 0xbadcdd53fdc144b8bf2cc1e64d10f676eebe66ed
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase35
+ * ```
+ */
+property testCase35 = SHA1::hash `{ l = 280 } msg == md
+  where
+    msg = take 0x6fda97527a662552be15efaeba32a3aea4ed449abb5c1ed8d9bfff544708a425d69b72
+    md = 0x01b4646180f1f6d2e06bbe22c20e50030322673a
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase36
+ * ```
+ */
+property testCase36 = SHA1::hash `{ l = 288 } msg == md
+  where
+    msg = take 0x09fa2792acbb2417e8ed269041cc03c77006466e6e7ae002cf3f1af551e8ce0bb506d705
+    md = 0x10016dc3a2719f9034ffcc689426d28292c42fc9
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase37
+ * ```
+ */
+property testCase37 = SHA1::hash `{ l = 296 } msg == md
+  where
+    msg = take 0x5efa2987da0baf0a54d8d728792bcfa707a15798dc66743754406914d1cfe3709b1374eaeb
+    md = 0x9f42fa2bce6ef021d93c6b2d902273797e426535
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase38
+ * ```
+ */
+property testCase38 = SHA1::hash `{ l = 304 } msg == md
+  where
+    msg = take 0x2836de99c0f641cd55e89f5af76638947b8227377ef88bfba662e5682babc1ec96c6992bc9a0
+    md = 0xcdf48bacbff6f6152515323f9b43a286e0cb8113
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase39
+ * ```
+ */
+property testCase39 = SHA1::hash `{ l = 312 } msg == md
+  where
+    msg = take 0x42143a2b9e1d0b354df3264d08f7b602f54aad922a3d63006d097f683dc11b90178423bff2f7fe
+    md = 0xb88fb75274b9b0fd57c0045988cfcef6c3ce6554
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase40
+ * ```
+ */
+property testCase40 = SHA1::hash `{ l = 320 } msg == md
+  where
+    msg = take 0xeb60c28ad8aeda807d69ebc87552024ad8aca68204f1bcd29dc5a81dd228b591e2efb7c4df75ef03
+    md = 0xc06d3a6a12d9e8db62e8cff40ca23820d61d8aa7
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase41
+ * ```
+ */
+property testCase41 = SHA1::hash `{ l = 328 } msg == md
+  where
+    msg = take 0x7de4ba85ec54747cdc42b1f23546b7e490e31280f066e52fac117fd3b0792e4de62d5843ee98c72015
+    md = 0x6e40f9e83a4be93874bc97cdebb8da6889ae2c7a
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase42
+ * ```
+ */
+property testCase42 = SHA1::hash `{ l = 336 } msg == md
+  where
+    msg = take 0xe70653637bc5e388ccd8dc44e5eace36f7398f2bac993042b9bc2f4fb3b0ee7e23a96439dc01134b8c7d
+    md = 0x3efc940c312ef0dfd4e1143812248db89542f6a5
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase43
+ * ```
+ */
+property testCase43 = SHA1::hash `{ l = 344 } msg == md
+  where
+    msg = take 0xdd37bc9f0b3a4788f9b54966f252174c8ce487cbe59c53c22b81bf77621a7ce7616dcb5b1e2ee63c2c309b
+    md = 0xa0cf03f7badd0c3c3c4ea3717f5a4fb7e67b2e56
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase44
+ * ```
+ */
+property testCase44 = SHA1::hash `{ l = 352 } msg == md
+  where
+    msg = take 0x5f485c637ae30b1e30497f0fb7ec364e13c906e2813daa34161b7ac4a4fd7a1bddd79601bbd22cef1f57cbc7
+    md = 0xa544e06f1a07ceb175a51d6d9c0111b3e15e9859
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase45
+ * ```
+ */
+property testCase45 = SHA1::hash `{ l = 360 } msg == md
+  where
+    msg = take 0xf6c237fb3cfe95ec8414cc16d203b4874e644cc9a543465cad2dc563488a659e8a2e7c981e2a9f22e5e868ffe1
+    md = 0x199d986ed991b99a071f450c6b1121a727e8c735
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase46
+ * ```
+ */
+property testCase46 = SHA1::hash `{ l = 368 } msg == md
+  where
+    msg = take 0xda7ab3291553c659873c95913768953c6e526d3a26590898c0ade89ff56fbd110f1436af590b17fed49f8c4b2b1e
+    md = 0x33bac6104b0ad6128d091b5d5e2999099c9f05de
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase47
+ * ```
+ */
+property testCase47 = SHA1::hash `{ l = 376 } msg == md
+  where
+    msg = take 0x8cfa5fd56ee239ca47737591cba103e41a18acf8e8d257b0dbe8851134a81ff6b2e97104b39b76e19da256a17ce52d
+    md = 0x76d7db6e18c1f4ae225ce8ccc93c8f9a0dfeb969
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase48
+ * ```
+ */
+property testCase48 = SHA1::hash `{ l = 384 } msg == md
+  where
+    msg = take 0x57e89659d878f360af6de45a9a5e372ef40c384988e82640a3d5e4b76d2ef181780b9a099ac06ef0f8a7f3f764209720
+    md = 0xf652f3b1549f16710c7402895911e2b86a9b2aee
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase49
+ * ```
+ */
+property testCase49 = SHA1::hash `{ l = 392 } msg == md
+  where
+    msg = take 0xb91e64235dbd234eea2ae14a92a173ebe835347239cff8b02074416f55c6b60dc6ced06ae9f8d705505f0d617e4b29aef9
+    md = 0x63faebb807f32be708cf00fc35519991dc4e7f68
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase50
+ * ```
+ */
+property testCase50 = SHA1::hash `{ l = 400 } msg == md
+  where
+    msg = take 0xe42a67362a581e8cf3d847502215755d7ad425ca030c4360b0f7ef513e6980265f61c9fa18dd9ce668f38dbc2a1ef8f83cd6
+    md = 0x0e6730bc4a0e9322ea205f4edfff1fffda26af0a
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase51
+ * ```
+ */
+property testCase51 = SHA1::hash `{ l = 408 } msg == md
+  where
+    msg = take 0x634db92c22010e1cbf1e1623923180406c515272209a8acc42de05cc2e96a1e94c1f9f6b93234b7f4c55de8b1961a3bf352259
+    md = 0xb61a3a6f42e8e6604b93196c43c9e84d5359e6fe
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase52
+ * ```
+ */
+property testCase52 = SHA1::hash `{ l = 416 } msg == md
+  where
+    msg = take 0xcc6ca3a8cb391cd8a5aff1faa7b3ffbdd21a5a3ce66cfaddbfe8b179e4c860be5ec66bd2c6de6a39a25622f9f2fcb3fc05af12b5
+    md = 0x32d979ca1b3ed0ed8c890d99ec6dd85e6c16abf4
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase53
+ * ```
+ */
+property testCase53 = SHA1::hash `{ l = 424 } msg == md
+  where
+    msg = take 0x7c0e6a0d35f8ac854c7245ebc73693731bbbc3e6fab644466de27bb522fcb99307126ae718fe8f00742e6e5cb7a687c88447cbc961
+    md = 0x6f18190bd2d02fc93bce64756575cea36d08b1c3
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase54
+ * ```
+ */
+property testCase54 = SHA1::hash `{ l = 432 } msg == md
+  where
+    msg = take 0xc5581d40b331e24003901bd6bf244aca9e9601b9d81252bb38048642731f1146b8a4c69f88e148b2c8f8c14f15e1d6da57b2daa9991e
+    md = 0x68f525feea1d8dbe0117e417ca46708d18d7629a
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase55
+ * ```
+ */
+property testCase55 = SHA1::hash `{ l = 440 } msg == md
+  where
+    msg = take 0xec6b4a88713df27c0f2d02e738b69db43abda3921317259c864c1c386e9a5a3f533dc05f3beeb2bec2aac8e06db4c6cb3cddcf697e03d5
+    md = 0xa7272e2308622ff7a339460adc61efd0ea8dabdc
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase56
+ * ```
+ */
+property testCase56 = SHA1::hash `{ l = 448 } msg == md
+  where
+    msg = take 0x0321736beba578e90abc1a90aa56157d871618f6de0d764cc8c91e06c68ecd3b9de3824064503384db67beb7fe012232dacaef93a000fba7
+    md = 0xaef843b86916c16f66c84d83a6005d23fd005c9e
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase57
+ * ```
+ */
+property testCase57 = SHA1::hash `{ l = 456 } msg == md
+  where
+    msg = take 0xd0a249a97b5f1486721a50d4c4ab3f5d674a0e29925d5bf2678ef6d8d521e456bd84aa755328c83fc890837726a8e7877b570dba39579aabdd
+    md = 0xbe2cd6f380969be59cde2dff5e848a44e7880bd6
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase58
+ * ```
+ */
+property testCase58 = SHA1::hash `{ l = 464 } msg == md
+  where
+    msg = take 0xc32138531118f08c7dcc292428ad20b45ab27d9517a18445f38b8f0c2795bcdfe3ffe384e65ecbf74d2c9d0da88398575326074904c1709ba072
+    md = 0xe5eb4543deee8f6a5287845af8b593a95a9749a1
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase59
+ * ```
+ */
+property testCase59 = SHA1::hash `{ l = 472 } msg == md
+  where
+    msg = take 0xb0f4cfb939ea785eabb7e7ca7c476cdd9b227f015d905368ba00ae96b9aaf720297491b3921267576b72c8f58d577617e844f9f0759b399c6b064c
+    md = 0x534c850448dd486787b62bdec2d4a0b140a1b170
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase60
+ * ```
+ */
+property testCase60 = SHA1::hash `{ l = 480 } msg == md
+  where
+    msg = take 0xbd02e51b0cf2c2b8d204a026b41a66fbfc2ac37ee9411fc449c8d1194a0792a28ee731407dfc89b6dfc2b10faa27723a184afef8fd83def858a32d3f
+    md = 0x6fbfa6e4edce4cc85a845bf0d228dc39acefc2fa
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase61
+ * ```
+ */
+property testCase61 = SHA1::hash `{ l = 488 } msg == md
+  where
+    msg = take 0xe33146b83e4bb671392218da9a77f8d9f5974147182fb95ba662cb66011989c16d9af104735d6f79841aa4d1df276615b50108df8a29dbc9de31f4260d
+    md = 0x018872691d9b04e8220e09187df5bc5fa6257cd9
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase62
+ * ```
+ */
+property testCase62 = SHA1::hash `{ l = 496 } msg == md
+  where
+    msg = take 0x411c13c75073c1e2d4b1ecf13139ba9656cd35c14201f1c7c6f0eeb58d2dbfe35bfdeccc92c3961cfabb590bc1eb77eac15732fb0275798680e0c7292e50
+    md = 0xd98d512a35572f8bd20de62e9510cc21145c5bf4
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase63
+ * ```
+ */
+property testCase63 = SHA1::hash `{ l = 504 } msg == md
+  where
+    msg = take 0xf2c76ef617fa2bfc8a4d6bcbb15fe88436fdc2165d3074629579079d4d5b86f5081ab177b4c3f530376c9c924cbd421a8daf8830d0940c4fb7589865830699
+    md = 0x9f3ea255f6af95c5454e55d7354cabb45352ea0b
+
+/**
+ * This property was automatically generated from a NIST KAT file.
+ * ```repl
+ * :prove testCase64
+ * ```
+ */
+property testCase64 = SHA1::hash `{ l = 512 } msg == md
+  where
+    msg = take 0x45927e32ddf801caf35e18e7b5078b7f5435278212ec6bb99df884f49b327c6486feae46ba187dc1cc9145121e1492e6b06e9007394dc33b7748f86ac3207cfe
+    md = 0xa70cfbfe7563dd0e665c7c6715a96a8d756950c0

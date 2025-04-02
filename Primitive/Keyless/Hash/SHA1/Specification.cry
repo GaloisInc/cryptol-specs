@@ -1,0 +1,280 @@
+/*
+ * Implementation of the hash algorithms known as SHA-1 from [FIPS-180-4].
+ *
+ * SHA-1 is definitively considered to be inferior to other hash functions
+ * defined in [FIPS-180-4]. Practical attacks on SHA-1 exist and can severely
+ * compromise the security of systems that rely on SHA-1 for collision resistance.
+ * E.g., SHA-1 is considered insecure as a primitive in digital signature schemes.
+ * That being said, it is of historical interest and is used in some legacy applications.
+ * For more details, see [NIST-RETIREMENT].
+ *
+ * A practical attack on SHA-1 is demonstrated in [SHATTERED].
+ * This document also references earlier attacks and demonstrations.
+ *
+ * References
+ * [FIPS-180-4]: National Institute of Standards and Technology. Secure Hash
+ *     Standard (SHS). (Department of Commerce, Washington, D.C.), Federal
+ *     Information Processing Standards Publication (FIPS) NIST FIPS 180-4.
+ *     August 2015.
+ *     @see https://doi.org/10.6028/NIST.FIPS.180-4
+ *
+ * [NIST-RETIREMENT]: "NIST Retires SHA-1 Cryptographic Algorithm",
+ *     B.Hayes, NIST Press Release December 15, 2022.
+ *     @see https://www.nist.gov/news-events/news/2022/12/nist-retires-sha-1-cryptographic-algorithm
+ *
+ * [SHATTERED]: "The frist collision attack for full SHA-1", Stevens, Bursztein,
+ *     Karpman, Albertini, Markov. February 23, 2017.
+ *     @see https://shattered.io/static/shattered.pdf
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ * @author Marcella Hastings <marcella@galois.com>
+ *
+ */
+
+module Primitive::Keyless::Hash::SHA1::Specification where
+
+/**
+* `l` is the length of the message in bits.
+* For SHA1, `l` < 2 ^^ 64.
+*
+* References:
+* Sections 1, 2.2.1 [FIPS-180-4]
+*/
+type constraint ValidMessageLength l = (l < 2 ^^ 64)
+
+/**
+* `w` is the number of bits in a word.
+* The word size for SHA1 is `32`.
+*
+* References:
+* Sections 1 Figure 1, 2.2.1 [FIPS-180-4]
+*
+*/
+type w = 32
+
+/**
+ * `m` is the number of bits in a message block.
+ * The block size for SHA1 is `512`.
+ *
+ * References:
+ # Section 1 Figure 1 [FIPS-180-4]
+ */
+type m = 512
+
+/**
+ * `BlockSize` is a convenient alias for `m`.
+ */
+type BlockSize = m
+
+/**
+ * The message digest size for SHA1 is `160` bits.
+ *
+ * References:
+ # Section 1 Figure 1 [FIPS-180-4]
+ */
+type DigestSize = 160
+
+/**
+ * Compute SHA1 over a bit string of valid length.
+ */
+hash: {l} (ValidMessageLength l) => [l] -> [DigestSize]
+hash M = sha1 M
+
+/**
+ * Many applications have a byte oriented interface to
+ * SHA1. Define it for the user's convenience.
+ */
+hashBytes: {l} (ValidMessageLength (8 * l)) => [l][8] -> [DigestSize / 8][8]
+hashBytes M = groupBy`{8} (hash (join M))
+
+private
+
+  /**
+   * `ROTL^n` is left rotation by `n`.
+   */
+  ROTL: {n} (n < w) => [w] -> [w]
+  ROTL x = x <<< `n
+
+  /**
+   * `Ch` is a function on three words.
+   * Its abbreviation is not expanded, however, it
+   * could be appropriately called "choose".
+   *
+   * References:
+   * Section 4.1.1 [FIPS-180-4]
+   */
+  Ch: [w] -> [w] -> [w] -> [w]
+  Ch x y z = (x && y) ^ (~x && z)
+
+  /**
+   * `Parity` is a function on three words.
+   *
+   * References:
+   * Section 4.1.1 [FIPS-180-4]
+   */
+  Parity: [w] -> [w] -> [w] -> [w]
+  Parity x y z = x ^ y ^ z
+
+  /**
+   * `Maj` is a function on three words.
+   * Its abbreviation is not expanded, however, it
+   * could be appropriately called "majority vote".
+   *
+   * References:
+   * Section 4.1.1 [FIPS-180-4]
+   */
+  Maj: [w] -> [w] -> [w] -> [w]
+  Maj x y z = (x && y) ^ (x && z) ^ (y && z)
+
+  /**
+   * SHA1 is composed of `80` functions `f_t`.
+   * Each `f_t` is one of the functions `Ch`,
+   * `Maj`, or `Parity` depending on `t`.
+   *
+   * References:
+   * Section 4.1.1 [FIPS-180-4]
+   */
+  f: {t} (t <= 79) => [w] -> [w] -> [w] -> [w]
+  f x y z | t <= 19 => Ch x y z
+          | t <= 39 => Parity x y z
+          | t <= 59 => Maj x y z
+          | t <= 79 => Parity x y z
+
+  /**
+   * SHA1 uses `80` constants parameterized by `t`.
+   *
+   * References:
+   * Section 4.2.1 [FIPS-180-4]
+   */
+  K: {t} (t <= 79) => [w]
+  K | t <= 19 => 0x5a827999
+    | t <= 39 => 0x6ed9eba1
+    | t <= 59 => 0x8f1bbcdc
+    | t <= 79 => 0xca62c1d6
+
+  /**
+    * Number of bits used to encode the length of the message for padding.
+    * [FIPS-180-4] Section 5.1. This definition was taken verbatim
+    * from the SHA2 cryptol specification.
+    */
+  type LengthBits = 2 * w
+
+  /**
+    * Number of blocks needed to hold the padded version of a message of length L.
+    * [FIPS-180-4] Section 5.1. This definition was taken verbatim
+    * from the SHA2 cryptol specification.
+    */
+  type NumBlocks L = (L + 1 + LengthBits) /^ BlockSize
+
+  /**
+    * Deterministically pad a message to a multiple of the block size.
+    *
+    * [FIPS-180-4] Section 5.1.1 and 5.1.2.
+    *
+    * The constraint is not explicitly noted in Section 5.1, but all
+    * messages to be hashed must not exceed the valid message length.
+    *
+    * This definition was taken verbatim from the SHA2 cryptol specification.
+    */
+  pad : {L} (ValidMessageLength L) => [L] -> [NumBlocks L * BlockSize]
+  pad M = M # 0b1 # zero # (`L : [LengthBits])
+
+  /**
+    * The message and its padding must be parsed into `N` blocks.
+    * [FIPS-180-4] Section 5.2.
+    */
+  parse : {N} () => [N * BlockSize] -> [N][BlockSize]
+  parse M = split M
+
+  /**
+   * Convenience type.
+   */
+  type LetterVars = ([w], [w], [w], [w], [w])
+
+  /**
+   * The initial hash value for SHA1 is described in
+   * [FIPS-180-4] Section 5.3.1
+   */
+  H0: LetterVars
+  H0 = (  0x67452301
+        , 0xefcdab89
+        , 0x98badcfe
+        , 0x10325476
+        , 0xc3d2e1f0
+        )
+
+  /**
+   * Computation of SHA1.
+   * The message is padded and parsed.
+   * Then each block is mixed with the mixing function, updating the
+   * intermdiate hash. When all blocks have been processed, the final
+   * state is the hash of the message.
+   */
+  sha1: {l} (ValidMessageLength l) => [l] -> [DigestSize]
+  sha1 M = h0 # h1 # h2 # h3 # h4
+    where
+      // Step 1: The message is padded and parsed.
+      M_t = parse (pad M)
+      // Step 2: Each block is processed in order.
+      // The final message digest is the output.
+      (h0, h1, h2, h3, h4) = foldl sha1Block H0 M_t
+
+  /**
+   * The SHA1 message schedule is recursively defined in terms of the
+   * `w` words that make up the message block.
+   *
+   * References:
+   * [FIPS-180-4] Section 6.1.2 Part 1
+   */
+  messageSchedule: [BlockSize] -> [80][w]
+  messageSchedule M_t = W
+    where
+      W = (groupBy `{w} M_t) # [
+          ROTL `{1} (W@(t-3) ^ W@(t-8) ^ W@(t-14) ^ W@(t-16))
+          | t <- [16..79]
+          ]
+
+  /**
+   * The SHA1 hash state is iteratively mixed
+   * according to the following formula.
+   *
+   * References:
+   * [FIPS-180-4] Section 6.1.2 Part 3
+   */
+  mixOne: {t} (t <= 79) => LetterVars -> [w] -> LetterVars
+  mixOne (a, b, c, d, e) W_t = (a', b', c', d', e')
+    where
+      T = ROTL `{5} a + f `{t} b c d + e + K `{t} + W_t
+      e' = d
+      d' = c
+      c' = ROTL `{30} b
+      b' = a
+      a' = T
+
+  /**
+   * The SHA1 hash state is mixed over `t` ranging
+   * from `0` to `79` inclusive. This implementation
+   * is meant to be evocative of a "for loop" or `foldl`,
+   * but also tracks the type information `t`.
+   *
+   * References:
+   * [FIPS-180-4] Section 6.1.2 Part 3
+   */
+  mix: {t} (t <= 79) => LetterVars -> [80][w] -> LetterVars
+  mix h W | t < 79 => mix `{t + 1} (mixOne `{t} h (W@`t)) W
+          | t == 79 => mixOne `{t} h (W@`t)
+
+  /**
+   * SHA1 hashes computed over a state of `5` `32` bit words.
+   * Each `m` bit block is processed in-order.
+   * This function computes SHA1 on one block.
+   *
+   * References:
+   * [FIPS-180-4] Section 6.1.2
+   */
+  sha1Block: LetterVars -> [BlockSize] -> LetterVars
+  sha1Block (h0, h1, h2, h3, h4) M_t = (a + h0, b + h1, c + h2, d + h3, e + h4)
+    where
+      W = messageSchedule M_t
+      (a, b, c, d, e) = mix `{0} (h0, h1, h2, h3, h4) W
