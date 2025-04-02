@@ -22,6 +22,8 @@
 
 module Primitive::Keyless::Sponge::Specification where
 
+import Primitive::Keyless::Sponge::Padding as Padding
+
 parameter
     /**
      * The sponge construction is based on a fixed-length transformation.
@@ -75,25 +77,27 @@ parameter
      * sequences. This makes it difficult to generalize the padding function.
      *
      * We restrict to padding functions of the following form:
-     * - add some fixed number of bits, `Fixed`, to the message.
+     * - add some fixed number of bits, `PaddingType`, to the message.
      * - Pad the length out to the next multiple of the block size.
      *
      * This excludes many valid padding rules, but admits the two padding
      * rules described in [SPONGE] (simple and multirate padding).
+     *
+     * In fact, we simply restrict to these two rules.
      */
-    type Fixed: #
+    type PaddingType: #
 
     /**
-     * Allow only values for `Fixed` described in [SPONGE].
+     * Allow only values for `PaddingType` described in [SPONGE].
      */
-    type constraint (1 <= Fixed, Fixed <= 2)
+    type constraint (1 <= PaddingType, PaddingType <= 2)
 
     /**
      * Describe the length of the padding for a given
      * message length `L`, block length `r`, and number of
-     * fixed bits `Fixed`.
+     * fixed bits `PaddingType`.
      */
-    type PadLength L x = x * ((L + Fixed) /^ x) - L
+    type PadLength L x = x * ((L + PaddingType) /^ x) - L
 
     /**
     * Constraints for the padding function.
@@ -106,18 +110,6 @@ parameter
     type constraint PadConstraint L x = (
         fin L, fin x, x > 0
         )
-
-    /**
-     * The sponge construction requires a padding function that
-     * takes the length of the message in bits (`L`) and some block length (`x`)
-     * and returns a bitstring. The padding function must return a number of
-     * bits that is fully determined by these two parameters, according to
-     * Section 2.1.2.
-     *
-     * In general, many lengths should be permissable. For the purposes of this
-     * specification, we restrict to a very special class of output lengths.
-     */
-    pad : {L, x} (PadConstraint L x) => [PadLength L x]
 
 /**
  * The sponge construction is the subsequent application of the padding rule,
@@ -226,3 +218,18 @@ private
             // Treat the whole list as a bitstring,
             // and take the first `l` bits.
             Zl = take (join Zs)
+
+    /**
+     * The sponge construction requires a padding function that
+     * takes the length of the message in bits (`L`) and some block length (`x`)
+     * and returns a bitstring. The padding function must return a number of
+     * bits that is fully determined by these two parameters, according to
+     * Section 2.1.2.
+     *
+     * In general, many lengths should be permissable. For the purposes of this
+     * specification, we restrict to a very special class of output lengths.
+     * Not only that, but we also restrict to two specific implementations.
+     */
+    pad : {L, x} (PadConstraint L x) => [PadLength L x]
+    pad | PaddingType == 1 => Padding::simplePadding `{L, x}
+        | PaddingType == 2 => Padding::multiratePadding `{L, x}
