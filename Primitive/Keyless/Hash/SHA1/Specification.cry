@@ -48,7 +48,8 @@ type constraint ValidMessageLength l = (l < 2 ^^ 64)
 * The word size for SHA1 is `32`.
 *
 * References:
-* Sections 1, 2.2.1 [FIPS-180-4]
+* Sections 1 Figure 1, 2.2.1 [FIPS-180-4]
+*
 */
 type w = 32
 
@@ -65,6 +66,9 @@ type BlockSize = m
 
 /**
  * The message digest size for SHA1 is `160` bits.
+ *
+ * References:
+ # Section 1 Figure 1 [FIPS-180-4]
  */
 type DigestSize = 160
 
@@ -196,17 +200,6 @@ private
         , 0x10325476
         , 0xc3d2e1f0
         )
-
-  /**
-   * SHA1 preprocessing sets the initial hash value to `H0`.
-   * The message is padded and parsed before the hash
-   * computation.
-   *
-   * References:
-   * [FIPS-180-4] Section 6.1.1
-   */
-  sha1Preprocessing: {l} (ValidMessageLength l) => [l] -> [NumBlocks l][BlockSize]
-  sha1Preprocessing M = parse (pad M)
 
   /**
    * Computation of SHA1.
