@@ -69,13 +69,42 @@ parameter
     f : [b] -> [b]
 
     /**
+     * Cryptol does not allow parameterized constraints or "arrow" types...
+     * types that take other types as parameters. Cryptol needs to statically
+     * determine the types of all functions, in particular, the lengths of
+     * sequences. This makes it difficult to generalize the padding function.
+     *
+     * We restrict to padding functions of the following form:
+     * - add some fixed number of bits, `Fixed`, to the message.
+     * - Pad the length out to the next multiple of the block size.
+     *
+     * This excludes many valid padding rules, but admits the two padding
+     * rules described in [SPONGE] (simple and multirate padding).
+     */
+    type Fixed: #
+
+    /**
+     * Allow only values for `Fixed` described in [SPONGE].
+     */
+    type constraint (1 <= Fixed, Fixed <= 2)
+
+    /**
+     * Describe the length of the padding for a given
+     * message length `L`, block length `r`, and number of
+     * fixed bits `Fixed`.
+     */
+    type PadLength L x = x * ((L + Fixed) /^ x) - L
+
+    /**
     * Constraints for the padding function.
     * The input length `L` and output length `P` must be finite.
+    * `P` must also be greater than `0`, to satisfy the first.
+    * sponge compliance criteria in Section 2.1.2.
     * The fixed block length `x` must be finite and greater than `0`.
     * The end result must be a multiple of `x`.
     */
-    type constraint PadConstraint L x P = (
-        fin L, fin P, P > 0, fin x, x > 0, (L + P) % x == 0
+    type constraint PadConstraint L x = (
+        fin L, fin x, x > 0
         )
 
     /**
@@ -84,8 +113,11 @@ parameter
      * and returns a bitstring. The padding function must return a number of
      * bits that is fully determined by these two parameters, according to
      * Section 2.1.2.
+     *
+     * In general, many lengths should be permissable. For the purposes of this
+     * specification, we restrict to a very special class of output lengths.
      */
-    pad : {L, x, P} (PadConstraint L x P) => [P]
+    pad : {L, x} (PadConstraint L x) => [PadLength L x]
 
 /**
  * The sponge construction is the subsequent application of the padding rule,
@@ -94,21 +126,16 @@ parameter
  * See [SPONGE] 2.5 Formula 2.4 and 2.2/2.3 Algorithm 1
  *
  * `l` is the number of bits that should be "squeezed" from the sponge.
- * `n` is the length of the message...the letter `n` was chosen arbitrarily.
- * `p` is the length of the padding produced by the `pad` function. It does not
- *   appear in the specification, but is present to satisfy Cryptol's
- *   typechecker.
- * `Pr` is the number of length `r` blocks in the padded message.
- *    It's name is chosen in symmetry with `absorb`s parameter `Pr`.
+ * `m` is the length of the message...the letter `m` was chosen arbitrarily.
  */
 sponge:
-    {l, n, p, Pr}
-    (PadConstraint n r p, Pr == (n + p) / r)
-    => [n] -> [l]
+    {l, m}
+    (PadConstraint m r)
+    => [m] -> [l]
 sponge M = Z
     where
-        P = M # pad `{n, r, p}
-        s = absorb `{Pr} P
+        P = M # pad `{m, r}
+        s = absorb P
         Z = squeeze `{l} s
 
 private
@@ -150,13 +177,13 @@ private
      * `M # <pad for M> != M' # <pad for M'> # zeros`
      */
     padCompliant :
-        {Ml, Ml', x, Pl, Pl', n}
-        (PadConstraint Ml x Pl, PadConstraint Ml' x Pl', fin n)
+        {Ml, Ml', x, n}
+        (PadConstraint Ml x, PadConstraint Ml' x, fin n)
         => [Ml] -> [Ml'] -> Bit
     property padCompliant M M' = ~comparisonHelper M M' ==> ~comparisonHelper Mp Mp'
         where
-            Mp = M # pad `{Ml, x, Pl}
-            Mp' = M # pad `{Ml', x, Pl'} # zn
+            Mp = M # pad `{Ml, x}
+            Mp' = M # pad `{Ml', x} # zn
             zn = zero `{[n * r]}
 
     /**
