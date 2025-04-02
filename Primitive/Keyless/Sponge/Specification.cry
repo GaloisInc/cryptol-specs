@@ -224,9 +224,9 @@ squeeze s = Zl
  * The sponge construction is the subsequent application of the padding rule,
  * the aborbing function, and the squeezing function.
  */
-sponge: {l, n, p, z} (fin n, fin p, n+p % r == 0, z == (n + p) / r) => [n] -> [l]
+sponge: {l, n, p, q} (fin n, fin p, n+p % r == 0, q == (n + p) / r) => [n] -> [l]
 sponge M = Z
     where
         P = M # pad `{n, r, p}
-        s = absorb `{z} P
+        s = absorb `{q} P
         Z = squeeze `{l} s
