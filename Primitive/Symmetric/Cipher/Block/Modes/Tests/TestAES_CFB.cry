@@ -13,10 +13,10 @@
  *     800-38A. December 2001.
  *     @see https://doi.org/10.6028/NIST.SP.800-38A
  */
-module Primitive::Symmetric::Cipher::Block::Tests::TestAES_CFB where
-import Primitive::Symmetric::Cipher::Block::Instantiations::AES128_CFB as AES128_CFB
-import Primitive::Symmetric::Cipher::Block::Instantiations::AES192_CFB as AES192_CFB
-import Primitive::Symmetric::Cipher::Block::Instantiations::AES256_CFB as AES256_CFB
+module Primitive::Symmetric::Cipher::Block::Modes::Tests::TestAES_CFB where
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES128_CFB as AES128_CFB
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES192_CFB as AES192_CFB
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_CFB as AES256_CFB
 
 /**
  * Section F.3.1: CFB1-AES128.Encrypt
