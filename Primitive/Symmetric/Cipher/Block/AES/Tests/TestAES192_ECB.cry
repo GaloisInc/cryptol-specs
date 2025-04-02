@@ -15,9 +15,9 @@
  * @author John Christensen <jchristensen@galois.com>
  */
 
-module Primitive::Symmetric::Cipher::Block::Tests::TestAES192_ECB where
+module Primitive::Symmetric::Cipher::Block::AES::Tests::TestAES192_ECB where
 
-import Primitive::Symmetric::Cipher::Block::Instantiations::AES192 as AES
+import Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES192 as AES
 
 /**
  * This property was automatically generated from a NIST KAT file.

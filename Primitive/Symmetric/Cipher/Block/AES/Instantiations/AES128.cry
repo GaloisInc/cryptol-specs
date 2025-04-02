@@ -3,7 +3,7 @@
    @author Marcella Hastings <marcella@galois.com>
    www.cryptol.net
 */
-module Primitive::Symmetric::Cipher::Block::Instantiations::AES128 =
+module Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES128 =
     Primitive::Symmetric::Cipher::Block::AES::Specification where
     // This produces a key size of 128
     type KeySize' = 128

@@ -7,10 +7,11 @@
  * @author Alex J Malozemoff <amaloz@galois.com>
  *  www.cryptol.net
  */
-module Primitive::Symmetric::Cipher::Block::Tests::TestAESKeyWrap where
+
+module Primitive::Symmetric::Cipher::Block::Modes::Tests::TestAESKeyWrap where
 
 import Common::OptionUtils(optTest, isNone)
-import Primitive::Symmetric::Cipher::Block::Instantiations::AES256_KeyWrap
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_KeyWrap
 
 // This section contains tests of the Key Wrap specifications using test
 // vectors from Section 4 of RFC 3394.

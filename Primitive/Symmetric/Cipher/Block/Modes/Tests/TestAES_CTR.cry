@@ -13,10 +13,10 @@
  * 800-38A. December 2001.
  *
  */
-module Primitive::Symmetric::Cipher::Block::Tests::TestAES_CTR where
-import Primitive::Symmetric::Cipher::Block::Instantiations::AES128_CTR as AES128_CTR
-import Primitive::Symmetric::Cipher::Block::Instantiations::AES192_CTR as AES192_CTR
-import Primitive::Symmetric::Cipher::Block::Instantiations::AES256_CTR as AES256_CTR
+module Primitive::Symmetric::Cipher::Block::Modes::Tests::TestAES_CTR where
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES128_CTR as AES128_CTR
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES192_CTR as AES192_CTR
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_CTR as AES256_CTR
 
 /**
  * ```repl

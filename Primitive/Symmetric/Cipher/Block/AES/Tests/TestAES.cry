@@ -15,10 +15,10 @@
  *  @author Marcella Hastings <marcella@galois.com>
  *  www.cryptol.net
  */
-module Primitive::Symmetric::Cipher::Block::Tests::TestAES where
-import Primitive::Symmetric::Cipher::Block::Instantiations::AES192 as AES192
-import Primitive::Symmetric::Cipher::Block::Instantiations::AES128 as AES128
-import Primitive::Symmetric::Cipher::Block::Instantiations::AES256 as AES256
+module Primitive::Symmetric::Cipher::Block::AES::Tests::TestAES where
+import Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES192 as AES192
+import Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES128 as AES128
+import Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES256 as AES256
 
 // These test vectors must all come from the same place, because they use the same plaintexts
 pts = [0x6bc1bee22e409f96e93d7e117393172a

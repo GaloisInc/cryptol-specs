@@ -4,6 +4,6 @@
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
  */
-module Primitive::Symmetric::Cipher::Block::Instantiations::AES256_KeyWrap =
+module Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_KeyWrap =
     Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap where
         type AESKeySize' = 256

@@ -7,10 +7,10 @@
  * @author Alex J Malozemoff <amaloz@galois.com>
  *  www.cryptol.net
  */
-module Primitive::Symmetric::Cipher::Block::Tests::TestAESKeyWrapPadded where
+module Primitive::Symmetric::Cipher::Block::Modes::Tests::TestAESKeyWrapPadded where
 
 import Common::OptionUtils(optTest, isNone)
-import Primitive::Symmetric::Cipher::Block::Instantiations::AES256_KeyWrapPadded
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_KeyWrapPadded
 
 testUnwrap : {a, b} ( fin a
                     , b <= a - 8
@@ -20,7 +20,7 @@ testUnwrap : {a, b} ( fin a
                     , a % 8 == 0) =>
              [AESKeySize] -> [a][8] -> [b][8] -> Bit
 testUnwrap key ct pt = optTest (\a -> (join a.0, take`{b} a.1) == (`b, pt)) result
-  where 
+  where
     result = aesUnwrapKeyPadded key AlternativeIV ct
 
 /**

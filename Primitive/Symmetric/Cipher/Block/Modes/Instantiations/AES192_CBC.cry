@@ -4,7 +4,7 @@
  * @copyright Galois, Inc.
  * @author Stanislav Lyakhov <stan@galois.com>
  */
-module Primitive::Symmetric::Cipher::Block::Instantiations::AES192_CBC =
+module Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES192_CBC =
     Primitive::Symmetric::Cipher::Block::Modes::CBC {
-        Primitive::Symmetric::Cipher::Block::Instantiations::AES192
+        Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES192
     }

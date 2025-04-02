@@ -15,9 +15,9 @@
  * @author John Christensen <jchristensen@galois.com>
  */
 
-module Primitive::Symmetric::Cipher::Block::Tests::TestAES128_ECB where
+module Primitive::Symmetric::Cipher::Block::AES::Tests::TestAES128_ECB where
 
-import Primitive::Symmetric::Cipher::Block::Instantiations::AES128 as AES
+import Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES128 as AES
 
 /**
  * This property was automatically generated from a NIST KAT file.

@@ -4,7 +4,7 @@
  * @copyright Galois, Inc.
  * @author Stanislav Lyakhov <stan@galois.com>
  */
-module Primitive::Symmetric::Cipher::Block::Instantiations::AES128_CBC =
+module Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES128_CBC =
     Primitive::Symmetric::Cipher::Block::Modes::CBC {
-        Primitive::Symmetric::Cipher::Block::Instantiations::AES128
+        Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES128
     }

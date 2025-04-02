@@ -4,7 +4,7 @@
  * @copyright Galois, Inc.
  * @author Alex J Malozemoff <amaloz@galois.com>
  */
-module Primitive::Symmetric::Cipher::Block::Instantiations::AES256_CFB =
+module Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_CFB =
     Primitive::Symmetric::Cipher::Block::Modes::CFB {
-        Primitive::Symmetric::Cipher::Block::Instantiations::AES256
+        Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES256
     }

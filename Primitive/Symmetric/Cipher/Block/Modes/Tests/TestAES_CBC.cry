@@ -14,10 +14,10 @@
  * 800-38A. December 2001.
  *
  */
-module Primitive::Symmetric::Cipher::Block::Tests::TestAES_CBC where
-import Primitive::Symmetric::Cipher::Block::Instantiations::AES128_CBC as AES128_CBC
-import Primitive::Symmetric::Cipher::Block::Instantiations::AES192_CBC as AES192_CBC
-import Primitive::Symmetric::Cipher::Block::Instantiations::AES256_CBC as AES256_CBC
+module Primitive::Symmetric::Cipher::Block::Modes::Tests::TestAES_CBC where
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES128_CBC as AES128_CBC
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES192_CBC as AES192_CBC
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_CBC as AES256_CBC
 
 /**
  * ```repl

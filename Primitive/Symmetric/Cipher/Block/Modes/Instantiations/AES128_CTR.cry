@@ -4,7 +4,7 @@
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
  */
-module Primitive::Symmetric::Cipher::Block::Instantiations::AES128_CTR =
+module Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES128_CTR =
     Primitive::Symmetric::Cipher::Block::Modes::CTR {
-        Primitive::Symmetric::Cipher::Block::Instantiations::AES128
+        Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES128
     }
