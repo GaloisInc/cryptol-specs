@@ -79,9 +79,14 @@ parameter
  * the first `r` bits of an initial state. This operation is interleaved with
  * the application of the transformation `f`. At the end of the absorption
  * function, the state is returned.
+ *
+ * See [SPONGE] 2.4.1 Algorithm 3.
+ *
+ * The type parameter `Pr` is the number of length `r` blocks in `P`.
+ * It is meant to evoke the notation `|P|_r` in the specification.
  */
-absorb: {n} (fin n) => [n*r] -> [b]
-absorb P = foldl absorb_f_r s_init (split `{n} P)
+absorb: {Pr} (fin Pr) => [Pr*r] -> [b]
+absorb P = foldl absorb_f_r s_init (split `{Pr} P)
     where
         // The initial state is a bitstring of length `b`.
         s_init = zero `{[b]}
@@ -97,6 +102,8 @@ absorb P = foldl absorb_f_r s_init (split `{n} P)
  * The squeezing function iteratively returns the first `r` bits of state
  * interleaved with applications of the transformation `f` a number of times
  * determined by the caller.
+ *
+ * See [SPONGE] 2.4.2 Algorithm 4.
  */
 squeeze: {l} () => [b] -> [l]
 squeeze s = Zl
@@ -109,10 +116,20 @@ squeeze s = Zl
 /**
  * The sponge construction is the subsequent application of the padding rule,
  * the aborbing function, and the squeezing function.
+ *
+ * See [SPONGE] 2.5 Formula 2.4 and 2.2/2.3 Algorithm 1
+ *
+ * `l` is the number of bits that should be "squeezed" from the sponge.
+ * `n` is the length of the message...the letter `n` was chosen arbitrarily.
+ * `p` is the length of the padding produced by the `pad` function. It does not
+ *   appear in the specification, but is present to satisfy Cryptol's
+ *   typechecker.
+ * `Pr` is the number of length `r` blocks in the padded message.
+ *    It's name is chosen in symmetry with `absorb`s parameter `Pr`.
  */
-sponge: {l, n, p, q} (fin n, fin p, n+p % r == 0, q == (n + p) / r) => [n] -> [l]
+sponge: {l, n, p, Pr} (fin n, fin p, n+p % r == 0, Pr == (n + p) / r) => [n] -> [l]
 sponge M = Z
     where
         P = M # pad `{n, r, p}
-        s = absorb `{q} P
+        s = absorb `{Pr} P
         Z = squeeze `{l} s
