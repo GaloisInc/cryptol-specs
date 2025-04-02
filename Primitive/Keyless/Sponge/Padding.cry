@@ -11,7 +11,52 @@
  *
  * @copyright Galois, Inc.
  * @author John Christensen <jchristensen@galois.com>
+ * @author Marcella Hastings <marcella@galois.com>
  *
  */
 
 module Primitive::Keyless::Sponge::Padding where
+
+/**
+ * A type taken from the SHA3 specification for multi-rate padding.
+ * Note: The spec says the output length is a positive multiple of `x` and
+ * defines it to be, basically: `(- m - 2) mod x + 2`. We can't encode this
+ * exactly as-is in the type signature because Cryptol doesn't support
+ * negative numbers in types (`-m`). Instead, we do the following:
+ *      (m + 2)           : The minimum length of the original message and
+ *                        : the padding
+ *      (m + 2) /^ x      : The multiplier of `x` that determines the
+ *                        : ultimate length of the message + padding
+ * x * ((m + 2) /^ x)     : The total length of the message + padding
+ * x * ((m + 2) /^ x) - m : The total length of the padding alone
+ *
+ */
+type MultiRate x m = x * ((m + 2) /^ x) - m
+
+/**
+ * Multi-rate padding appends a single bit `1` followed by
+ * the minimum number of bits `0` such that the length of the
+ * result is a multiple of the block length.
+ *
+ * This implementation is heavily influenced by the current
+ * SHA3 cryptol specification in this repository.
+ *
+ * See [SPONGE] Section 2.1.2 Definition 3.
+ */
+multiratePadding: {L, x} (fin L, x > 0, fin x) => [MultiRate x L]
+multiratePadding = [True] # zero # [True]
+
+/**
+ * A type describing simple padding.
+ */
+type Simple x m = x * ((m + 1) /^ x) - m
+
+/**
+ * Simple padding appends a single bit `1` followed by
+ * the minimum number of bits `0` such that the length of the
+ * result is a multiple of the block length.
+ *
+ * See [SPONGE] Section 2.1.2 Definition 2.
+ */
+simplePadding: {L, x} (fin L, x > 0, fin x) => [Simple x L]
+simplePadding = [True] # zero
