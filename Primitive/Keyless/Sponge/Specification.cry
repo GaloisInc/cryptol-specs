@@ -47,6 +47,22 @@ parameter
     type constraint (fin r, r >= 1, r < b)
 
     /**
+     * The sponge construction requires a value `c`, called the capacity.
+     * This term is first used in Section 1.2 of [SPONGE].
+     *
+     * `c` is not used in the definition of the sponge, but is
+     * important for the security analysis of different sponge
+     * constructions.
+     */
+    type c = b - r
+
+    /**
+     * The sponge construction operates on a state of `b` bits.
+     * In Section 1.2 of [SPONGE], it is defined that `b = r + c`.
+     */
+    type constraint (b == r + c)
+
+    /**
      * The sponge construction is based on a fixed-length transformation.
      * The particular transformation is called `f` in Section 1.2 of [SPONGE].
      */
@@ -61,18 +77,6 @@ parameter
     type constraint PadConstraint L x P = (
         fin L, fin P, P > 0, fin x, x > 0, (L + P) % x == 0
         )
-
-    /**
-     * The sponge construction requires a value `c`, called the capacity.
-     * This term is first used in Section 1.2 of [SPONGE].
-     */
-    type c = b - r
-
-    /**
-     * The sponge construction operates on a state of `b` bits.
-     * In Section 1.2 of [SPONGE], it is defined that `b = r + c`.
-     */
-    type constraint (b == r + c)
 
     /**
      * The sponge construction requires a padding function that
