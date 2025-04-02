@@ -71,7 +71,7 @@ parameter
      * bits that is fully determined by these two parameters, according to
      * Section 2.1.2.
      */
-    pad : {L, x, P} (fin L, fin P, fin x, x > 0, (L + P) % x == 0) => [P]
+    pad : {L, x, P} (fin L, fin P, P > 0, fin x, x > 0, (L + P) % x == 0) => [P]
 
 
 /**
@@ -127,7 +127,7 @@ squeeze s = Zl
  * `Pr` is the number of length `r` blocks in the padded message.
  *    It's name is chosen in symmetry with `absorb`s parameter `Pr`.
  */
-sponge: {l, n, p, Pr} (fin n, fin p, n+p % r == 0, Pr == (n + p) / r) => [n] -> [l]
+sponge: {l, n, p, Pr} (fin n, fin p, p > 0, n+p % r == 0, Pr == (n + p) / r) => [n] -> [l]
 sponge M = Z
     where
         P = M # pad `{n, r, p}
