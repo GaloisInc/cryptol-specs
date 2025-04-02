@@ -1,0 +1,17 @@
+/**
+ * A toy instance of a sponge.
+ *
+ * This is just to sanity check the specification can
+ * be instantiated at all.
+ *
+ */
+
+module Primitive::Keyless::Sponge::Instantiations::Toy =
+    module Primitive::Keyless::Sponge::Specification where
+
+type b = 16
+type r = 2
+type PaddingType = 1
+
+f : [b] -> [b]
+f x = x

@@ -1,0 +1,14 @@
+/**
+ * Show the sponge SHA3 and the current SHA3 are equivalent.
+ */
+
+module Primitive::Keyless::Sponge::Tests::SHA3 where
+
+import Primitive::Keyless::Sponge::Instantiations::Keccak_512 as Sponge
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_256 as SHA3
+
+spongeSHA3: {l, m} (fin m) => [m] -> [l]
+spongeSHA3 x = Sponge::sponge `{l=l} (x # 0b01)
+
+SHAEquivalent : {n} (fin n) => [n] -> Bit
+property SHAEquivalent m = SHA3::sha3 m == spongeSHA3 m
