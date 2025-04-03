@@ -58,10 +58,10 @@ aesWrapKey key iv plaintext = split (join C)
 // plain text.  If the integrity check fails, the second element will be all
 // zeros.
 aesUnwrapKey : {n} (fin n, n >= 24, n % 8 == 0, width (n / 8) <= 64) =>
-               [AESKeySize] -> [8][8] -> [n][8] -> (Bit, [n-8][8])
+               [AESKeySize] -> [8][8] -> [n][8] -> Option ([n-8][8])
 aesUnwrapKey key iv ciphertext = if (join iv) == A'
-                                 then (True, split (join R'))
-                                 else (False, zero)
+                                 then Some (split (join R'))
+                                 else None
   where
     (A', R') = aesUnwrapKeyUnchecked key ciphertext
 
