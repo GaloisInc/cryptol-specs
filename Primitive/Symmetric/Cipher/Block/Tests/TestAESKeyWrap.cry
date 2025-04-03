@@ -2,6 +2,10 @@
  * Test vectors for AES Key Wrap.
  *
  * @copyright Galois.Inc.
+ * @author Brett Boston
+ * @author Marcella Hastings <marcella@galois.com>
+ * @author Alex J Malozemoff <amaloz@galois.com>
+ *  www.cryptol.net
  */
 module Primitive::Symmetric::Cipher::Block::Tests::TestAESKeyWrap where
 
