@@ -284,7 +284,7 @@ private
      */
     rc : Integer -> Bit
     rc t = if (t % 255) == 0 then 1 // Step 1.
-         else Rs @ (t % 255) @0 // Step 4.
+         else Rs @ (t') @0 // Step 4.
          where
              // Step 2 - 3.
              Rs = [0b10000000] # [lfsr R | R <- Rs ]
@@ -298,6 +298,11 @@ private
                      R4 = R@4 ^ R@8
                      R5 = R@5 ^ R@8
                      R6 = R@6 ^ R@8
+             // Cryptol's SMT interface disallows index by symbolic `Integer`.
+             // To faciliate proofs, we convert to a bitvector.
+             // Justification: for all integers i,
+             // (i % 255) % 256 == (i % 255)
+             t' = fromInteger (t % 255) : [8]
 
     /**
      * Hardcode the round constant values.
@@ -314,11 +319,48 @@ private
      * Equivalent to [FIPS-202] Section 3.2.5, Algorithm 5.
      */
     rc_hardcoded : Integer -> Bit
-    rc_hardcoded t = constants @ (t % 255) where
+    rc_hardcoded t = constants @ (t') where
         constants = join [
             0x80b1e87f90a7d57062b32fde6ee54a25,
             0xa339e361175edf0d35b504ec9303a471
         ]
+        // Cryptol's SMT interface disallows index by symbolic `Integer`.
+        // To faciliate proofs, we convert to a bitvector.
+        // Justification: for all integers i,
+        // (i % 255) % 256 == (i % 255)
+        t' = fromInteger (t % 255) : [8]
+
+    /*
+     * Some properties justifying the conversion of `Integer -> [8]`
+     * in `rc` and `rc_hardcoded`
+     */
+    private
+        /**
+        * A fact about modular arithmetic:
+        *   For any integers `i`, `m`, `n`, such that `m > 0` and `m < n`,
+        *   `i mod m mod n == i mod m`
+        *   I.e., the modular reduction is equivalent to the smaller modulus.
+        */
+        index_eq: {ix} (Integral ix, Cmp ix, Literal 0 ix) => ix -> ix -> ix -> Bit
+        index_eq i m n = m > 0 ==> m <= n ==> (i % m) % n == (i % m)
+
+        /**
+        * An instance of the fact above for Cryptol `Integer`.
+        * ```repl
+        * :prove index_eq_int
+        * ```
+        */
+        property index_eq_int = index_eq `{Integer}
+
+        /**
+        * A consequence of the property above is that reducing an integer
+        * mod 255 and then converting it to an `[8]` is always in `Z 255`.
+        * ```repl
+        * :prove value_bound
+        * ```
+        */
+        value_bound: Integer -> Bit
+        property value_bound i = (fromInteger (i % 255) : [8]) < 255
 
     /**
      * Prove that the hardcoded round constants are correct.
