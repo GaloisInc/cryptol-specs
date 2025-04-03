@@ -4,7 +4,7 @@
  *
  * CFB mode utilizes an integer parameter, denoted by `s`, such that
  * `1 ≤ s ≤ BlockSize`. The parameter `s` specifies the plaintext / ciphertext
- * block length; that is, each plaintext / ciphertext block is `s` bits long.0
+ * block length; that is, each plaintext / ciphertext block is `s` bits long.
  *
  * ⚠️ Warning ⚠️: To ensure confidentiality, CFB mode requires that the
  * initialization vector (IV) must be "unpredictable". This specification does
@@ -47,7 +47,8 @@ import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
  * not verify IV generation; implementors must manually verify that their IVs
  * are chosen appropriately.
  */
-encrypt : {s, n} (fin s, fin n, s >= 0, s <= C::BlockSize) => [C::KeySize] -> [C::BlockSize] -> [n][s] -> [n][s]
+encrypt : {s, n} (fin s, fin n, s >= 0, s <= C::BlockSize)
+    => [C::KeySize] -> [C::BlockSize] -> [n][s] -> [n][s]
 encrypt K IV Ps = Cs
     where
         CIPH_K = C::encrypt K
@@ -77,7 +78,8 @@ encrypt K IV Ps = Cs
  * not verify IV generation; implementors must manually verify that their IVs
  * are chosen appropriately.
  */
-decrypt : {s, n} (fin s, fin n, s >= 0, s <= C::BlockSize) => [C::KeySize] -> [C::BlockSize] -> [n][s] -> [n][s]
+decrypt : {s, n} (fin s, fin n, s >= 0, s <= C::BlockSize)
+    => [C::KeySize] -> [C::BlockSize] -> [n][s] -> [n][s]
 decrypt K IV Cs = Ps
     where
         CIPH_K = C::encrypt K
@@ -94,8 +96,11 @@ decrypt K IV Cs = Ps
  * Decryption must be the inverse of encryption.
  * With high probability, this will be incredibly slow to prove.
  * ```repl
- * :check encryptCorrect`{n=5}
+ * :check encryptCorrect`{s=1, n=5}
+ * :check encryptCorrect`{s=8, n=5}
+ * :check encryptCorrect`{s=128, n=5}
  * ```
  */
-encryptCorrect : {s, n} (fin n, s >= 0, s <= C::BlockSize) => [C::KeySize] -> [C::BlockSize] -> [n][s] -> Bool
+encryptCorrect : {s, n} (fin n, s >= 0, s <= C::BlockSize)
+    => [C::KeySize] -> [C::BlockSize] -> [n][s] -> Bool
 property encryptCorrect K IV Ps = (decrypt K IV (encrypt K IV Ps)) == Ps
