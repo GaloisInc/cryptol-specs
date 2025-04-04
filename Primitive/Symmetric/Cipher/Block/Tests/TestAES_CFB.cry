@@ -29,10 +29,14 @@ property aes128_cfb1_encrypt_vector = (AES128_CFB::encrypt key iv plaintext) == 
     where
         key = 0x2b7e151628aed2a6abf7158809cf4f3c
         iv  = 0x000102030405060708090a0b0c0d0e0f
-        plaintext  = [0b0, 0b1, 0b1, 0b0, 0b1, 0b0, 0b1, 0b1,
-                      0b1, 0b1, 0b0, 0b0, 0b0, 0b0, 0b0, 0b1]
-        ciphertext = [0b0, 0b1, 0b1, 0b0, 0b1, 0b0, 0b0, 0b0,
-                      0b1, 0b0, 0b1, 0b1, 0b0, 0b0, 0b1, 0b1]
+        plaintext = [
+            0b0, 0b1, 0b1, 0b0, 0b1, 0b0, 0b1, 0b1,
+            0b1, 0b1, 0b0, 0b0, 0b0, 0b0, 0b0, 0b1
+        ]
+        ciphertext = [
+            0b0, 0b1, 0b1, 0b0, 0b1, 0b0, 0b0, 0b0,
+            0b1, 0b0, 0b1, 0b1, 0b0, 0b0, 0b1, 0b1
+        ]
 
 /**
  * Section F.3.2: CFB1-AES128.Decrypt
@@ -45,10 +49,14 @@ property aes128_cfb1_decrypt_vector = (AES128_CFB::decrypt key iv ciphertext) ==
     where
         key = 0x2b7e151628aed2a6abf7158809cf4f3c
         iv  = 0x000102030405060708090a0b0c0d0e0f
-        ciphertext = [0b0, 0b1, 0b1, 0b0, 0b1, 0b0, 0b0, 0b0,
-                      0b1, 0b0, 0b1, 0b1, 0b0, 0b0, 0b1, 0b1]
-        plaintext  = [0b0, 0b1, 0b1, 0b0, 0b1, 0b0, 0b1, 0b1,
-                      0b1, 0b1, 0b0, 0b0, 0b0, 0b0, 0b0, 0b1]
+        ciphertext = [
+            0b0, 0b1, 0b1, 0b0, 0b1, 0b0, 0b0, 0b0,
+            0b1, 0b0, 0b1, 0b1, 0b0, 0b0, 0b1, 0b1
+        ]
+        plaintext = [
+            0b0, 0b1, 0b1, 0b0, 0b1, 0b0, 0b1, 0b1,
+            0b1, 0b1, 0b0, 0b0, 0b0, 0b0, 0b0, 0b1
+        ]
 
 /**
  * Section F.3.3: CFB1-AES192.Encrypt
@@ -61,10 +69,14 @@ property aes192_cfb1_encrypt_vector = (AES192_CFB::encrypt key iv plaintext) == 
     where
         key = 0x8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b
         iv  = 0x000102030405060708090a0b0c0d0e0f
-        plaintext  = [0b0, 0b1, 0b1, 0b0, 0b1, 0b0, 0b1, 0b1,
-                      0b1, 0b1, 0b0, 0b0, 0b0, 0b0, 0b0, 0b1]
-        ciphertext = [0b1, 0b0, 0b0, 0b1, 0b0, 0b0, 0b1, 0b1,
-                      0b0, 0b1, 0b0, 0b1, 0b1, 0b0, 0b0, 0b1]
+        plaintext = [
+            0b0, 0b1, 0b1, 0b0, 0b1, 0b0, 0b1, 0b1,
+            0b1, 0b1, 0b0, 0b0, 0b0, 0b0, 0b0, 0b1
+        ]
+        ciphertext = [
+            0b1, 0b0, 0b0, 0b1, 0b0, 0b0, 0b1, 0b1,
+            0b0, 0b1, 0b0, 0b1, 0b1, 0b0, 0b0, 0b1
+        ]
 
 /**
  * Section F.3.4: CFB1-AES192.Decrypt
@@ -77,10 +89,14 @@ property aes192_cfb1_decrypt_vector = (AES192_CFB::decrypt key iv ciphertext) ==
     where
         key = 0x8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b
         iv  = 0x000102030405060708090a0b0c0d0e0f
-        ciphertext = [0b1, 0b0, 0b0, 0b1, 0b0, 0b0, 0b1, 0b1,
-                      0b0, 0b1, 0b0, 0b1, 0b1, 0b0, 0b0, 0b1]
-        plaintext  = [0b0, 0b1, 0b1, 0b0, 0b1, 0b0, 0b1, 0b1,
-                      0b1, 0b1, 0b0, 0b0, 0b0, 0b0, 0b0, 0b1]
+        ciphertext = [
+            0b1, 0b0, 0b0, 0b1, 0b0, 0b0, 0b1, 0b1,
+            0b0, 0b1, 0b0, 0b1, 0b1, 0b0, 0b0, 0b1
+        ]
+        plaintext = [
+            0b0, 0b1, 0b1, 0b0, 0b1, 0b0, 0b1, 0b1,
+            0b1, 0b1, 0b0, 0b0, 0b0, 0b0, 0b0, 0b1
+        ]
 
 /**
  * Section F.3.5: CFB1-AES256.Encrypt
@@ -93,10 +109,14 @@ property aes256_cfb1_encrypt_vector = (AES256_CFB::encrypt key iv plaintext) == 
     where
         key = 0x603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4
         iv  = 0x000102030405060708090a0b0c0d0e0f
-        plaintext  = [0b0, 0b1, 0b1, 0b0, 0b1, 0b0, 0b1, 0b1,
-                      0b1, 0b1, 0b0, 0b0, 0b0, 0b0, 0b0, 0b1]
-        ciphertext = [0b1, 0b0, 0b0, 0b1, 0b0, 0b0, 0b0, 0b0,
-                      0b0, 0b0, 0b1, 0b0, 0b1, 0b0, 0b0, 0b1]
+        plaintext = [
+            0b0, 0b1, 0b1, 0b0, 0b1, 0b0, 0b1, 0b1,
+            0b1, 0b1, 0b0, 0b0, 0b0, 0b0, 0b0, 0b1
+        ]
+        ciphertext = [
+            0b1, 0b0, 0b0, 0b1, 0b0, 0b0, 0b0, 0b0,
+            0b0, 0b0, 0b1, 0b0, 0b1, 0b0, 0b0, 0b1
+        ]
 
 /**
  * Section F.3.6: CFB1-AES256.Decrypt
@@ -109,10 +129,14 @@ property aes256_cfb1_decrypt_vector = (AES256_CFB::decrypt key iv ciphertext) ==
     where
         key = 0x603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4
         iv  = 0x000102030405060708090a0b0c0d0e0f
-        ciphertext = [0b1, 0b0, 0b0, 0b1, 0b0, 0b0, 0b0, 0b0,
-                      0b0, 0b0, 0b1, 0b0, 0b1, 0b0, 0b0, 0b1]
-        plaintext  = [0b0, 0b1, 0b1, 0b0, 0b1, 0b0, 0b1, 0b1,
-                      0b1, 0b1, 0b0, 0b0, 0b0, 0b0, 0b0, 0b1]
+        ciphertext = [
+            0b1, 0b0, 0b0, 0b1, 0b0, 0b0, 0b0, 0b0,
+            0b0, 0b0, 0b1, 0b0, 0b1, 0b0, 0b0, 0b1
+        ]
+        plaintext = [
+            0b0, 0b1, 0b1, 0b0, 0b1, 0b0, 0b1, 0b1,
+            0b1, 0b1, 0b0, 0b0, 0b0, 0b0, 0b0, 0b1
+        ]
 
 /**
  * Section F.3.7: CFB8-AES128.Encrypt
@@ -125,10 +149,14 @@ property aes128_cfb8_encrypt_vector = (AES128_CFB::encrypt key iv plaintext) == 
     where
         key = 0x2b7e151628aed2a6abf7158809cf4f3c
         iv  = 0x000102030405060708090a0b0c0d0e0f
-        plaintext  = [0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9,
-                      0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a, 0xae, 0x2d]
-        ciphertext = [0x3b, 0x79, 0x42, 0x4c, 0x9c, 0x0d, 0xd4, 0x36, 0xba,
-                      0xce, 0x9e, 0x0e, 0xd4, 0x58, 0x6a, 0x4f, 0x32, 0xb9]
+        plaintext = [
+            0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9,
+            0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a, 0xae, 0x2d
+        ]
+        ciphertext = [
+            0x3b, 0x79, 0x42, 0x4c, 0x9c, 0x0d, 0xd4, 0x36, 0xba,
+            0xce, 0x9e, 0x0e, 0xd4, 0x58, 0x6a, 0x4f, 0x32, 0xb9
+        ]
 
 /**
  * Section F.3.8: CFB8-AES128.Decrypt
@@ -141,10 +169,14 @@ property aes128_cfb8_decrypt_vector = (AES128_CFB::decrypt key iv ciphertext) ==
     where
         key = 0x2b7e151628aed2a6abf7158809cf4f3c
         iv  = 0x000102030405060708090a0b0c0d0e0f
-        ciphertext = [0x3b, 0x79, 0x42, 0x4c, 0x9c, 0x0d, 0xd4, 0x36, 0xba,
-                      0xce, 0x9e, 0x0e, 0xd4, 0x58, 0x6a, 0x4f, 0x32, 0xb9]
-        plaintext  = [0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9,
-                      0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a, 0xae, 0x2d]
+        ciphertext = [
+            0x3b, 0x79, 0x42, 0x4c, 0x9c, 0x0d, 0xd4, 0x36, 0xba,
+            0xce, 0x9e, 0x0e, 0xd4, 0x58, 0x6a, 0x4f, 0x32, 0xb9
+        ]
+        plaintext = [
+            0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9,
+            0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a, 0xae, 0x2d
+        ]
 
 /**
  * Section F.3.9: CFB8-AES192.Encrypt
@@ -157,10 +189,14 @@ property aes192_cfb8_encrypt_vector = (AES192_CFB::encrypt key iv plaintext) == 
     where
         key = 0x8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b
         iv  = 0x000102030405060708090a0b0c0d0e0f
-        plaintext  = [0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9,
-                      0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a, 0xae, 0x2d]
-        ciphertext = [0xcd, 0xa2, 0x52, 0x1e, 0xf0, 0xa9, 0x05, 0xca, 0x44,
-                      0xcd, 0x05, 0x7c, 0xbf, 0x0d, 0x47, 0xa0, 0x67, 0x8a]
+        plaintext = [
+            0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9,
+            0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a, 0xae, 0x2d
+        ]
+        ciphertext = [
+            0xcd, 0xa2, 0x52, 0x1e, 0xf0, 0xa9, 0x05, 0xca, 0x44,
+            0xcd, 0x05, 0x7c, 0xbf, 0x0d, 0x47, 0xa0, 0x67, 0x8a
+        ]
 
 /**
  * Section F.3.10: CFB8-AES192.Decrypt
@@ -173,10 +209,14 @@ property aes192_cfb8_decrypt_vector = (AES192_CFB::decrypt key iv ciphertext) ==
     where
         key = 0x8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b
         iv  = 0x000102030405060708090a0b0c0d0e0f
-        ciphertext = [0xcd, 0xa2, 0x52, 0x1e, 0xf0, 0xa9, 0x05, 0xca, 0x44,
-                      0xcd, 0x05, 0x7c, 0xbf, 0x0d, 0x47, 0xa0, 0x67, 0x8a]
-        plaintext  = [0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9,
-                      0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a, 0xae, 0x2d]
+        ciphertext = [
+            0xcd, 0xa2, 0x52, 0x1e, 0xf0, 0xa9, 0x05, 0xca, 0x44,
+            0xcd, 0x05, 0x7c, 0xbf, 0x0d, 0x47, 0xa0, 0x67, 0x8a
+        ]
+        plaintext = [
+            0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9,
+            0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a, 0xae, 0x2d
+        ]
 
 /**
  * Section F.3.11: CFB8-AES256.Encrypt
@@ -189,10 +229,14 @@ property aes256_cfb8_encrypt_vector = (AES256_CFB::encrypt key iv plaintext) == 
     where
         key = 0x603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4
         iv  = 0x000102030405060708090a0b0c0d0e0f
-        plaintext  = [0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9,
-                      0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a, 0xae, 0x2d]
-        ciphertext = [0xdc, 0x1f, 0x1a, 0x85, 0x20, 0xa6, 0x4d, 0xb5, 0x5f,
-                      0xcc, 0x8a, 0xc5, 0x54, 0x84, 0x4e, 0x88, 0x97, 0x00]
+        plaintext = [
+            0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9,
+            0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a, 0xae, 0x2d
+        ]
+        ciphertext = [
+            0xdc, 0x1f, 0x1a, 0x85, 0x20, 0xa6, 0x4d, 0xb5, 0x5f,
+            0xcc, 0x8a, 0xc5, 0x54, 0x84, 0x4e, 0x88, 0x97, 0x00
+        ]
 
 /**
  * Section F.3.12: CFB8-AES256.Decrypt
@@ -205,10 +249,14 @@ property aes256_cfb8_decrypt_vector = (AES256_CFB::decrypt key iv ciphertext) ==
     where
         key = 0x603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4
         iv  = 0x000102030405060708090a0b0c0d0e0f
-        ciphertext = [0xdc, 0x1f, 0x1a, 0x85, 0x20, 0xa6, 0x4d, 0xb5, 0x5f,
-                      0xcc, 0x8a, 0xc5, 0x54, 0x84, 0x4e, 0x88, 0x97, 0x00]
-        plaintext  = [0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9,
-                      0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a, 0xae, 0x2d]
+        ciphertext = [
+            0xdc, 0x1f, 0x1a, 0x85, 0x20, 0xa6, 0x4d, 0xb5, 0x5f,
+            0xcc, 0x8a, 0xc5, 0x54, 0x84, 0x4e, 0x88, 0x97, 0x00
+        ]
+        plaintext = [
+            0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9,
+            0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a, 0xae, 0x2d
+        ]
 
 /**
  * Section F.3.13: CFB128-AES128.Encrypt
