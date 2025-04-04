@@ -67,10 +67,10 @@ aesWrapKeyPadded key iv plaintext =
 // the function must remove this padding themselves.  If the integrity check
 // fails, the second and third elements will be zeros.
 aesUnwrapKeyPadded : {n} (fin n, n >= 16, n % 8 == 0, width n <= 32) =>
-                     [AESKeySize] -> [4][8] -> [n][8] -> (Bit, [4][8], [n-8][8])
+                     [AESKeySize] -> [4][8] -> [n][8] -> Option ([4][8], [n-8][8])
 aesUnwrapKeyPadded key iv ciphertext = if valid
-                                       then (True, size, P)
-                                       else (False, zero, zero)
+                                       then Some (size, P)
+                                       else None
   where
     S : [n][8]
     S = if `n == 16
