@@ -6,7 +6,7 @@
  *
  * [RFC-4868] @see https://datatracker.ietf.org/doc/html/rfc4868
  */
-module Primitive::Symmetric::MAC::HMAC::Instantiations::SHA2_384 =
+module Primitive::Symmetric::MAC::HMAC::Instantiations::HMAC_SHA384 =
   Primitive::Symmetric::MAC::HMAC::Specification where
 
   import Primitive::Keyless::Hash::SHA2::Instantiations::SHA384

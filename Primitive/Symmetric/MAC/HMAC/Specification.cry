@@ -84,9 +84,9 @@ hmac K text = H ((K₀ ^ opad) # H ((K₀ ^ ipad) # text)) where
  * - text: The data on which the HMAC is calculated. text does *not* include
  *         the padded key. The length of text is n bits, where 0 ≤ n < 2^B - 8B.
   */
-hmac_truncate : {λ, k, n} (λ < L, width λ >= 32, width (8 * k) <= B, width (8 * (n + B)) <= B)
+hmac_truncate : {λ, k, n} (λ < L, λ >= 4, width (8 * k) <= B, width (8 * (n + B)) <= B)
   => [k][8] -> [n][8] -> [λ][8]
-hmac_truncate K text = take`{λ} output where
+hmac_truncate K text = take output where
   output = hmac K text
 
 private

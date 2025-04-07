@@ -4,7 +4,7 @@
  * @copyright Galois, Inc
  * @author Eric Mertens <emertens@galois.com>
  */
-module Primitive::Symmetric::MAC::HMAC::Instantiations::SHA1 =
+module Primitive::Symmetric::MAC::HMAC::Instantiations::HMAC_SHA1 =
   Primitive::Symmetric::MAC::HMAC::Specification where
 
   import Primitive::Keyless::Hash::SHA1::Specification as SHA1
