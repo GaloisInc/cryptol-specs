@@ -1,10 +1,15 @@
 /**
- * Test vectors found in [RFC-4868].
+ * Test vectors for HMAC-SHA-256, HMAC-SHA-384, and HMAC-SHA-512, found in
+ * [RFC-4868], Section 2.7.
  *
  * @copyright Galois, Inc
  * @author Eric Mertens <emertens@galois.com>
  *
- * [RFC-4868] @see https://datatracker.ietf.org/doc/html/rfc4868
+ * Sources:
+ *
+ * [RFC-4868] S. Kelly, S. Frankel. Using HMAC-SHA-256, HMAC-SHA-384, and
+ *     HMAC-SHA-512 with IPsec. Request for Comments: 4868. May 2007.
+ *     @see https://datatracker.ietf.org/doc/html/rfc4868
  */
 module Primitive::Symmetric::MAC::HMAC::Tests::HMAC_SHA2 where
 
