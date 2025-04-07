@@ -1,3 +1,7 @@
+<!---
+ - @copyright Galois, Inc.
+ - @author Aaron Tomb
+--->
 ```cryptol
 module Primitive::Symmetric::KDF::HKDF256Tests where
 
