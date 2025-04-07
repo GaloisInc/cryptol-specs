@@ -37,17 +37,16 @@ DefaultIV = [0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6]
 // using the index-based definition.
 aesWrapKey : {n} (fin n, n >= 16, n % 8 == 0, width (n / 8) <= 64) =>
              [AESKeySize] -> [8][8] -> [n][8] -> [n+8][8]
-aesWrapKey key iv plaintext = split (join C)
-  where
-    // Step 1: Initialize variables
-    A = join iv
-    R = split`{parts=n/8, each=64} (join plaintext)
-    // Step 2: calculate intermediate values
-    intermediates = [(A, R)] # [wrapRound key s j | s <- intermediates
-                                                  | j <- [0..5]]
-    // Step 3: Prepare outputs
-    (A', R') = intermediates ! 0
-    C = [A'] # R'
+aesWrapKey key iv plaintext = split (join C) where
+  // Step 1: Initialize variables
+  A = join iv
+  R = split`{parts=n/8, each=64} (join plaintext)
+  // Step 2: calculate intermediate values
+  intermediates = [(A, R)] # [wrapRound key s j | s <- intermediates
+                                                | j <- [0..5]]
+  // Step 3: Prepare outputs
+  (A', R') = intermediates ! 0
+  C = [A'] # R'
 
 // Unwrap `ciphertext` using `key` as the key encryption key.  `iv` is the
 // expected initial value.  This function implements the algorithm from Section
@@ -59,9 +58,10 @@ aesWrapKey key iv plaintext = split (join C)
 // zeros.
 aesUnwrapKey : {n} (fin n, n >= 24, n % 8 == 0, width (n / 8) <= 64) =>
                [AESKeySize] -> [8][8] -> [n][8] -> Option ([n-8][8])
-aesUnwrapKey key iv ciphertext = if (join iv) == A'
-                                 then Some (split (join R'))
-                                 else None
+aesUnwrapKey key iv ciphertext =
+  if (join iv) == A'
+  then Some (split (join R'))
+  else None
   where
     (A', R') = aesUnwrapKeyUnchecked key ciphertext
 
@@ -69,14 +69,13 @@ aesUnwrapKey key iv ciphertext = if (join iv) == A'
 // Section 2.2.2 using the index-based definition.
 aesUnwrapKeyUnchecked : {n} (fin n, n >= 24, n % 8 == 0, width (n / 8) <= 64) =>
                         [AESKeySize] -> [n][8] -> ([64], [n/8 - 1][64])
-aesUnwrapKeyUnchecked key ciphertext = intermediates ! 0
-  where
-    // Step 1: Initialize variables
-    A = join (take`{8} ciphertext)
-    R = split`{parts=(n-8)/8, each=64} (join (drop`{8} ciphertext))
-    // Step 2: Compute intermediate values
-    intermediates = [(A, R)] # [unwrapRound key s j | s <- intermediates
-                                                    | j <- [5, 4 .. 0]]
+aesUnwrapKeyUnchecked key ciphertext = intermediates ! 0 where
+  // Step 1: Initialize variables
+  A = join (take`{8} ciphertext)
+  R = split`{parts=(n-8)/8, each=64} (join (drop`{8} ciphertext))
+  // Step 2: Compute intermediate values
+  intermediates = [(A, R)] # [unwrapRound key s j | s <- intermediates
+                                                  | j <- [5, 4 .. 0]]
 
 private
   /////////////////////////////////////////////////////////////////////////////
@@ -92,29 +91,29 @@ private
   // Body of inner loop of step 2 of key wrap algorithm (Section 2.2.1)
   wrapBlock : {n} (fin n, width n <= 64) =>
               [AESKeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
-  wrapBlock key (A, R) j i = (A', R')
-    where B  = AES::encrypt key (A # (R @ (i-1)))
-          A' = (take`{64} B) ^ (((`n : [64]) * j) + i)
-          R' = update R (i-1) (drop`{64} B)
+  wrapBlock key (A, R) j i = (A', R') where
+    B  = AES::encrypt key (A # (R @ (i-1)))
+    A' = (take`{64} B) ^ (((`n : [64]) * j) + i)
+    R' = update R (i-1) (drop`{64} B)
 
   // Body of inner loop of step 2 of key unwrap algorithm (Section 2.2.2)
   unwrapBlock : {n} (fin n, width n <= 64) =>
                 [AESKeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
-  unwrapBlock key (A, R) j i = (A', R')
-    where B  = AES::decrypt key ((A ^ (((`n : [64]) * j) + i)) # (R @ (i-1)))
-          A' = take`{64} B
-          R' = update R (i-1) (drop`{64} B)
+  unwrapBlock key (A, R) j i = (A', R') where
+    B  = AES::decrypt key ((A ^ (((`n : [64]) * j) + i)) # (R @ (i-1)))
+    A' = take`{64} B
+    R' = update R (i-1) (drop`{64} B)
 
   // A single round of the key wrap algorithm (Section 2.2.1, step 2)
   wrapRound : {n} (fin n, n >= 1, width n <= 64) =>
               [AESKeySize] -> ([64], [n][64]) -> [64] -> ([64], [n][64])
-  wrapRound key (A, R) j = wrappedBlocks ! 0
-    where wrappedBlocks = [(A, R)] # [wrapBlock key s j i | s <- wrappedBlocks
-                                                          | i <- [1..n]]
+  wrapRound key (A, R) j = wrappedBlocks ! 0 where
+    wrappedBlocks = [(A, R)] # [wrapBlock key s j i | s <- wrappedBlocks
+                                                    | i <- [1..n]]
 
   // A single round of the key unwrap algorithm (Section 2.2.2, step 2)
   unwrapRound : {n} (fin n, n >= 1, width n <= 64) =>
                 [AESKeySize] -> ([64], [n][64]) -> [64] -> ([64], [n][64])
-  unwrapRound key (A, R) j = unwrappedBlocks ! 0
-    where unwrappedBlocks = [(A, R)] # [unwrapBlock key s j i | s <- unwrappedBlocks
-                                                              | i <- [n, n-1 .. 1]]
+  unwrapRound key (A, R) j = unwrappedBlocks ! 0 where
+    unwrappedBlocks = [(A, R)] # [unwrapBlock key s j i | s <- unwrappedBlocks
+                                                        | i <- [n, n-1 .. 1]]

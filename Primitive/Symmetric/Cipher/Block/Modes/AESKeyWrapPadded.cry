@@ -68,24 +68,25 @@ aesWrapKeyPadded key iv plaintext =
 // fails, the second and third elements will be zeros.
 aesUnwrapKeyPadded : {n} (fin n, n >= 16, n % 8 == 0, width n <= 32) =>
                      [AESKeySize] -> [4][8] -> [n][8] -> Option ([4][8], [n-8][8])
-aesUnwrapKeyPadded key iv ciphertext = if valid
-                                       then Some (size, P)
-                                       else None
+aesUnwrapKeyPadded key iv ciphertext =
+  if valid
+  then Some (size, P)
+  else None
   where
     S : [n][8]
     S = if `n == 16
-        // If the cipher text is 16 bytes, decrypt in AES ECB mode.  The `drop`
-        // and append of `zero` have no effect at runtime and exist to make the
-        // types work out, as the type checker cannot deduce that `n == 16` in
-        // this branch.
-        then (split (AES::decrypt key (drop (join ciphertext)))) # zero
-        // Otherwise perform the standard key unwrap algorithm.  The `drop`
-        // and append of `zero` have no effect at runtime and exist to make the
-        // types work out, as the type checker cannot deduce that `n >= 24` in
-        // this branch.
-        else drop (split`{each=8} (join (([A'] # R'))))
-          where
-            (A', R') = aesUnwrapKeyUnchecked key ((ciphertext # zero) : [max 24 n][8])
+      // If the cipher text is 16 bytes, decrypt in AES ECB mode.  The `drop`
+      // and append of `zero` have no effect at runtime and exist to make the
+      // types work out, as the type checker cannot deduce that `n == 16` in
+      // this branch.
+      then (split (AES::decrypt key (drop (join ciphertext)))) # zero
+      // Otherwise perform the standard key unwrap algorithm.  The `drop`
+      // and append of `zero` have no effect at runtime and exist to make the
+      // types work out, as the type checker cannot deduce that `n >= 24` in
+      // this branch.
+      else drop (split`{each=8} (join (([A'] # R'))))
+      where
+        (A', R') = aesUnwrapKeyUnchecked key ((ciphertext # zero) : [max 24 n][8])
     // Break decrypted ciphertext into the most significant 4 bytes of the IV,
     // the size of the plaintext without padding, and the plaintext with
     // padding

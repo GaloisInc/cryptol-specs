@@ -9,7 +9,7 @@
  */
 module Primitive::Symmetric::Cipher::Block::Tests::TestAESKeyWrapPadded where
 
-import Common::OptionUtils
+import Common::OptionUtils(optTest, isNone)
 import Primitive::Symmetric::Cipher::Block::Instantiations::AES256_KeyWrapPadded
 
 testUnwrap : {a, b} ( fin a
@@ -19,7 +19,7 @@ testUnwrap : {a, b} ( fin a
                     , a >= 16
                     , a % 8 == 0) =>
              [AESKeySize] -> [a][8] -> [b][8] -> Bit
-testUnwrap key ct pt = optFold False (\a -> (join a.0, take`{b} a.1) == (`b, pt)) result
+testUnwrap key ct pt = optTest (\a -> (join a.0, take`{b} a.1) == (`b, pt)) result
   where 
     result = aesUnwrapKeyPadded key AlternativeIV ct
 
