@@ -41,7 +41,8 @@ optFold def f opt =
  * value is `None`, return `False`. Otherwise, output the function applied
  * to the value inside the `Some` and return the result.
  */
-optTest : {a} -> (a -> Bit) -> Option a -> Bit
+optTest : {a} (a -> Bit) -> Option a -> Bit
+optTest f opt = optFold False f opt
 
 /**
  * Flatten a nested `Option` into a single `Option` that is `Some` only if
