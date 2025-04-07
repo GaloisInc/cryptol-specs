@@ -23,7 +23,7 @@
  * [NIST-SP-800-107]: Quynh Dang. Recommendations for Applications Using
  *     Approved Hash Algorithms. NIST Special Publication 800-107 Revision 1.
  *     August 2012.
- *     @see https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-107r1.pdf
+ *     @see https://doi.org/10.6028/NIST.SP.800-107r1
  */
 module Primitive::Symmetric::MAC::HMAC::Specification where
 

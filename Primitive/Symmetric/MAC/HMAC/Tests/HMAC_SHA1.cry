@@ -91,7 +91,7 @@ property rfc_2202_3_5 = sha1_auth_test
   , HMAC_SHA_1_96 = 0x4c1a03424b55e07fe7f27be1
   }
 
-/* *
+/**
  * ```repl
  * :check rfc_2202_3_6
  * ```
