@@ -1,0 +1,15 @@
+/**
+ * An instantiation of the sponge construction with Keccak_p primitives.
+ * In particular, this is Keccak[c], c = 512.
+ */
+
+module Primitive::Keyless::Sponge::Instantiations::Keccak_512 =
+    module Primitive::Keyless::Sponge::Specification where
+
+import Primitive::Keyless::Sponge::Tests::Keccak as Keccak
+
+type b = 1600
+type PaddingType = 2
+type r = 1600 - 512
+
+f = Keccak::Keccak_p
