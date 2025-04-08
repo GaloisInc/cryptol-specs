@@ -1,14 +1,18 @@
 /**
- * Test vectors found in [RFC-2202].
+ * Test vectors for HMAC-SHA-1 found in [RFC-2202], Section 3.
  *
- * @copyright Galois, Inc
+ * @copyright Galois, Inc.
  * @author Eric Mertens <emertens@galois.com>
  *
- * [RFC-2202] @see https://datatracker.ietf.org/doc/html/rfc2202
+ * Sources:
+ *
+ * [RFC-2202] P. Cheng, R. Glenn. Test Cases for HMAC-MD5 and HMAC-SHA-1.
+ *     Request for Comments: 2202. September 1997.
+ *     @see https://datatracker.ietf.org/doc/html/rfc2202
  */
-module Primitive::Symmetric::MAC::HMAC::Tests::SHA1 where
+module Primitive::Symmetric::MAC::HMAC::Tests::HMAC_SHA1 where
 
-import Primitive::Symmetric::MAC::HMAC::Instantiations::SHA1
+import Primitive::Symmetric::MAC::HMAC::Instantiations::HMAC_SHA1
 
 type PrfParams K D =
   { Key : [K][8]
@@ -29,7 +33,7 @@ type AuthTest T =
 sha1_auth_test : {T} (T < 256) => AuthTest T -> Bit
 sha1_auth_test params =
   hmac params.Key params.Data == split params.PRF_HMAC_SHA_1 /\
-  hmac params.Key params.Data == split params.HMAC_SHA_1_96
+  hmac_truncate params.Key params.Data == split params.HMAC_SHA_1_96
 
 /**
  * ```repl

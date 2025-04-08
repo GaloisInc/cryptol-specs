@@ -1,16 +1,21 @@
 /**
- * Test vectors found in [RFC-4868].
+ * Test vectors for HMAC-SHA-256, HMAC-SHA-384, and HMAC-SHA-512, found in
+ * [RFC-4868], Section 2.7.
  *
  * @copyright Galois, Inc
  * @author Eric Mertens <emertens@galois.com>
  *
- * [RFC-4868] @see https://datatracker.ietf.org/doc/html/rfc4868
+ * Sources:
+ *
+ * [RFC-4868] S. Kelly, S. Frankel. Using HMAC-SHA-256, HMAC-SHA-384, and
+ *     HMAC-SHA-512 with IPsec. Request for Comments: 4868. May 2007.
+ *     @see https://datatracker.ietf.org/doc/html/rfc4868
  */
-module Primitive::Symmetric::MAC::HMAC::Tests::SHA2 where
+module Primitive::Symmetric::MAC::HMAC::Tests::HMAC_SHA2 where
 
-import Primitive::Symmetric::MAC::HMAC::Instantiations::SHA2_256 as H256
-import Primitive::Symmetric::MAC::HMAC::Instantiations::SHA2_384 as H384
-import Primitive::Symmetric::MAC::HMAC::Instantiations::SHA2_512 as H512
+import Primitive::Symmetric::MAC::HMAC::Instantiations::HMAC_SHA256 as H256
+import Primitive::Symmetric::MAC::HMAC::Instantiations::HMAC_SHA384 as H384
+import Primitive::Symmetric::MAC::HMAC::Instantiations::HMAC_SHA512 as H512
 
 type PrfParams K D =
   { Key : [K][8]
@@ -170,7 +175,7 @@ type AuthTest256 T =
 sha2_256_auth_test : {T} (T < 256) => AuthTest256 T -> Bit
 sha2_256_auth_test params =
   H256::hmac params.Key params.Data == split params.PRF_HMAC_SHA_256 /\
-  H256::hmac params.Key params.Data == split params.HMAC_SHA_256_128
+  H256::hmac_truncate params.Key params.Data == split params.HMAC_SHA_256_128
 
 /**
  * ```repl
@@ -243,7 +248,7 @@ type AuthTest384 T =
 sha2_384_auth_test : {T} (T < 256) => AuthTest384 T -> Bit
 sha2_384_auth_test params =
   H384::hmac params.Key params.Data == split params.PRF_HMAC_SHA_384 /\
-  H384::hmac params.Key params.Data == split params.HMAC_SHA_384_192
+  H384::hmac_truncate params.Key params.Data == split params.HMAC_SHA_384_192
 
 /**
  * ```repl
@@ -326,7 +331,7 @@ type AuthTest512 T =
 sha2_512_auth_test : {T} (T < 256) => AuthTest512 T -> Bit
 sha2_512_auth_test params =
   H512::hmac params.Key params.Data == split params.PRF_HMAC_SHA_512 /\
-  H512::hmac params.Key params.Data == split params.HMAC_SHA_512_256
+  H512::hmac_truncate params.Key params.Data == split params.HMAC_SHA_512_256
 
 /**
  * ```repl

@@ -2,20 +2,28 @@
  * Implementation of Keyed-Hash Message Authentication Code (HMAC)
  * as specified in [FIPS-198-1], Section 4.
  *
- * @copyright Galois, Inc
+ * @copyright Galois, Inc.
  * @author Eric Mertens <emertens@galois.com>
+ * @author Alex J Malozemoff <amaloz@galois.com>
+ * www.cryptol.net
  *
- * For discussion on security considerations while using HMAC, please see NIST SP 800-107.
- * This has important security notes about choosing key lengths, truncation, and the overall
- * security strength of the algorithm.
- * @see https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-107r1.pdf
+ * For discussion on security considerations while using HMAC, please see
+ * [NIST-SP-800-107]. This has important security notes about choosing key
+ * lengths, truncation, and the overall security strength of the algorithm.
+ *
+ * Sources:
  *
  * [FIPS-198-1]: National Institute of Standards and Technology.
- *     The Keyed-Hash Message Authentication Code (HMAC)
+ *     The Keyed-Hash Message Authentication Code (HMAC).
  *     (Department of Commerce, Washington, D.C.),
  *     Federal Information Processing Standards Publication (FIPS) NIST FIPS 198-1.
  *     July 2008.
  *     @see https://doi.org/10.6028/NIST.FIPS.198-1
+ *
+ * [NIST-SP-800-107]: Quynh Dang. Recommendations for Applications Using
+ *     Approved Hash Algorithms. NIST Special Publication 800-107 Revision 1.
+ *     August 2012.
+ *     @see https://doi.org/10.6028/NIST.SP.800-107r1
  */
 module Primitive::Symmetric::MAC::HMAC::Specification where
 
@@ -33,23 +41,53 @@ parameter
 
 /**
  * Compute a pseudorandom block using the HMAC construction as
- * specified in FIPS-198-1 Section 4.
- *
- * Truncation is implemented as defined in FIPS-198-1 Section 5.
+ * specified in [FIPS-198-1], Section 4.
  *
  * # Type parameters
- * - λ: Length of output (in bytes)
  * - k: Length of secret key (in bytes)
  * - n: Length of input text (in bytes)
  *
  * # Parameters
- * - K: Secret key
- * - text: The data on which the HMAC is calculated.
+ * - K: Secret key shared between the originator and the intended receiver(s).
+ * - text: The data on which the HMAC is calculated. text does *not* include
+ *         the padded key. The length of text is n bits, where 0 ≤ n < 2^B - 8B.
  */
-hmac : {λ, k, n} (λ <= L, width (8 * k) <= B, width (8 * (n + B)) <= B) => [k][8] -> [n][8] -> [λ][8]
-hmac K text = take (H ((K₀ ^ opad) # H ((K₀ ^ ipad) # text)))
-  where
-    K₀ = expand_key K
+hmac : {k, n} (width (8 * k) <= B, width (8 * (n + B)) <= B) => [k][8] -> [n][8] -> [L][8]
+hmac K text = H ((K₀ ^ opad) # H ((K₀ ^ ipad) # text)) where
+  /* K₀: The key K after any necessary pre-processing to form a B byte key. */
+  K₀ = expand_key K
+
+/**
+ * Compute a truncated HMAC output.
+ *
+ * Truncation is implemented as defined in [FIPS-198-1], Section 5 and
+ * [NIST-SP-800-107], Section 5.1.
+ *
+ * ⚠️ Warning ⚠️: If collision resistance is required, λ needs to be at least
+ * twice the required collision resistence strength s (in bits) for the
+ * truncated message digest (i.e., λ ≥ 2s). See [NIST-SP-800-107], Section 5.1
+ * for more details.
+ *
+ * ⚠️ Warning ⚠️: If used within a digital signature, λ needs to be at least
+ * twice the desired security strength (in bits) required for the digital
+ * signature. See [NIST-SP-800-107], Section 5.2.2 for more details.
+ *
+ * # Type parameters
+ * - λ: Length of truncated output (in bytes). λ must be less than L
+ *      ([NIST-SP-800-107], Section 5.1) and no less than 32 bits
+ *      ([NIST-SP-800-107], Section 5.3.4).
+ * - k: Length of secret key (in bytes)
+ * - n: Length of input text (in bytes)
+ *
+ * # Parameters
+ * - K: Secret key shared between the originator and the intended receiver(s).
+ * - text: The data on which the HMAC is calculated. text does *not* include
+ *         the padded key. The length of text is n bits, where 0 ≤ n < 2^B - 8B.
+  */
+hmac_truncate : {λ, k, n} (λ < L, λ >= 4, width (8 * k) <= B, width (8 * (n + B)) <= B)
+  => [k][8] -> [n][8] -> [λ][8]
+hmac_truncate K text = take output where
+  output = hmac K text
 
 private
   /** Inner pad; the byte x‘36’ repeated B times. */
@@ -60,8 +98,13 @@ private
   opad : [B][8]
   opad = repeat 0x5c
 
-  /** Key expansion as defined in FIPS-198-1 Section 3. */
+  /** Key expansion as defined in [FIPS-198-1], Section 3. */
   expand_key : {k} (width (8 * k) <= B) => [k][8] -> [B][8]
   expand_key K
     | k <= B => K # zero
+    /*
+     * When an application uses a K longer than B-bytes, then it shall first
+     * hash the K using H and then use the resultant L-byte string as the key
+     * K₀.
+     */
     | k > B => H K # zero

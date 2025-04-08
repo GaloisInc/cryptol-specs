@@ -1,3 +1,7 @@
+<!---
+ - @copyright Galois, Inc.
+ - @author Aaron Tomb
+--->
 ```cryptol
 module Primitive::Symmetric::KDF::HKDF256Tests where
 
@@ -9,6 +13,11 @@ import Primitive::Symmetric::KDF::HKDF256
 Basic test case with SHA-256
 
 ```cryptol
+/**
+ * ```repl
+ * :prove test1
+ * ```
+ */
 test1 : Bit
 test1 = result where
   IKM  = split 0x0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b // (22 octets)
@@ -31,6 +40,11 @@ test1 = result where
 Test with SHA-256 and longer inputs/outputs
 
 ```cryptol
+/**
+ * ```repl
+ * :prove test2
+ * ```
+ */
 test2 : Bit
 test2 = result where
   IKM  = split ( 0x000102030405060708090a0b0c0d0e0f
