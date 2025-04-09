@@ -1,5 +1,22 @@
 Symmetric ciphers that work on a block at a time.
 
+| Scheme | [Gold standard](https://github.com/GaloisInc/cryptol-specs/wiki/Reviewing-guidelines)? | Literate |
+| --- | --- | --- |
+| AES | Yes | No |
+| DES | | No |
+| GOST | | No |
+| KATAN | | No |
+| LED | | No |
+| McMambo | | No |
+| PRESENT | | No |
+| PRINCE | | No |
+| SHACAL | | No |
+| Simon | | No |
+| Speck | | No |
+| TEA | | No |
+| Threefish | | No |
+| TripleDES | | No |
+
 ## AES Migration Guide
 In [PR #79](https://github.com/GaloisInc/cryptol-specs/pull/79), we simplified the AES modules and in doing so changed the public API used for AES.
 To update to the new module structure, you may need to make changes to your cryptol specs that use AES.
