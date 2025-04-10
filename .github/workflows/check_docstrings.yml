@@ -43,8 +43,10 @@ jobs:
       # We require git to run the github CLI tool.
       - name: Installing dependencies..
         run: |
-          apt update
-          apt install -y git gh
+          apt-get update && apt-get install -y git wget
+          wget https://github.com/cli/cli/releases/download/v2.69.0/gh_2.69.0_linux_amd64.tar.gz
+          tar xzvf gh_2.69.0_linux_amd64.tar.gz
+          mv gh_2.69.0_linux_amd64/bin/gh /usr/local/bin/
       # Check out the code.
       - id: checkout
         uses: actions/checkout@v4
