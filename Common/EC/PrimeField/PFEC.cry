@@ -760,13 +760,19 @@ private
      * Checks that twin multiplication works as expected. Note that a given
      * point can have multiple projective representations, so we have to
      * check equality in the affine representation.
+     *
+     * These tests check the general case, the case where the two points `S`
+     * and `T` are the same, and the case where one of the points is the point
+     * at infinity.
      * ```repl
      * :check twin_mult_works
+     * :check (\d0 d1 k -> twin_mult_works d0 k d1 k)
+     * :check (\d0 d1 k -> twin_mult_works d0 k d1 0)
      * ```
      */
     property twin_mult_works d0 k0 d1 k1 = affineEq R_plain R_twin
         where
             S = to_projective (validPointFromK k0)
             T = to_projective (validPointFromK k1)
-            R_plain = to_affine (ec_add (ec_mult d0 S) (ec_mult d1 T))
+            R_plain = to_affine (ec_full_add (ec_mult d0 S) (ec_mult d1 T))
             R_twin = to_affine (ec_twin_mult d0 S d1 T)
