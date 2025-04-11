@@ -1,0 +1,11 @@
+/*
+ * Instantiate GCM mode for AES 128.
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Symmetric::Cipher::Authenticated::GCM::Instantiations::AES128_GCM =
+    Primitive::Symmetric::Cipher::Authenticated::GCM::Specification {
+        Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES128
+    }
+

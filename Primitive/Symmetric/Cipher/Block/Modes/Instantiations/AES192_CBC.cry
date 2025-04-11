@@ -1,0 +1,10 @@
+/*
+ * Instantiate CBC mode for AES 192.
+ *
+ * @copyright Galois, Inc.
+ * @author Stanislav Lyakhov <stan@galois.com>
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES192_CBC =
+    Primitive::Symmetric::Cipher::Block::Modes::CBC {
+        Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES192
+    }

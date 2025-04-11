@@ -1,0 +1,8 @@
+/**
+ * AES256.
+ * @copyright Galois Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES256 =
+    Primitive::Symmetric::Cipher::Block::AES::Specification where
+    type KeySize' = 256

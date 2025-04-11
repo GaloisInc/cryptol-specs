@@ -1,0 +1,248 @@
+/*
+Galois Counter Mode in Cryptol
+
+@copyright Galois, Inc.
+@author Sean Weaver
+@author Marcella Hastings <marcella@galois.com>
+
+This implementation follows NIST special publication 800-38D:
+[NIST-SP-800-38D] Morris Dworkin. Recommendation for Block Cipher Modes
+of Operation: Galois/Counter Mode (GCM) and GMAC. NIST Special
+Publication 800-38D. November 2007.
+
+This implementation deviates from the original spec in the following ways:
+- The original spec allows tag lengths 96, 104, 112, 120, and 128 in all
+  settings, and allows length 64 or 32 in certain applications. This
+  implementation does not allow short tags (32 or 64) at all.
+
+⚠️ Warning ⚠️: There are several properties of GCM mode that Cryptol cannot
+enforce! These include:
+- GCM mode will fail catastrophically if a (key, IV) pair is ever reused
+  to encrypt different pieces of data.
+  Implementors must manually verify that keys and IVs are chosen in such
+  a way that they will not be reused. See [NIST-SP-800-38D] Section 8.
+- The total number of invocations of `GCM_AE` with a given key must not
+  exceed 2^{32}. This is to prevent the catastrophic failure in the previous
+  point. Cryptol cannot evaluate the "global" use of the encryption function.
+- The intermediate values used in the execution of GCM functions must be
+  secret, and not reused or recomputed for any other purpose.
+- The original spec requires an implementation with `GCM_AE` and `GCM_AD`
+  must support the same ciphertext, associated data, and IV lengths for
+  both algorithms.
+*/
+
+module Primitive::Symmetric::Cipher::Authenticated::GCM::Specification where
+import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
+/**
+ * GCM mode is only defined for ciphers that operate over 128-bit blocks.
+ * [NIST-SP-800-38D] Section 5.1
+ */
+interface constraint (C::BlockSize == 128)
+/**
+ * GCM mode is only defined for ciphers with a key size of at least 128 bits.
+ * [NIST-SP-800-38D] Section 5.1
+ *
+ * ⚠️ Warning ⚠️: GCM mode has other requirements on the key that cannot be
+ * enforced by Cryptol (for example, that it is generated uniformly at random).
+ * See Section 8.1 of [NIST-SP-800-38D].
+ */
+ interface constraint (128 <= C::KeySize)
+
+/**
+ * The IV has bit length `1 ≤ IV ≤ 2^64 - 1` and is a multiple of 8.
+ * [NIST-SP-800-38D] Section 5.2.1.1
+ */
+type constraint ValidIV IV = (width IV <= 64, IV >= 1, IV % 8 == 0)
+/**
+ * The associated data has bit length `AAD ≤ 2^64 - 1` and is a multiple of 8.
+ * [NIST-SP-800-38D] Section 5.2.1.1
+ */
+type constraint ValidAAD AAD = (width AAD <= 64, AAD % 8 == 0)
+/**
+ * The tag T can be of length 96, 104, 112, 120, or 128.
+ * [NIST-SP-800-38D] Section 5.2.1.2
+ */
+type constraint ValidTag T = (fin T, T % 8 == 0, T / 8 >= 12, T / 8 <= 16)
+/**
+ * The plaintext (for encryption) and ciphertext (for decryption) must not
+ * be too large and is a multiple of 8.
+ * [NIST-SP-800-38D] Section 5.2.1.1 (for plaintexts) and Section 5.2.2
+ * (for ciphertexts).
+ */
+type constraint ValidText P = (fin P, P <= 2^^39 - 256, P % 8 == 0)
+
+/**
+ * GCM-AE Function, [NIST-SP-800-38D] Section 7.1, Algorithm 4. This provides
+ * authenticated encryption.
+ */
+GCM_AE : { len_C, len_IV, len_A, T } (ValidText len_C, ValidIV len_IV, ValidAAD len_A, ValidTag T)
+ => [C::KeySize] -> [len_IV] -> [len_C] -> [len_A] -> ([len_C], [T])
+GCM_AE k iv p a = (C, T)
+  where
+    CIPHk = C::encrypt k
+
+    H = CIPHk 0
+    J0 = define_J0 k iv H
+    C = GCTR CIPHk (inc`{32} J0) p
+    type u = len_C %^ 128 // Equivalently: 128 * len_C /^ 128 - len_C
+    type v = len_A %^ 128 // Equivalently: 128 * len_A /^ 128 - len_A
+    S = GHASH`{len_A/^ 128 + len_C /^ 128 + 1}
+            H (a # (0 : [v]) # C # (0 : [u]) # (`len_A : [64]) # (`len_C : [64]))
+    T = MSB`{T} (GCTR CIPHk J0 S)
+
+/**
+ * GCM-AD Function, [NIST-SP-800-38D] Section 7.2, Algorithm 5. This provides
+ * authenticated decryption.
+ */
+GCM_AD : { len_C, len_IV, len_A, T } (ValidText len_C, ValidIV len_IV, ValidAAD len_A, ValidTag T)
+ => [C::KeySize] -> [len_IV] -> [len_C] -> [len_A] -> [T] -> Option [len_C]
+GCM_AD key iv ct aad tag =
+  if tag == T'
+  then Some P
+  else None
+  where
+    CIPHk = C::encrypt key
+
+    H = CIPHk 0
+    J0 = define_J0 key iv H
+    P = GCTR CIPHk (inc`{32} J0) ct
+    type u = len_C %^ 128 // Equivalently: 128 * len_C /^ 128 - len_C
+    type v = len_A %^ 128 // Equivalently: 128 * len_A /^ 128 - len_A
+    S = GHASH`{len_A /^ 128 + len_C /^ 128 + 1}
+            H (aad # (0 : [v]) # ct # (0 : [u]) # (`len_A : [64]) # (`len_C : [64]))
+    T' = MSB`{T} (GCTR CIPHk J0 S)
+
+/**
+ * Property demonstrating equivalence between `mult` and `•`.
+ * This takes more than 25 minutes to `:prove`.
+ * ```repl
+ * :check dotAndMultAreEquivalent
+ * ```
+ */
+property dotAndMultAreEquivalent X Y = mult X Y == X • Y
+
+/**
+ * Property demonstrating that decryption is the inverse of encryption.
+ *
+ * This property takes more than 20 minutes to `:prove`.
+ * It's spot-checked in the test vectors.
+ * Here we pick a fixed set of parameters, but it should be true
+ * for all valid tag, aad, and plaintext lengths.
+ * - P = 256 because we want to test the block chaining, so we need at least 2
+ * - IV = 96 because it's the shortest allowable value
+ * - AAD = 8 because we want to make sure it's incorporated
+ *
+ * ```repl
+ * :check gcmIsSymmetric `{AAD=8, P=256, IV=96}
+ * ```
+ */
+gcmIsSymmetric : { P, IV, AAD } ( ValidText P, ValidIV IV, ValidAAD AAD )
+  => [C::KeySize] -> [IV] -> [P] -> [AAD] -> Bool
+property gcmIsSymmetric key iv pt aad = is_symmetric
+    where
+        (ct, tag : [96]) = GCM_AE key iv pt aad
+        dec = GCM_AD key iv ct aad tag
+        is_symmetric = case dec of
+          Some actual_pt -> pt == actual_pt
+          None -> False
+
+private
+  /**
+  * A helper function used in GCM_AE and GCM_AD. We must define this at the top
+  * level due to its use of Cryptol's numeric constraint guards feature, which
+  * currently only works in top-level definitions.
+  *
+  * See [NIST-SP-800-38D] Algorithm 4, Step 2 and Algorithm 5, Step 3.
+  */
+  define_J0 : { len_IV } ( ValidIV len_IV ) => [C::KeySize] -> [len_IV] -> [128] -> [128]
+  define_J0 k iv H
+    | len_IV == 96 => iv # (0 : [31]) # (1 : [1])
+    | len_IV != 96 => GHASH`{len_IV /^ 128 + 1} H (iv # (0 : [s + 64]) # (`len_IV: [64]))
+    where
+      type s = len_IV %^ 128  // Equivalently: 128 * len_IV /^ 128 - len_IV
+
+  /**
+  * Multiplication Operation on Blocks, [NIST-SP-800-38D] Section
+  * 6.3, Algorithm 1. This is optimized to use Cryptol's built-in `pmult` and
+  * `pmod` functions. This operation is described using little-endian
+  * notation, hence the `reverse`s.
+  */
+
+  (•) : [128] -> [128] -> [128]
+  (•) X Y = reverse (pmod (pmult (reverse X) (reverse Y))
+                          <| 1 + x + x^^2 + x^^7 + x^^128|>)
+
+  /**
+  * Multiplication Operation on Blocks, [NIST-SP-800-38D] Section
+  * 6.3. This matches the spec very closely.
+  */
+
+  mult : [128] -> [128] -> [128]
+  mult X Y = last Z
+    where
+      R = 0b11100001 # (0 : [120])
+      Z = [0] # [ if [xi] == 0 then Zi else Zi ^ Vi
+                | Zi <- Z
+                | xi <- X
+                | Vi <- V ]
+      V = [Y] # [ if LSB`{1} Vi == 0 then Vi >> 1 else (Vi >> 1) ^ R
+                | Vi <- V ]
+
+  /**
+  * GHASH Function, [NIST-SP-800-38D] Section 6.4, Algorithm 2.
+  */
+
+  GHASH : {m} (fin m) => [128] -> [m * 128] -> [128]
+  GHASH H X = last Y
+    where Y = [0] # [ (Yi ^ Xi) • H | Yi <- Y | Xi <- groupBy`{128} X ]
+
+  /**
+  * The output of incrementing the right-most s bits of the bit
+  * string X, regarded as the binary representation of an integer, by
+  * 1 modulo 2s, [NIST-SP-800-38D] Sections 4.2.2 and 6.2. Care was
+  * taken here to ensure `s` could be zero.
+  */
+
+  inc : {s, a} (fin s, fin a, a >= s) => [a] -> [a]
+  inc X = MSB`{a-s} X # (LSB`{s} X + take (1 : [max s 1]))
+
+
+  /**
+  * The bit string consisting of the s right-most bits
+  * of the bit string X, [NIST-SP-800-38D] Section 4.2.2.
+  */
+
+  LSB : {s, a} (fin s, fin a, a >= s) => [a] -> [s]
+  LSB X = drop X
+
+  /**
+  * The bit string consisting of the s left-most bits of
+  * the bit string X, [NIST-SP-800-38D] Section 4.2.2.
+  */
+
+  MSB : {s, a} (fin s, a >= s) => [a] -> [s]
+  MSB X = take X
+
+  /**
+  * GCTR Function, [NIST-SP-800-38D] Section 6.5, Algorithm 3.
+  */
+
+  GCTR : {a} (fin a) => ([128] -> [128]) -> [128] -> [a] -> [a]
+  GCTR CIPHk ICB X = Y
+    where
+      Y = X ^ take`{a} (join (map CIPHk CB))
+      CB = iterate inc`{32} ICB
+
+  /**
+   * GCTR should return an empty output when given an empty input.
+   * This property is described in [NIST-SP-800-38D], Algorithm 3.
+   *
+   * ```repl
+   * :prove emptyInputProducesEmptyOutputGCTR
+   * ```
+   */
+  emptyInputProducesEmptyOutputGCTR : [C::KeySize] -> [128] -> Bool
+  property emptyInputProducesEmptyOutputGCTR key icb =
+   zero == (GCTR CIPHk icb (zero : [0]))
+    where
+      CIPHk = C::encrypt key

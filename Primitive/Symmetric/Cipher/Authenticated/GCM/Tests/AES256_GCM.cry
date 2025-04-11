@@ -1,0 +1,56 @@
+/*
+ * Test vectors for AES256 with GCM mode, for multiple key sizes.
+ *
+ * Source for test vectors:
+ * [OPENSSL]: The OpenSSL Project Authors. aesgcmtest.c. 2022.
+ *     @see https://github.com/openssl/openssl/blob/master/test/aesgcmtest.c
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Symmetric::Cipher::Authenticated::GCM::Tests::AES256_GCM where
+import Primitive::Symmetric::Cipher::Authenticated::GCM::Instantiations::AES256_GCM as AES_GCM
+
+/**
+ * Source: [OPENSSL]
+ * ```repl
+ * :prove aes256_vector_0
+ * ```
+ */
+property aes256_vector_0 =
+    ct == expected_ct /\ tag == expected_tag /\ is_symmetric
+    where
+        key   = 0xeebc1f57487f51921c0465665f8ae6d1658bb26de6f8a069a3520293a572078f : [256]
+        iv    = 0x99aa3e68ed8173a0eed06684 : [96]
+        pt    = 0xf56e87055bc32d0eeb31b2eacc2bf2a5 : [128]
+        aad   = 0x4d23c3cec334b49bdb370c437fec78de : [128]
+        expected_ct   = 0xf7264413a84c0e7cd536867eb9f21736
+        expected_tag  = 0x67ba0510262ae487d737ee6298f77e0c
+        (ct, tag) = AES_GCM::GCM_AE key iv pt aad
+        dec = AES_GCM::GCM_AD key iv ct aad tag
+        is_symmetric = case dec of
+          Some actual_pt -> pt == actual_pt
+          None -> False
+
+/**
+ * Source: Modified from [OPENSSL]. I just borked the tag to make sure decryption fails if
+ * the tag is wrong.
+ * ```repl
+ * :prove aes256_invalid_vector_1
+ * ```
+ */
+property aes256_invalid_vector_1 =
+    ct == expected_ct /\ tag == expected_tag /\ requires_symmetry
+    where
+        key   = 0xeebc1f57487f51921c0465665f8ae6d1658bb26de6f8a069a3520293a572078f : [256]
+        iv    = 0x99aa3e68ed8173a0eed06684 : [96]
+        pt    = 0xf56e87055bc32d0eeb31b2eacc2bf2a5 : [128]
+        aad   = 0x4d23c3cec334b49bdb370c437fec78de : [128]
+        expected_ct   = 0xf7264413a84c0e7cd536867eb9f21736
+        expected_tag  = 0x67ba0510262ae487d737ee6298f77e0c
+        invalid_tag  = 0x67ba0510262ae487d737ee6298f77888
+        (ct, tag) = AES_GCM::GCM_AE key iv pt aad
+        requires_symmetry = case (AES_GCM::GCM_AD key iv ct aad invalid_tag) of
+            Some _ -> False
+            None -> True
+

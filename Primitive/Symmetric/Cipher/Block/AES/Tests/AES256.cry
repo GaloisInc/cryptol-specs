@@ -1,0 +1,39 @@
+/**
+ * Test vectors for AES256
+ * These are drawn from the NIST Cryptographic Standards and Guidelines
+ * project.
+ *
+ * [AES256]: AES Core 256. Block Cipher Modes of Operation Electronic Codebook
+ *    (ECB). https://csrc.nist.rip/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/AES_Core256.pdf
+ *
+ *  @copyright Galois Inc.
+ *  @author Nichole Schimanski <nls@galois.com>
+ *  @author Marcella Hastings <marcella@galois.com>
+ *  www.cryptol.net
+ */
+module Primitive::Symmetric::Cipher::Block::AES::Tests::AES256 where
+import Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES256 as AES256
+
+/**
+ * ```repl
+ * :prove aes256TestVectorsPass
+ * ```
+ */
+property aes256TestVectorsPass = and encryptions /\ and decryptions
+    where
+        key = 0x603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4
+        pts = [
+            0x6bc1bee22e409f96e93d7e117393172a,
+            0xae2d8a571e03ac9c9eb76fac45af8e51,
+            0x30c81c46a35ce411e5fbc1191a0a52ef,
+            0xf69f2445df4f9b17ad2b417be66c3710
+        ]
+        expected_cts = [
+            0xf3eed1bdb5d2a03c064b5a7e3db181f8,
+            0x591ccb10d410ed26dc5ba74a31362870,
+            0xb6ed21b99ca6f4f9f153e7b1beafed1d,
+            0x23304b7a39f9f3ff067d8d8f9e24ecc7
+        ]
+        encryptions = [ AES256::encrypt key msg == ct | msg <- pts | ct <- expected_cts ]
+        decryptions = [ AES256::decrypt key ct == pt | pt <- pts | ct <- expected_cts ]
+

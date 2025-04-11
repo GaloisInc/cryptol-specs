@@ -1,0 +1,8 @@
+/**
+ * AES128.
+ * @copyright Galois Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES128 =
+    Primitive::Symmetric::Cipher::Block::AES::Specification where
+    type KeySize' = 128

@@ -1,0 +1,100 @@
+/*
+ * Test vectors for AES128 with GCM mode, for multiple key sizes.
+ *
+ * Sources for test vectors:
+ * [GCM Submission]: David A. McGrew and John Viega. The Galois/Counter Mode of
+ *     Operation (GCM). Submission to NIST Modes of Operation Process. 2004.
+ *     @see http://luca-giuzzi.unibs.it/corsi/Support/papers-cryptography/gcm-spec.pdf
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Symmetric::Cipher::Authenticated::GCM::Tests::AES128_GCM where
+import Primitive::Symmetric::Cipher::Authenticated::GCM::Instantiations::AES128_GCM as AES_GCM
+
+/*
+ */
+
+/**
+ * Source: [GCM Submission]
+ * ```repl
+ * :prove aes128_vector_0
+ * ```
+ */
+property aes128_vector_0 = ct == expected_ct /\ tag == expected_tag /\ is_symmetric
+    where
+        pt = []
+        key = zero : [128]
+        iv = zero : [96]
+        (ct, tag) = AES_GCM::GCM_AE key iv pt []
+        dec = AES_GCM::GCM_AD key iv ct [] tag
+        expected_ct = [] : [0]
+        expected_tag = 0x58e2fccefa7e3061367f1d57a4e7455a : [128]
+        is_symmetric = case dec of
+          Some actual_pt -> pt == actual_pt
+          None -> False
+
+/**
+ * Source: [GCM Submission]
+ * ```repl
+ * :prove aes128_vector_1
+ * ```
+ */
+property aes128_vector_1 =
+    ct == expected_ct /\ tag == expected_tag /\ is_symmetric
+    where
+        key = zero
+        iv = zero : [96]
+        pt = zero
+        aad = []
+        expected_ct = 0x0388dace60b6a392f328c2b971b2fe78 : [128]
+        expected_tag = 0xab6e47d42cec13bdf53a67b21257bddf : [128]
+        (ct, tag) = AES_GCM::GCM_AE key iv pt aad
+        dec = AES_GCM::GCM_AD key iv ct aad tag
+        is_symmetric = case dec of
+          Some actual_pt -> pt == actual_pt
+          None -> False
+
+
+/**
+ * Source: [GCM Submission]
+ * ```repl
+ * :prove aes128_vector_2
+ * ```
+ */
+property aes128_vector_2 =
+    ct == expected_ct /\ tag == expected_tag /\ is_symmetric
+    where
+        key = 0xfeffe9928665731c6d6a8f9467308308
+        iv = 0xcafebabefacedbaddecaf888 : [96]
+        pt = 0xd9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b391aafd255
+        aad = []
+        expected_ct = 0x42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091473f5985
+        expected_tag = 0x4d5c2af327cd64a62cf35abd2ba6fab4 : [128]
+        (ct, tag) = AES_GCM::GCM_AE key iv pt aad
+        dec = AES_GCM::GCM_AD key iv ct aad tag
+        is_symmetric = case dec of
+          Some actual_pt -> pt == actual_pt
+          None -> False
+
+
+/**
+ * Source: [GCM Submission]
+ * ```repl
+ * :prove aes128_vector_3
+ * ```
+ */
+property aes128_vector_3 =
+    ct == expected_ct /\ tag == expected_tag /\ is_symmetric
+    where
+        key = 0xfeffe9928665731c6d6a8f9467308308
+        pt  = 0xd9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39
+        iv  = 0xcafebabefacedbaddecaf888
+        aad = 0xfeedfacedeadbeeffeedfacedeadbeefabaddad2
+        expected_ct  = 0x42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091
+        expected_tag = 0x5bc94fbc3221a5db94fae95ae7121a47
+        (ct, tag) = AES_GCM::GCM_AE key iv pt aad
+        dec = AES_GCM::GCM_AD key iv ct aad tag
+        is_symmetric = case dec of
+          Some actual_pt -> pt == actual_pt
+          None -> False

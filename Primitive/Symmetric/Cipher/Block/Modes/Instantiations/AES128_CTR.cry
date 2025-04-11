@@ -1,0 +1,10 @@
+/*
+ * Instantiate CTR mode for AES 128.
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES128_CTR =
+    Primitive::Symmetric::Cipher::Block::Modes::CTR {
+        Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES128
+    }

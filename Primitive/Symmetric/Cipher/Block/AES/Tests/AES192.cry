@@ -1,0 +1,39 @@
+/**
+ * Test vectors for AES192
+ * These are drawn from the NIST Cryptographic Standards and Guidelines
+ * project.
+ *
+ * [AES192]: AES Core 192. Block Cipher Modes of Operation Electronic Codebook
+ *    (ECB).
+ *    @see https://csrc.nist.rip/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/AES_Core192.pdf
+ *
+ *  @copyright Galois Inc.
+ *  @author Nichole Schimanski <nls@galois.com>
+ *  @author Marcella Hastings <marcella@galois.com>
+ *  www.cryptol.net
+ */
+module Primitive::Symmetric::Cipher::Block::AES::Tests::AES192 where
+import Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES192 as AES192
+
+/**
+ * ```repl
+ * :prove aes192TestVectorsPass
+ * ```
+ */
+property aes192TestVectorsPass = and encryptions /\ and decryptions
+    where
+        key = 0x8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b
+        pts = [
+            0x6bc1bee22e409f96e93d7e117393172a,
+            0xae2d8a571e03ac9c9eb76fac45af8e51,
+            0x30c81c46a35ce411e5fbc1191a0a52ef,
+            0xf69f2445df4f9b17ad2b417be66c3710
+        ]
+        expected_cts = [
+            0xbd334f1d6e45f25ff712a214571fa5cc,
+            0x974104846d0ad3ad7734ecb3ecee4eef,
+            0xef7afd2270e2e60adce0ba2face6444e,
+            0x9a4b41ba738d6c72fb16691603c18e0e
+        ]
+        encryptions = [ AES192::encrypt key msg == ct | msg <- pts | ct <- expected_cts ]
+        decryptions = [ AES192::decrypt key ct == pt | pt <- pts | ct <- expected_cts ]

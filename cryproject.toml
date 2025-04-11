@@ -21,18 +21,18 @@ modules = [
     "Primitive/Asymmetric/Signature/ECDSA/Tests/ECDSA_P384_SHA384.cry",
 
     # AES (standalone)
-    "Primitive/Symmetric/Cipher/Block/Instantiations/AES128.cry",
-    "Primitive/Symmetric/Cipher/Block/Instantiations/AES192.cry",
-    "Primitive/Symmetric/Cipher/Block/Instantiations/AES256.cry",
-    "Primitive/Symmetric/Cipher/Block/Tests/TestAES.cry",
+    "Primitive/Symmetric/Cipher/Block/AES/Instantiations/AES128.cry",
+    "Primitive/Symmetric/Cipher/Block/AES/Instantiations/AES192.cry",
+    "Primitive/Symmetric/Cipher/Block/AES/Instantiations/AES256.cry",
+    "Primitive/Symmetric/Cipher/Block/AES/Tests/TestAES.cry",
 
     # AES (counter mode)
-    "Primitive/Symmetric/Cipher/Block/Instantiations/AES*_CTR.cry",
-    "Primitive/Symmetric/Cipher/Block/Tests/TestAES_CTR.cry",
+    "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES*_CTR.cry",
+    "Primitive/Symmetric/Cipher/Block/Modes/Tests/TestAES_CTR.cry",
 
     # AES (GCM mode)
-    "Primitive/Symmetric/Cipher/Authenticated/Instantiations/AES*_GCM.cry",
-    "Primitive/Symmetric/Cipher/Authenticated/Tests/*",
+    "Primitive/Symmetric/Cipher/Authenticated/GCM/Instantiations/*.cry",
+    "Primitive/Symmetric/Cipher/Authenticated/GCM/Tests/*",
 
     # SHA2
     "Primitive/Keyless/Hash/SHA2/Instantiations/*",

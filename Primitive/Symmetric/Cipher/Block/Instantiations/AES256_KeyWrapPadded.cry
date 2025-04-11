@@ -1,9 +1,0 @@
-/*
- * Instantiate KeyWrapPadded mode for AES 256.
- *
- * @copyright Galois, Inc.
- * @author Marcella Hastings <marcella@galois.com>
- */
-module Primitive::Symmetric::Cipher::Block::Instantiations::AES256_KeyWrapPadded =
-    Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrapPadded where
-        type AESKeySize' = 256

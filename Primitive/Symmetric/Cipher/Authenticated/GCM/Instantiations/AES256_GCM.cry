@@ -1,0 +1,11 @@
+/*
+ * Instantiate GCM mode for AES 256.
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Symmetric::Cipher::Authenticated::GCM::Instantiations::AES256_GCM =
+    Primitive::Symmetric::Cipher::Authenticated::GCM::Specification {
+        Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES256
+    }
+

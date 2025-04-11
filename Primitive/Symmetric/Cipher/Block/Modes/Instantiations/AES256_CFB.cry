@@ -1,0 +1,10 @@
+/*
+ * Instantiate CFB mode for AES-256.
+ *
+ * @copyright Galois, Inc.
+ * @author Alex J Malozemoff <amaloz@galois.com>
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_CFB =
+    Primitive::Symmetric::Cipher::Block::Modes::CFB {
+        Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES256
+    }
