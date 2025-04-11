@@ -55,7 +55,7 @@ There are some [ciphers for authenticated encryption](Primitive/Symmetric/Cipher
 
 There is an implementation of [HMAC](Primitive/Symmetric/MAC/HMAC/Specification.cry) that is used to instantiate [a hash-based key derivation function (HKDF)](Primitive/Symmetric/KDF/).
 
-There are two members of [the BLAKE family of hash functions](Primitive/Keyless/Hash/), as well as several historical hash functions, like [MD5](Primitive/Keyless/Hash/MD5.md) and [SHA1](Primitive/Keyless/Hash/SHA1.cry), that are not suitable for general use. There's also a version of the standardized [deterministic random bit generator (DRBG)](Primitive/Keyless/Generator/DRBG.cry).
+There are two members of [the BLAKE family of hash functions](Primitive/Keyless/Hash/), as well as several historical hash functions, like [MD5](Primitive/Keyless/Hash/MD5.md) and [SHA1](Primitive/Keyless/Hash/SHA1/Specification.cry), that are not suitable for general use. There's also a version of the standardized [deterministic random bit generator (DRBG)](Primitive/Keyless/Generator/DRBG.cry).
 
 There's a family of RSA-based schemes, including [the basic RSA cipher](Primitive/Asymmetric/Cipher/RSA.cry), [RSA with various encoding schemes](Primitive/Asymmetric/Scheme), and some [RSA-based signature schemes](Primitive/Asymmetric/Signature).
 
