@@ -1,0 +1,57 @@
+/*
+ * Test vectors for AES192 in CTR mode.
+ * These are taken from [NIST-SP-800-38A] Appendix F.5
+ *
+ * @copyright Galois, Inc.
+ * @author Ajay Kumar Eeralla
+ * @author Marcella Hastings <marcella@galois.com>
+ *  www.cryptol.net
+ *
+ * References:
+ * [NIST-SP-800-38A]: Morris Dworkin. Recommendation for Block Cipher
+ * Modes of Operation: Methods and Techniques. NIST Special Publication
+ * 800-38A. December 2001.
+ *
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::Tests::AES192_CTR where
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES192_CTR as AES192_CTR
+
+/**
+ * ```repl
+ * :prove aes192_ctr_encrypt_vector
+ * ```
+ */
+property aes192_ctr_encrypt_vector = (AES192_CTR::encrypt k ic plaintext) == ciphertext
+    where
+    k = 0x8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b
+    ic = 0xf0f1f2f3f4f5f6f7f8f9fafbfcfdfeff
+    plaintext = [
+        0x6bc1bee22e409f96e93d7e117393172a,
+        0xae2d8a571e03ac9c9eb76fac45af8e51,
+        0x30c81c46a35ce411e5fbc1191a0a52ef,
+        0xf69f2445df4f9b17ad2b417be66c3710]
+    ciphertext = [
+        0x1abc932417521ca24f2b0459fe7e6e0b,
+        0x090339ec0aa6faefd5ccc2c6f4ce8e94,
+        0x1e36b26bd1ebc670d1bd1d665620abf7,
+        0x4f78a7f6d29809585a97daec58c6b050]
+
+/**
+ * ```repl
+ * :prove aes192_ctr_decrypt_vector
+ * ```
+ */
+property aes192_ctr_decrypt_vector = (AES192_CTR::decrypt k ic ciphertext) == plaintext
+    where
+    k = 0x8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b
+    ic = 0xf0f1f2f3f4f5f6f7f8f9fafbfcfdfeff
+    ciphertext = [
+        0x1abc932417521ca24f2b0459fe7e6e0b,
+        0x090339ec0aa6faefd5ccc2c6f4ce8e94,
+        0x1e36b26bd1ebc670d1bd1d665620abf7,
+        0x4f78a7f6d29809585a97daec58c6b050]
+    plaintext = [
+        0x6bc1bee22e409f96e93d7e117393172a,
+        0xae2d8a571e03ac9c9eb76fac45af8e51,
+        0x30c81c46a35ce411e5fbc1191a0a52ef,
+        0xf69f2445df4f9b17ad2b417be66c3710]
