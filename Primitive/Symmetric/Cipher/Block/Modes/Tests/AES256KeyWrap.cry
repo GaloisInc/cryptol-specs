@@ -8,7 +8,7 @@
  *  www.cryptol.net
  */
 
-module Primitive::Symmetric::Cipher::Block::Modes::Tests::TestAESKeyWrap where
+module Primitive::Symmetric::Cipher::Block::Modes::Tests::AES256KeyWrap where
 
 import Common::OptionUtils(optTest, isNone)
 import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_KeyWrap

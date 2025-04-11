@@ -7,7 +7,7 @@
  * @author Alex J Malozemoff <amaloz@galois.com>
  *  www.cryptol.net
  */
-module Primitive::Symmetric::Cipher::Block::Modes::Tests::TestAESKeyWrapPadded where
+module Primitive::Symmetric::Cipher::Block::Modes::Tests::AES256KeyWrapPadded where
 
 import Common::OptionUtils(optTest, isNone)
 import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_KeyWrapPadded
