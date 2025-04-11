@@ -430,10 +430,10 @@ private
      * ```repl
      * :set tests=25
      * :check normalizeWorksOnNormalPoints
+     * :prove normalizeWorksOnNormalPoints 0 0 0 0
      * ```
      */
-    property normalizeWorksOnNormalPoints k1 k2 k3 k4 =
-        all_are_normal && all_match
+    property normalizeWorksOnNormalPoints k1 k2 k3 k4 = all_are_normal && all_match
         where
             p1 = to_projective (validPointFromK k1)
             p2 = to_projective (validPointFromK k2)
@@ -443,12 +443,21 @@ private
             input = {A=p1, B=p2, C=p3, D=p4}
             out = twin_normalize input
 
-            all_are_normal = (out.A.z == 1) && (out.B.z == 1)
-                && (out.C.z == 1) && (out.D.z == 1)
+            // If any of the multipliers is 0, the resulting point
+            // will be the point at infinity.
+            // In this case, `twin_normalize` will do nothing...
+            any_are_infinity = any (\k -> k == 0) [k1, k2, k3, k4]
+
+            // ...and the point at infinity always has a z-coordinate of 0.
+            // So, this check for "normalcy" is only relevant if we're not
+            // dealing with a point at infinity.
+            all_are_normal = any_are_infinity ||
+                all (\p -> p.z == 1) [out.A, out.B, out.C, out.D]
+
+            // In either case, our `toProjective` function produces points in normal
+            // form, so `twin_normalize` shouldn't actually change the representation.
             all_match = (out.A == p1) && (out.B == p2)
                 && (out.C == p3) && (out.D == p4)
-
-
 
     /**
      * Double an elliptic curve point.
@@ -751,13 +760,20 @@ private
      * Checks that twin multiplication works as expected. Note that a given
      * point can have multiple projective representations, so we have to
      * check equality in the affine representation.
+     *
+     * These tests check the general case, the case where the two points `S`
+     * and `T` are the same, and the case where one of the points is the point
+     * at infinity.
      * ```repl
      * :check twin_mult_works
+     * :check (\d0 d1 k -> twin_mult_works d0 k d1 k)
+     * :check (\d0 d1 k -> twin_mult_works d0 k d1 0)
+     * :check (\d0 d1 k -> twin_mult_works d0 0 d1 k)
      * ```
      */
     property twin_mult_works d0 k0 d1 k1 = affineEq R_plain R_twin
         where
             S = to_projective (validPointFromK k0)
             T = to_projective (validPointFromK k1)
-            R_plain = to_affine (ec_add (ec_mult d0 S) (ec_mult d1 T))
+            R_plain = to_affine (ec_full_add (ec_mult d0 S) (ec_mult d1 T))
             R_twin = to_affine (ec_twin_mult d0 S d1 T)
