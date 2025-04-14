@@ -361,15 +361,9 @@ private
     to_affine p =
         // The point at infinity does not have an affine representation.
         if p.z == 0 then Infinity
+        // Note the parentheses here.
+        // See Note [Limit scope of recip in where clauses].
         else (Affine (lambda ^^2 * p.x) (lambda ^^3 * p.y)
-               // We use parentheses to limit the scope of this `where` clause
-               // to the `else` branch of the `if`-expression. Doing so is not
-               // strictly necessary in Cryptol, as Cryptol's lazy evaluation
-               // will only evaluate `lambda` if the `else` branch is evaluated.
-               // This is solely done for the benefit of compiling to
-               // call-by-value languages (e.g., C or Rust), as evaluating
-               // `lambda` before the `if`-expression would result in a panic
-               // when `p.z == 0`.
                where
                  lambda = recip p.z)
 
@@ -397,27 +391,29 @@ private
         // step (the algorithm will still work!)
         if (A.z == 0) || (B.z == 0) || (C.z == 0) || (D.z == 0) then
             { A=A, B=B, C=C, D=D }
-        else {
-            A = normalize_from_inv A a_inv,
-            B = normalize_from_inv B b_inv,
-            C = normalize_from_inv C c_inv,
-            D = normalize_from_inv D d_inv
-        }
-        where
-            ab = A.z * B.z
-            cd = C.z * D.z
-            abc = ab * C.z
-            abd = ab * D.z
-            acd = A.z * cd
-            bcd = B.z * cd
-            abcd = ab * cd
-            e = recip abcd
-            a_inv = e * bcd
-            b_inv = e * acd
-            c_inv = e * abd
-            d_inv = e * abc
-            normalize_from_inv p inv =
-                to_projective (Affine (inv ^^2 * p.x) (inv ^^3 * p.y))
+        else
+          // Note the parentheses here.
+          // See Note [Limit scope of recip in where clauses].
+          ({
+             A = normalize_from_inv A a_inv,
+             B = normalize_from_inv B b_inv,
+             C = normalize_from_inv C c_inv,
+             D = normalize_from_inv D d_inv
+           } where
+               ab = A.z * B.z
+               cd = C.z * D.z
+               abc = ab * C.z
+               abd = ab * D.z
+               acd = A.z * cd
+               bcd = B.z * cd
+               abcd = ab * cd
+               e = recip abcd
+               a_inv = e * bcd
+               b_inv = e * acd
+               c_inv = e * abd
+               d_inv = e * abc
+               normalize_from_inv p inv =
+                   to_projective (Affine (inv ^^2 * p.x) (inv ^^3 * p.y)))
 
 
     /**
@@ -777,3 +773,26 @@ private
             T = to_projective (validPointFromK k1)
             R_plain = to_affine (ec_full_add (ec_mult d0 S) (ec_mult d1 T))
             R_twin = to_affine (ec_twin_mult d0 S d1 T)
+
+/*
+Note [Limit scope of recip in where clauses]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+There are a small number of places where we call the `recip` function in a
+local definition bound by a `where` clause such that the definition is only ever
+used in the `else` branch of an if-expression. For example, in `to_affine` we
+have:
+
+  to_affine p =
+      if p.z == 0 then Infinity
+      // Note the explicit parentheses here, which ensures that `lambda` is in
+      // scope in the `else` branch but *not* the `then` branch.
+      else (Affine (lambda ^^2 * p.x) (lambda ^^3 * p.y)
+             where
+               lambda = recip p.z)
+
+Doing so is not strictly necessary in Cryptol, as Cryptol's lazy evaluation
+will only evaluate `lambda` if the `else` branch is evaluated. This is solely
+done for the benefit of compiling to call-by-value languages (e.g., C or Rust),
+as evaluating `lambda` before the `if`-expression would result in a panic when
+`p.z == 0`.
+*/
