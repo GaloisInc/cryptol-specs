@@ -1,0 +1,58 @@
+/*
+ * Test vectors for AES192 in CBC mode.
+ * These are taken from [NIST-SP-800-38A] Appendix F.2
+ *
+ * @copyright Galois, Inc.
+ * @author Ajay Kumar Eeralla
+ * @author Marcella Hastings <marcella@galois.com>
+ * @author Stanislav Lyakhov <stan@galois.com>
+ *  www.cryptol.net
+ *
+ * References:
+ * [NIST-SP-800-38A]: Morris Dworkin. Recommendation for Block Cipher
+ * Modes of Operation: Methods and Techniques. NIST Special Publication
+ * 800-38A. December 2001.
+ *
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::Tests::AES192_CBC where
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES192_CBC as AES192_CBC
+
+/**
+ * ```repl
+ * :prove aes192_cbc_encrypt_vector
+ * ```
+ */
+property aes192_cbc_encrypt_vector = (AES192_CBC::encrypt k iv plaintext) == ciphertext
+    where
+    k = 0x8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b
+    iv = 0x000102030405060708090a0b0c0d0e0f
+    plaintext = [
+        0x6bc1bee22e409f96e93d7e117393172a,
+        0xae2d8a571e03ac9c9eb76fac45af8e51,
+        0x30c81c46a35ce411e5fbc1191a0a52ef,
+        0xf69f2445df4f9b17ad2b417be66c3710]
+    ciphertext = [
+        0x4f021db243bc633d7178183a9fa071e8,
+        0xb4d9ada9ad7dedf4e5e738763f69145a,
+        0x571b242012fb7ae07fa9baac3df102e0,
+        0x08b0e27988598881d920a9e64f5615cd]
+
+/**
+ * ```repl
+ * :prove aes192_cbc_decrypt_vector
+ * ```
+ */
+property aes192_cbc_decrypt_vector = (AES192_CBC::decrypt k iv ciphertext) == plaintext
+    where
+    k = 0x8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b
+    iv = 0x000102030405060708090a0b0c0d0e0f
+    ciphertext = [
+        0x4f021db243bc633d7178183a9fa071e8,
+        0xb4d9ada9ad7dedf4e5e738763f69145a,
+        0x571b242012fb7ae07fa9baac3df102e0,
+        0x08b0e27988598881d920a9e64f5615cd]
+    plaintext = [
+        0x6bc1bee22e409f96e93d7e117393172a,
+        0xae2d8a571e03ac9c9eb76fac45af8e51,
+        0x30c81c46a35ce411e5fbc1191a0a52ef,
+        0xf69f2445df4f9b17ad2b417be66c3710]

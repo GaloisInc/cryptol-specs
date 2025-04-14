@@ -1,0 +1,57 @@
+/*
+ * Test vectors for AES128 in CTR mode.
+ * These are taken from [NIST-SP-800-38A] Appendix F.5
+ *
+ * @copyright Galois, Inc.
+ * @author Ajay Kumar Eeralla
+ * @author Marcella Hastings <marcella@galois.com>
+ *  www.cryptol.net
+ *
+ * References:
+ * [NIST-SP-800-38A]: Morris Dworkin. Recommendation for Block Cipher
+ * Modes of Operation: Methods and Techniques. NIST Special Publication
+ * 800-38A. December 2001.
+ *
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::Tests::AES128_CTR where
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES128_CTR as AES128_CTR
+
+/**
+ * ```repl
+ * :prove aes128_ctr_encrypt_vector
+ * ```
+ */
+property aes128_ctr_encrypt_vector = (AES128_CTR::encrypt k ic plaintext) == ciphertext
+    where
+    k = 0x2b7e151628aed2a6abf7158809cf4f3c
+    ic = 0xf0f1f2f3f4f5f6f7f8f9fafbfcfdfeff
+    plaintext = [
+        0x6bc1bee22e409f96e93d7e117393172a,
+        0xae2d8a571e03ac9c9eb76fac45af8e51,
+        0x30c81c46a35ce411e5fbc1191a0a52ef,
+        0xf69f2445df4f9b17ad2b417be66c3710]
+    ciphertext = [
+        0x874d6191b620e3261bef6864990db6ce,
+        0x9806f66b7970fdff8617187bb9fffdff,
+        0x5ae4df3edbd5d35e5b4f09020db03eab,
+        0x1e031dda2fbe03d1792170a0f3009cee]
+
+/**
+ * ```repl
+ * :prove aes128_ctr_decrypt_vector
+ * ```
+ */
+property aes128_ctr_decrypt_vector = (AES128_CTR::decrypt k ic ciphertext) == plaintext
+    where
+    k = 0x2b7e151628aed2a6abf7158809cf4f3c
+    ic = 0xf0f1f2f3f4f5f6f7f8f9fafbfcfdfeff
+    ciphertext = [
+        0x874d6191b620e3261bef6864990db6ce,
+        0x9806f66b7970fdff8617187bb9fffdff,
+        0x5ae4df3edbd5d35e5b4f09020db03eab,
+        0x1e031dda2fbe03d1792170a0f3009cee]
+    plaintext = [
+        0x6bc1bee22e409f96e93d7e117393172a,
+        0xae2d8a571e03ac9c9eb76fac45af8e51,
+        0x30c81c46a35ce411e5fbc1191a0a52ef,
+        0xf69f2445df4f9b17ad2b417be66c3710]
