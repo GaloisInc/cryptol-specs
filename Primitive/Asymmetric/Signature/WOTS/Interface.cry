@@ -92,6 +92,24 @@ type Byte = [8]
 type Address = [8 * 4]Byte
 
 /**
+ * Address scheme for randomizing hash function calls in the OTS scheme.
+ * [RFC-8391] Section 2.5.
+ *
+ * The address breaks down 7 components, each 1 word long unless specified.
+ * 1. Layer address
+ * 2-3. Tree address (2 Words)
+ * 4. Type (fixed at 0)
+ * 5. OTS address
+ * 6. Chain address
+ * 7. Hash address
+ * 8. keyAndMask
+ *
+ * Note that this isn't defined in terms of the `Word` type because it's
+ * operated on by things that require arrays of bytes.
+ */
+type OTSHashAddress = [8 * 4]Byte
+
+/**
  * A private, or secret, key in WOTS+ is a length `len` array of `n`-byte
  * strings.
  *
