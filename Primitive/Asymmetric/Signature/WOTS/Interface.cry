@@ -72,6 +72,12 @@ type len_2 = lg2 (len_1 * (w - 1)) / lg2 w + 1
  * [RFC-8391] Section 3.1.1.
  */
 type len = len_1 + len_2
+/**
+ * This constraint comes from the fact that we set locations in `Address` to
+ * functions of `len` (in particular, `len / 2`). These locations are 32 bits
+ * in size, so we require that `width len` is no greater than 32 bits.
+ */
+type constraint (width len <= 32)
 
 /**
  * A byte is a sequence of 8 bits using big-endian representation.
