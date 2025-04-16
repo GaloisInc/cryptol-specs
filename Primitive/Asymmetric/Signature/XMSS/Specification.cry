@@ -9,6 +9,7 @@
  *
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
+ * @author Alex J Malozemoff <amaloz@galois.com>
  */
 module Primitive::Asymmetric::Signature::XMSS::Specification where
 
