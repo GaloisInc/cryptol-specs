@@ -61,7 +61,9 @@ type LTreeAddress = [8 * 4]Byte
 type HashTreeAddress = [8 * 4]Byte
 
 /**
- * An XMSS private key contains 2^h WOTS+ private keys, the leaf index of the
+ * An XMSS private key.
+ *
+ * An XMSS private key contains 2^^h WOTS+ private keys, the leaf index of the
  * next WOTS+ private key that has not yet been used, an n-byte key to generate
  * pseudorandom values for randomized message hashing, the n-byte root node of
  * the tree and SEED, and the n-byte public seed used to pseudorandomly generate
@@ -135,6 +137,15 @@ private
     setTreeIndex address value = take`{6 * 4} address # (split value) # drop`{7 * 4} address
 
     /**
+     * Get the `tree index` word (in the 7th position) in an `LTreeAddress`.
+     * This getter is defined implicitly in the spec.
+     *
+     * [RFC-8391] Section 2.7.
+     */
+    getTreeIndex : LTreeAddress -> Word
+    getTreeIndex address = join (take`{1 * 4} (drop`{6 * 4} address))
+
+    /**
     * Set the `keyAndMask` word (the 8th position) in an `LTreeAddress`.
     * This setter is defined implicitly in the spec.
     *
@@ -184,7 +195,7 @@ private
      *
      *   return H(KEY, (LEFT XOR BM_0) || (RIGHT XOR BM_1));
      *
-     * [RFC-8391] Section 4.1.4.
+     * [RFC-8391] Section 4.1.4, Algorithm 7.
      */
     RAND_HASH : [n]Byte -> [n]Byte -> [n]Byte -> LTreeAddress -> [n]Byte
     RAND_HASH LEFT RIGHT SEED ADRS = hash where
@@ -201,7 +212,8 @@ private
      * Recursive version of `ltree`. See the `ltree` documentation for more
      * details.
      *
-     * [RFC-8391] Section 4.1.5.
+     * [RFC-8391] Section 4.1.5, Algorithm 8.
+     * [Errata-5572] @see https://www.rfc-editor.org/errata/eid5572
      */
     ltree' : {len', half_floor, half_ceil} (
             fin len',
@@ -273,7 +285,7 @@ private
      *   }
      *   return pk[0];
      *
-     * [RFC-8391] Section 4.1.5.
+     * [RFC-8391] Section 4.1.5, Algorithm 8.
      * [Errata-5572] @see https://www.rfc-editor.org/errata/eid5572
      */
     ltree : WOTS::PublicKey -> [n]Byte -> LTreeAddress -> [n]Byte
