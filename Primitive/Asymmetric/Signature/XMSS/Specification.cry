@@ -81,6 +81,23 @@ type PrivateKey = {
 
 private
     /**
+     * Set the index in a private key.
+     * This setter is defined implicitly in the spec.
+     *
+     * [RFC-8391] Section 2.7.
+     */
+    setIdx : PrivateKey -> Word -> PrivateKey
+    setIdx SK idx = SK' where
+        SK' = {
+            wots_sks = SK.wots_sks,
+            idx = idx,
+            prf_sk = SK.prf_sk,
+            root = SK.root,
+            seed = SK.seed
+        }
+
+private
+    /**
      * Take as input an XMSS private key `SK` and an integer `i` and output the
      * `i`th WOTS+ private key.
      *
