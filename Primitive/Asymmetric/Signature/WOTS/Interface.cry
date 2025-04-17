@@ -86,6 +86,24 @@ type constraint (width len <= 32)
 type Byte = [8]
 
 /**
+ * Convert a non-negative integer to a binary representation in big-endian
+ * byte order.
+ * [RFC-8391] Section 2.4.
+ *
+ * Note: the spec is not explicit about what to do when `m < 8y` -- e.g. when
+ * converting to `y` bytes means truncating the integer representation,
+ * rather than padding it with 0s. We chose this behavior based on the
+ * reference implementation that accompanies the spec.
+ * @see https://github.com/XMSS/xmss-reference/blob/master/utils.c#L6
+ * [RFC-8391] Section 7.
+ *
+ * Essentially, we pad with zeros if needed (using `zext`), then `drop` any
+ * unnecessary padding (and potentially also drop some bits of the original
+ * integer).
+ */
+toByte : {y, m} (fin y, fin m) => [m] -> [y]Byte
+
+/**
  * Address scheme for randomizing hash function calls in the OTS scheme.
  * [RFC-8391] Section 2.5.
  */
