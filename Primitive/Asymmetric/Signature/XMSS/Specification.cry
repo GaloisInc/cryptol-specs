@@ -96,6 +96,39 @@ private
             seed = SK.seed
         }
 
+/**
+ * An XMSS public key.
+ *
+ * The XMSS public key consists of the root of the binary hash tree and the
+ * seed SEED, both also stored in the private key.
+ *
+ * [RFC-8391] Section 4.1.7.
+ */
+type PublicKey = {
+    root: [n]Byte,
+    seed: [n]Byte
+}
+
+/**
+ * An XMSS signature.
+ *
+ * An XMSS signature is a (4 + n + (len + h) * n)-byte string consisting
+ * of:
+ * -  the index idx_sig of the used WOTS+ key pair (4 bytes),
+ * -  a byte string r used for randomized message hashing (n bytes),
+ * -  a WOTS+ signature sig_ots (len * n bytes), and
+ * -  the so-called authentication path 'auth' for the leaf associated
+ *    with the used WOTS+ key pair (h * n bytes).
+ *
+ * [RFC-8391] Section 4.1.8.
+ */
+type Signature = {
+    idx_sig: Word,
+    r: [n]Byte,
+    sig_ots: WOTS::Signature,
+    auth: [h][n]Byte
+}
+
 private
     /**
      * Take as input an XMSS private key `SK` and an integer `i` and output the
