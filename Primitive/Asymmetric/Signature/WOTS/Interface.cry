@@ -163,8 +163,9 @@ type Signature = [len][n]Byte
 /**
  * Generate a WOTS+ public key from a private key.
  * [RFC-8391] Section 3.1.4, Algorithm 4 (called `WOTS_genPK` in the spec).
+ * [Errata-8382] @see https://www.rfc-editor.org/errata/eid8382
  */
-genPK : PrivateKey -> Address -> [n]Byte -> PublicKey
+genPK : PrivateKey -> [n]Byte -> Address -> PublicKey
 
 /**
  * Generate a signature from a private key and a message.
