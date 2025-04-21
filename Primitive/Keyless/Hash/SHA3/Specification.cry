@@ -73,6 +73,31 @@ Keccak M = digest where
     extend Z = (take`{r} Z) # extend (Keccak_p Z)
     digest = take`{front=d, back=inf} (extend (Ss ! 0))
 
+/**
+ * The Keccak-p[b, nr] permutation.
+ * [FIPS-202] Section 3.3, Algorithm 7.
+ *
+ * This algorithm is not intended to be user facing, necessarily,
+ * but is useful in other specifications (e.g., the generic sponge).
+ */
+Keccak_p : [b] -> [b]
+Keccak_p S = S' where
+    // The round transformation is defined in [FIPS-202] Section 3.3.
+    Rnd A ir = ι (χ (π (ρ_hardcoded (θ A)))) ir
+
+    // Step 1.
+    A0 = unflatten_noindex S
+    // Step 2.
+    // The round index `ir` is allowed to be negative, but Cryptol types
+    // must be non-negative. Thus we iterate over the number of rounds and
+    // compute the round index as a value, rather than a type.
+    As = [A0] # [ Rnd A ir where
+            ir = 12 + 2 * `ell - r
+        | A <- As
+        | r <- [nr, nr - 1 .. 1]]
+    // Step 3.
+    S' = flatten_noindex (As ! 0)
+
 private
     /**
      * Rate parameter for the sponge construction.
@@ -374,27 +399,7 @@ private
     pad : {x, m} (fin x, fin m, x >= 1) => [x * ((m + 2) /^ x) - m]
     pad = [1] # zero # [1]
 
-    /**
-     * The Keccak-p[b, nr] permutation.
-     * [FIPS-202] Section 3.3, Algorithm 7.
-     */
-    Keccak_p : [b] -> [b]
-    Keccak_p S = S' where
-        // The round transformation is defined in [FIPS-202] Section 3.3.
-        Rnd A ir = ι (χ (π (ρ_hardcoded (θ A)))) ir
 
-        // Step 1.
-        A0 = unflatten_noindex S
-        // Step 2.
-        // The round index `ir` is allowed to be negative, but Cryptol types
-        // must be non-negative. Thus we iterate over the number of rounds and
-        // compute the round index as a value, rather than a type.
-        As = [A0] # [ Rnd A ir where
-                ir = 12 + 2 * `ell - r
-            | A <- As
-            | r <- [nr, nr - 1 .. 1]]
-        // Step 3.
-        S' = flatten_noindex (As ! 0)
 
     /**
      * Keccak-f family of permutations.

@@ -6,10 +6,14 @@
 module Primitive::Keyless::Sponge::Instantiations::Keccak_512 =
     module Primitive::Keyless::Sponge::Specification where
 
-import Primitive::Keyless::Sponge::Tests::Keccak as Keccak
+/**
+ * Each SHA3 instance uses the same Keccak permutation.
+ * We select one of them arbitrarily.
+ */
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_256 as Keccak
 
 type b = 1600
 type PaddingType = 2
 type r = 1600 - 512
 
-f = Keccak::Keccak_p
+f = Keccak::underlyingPermutation

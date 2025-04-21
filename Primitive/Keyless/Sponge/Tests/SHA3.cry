@@ -4,11 +4,34 @@
 
 module Primitive::Keyless::Sponge::Tests::SHA3 where
 
-import Primitive::Keyless::Sponge::Instantiations::Keccak_512 as Sponge
+/**
+ * Import the SHA3 specification with the particular sponge instantiation.
+ */
 import Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_256 as SHA3
 
-spongeSHA3: {l, m} (fin m) => [m] -> [l]
+/**
+ * Import the same sponge instantiation, but built using the generic sponge
+ * interface.
+ */
+import Primitive::Keyless::Sponge::Instantiations::Keccak_512 as Sponge
+
+/**
+ * Include the SHA3 specific padding on top
+ * of the generic sponge operation, per SHA3.
+ */
+spongeSHA3: {l, m} (fin m, l > 0) => [m] -> [l]
 spongeSHA3 x = Sponge::sponge `{l=l} (x # 0b01)
 
+/**
+ * Test that SHA3 with the sponge functions "inlined"
+ * is equivalent to building "SHA3" on top of the
+ * generic sponge.
+ *
+ * ```repl
+ * :check SHAEquivalent `{0}
+ * :check SHAEquivalent `{2}
+ * :check SHAEquivalent `{100}
+ * ```
+ */
 SHAEquivalent : {n} (fin n) => [n] -> Bit
 property SHAEquivalent m = SHA3::sha3 m == spongeSHA3 m
