@@ -101,11 +101,10 @@ parameter
 
     /**
     * Constraints for the padding function.
-    * The input length `L` and output length `P` must be finite.
-    * `P` must also be greater than `0`, to satisfy the first.
-    * sponge compliance criteria in Section 2.1.2.
+    * The input length `L` must be finite..
     * The fixed block length `x` must be finite and greater than `0`.
-    * The end result must be a multiple of `x`.
+    * The end result must be a multiple of `x` and length greater than `0`,
+    * but we do not enforce that here.
     */
     type constraint PadConstraint L x = (
         fin L, fin x, x > 0
@@ -157,8 +156,8 @@ private
     /**
      * A padding rule is sponge compliant if it never returns the empty string
      * and satisfies an "injectivity" criterion described in [SPONGE]
-     * Section 2.1.2 formula 2.1. The first constraint enforced by the type
-     * signature of `pad` (`P > 0`). The second constraint is encoded here.
+     * Section 2.1.2 formula 2.1. The injectivity criterion is encoded
+     * here.
      *
      * Here, `M` and `M'` are chosen from `Z_2^*`, the set of all bitstrings with
      * finite length. `Ml` and `Ml'` are the lengths of `M` and `M'` respectively.
@@ -175,8 +174,22 @@ private
     property padCompliant M M' = ~comparisonHelper M M' ==> ~comparisonHelper Mp Mp'
         where
             Mp = M # pad `{Ml, x}
-            Mp' = M # pad `{Ml', x} # zn
+            Mp' = M' # pad `{Ml', x} # zn
             zn = zero `{[n * r]}
+
+    /**
+     * A padding rule is sponge compliant if it never returns the empty string
+     * and satisfies an "injectivity" criterion described in [SPONGE]. The
+     * non-emptiness criterion is encoded here.
+     *
+     * The padding length is determined by the message length and block length
+     * alone. Thus, no explicit messages are required to verify the property.
+     */
+    padNonempty :
+        {M, x}
+        (PadConstraint M x)
+        => Bit
+    property padNonempty = `(PadLength M x) != 0
 
     /**
      * The absorbing function `r` bit input blocks and XORs them into
