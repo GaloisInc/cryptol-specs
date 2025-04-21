@@ -1,5 +1,9 @@
 /**
  * Show the sponge SHA3 and the current SHA3 are equivalent.
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ *
  */
 
 module Primitive::Keyless::Sponge::Tests::SHA3 where

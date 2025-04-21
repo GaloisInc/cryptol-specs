@@ -1,6 +1,10 @@
 /**
  * An instantiation of the sponge construction with Keccak_p primitives.
  * In particular, this is Keccak[c], c = 512.
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ *
  */
 
 module Primitive::Keyless::Sponge::Instantiations::Keccak_512 =
