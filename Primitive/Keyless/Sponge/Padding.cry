@@ -63,7 +63,7 @@ type MultiRate x m = x * ((m + 2) /^ x) - m
  * See [SPONGE] Section 2.1.2 Definition 3.
  */
 multiratePadding: {L, x} (fin L, x > 0, fin x) => [MultiRate x L]
-multiratePadding = [True] # zero # [True]
+multiratePadding = 0b1 # zero # 0b1
 
 /**
  * A type describing simple padding.
@@ -81,4 +81,4 @@ type Simple x m = x * ((m + 1) /^ x) - m
  * See [SPONGE] Section 2.1.2 Definition 2.
  */
 simplePadding: {L, x} (fin L, fin x, x > 0) => [Simple x L]
-simplePadding = [True] # zero
+simplePadding = 0b1 # zero
