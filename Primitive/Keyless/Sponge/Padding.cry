@@ -54,8 +54,8 @@ type MultiRate x m = x * ((m + 2) /^ x) - m
 
 /**
  * Multi-rate padding appends a single bit `1` followed by
- * the minimum number of bits `0` such that the length of the
- * result is a multiple of the block length.
+ * the minimum number of bits `0` and a final bit `1`
+ * such that the length of the result is a multiple of the block length.
  *
  * This implementation is heavily influenced by the current
  * SHA3 cryptol specification in this repository.
