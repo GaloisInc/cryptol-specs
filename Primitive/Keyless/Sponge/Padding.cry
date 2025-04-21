@@ -2,6 +2,19 @@
  * A couple instances of sponge compliant padding functions.
  * These are described in [SPONGE].
  *
+ * This reference defines the notion of a "sponge compliance"
+ * as a functional property. It would ideal to have the padding
+ * function associated with a given sponge construction be a parameter of
+ * the specification. Unfortunately, the notion of "sponge compliance"
+ * is very broad, and cannot be easily expressed in Cryptol's type
+ * system parametrically (technically, Cryptol does not allow
+ * type constraints as parameters, so it is not ergonomic to
+ * define the output length of a padded bitstring for arbitrary
+ * padding functions).
+ *
+ * As a stopgap of sorts, we enumerate all of the sponge compliant
+ * padding functions described in [SPONGE] in this module.
+ *
  * References:
  * [SPONGE]
  *    Cryptographic Sponge Functions (Version 0.1)
@@ -19,6 +32,12 @@ module Primitive::Keyless::Sponge::Padding where
 
 /**
  * A type taken from the SHA3 specification for multi-rate padding.
+ * The meaning of `x` and `m` are taken from that specification.
+ * The comment below is also taken from that specification.
+ * For convenience, consider `m` to be the message length
+ * and `x` to be a fixed block length. The type describes
+ * the length of the padding alone.
+ *
  * Note: The spec says the output length is a positive multiple of `x` and
  * defines it to be, basically: `(- m - 2) mod x + 2`. We can't encode this
  * exactly as-is in the type signature because Cryptol doesn't support
@@ -48,6 +67,9 @@ multiratePadding = [True] # zero # [True]
 
 /**
  * A type describing simple padding.
+ * This type describes the length of padding alone
+ * for some message of length `m` and fixed block
+ * length `x`.
  */
 type Simple x m = x * ((m + 1) /^ x) - m
 
