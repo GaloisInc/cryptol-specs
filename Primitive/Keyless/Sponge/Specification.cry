@@ -118,10 +118,13 @@ parameter
  *
  * `l` is the number of bits that should be "squeezed" from the sponge.
  * `m` is the length of the message...the letter `m` was chosen arbitrarily.
+ *
+ * [SPONGE] Algorithm 4 requires `l > 0`, so this constraint is required
+ * is also required here.
  */
 sponge:
     {l, m}
-    (PadConstraint m r)
+    (PadConstraint m r, l > 0)
     => [m] -> [l]
 sponge M = Z
     where
@@ -222,7 +225,7 @@ private
      *
      * See [SPONGE] 2.4.2 Algorithm 4.
      */
-    squeeze: {l} () => [b] -> [l]
+    squeeze: {l} (l > 0) => [b] -> [l]
     squeeze s = Zl
         where
             // Iterate `f` over `s`,
