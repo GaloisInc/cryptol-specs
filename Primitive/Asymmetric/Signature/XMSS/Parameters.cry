@@ -12,6 +12,12 @@ interface module Primitive::Asymmetric::Signature::XMSS::Parameters where
  */
 type h : #
 type constraint (fin h)
+/**
+ * This constraint comes from the fact that 2^^h must fit within a word.
+ *
+ * See `treeHash` for more details.
+ */
+type constraint (h <= 32)
 
 /**
  * The length (in bytes) of the message digest, as well as each node.

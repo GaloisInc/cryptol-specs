@@ -102,6 +102,8 @@ private
  * The XMSS public key consists of the root of the binary hash tree and the
  * seed SEED, both also stored in the private key.
  *
+ * Note: This differs from [RFC-8391] in that we do not include the OID.
+ *
  * [RFC-8391] Section 4.1.7.
  */
 type PublicKey = {
@@ -342,4 +344,115 @@ private
     ltree pk SEED ADRS = result where
         ADRS' = setTreeHeight ADRS 0
         result = ltree'`{WOTS::len} pk SEED ADRS'
+
+    /**
+     * The "base case" for `treeHash`.
+     *
+     * This computes the nodes for all entries in the tree corresponding to the
+     * level associated with the start index `s`. That is, if `s` corresponds to
+     * the leftmost leaf of a sub-tree, `treeHash_base` returns a list of all
+     * the nodes at the same level as `s`.
+     *
+     * This roughly corresponds to the `for`-loop in `treeHash`.
+     *
+     * [RFC-8391] Section 4.1.6, Algorithm 9.
+     */
+    treeHash_base : {s, t} (
+            // The start index.
+            fin s,
+            // The target node height.
+            fin t,
+            // We set a word in `Address` to the value `s + i` for `i ∈ 0..2^^t
+            // - 1`. Thus, we require that `s + 2^^t - 1` fit in a word.
+            width (s + 2^^t - 1) <= 32,
+            // This comes from the above requirement, since `2^^t` for any `t >
+            // 32` would not fit in a word.
+            t <= 32,
+            // From the spec: `if( s % (1 << t) != 0 ) return -1`. We simply
+            // disallow this case.
+            //
+            // This enforces that the leaf at index `s` is a leftmost leaf of a
+            // sub-tree of height `t`.
+            s % (2^^t) == 0
+        ) => PrivateKey -> Address -> [2^^t]([n]Byte, Address)
+    treeHash_base SK ADRS = base where
+        base = [ (node, ADRS_3) where
+                 SEED = SK.seed
+                 ADRS_1 = setOTSAddress (setType ADRS 0) (`s + i)
+                 pk = WOTS::genPK (getWOTS_SK SK (`s + i)) SEED ADRS_1
+                 ADRS_2 = setLTreeAddress (setType ADRS_1 1) (`s + i)
+                 node = ltree pk SEED ADRS_2
+                 ADRS_3 = setTreeIndex (setTreeHeight (setType ADRS_2 2) 0) (i + `s)
+               | i <- [0..2^^t - 1]
+               ]
+
+    /**
+     * The "induction step" for `treeHash`.
+     *
+     * This takes a list of `2^^t` elements and combines them to produce a list
+     * of `2^^(t-1)` elements by pairwise hashing elements using `RAND_HASH`.
+     *
+     * This roughly corresponds to the `while`-loop in `treeHash`.
+     *
+     * [RFC-8391] Section 4.1.6, Algorithm 9.
+     */
+    treeHash_combine : {t} (
+            fin t
+        ) => [2^^t]([n]Byte, Address) -> [n]Byte -> ([n]Byte, Address)
+    treeHash_combine list SEED
+        | t == 0 => list @ 0
+        | t >= 1 => treeHash_combine list' SEED where
+            list' = [ (node, ADRS'') where
+                      ADRS' = setTreeIndex a.1 (((getTreeIndex a.1) - 1) / 2)
+                      node = RAND_HASH a.0 b.0 SEED ADRS'
+                      ADRS'' = setTreeHeight ADRS' (getTreeHeight ADRS' + 1)
+                    | [a, b] <- groupBy`{2} list
+                    ]
+
+    /**
+     * The `treeHash` algorithm.
+     *
+     * This implementation does not closely mimic the algorithm in [RFC-8391].
+     * That algorithm utilizes a stack which is difficult to implement in
+     * Cryptol. Instead, we implement `treeHash` "level-by-level". To explain
+     * this, we first step back and explain the goal of `treeHash`.
+     *
+     * At a high level, `treeHash` takes a leftmost leaf of a sub-tree of height
+     * `t`, and computes the root node of that sub-tree. This can be done in two
+     * ways, which essentially boils down to a breadth-first versus depth-first
+     * approach. The breadth-first way is to first compute all the nodes at the
+     * same level as the leftmost leaf, use those nodes to compute the parent
+     * nodes at the next level, etc., until the root is reached. The depth-first
+     * way is to use a stack to store nodes as they are computed so we can
+     * continually complete sub-trees as we process all the nodes on the same
+     * level as `s`.
+     *
+     * The `treeHash` algorithm in [RFC-8391] does the computation in a
+     * depth-first manner, using a stack to store state. In this implementation,
+     * we use the breadth-first approach.
+     *
+     * [RFC-8391] Section 4.1.6, Algorithm 9.
+     */
+    treeHash : {s, t} (
+            // The start index.
+            fin s,
+            // The target node height.
+            fin t,
+            // We set a word in `Address` to the value `s + i` for `i ∈ 0..2^^t
+            // - 1`. Thus, we require that `s + 2^^t - 1` fit in a word.
+            width (s + 2^^t - 1) <= 32,
+            // This comes from the above requirement, since `2^^t` for any `t >
+            // 32` would not fit in a word.
+            t <= 32,
+            // From the spec: `if( s % (1 << t) != 0 ) return -1`. We simply
+            // disallow this case.
+            //
+            // This enforces that the leaf at index `s` is a leftmost leaf of a
+            // sub-tree of height `t`.
+            s % (2^^t) == 0
+        ) => PrivateKey -> Address -> [n]Byte
+    treeHash SK ADRS = node.0 where
+        list = treeHash_base`{s, t} SK ADRS
+        node = treeHash_combine`{t} list SK.seed
+
 
