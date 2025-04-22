@@ -132,6 +132,16 @@ toByte : {y, m} (fin y, fin m) => [m] -> [y]Byte
 toByte x = split (drop (zext`{max m (y * 8)} x))
 
 /**
+ * An n-byte value used as the key to a PRF.
+ *
+ * This type is not formally defined in the spec but is defined here for
+ * clarity.
+ *
+ * [RFC-8391] Section 2.5.
+ */
+type Seed = [n]Byte
+
+/**
  * A word is a 32-bit sequence used to define hash addresses.
  * [RFC-8391] Section 2.5.
  */

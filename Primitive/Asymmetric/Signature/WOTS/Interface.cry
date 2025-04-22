@@ -104,6 +104,16 @@ type Byte = [8]
 toByte : {y, m} (fin y, fin m) => [m] -> [y]Byte
 
 /**
+ * An n-byte value used as the key to a PRF.
+ *
+ * This type is not formally defined in the spec but is defined here for
+ * clarity.
+ *
+ * [RFC-8391] Section 2.5.
+ */
+type Seed = [n]Byte
+
+/**
  * Address scheme for randomizing hash function calls in the OTS scheme.
  * [RFC-8391] Section 2.5.
  */
