@@ -776,7 +776,7 @@ private
     /**
     * Calulate x / y in a field.
     * ```repl
-    * :prove  2 %/ 2 == 1 : Z 3
+    * :prove  2 %/ 2 == (1 : Z 3)
     * ```
     */
     (%/) : {a} (Field a) => a -> a -> a
