@@ -149,3 +149,65 @@ property lagrangeOkay x = if groupElem x'
     where
         x' = toInteger x
         groupElem a = a % `p > 0
+
+/**
+ * Compare the value system operations
+ * to the built-ins.
+ * ```
+ * :exhaust builtinAddOkay `{8}
+ */
+builtinAddOkay :
+    {n}
+    (fin n, n > 1)
+    => Z n -> Z n ->  Bit
+property builtinAddOkay x y  = fromZ (x + y) == zPlus `n x' y'
+    where
+        x' = fromZ x
+        y' = fromZ y
+
+/**
+ * Compare the value system operations
+ * to the built-ins.
+ * ```
+ * :exhaust builtinMulOkay `{8}
+ */
+builtinMulOkay :
+    {n}
+    (fin n, n > 1)
+    => Z n -> Z n ->  Bit
+property builtinMulOkay x y  = fromZ (x * y) == zMul `n x' y'
+    where
+        x' = fromZ x
+        y' = fromZ y
+
+/**
+ * Compare the value system operations
+ * to the built-ins.
+ * ```
+ * :exhaust builtinSubOkay `{8}
+ */
+builtinSubOkay :
+    {n}
+    (fin n, n > 1)
+    => Z n -> Z n ->  Bit
+property builtinSubOkay x y  = fromZ (x - y) == zSub `n x' y'
+    where
+        x' = fromZ x
+        y' = fromZ y
+
+/**
+ * Compare the value system operations
+ * to the built-ins.
+ * ```
+ * :exhaust builtinRecipOkay `{17}
+ */
+builtinRecipOkay :
+    {n}
+    (fin n, n > 1, prime n)
+    => Z n ->  Bit
+property builtinRecipOkay x = if exists
+                              then fromZ (recip x) == zRecip `n x'
+                              else True
+    where
+        x' = fromZ x
+        exists = (fromZ x) > 0
