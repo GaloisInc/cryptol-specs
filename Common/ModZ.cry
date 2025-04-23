@@ -109,3 +109,43 @@ property zRecipOkay2 x y = case zRecipC x' y' of
                             Some y'' -> y' * y'' % x' == 1
     where
         (x', y') = (toInteger x, toInteger y)
+
+/**
+ * Exponentiate by squaring in a modular context.
+ */
+zExpBySqr : Integer -> Integer -> Integer -> Integer
+zExpBySqr m x n = if m == 0
+                  then x ^^ n
+                  else y % m
+    where
+        even a = a % 2 == 0
+        half a = if even a then a / 2 else (a - 1) / 2
+        sqr a = a * a
+        y = if n == 0
+            then 1 else
+            if n > 0
+            then y'
+            else y'' // n < 0
+        y' = if even n
+             then zExpBySqr m (sqr x) (half n)
+             else x * zExpBySqr m (sqr x) (half n)
+        y'' = zExpBySqr m (zRecip m x) (-n)
+
+/**
+ * Lagrange's theorem implies that if the order of a group
+ * is `m`, then `a ^^ m == e` for all `a` in the group,
+ * and `e` the neutral element of the group.
+ *
+ * The order of the multiplicative group of some prime field of
+ * order `m` is `m-1`.
+ *
+ * ```repl
+ * :exhaust lagrangeOkay `{5, 17}
+ */
+lagrangeOkay : {n, p} (fin n, prime p) => [n] -> Bit
+property lagrangeOkay x = if groupElem x'
+                          then zExpBySqr `p x' (`p - 1) == 1
+                          else True
+    where
+        x' = toInteger x
+        groupElem a = a % `p > 0
