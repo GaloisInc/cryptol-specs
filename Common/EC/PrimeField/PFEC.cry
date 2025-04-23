@@ -53,7 +53,6 @@ References
 
 module Common::EC::PrimeField::PFEC where
 
-import Common::ModDivZ
 import Common::utils(half, mul2, mul3, mul4, mul8, ZtoBV)
 
 parameter
@@ -773,6 +772,15 @@ private
             T = to_projective (validPointFromK k1)
             R_plain = to_affine (ec_full_add (ec_mult d0 S) (ec_mult d1 T))
             R_twin = to_affine (ec_twin_mult d0 S d1 T)
+
+    /**
+    * Calulate x / y in a field.
+    * ```repl
+    * :prove  2 %/ 2 == 1 : Z 3
+    * ```
+    */
+    (%/) : {a} (Field a) => a -> a -> a
+    (%/) x y = x * recip y
 
 /*
 Note [Limit scope of recip in where clauses]
