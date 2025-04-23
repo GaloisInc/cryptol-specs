@@ -1,0 +1,199 @@
+/**
+ * Some basic utilities for primality testing in the value system.
+ * Cryptol support a `prime` constraint for type-level numbers,
+ * but there is no such native support for value-level integral types, say.
+ */
+
+module Common::Primes where
+
+/**
+ * Some primality tests are deterministic, while
+ * others are probabalistic. Encode the results of
+ * a primality test in this enumerated type.
+ *
+ * Note: There may be other indications a test might
+ * return; this type can be augmented if desired.
+ */
+enum Primality a =
+    Prime a | Composite a | ProbablyPrime a
+
+/**
+ * Unwrap the result type and return the underlying `a`.
+ */
+unwrapPrimality : {a} () => Primality a -> a
+unwrapPrimality x = case x of
+    Prime y -> y
+    Composite y -> y
+    ProbablyPrime y -> y
+
+/**
+ * Unwrap the option type and return a default value on None
+ */
+unwrapOption : {a} (Zero a) => Option a -> a
+unwrapOption x = case x of
+    Some y -> y
+    None -> zero
+
+/**
+ * Return `True` if the underlying `a` is wrapped
+ * in `Prime` by some test.
+ */
+testsPrime : {a} () => Primality a -> Bit
+testsPrime x = case x of
+    Prime _ -> True
+    _ -> False
+
+/**
+ * Return `True` if the underlying `a` is wrapped
+ * in `ProbablyPrime` by some test.
+ */
+testsProbablyPrime : {a} () => Primality a -> Bit
+testsProbablyPrime x = case x of
+    ProbablyPrime _ -> True
+    _ -> False
+
+/**
+ * Return `True` if the underlying `a` is wrapped
+ * in `Composite` by some test.
+ */
+testsComposite : {a} () => Primality a -> Bit
+testsComposite x = case x of
+    Composite _ -> True
+    _ -> False
+
+/**
+ * Trial division is a brute-force deterministic method
+ * for primality testing.
+ * ```repl
+ * :prove testsPrime (trialDivision 2)
+ * :prove testsPrime (trialDivision 11)
+ * :prove testsComposite (trialDivision 0)
+ * :prove testsComposite (trialDivision 25)
+ * ```
+ */
+trialDivision : Integer -> Primality Integer
+trialDivision x = if c then Composite x else
+                  if c' then Prime x else
+                  _tdiv 3 x'
+    where
+        // if `x < 0`, apply `abs`
+        x' = abs x
+        // if `x' == 0, 1`, return `Composite`
+        c = (x' != 2 /\ x' % 2 == 0) \/ (x' == 1)
+        // if `x == 2`, return `Prime`
+        c' = x' == 2
+        // Otherwise, check all odd values
+        // between `abs x` and `sqrt (abs x)`
+        // using the trial division algorithm
+        _tdiv i n = if i * i > n // if `i^^2 > n`, we're done
+                  then Prime x
+                  else
+                    if n % i == 0
+                    then Composite x // `i` is a divisor of `x`
+                    else _tdiv (i + 2) n // Check the next possible divisor
+
+/**
+ * A common technqiue in primality testing is to
+ * check if a number `n` is divisible by some
+ * list of potential factors.
+ *
+ * ```repl
+ * let mySieve = [2, 3, 5, 7]
+ * :prove sieveBy mySieve 14
+ * :prove ~sieveBy mySieve 11
+ * ```
+ */
+sieveBy :
+    {n}
+    (fin n)
+    => [n]Integer -> Integer -> Bit
+sieveBy factors n = any (\i -> n % i == 0) factors
+
+/**
+ * The Sieve of Eratosthenes is an algorithm
+ * to find prime numbers up to some bound.
+ * ```repl
+ * :prove eratosthenesSieve `{5} == [2, 3, 5, 7, 11]
+ * ```
+ */
+eratosthenesSieve :
+    {n}
+    (fin n)
+    => [n]Integer
+eratosthenesSieve
+    | n == 0 => []
+    | n == 1 => [2]
+    | n == 2 => [2, 3]
+    | n > 2 => oldSieve # [nextOdd (maxP + 2)]
+    where
+        // consider the first `n - 1` primes.
+        // find the next odd number that is not
+        // divisible by any member of the list.
+        oldSieve = eratosthenesSieve `{n - 1}
+        maxP = last oldSieve
+        nextOdd = (\y -> if sieveBy oldSieve y
+                           then nextOdd (y + 2)
+                           else y)
+
+
+/**
+ * For all `n`, the array produced by the Sieve of Eratosthenes
+ * pass trial division.
+ * ```
+ * :prove eratosthenesSieveProducesPrimes `{32}
+ * ```
+ */
+eratosthenesSieveProducesPrimes : {n} (fin n) => Bit
+property eratosthenesSieveProducesPrimes =
+    all testsPrime (map trialDivision (eratosthenesSieve `{n}))
+
+/**
+ * The Miller Rabin primality test requires a particular factorization
+ * of the target number. This returns `(s, q)` such that
+ * `n - 1 == 2^^s * q /\ q % 2 == 1`
+ * ```repl
+ * :prove unwrapOption (mrFactor 17) == (4, 1)
+ * :prove unwrapOption (mrFactor 2) == (0, 1)
+ * :prove unwrapOption (mrFactor 0) == (0, 0)
+ * :prove unwrapOption (mrFactor 23) == (1, 11)
+ * ```
+ */
+mrFactor : Integer -> Option (Integer, Integer)
+mrFactor n = factorization
+    where
+        n' = abs n
+        sgn = if n < 0 then -1 else 1
+        factorization = if n' < 2
+                        then None
+                        else Some (s, q)
+        step = \s' q' -> if q' % 2 == 0
+                         then step (s' + 1) (q' / 2)
+                         else (s', q' * sgn)
+        (s, q) = step 0 (n' - 1)
+
+/**
+ * Test the Miller Rabin factorization formula
+ * for bitvectors of length `n`.
+ * ```
+ * :exhaust mrFactorOkay `{8}
+ * ```
+ */
+mrFactorOkay : {n} (fin n) => [n] -> Bit
+property mrFactorOkay x = case mrFactor x' of
+        None -> True
+        Some (s, q) -> x' - 1 == 2 ^^ s * q /\ q % 2 == 1
+    where
+        x' = toInteger x
+
+
+/**
+ * The Miller Rabin primality test is an efficient
+ * probabalistic test of primality. One could think
+ * of the Miller Rabin test as a test of compositeness:
+ * when the Miller Rabin test indicates a number is composite,
+ * it definitely is composite.
+ *
+ * This is one iteration of the test.
+ */
+millerRabin : Integer -> Primality a
+millerRabin = undefined
