@@ -1,0 +1,89 @@
+/**
+ * Arithmetic modulo `n` for `n` that are not
+ * known at the type level. Cryptol has built-ins
+ * for `Z n` arithmetic, if `n` is type level.
+ */
+
+module ModZ where
+
+/*
+ * `z` is equivalent to `m` modulo `n` if there exists some `k`
+ * such that `n * k + m == z`. Note, then, if `n` is `0`, that
+ * `n * k == 0`, implying `m == z`. Thus, if `n` is `0`, "mod 0"
+ * arithmetic can be thought of as integer arithmetic.
+ */
+
+/**
+ * Add two numbers modulo `n`.
+ */
+zPlus : Integer -> Integer -> Integer -> Integer
+zPlus n x y = if n == 0 then x + y else (x + y) % n
+
+/**
+ * Multiply two numbers modulo `n`.
+ */
+zMul : Integer -> Integer -> Integer -> Integer
+zMul n x y = if n == 0 then x * y else (x * y) % n
+
+/**
+ * Subtract two numbers modulo `n`.
+ */
+zSub : Integer -> Integer -> Integer -> Integer
+zSub n x y = if n == 0 then x - y else (x - y) % n
+
+/**
+ * Compute the greatest common divisor (GCD)
+ * of two integers `a` and `b`.
+ */
+GCD : Integer -> Integer -> Integer
+GCD a b = if b == 0
+          then max a (-a)
+          else GCD b (a % b)
+
+/**
+ * Compute the modular inverse of `x` mod `n`, if it exists.
+ * Return `None` if the modular inverse of `x` mod `n` does
+ * not exist.
+ *
+ * We do not support non-positive `n`.
+ */
+zRecipC : Integer -> Integer -> Option Integer
+zRecipC n x = if n <= 0 then None else inverse
+    where
+        // Compute Bezout coefficient `ns + xt == r`
+        // Reduced modulo `n`, this is `xt == r`.
+        // The inverse exists when `r == 1`.
+        // Iteratively update the Bezout coefficients
+        // until the GCD computation is complete.
+        f t r t' r' = if r' != 0
+                      then f t' r' t'' r''
+                      else (t, r, t', r')
+            where
+                t'' = t - t' * quotient
+                r'' = r - r' * quotient
+                quotient = r / r'
+        // Execute the GCD computation
+        (putativeInverse, gcd, _, _) = f 0 n 1 x
+        // If the GCD is one, then the inverse exists.
+        // Otherwise, there is no inverse.
+        inverse = if gcd != 1 then None else Some (putativeInverse % n)
+
+/**
+ * Compute the modular inverse of `x` mod `n`. "Error"
+ * if the modular inverse of `x` mod `n` does not exist.
+ */
+zRecip : Integer -> Integer -> Integer
+zRecip n x = case zRecipC n x of
+    None -> error "The inverse does not exist."
+    Some y -> y
+
+/**
+ * The modular inverse of some `n` exists
+ * when the `GCD n x == 1`.
+ */
+zRecipOkay : {n} (fin n) => [n] -> [n] -> Bit
+property zRecipOkay x y = case zRecipC x' y' of
+        None -> GCD x' y' != 1 \/ x' == 0 \/ y' == 0
+        Some z -> GCD x' y' == 1
+    where
+        (x', y') = (toInteger x, toInteger y)
