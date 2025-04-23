@@ -6,6 +6,8 @@
 
 module Common::Primes where
 
+import Common::ModZ as MZ
+
 /**
  * Some primality tests are deterministic, while
  * others are probabalistic. Encode the results of
@@ -15,7 +17,7 @@ module Common::Primes where
  * return; this type can be augmented if desired.
  */
 enum Primality a =
-    Prime a | Composite a | ProbablyPrime a
+    Prime a | Composite a | ProbablyPrime a | Err
 
 /**
  * Unwrap the result type and return the underlying `a`.
@@ -25,6 +27,7 @@ unwrapPrimality x = case x of
     Prime y -> y
     Composite y -> y
     ProbablyPrime y -> y
+    _ -> error "Cannot unwrap 'error'"
 
 /**
  * Unwrap the option type and return a default value on None
@@ -59,6 +62,14 @@ testsProbablyPrime x = case x of
 testsComposite : {a} () => Primality a -> Bit
 testsComposite x = case x of
     Composite _ -> True
+    _ -> False
+
+/**
+ * Return `True` if no underlying `a` is wrapped.
+ */
+testsErr : {a} () => Primality a -> Bit
+testsErr x = case x of
+    Err -> True
     _ -> False
 
 /**
@@ -185,7 +196,6 @@ property mrFactorOkay x = case mrFactor x' of
     where
         x' = toInteger x
 
-
 /**
  * The Miller Rabin primality test is an efficient
  * probabalistic test of primality. One could think
@@ -195,5 +205,28 @@ property mrFactorOkay x = case mrFactor x' of
  *
  * This is one iteration of the test.
  */
-millerRabin : Integer -> Primality a
-millerRabin = undefined
+millerRabin : Integer -> Integer -> Primality Integer
+millerRabin a n = if n < 0
+                  then millerRabin a (abs n)
+                  else result
+    where
+        // if `a` is not properly bounded,
+        // don't fix it...instead, just return
+        // an error. Also, if `n` is not odd
+        // and greater than two, consider this
+        // an error.
+        result = if a < 1 \/ a > n - 1 \/ n < 2 \/ n % 2 == 0
+                 then Err
+                 else chk
+        // Run Miller-Rabin with the witness `a`.
+        chk = if qchk \/ schk (s - 1)
+               then ProbablyPrime n
+               else Composite n
+        exp = MZ::zExpBySqr n
+        qchk = exp a q == 1
+        schk i = if i < 0
+                 then True
+                 else exp a (2 ^^ i * q) == n - 1 /\ schk (i - 1)
+        (s, q) = case  mrFactor n of
+            None -> error "Should be unreachable"
+            Some t -> t

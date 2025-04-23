@@ -4,7 +4,7 @@
  * for `Z n` arithmetic, if `n` is type level.
  */
 
-module ModZ where
+module Common::ModZ where
 
 /*
  * `z` is equivalent to `m` modulo `n` if there exists some `k`
