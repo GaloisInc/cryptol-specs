@@ -45,10 +45,10 @@ GCD a b = if b == 0
  * Return `None` if the modular inverse of `x` mod `n` does
  * not exist.
  *
- * We do not support non-positive `n`.
+ * We do not support non-positive `n` or "modulo 1" arithmetic.
  */
 zRecipC : Integer -> Integer -> Option Integer
-zRecipC n x = if n <= 0 then None else inverse
+zRecipC n x = if n <= 1 \/ x == 0 then None else inverse
     where
         // Compute Bezout coefficient `ns + xt == r`
         // Reduced modulo `n`, this is `xt == r`.
@@ -79,11 +79,33 @@ zRecip n x = case zRecipC n x of
 
 /**
  * The modular inverse of some `n` exists
- * when the `GCD n x == 1`.
+ * when the `GCD n x == 1` and both arguments
+ * are non-zero.
+ * ```
+ * :exhaust zRecipOkay `{6}
+ * ```
  */
 zRecipOkay : {n} (fin n) => [n] -> [n] -> Bit
-property zRecipOkay x y = case zRecipC x' y' of
-        None -> GCD x' y' != 1 \/ x' == 0 \/ y' == 0
-        Some z -> GCD x' y' == 1
+property zRecipOkay x y = GCD x' y' == 1 /\
+                          x' != 0 /\
+                          y' != 0 /\
+                          x' > 1 ==>
+                          case zRecipC x' y' of
+                            None -> False
+                            Some _ -> True
+    where
+        (x', y') = (toInteger x, toInteger y)
+
+/**
+ * The modular inverse computed by `zRecip` is
+ * really an inverse.
+ * ```
+ * :exhaust zRecipOkay2 `{6}
+ * ```
+ */
+zRecipOkay2 : {n} (fin n) => [n] -> [n] -> Bit
+property zRecipOkay2 x y = case zRecipC x' y' of
+                            None -> True
+                            Some y'' -> y' * y'' % x' == 1
     where
         (x', y') = (toInteger x, toInteger y)
