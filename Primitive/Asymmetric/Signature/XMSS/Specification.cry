@@ -9,6 +9,7 @@
  *
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
+ * @author Alex J Malozemoff <amaloz@galois.com>
  */
 module Primitive::Asymmetric::Signature::XMSS::Specification where
 
@@ -16,3 +17,503 @@ import interface Primitive::Asymmetric::Signature::XMSS::Parameters
 import interface Primitive::Asymmetric::Signature::WOTS::Interface as WOTS
 
 interface constraint (n == WOTS::n)
+
+/**
+ * Types defined for WOTS+ that are relevant to XMSS.
+ */
+type Address = WOTS::Address
+type Byte = WOTS::Byte
+type Seed = WOTS::Seed
+
+private
+    /**
+     * Set the `type` word (in the 4th position) in an `Address`.
+     * This setter is defined implicitly in the spec.
+     *
+     * [RFC-8391] Section 2.7.
+     */
+    setType : Address -> Word -> Address
+    setType address value = take`{3 * 4} address # split value # drop`{4 * 4} address
+
+/**
+ * A word is a 32-bit sequence used to define hash addresses.
+ * [RFC-8391] Section 2.5.
+ */
+type Word = [32]
+
+/**
+ * Address scheme for randomizing hash function calls in the L-tree.
+ *
+ * The address breaks down 7 components, each 1 word long unless specified.
+ * 1. Layer address
+ * 2-3. Tree address (2 Words)
+ * 4. Type (fixed at 1)
+ * 5. L-tree address
+ * 6. Tree height
+ * 7. Tree index
+ * 8. keyAndMask
+ *
+ * Note that this isn't defined in terms of the `Word` type because it's
+ * operated on by things that require arrays of bytes.
+ *
+ * [RFC-8391] Section 2.5.
+ */
+type LTreeAddress = [8 * 4]Byte
+
+private
+    /**
+     * Set the `L-tree address` word (the 5th position) in a `LTreeAddress`.
+     * This setter is defined implicitly in the spec.
+     *
+     * [RFC-8391] Section 2.7.
+     */
+    setLTreeAddress : LTreeAddress -> Word -> LTreeAddress
+    setLTreeAddress address value = take`{4 * 4} address # (split value) # drop`{5 * 4} address
+
+    /**
+     * Set the `tree height` word (in the 6th position) in an `LTreeAddress`.
+     * This setter is defined implicitly in the spec.
+     *
+     * [RFC-8391] Section 2.7.
+     */
+    setTreeHeight : LTreeAddress -> Word -> LTreeAddress
+    setTreeHeight address value = take`{5 * 4} address # (split value) # drop`{6 * 4} address
+
+    /**
+     * Get the `tree height` word (in the 6th position) in an `LTreeAddress`.
+     * This getter is defined implicitly in the spec.
+     *
+     * [RFC-8391] Section 2.7.
+     */
+    getTreeHeight : LTreeAddress -> Word
+    getTreeHeight address = value where
+        value = join (take`{1 * 4} (drop`{5 * 4} address))
+
+    /**
+     * Test `setTreeHeight` and `getTreeHeight`.
+     * ```repl
+     * :prove test_tree_height_getter_setter
+     * ```
+     */
+    property test_tree_height_getter_setter ADRS i = i' == i where
+        ADRS' = setTreeHeight ADRS i
+        i' = getTreeHeight ADRS'
+
+    /**
+     * Set the `tree index` word (in the 7th position) in an `LTreeAddress`.
+     * This setter is defined implicitly in the spec.
+     *
+     * [RFC-8391] Section 2.7.
+     */
+    setTreeIndex : LTreeAddress -> Word -> LTreeAddress
+    setTreeIndex address value = take`{6 * 4} address # (split value) # drop`{7 * 4} address
+
+    /**
+     * Get the `tree index` word (in the 7th position) in an `LTreeAddress`.
+     * This getter is defined implicitly in the spec.
+     *
+     * [RFC-8391] Section 2.7.
+     */
+    getTreeIndex : LTreeAddress -> Word
+    getTreeIndex address = join (take`{1 * 4} (drop`{6 * 4} address))
+
+    /**
+    * Set the `keyAndMask` word (the 8th position) in an `LTreeAddress`.
+    * This setter is defined implicitly in the spec.
+    *
+    * [RFC-8391] Section 2.7.
+    */
+    setKeyAndMask : LTreeAddress -> Word -> LTreeAddress
+    setKeyAndMask address value = take`{7 * 4} address # split value
+
+
+
+/**
+ * Address scheme for the main tree hash addresses.
+ *
+ * The address breaks down 7 components, each 1 word long unless specified.
+ * 1. Layer address
+ * 2-3. Tree address (2 Words)
+ * 4. Type (fixed at 2)
+ * 5. Padding (fixed at 0)
+ * 6. Tree height
+ * 7. Tree index
+ * 8. keyAndMask
+ *
+ * Note that this isn't defined in terms of the `Word` type because it's
+ * operated on by things that require arrays of bytes.
+ *
+ * [RFC-8391] Section 2.5.
+ */
+type HashTreeAddress = [8 * 4]Byte
+
+/**
+ * An XMSS private key.
+ *
+ * An XMSS private key contains 2^^h WOTS+ private keys, the leaf index of the
+ * next WOTS+ private key that has not yet been used, an n-byte key to generate
+ * pseudorandom values for randomized message hashing, the n-byte root node of
+ * the tree and SEED, and the n-byte public seed used to pseudorandomly generate
+ * bitmasks and hash function keys.
+ *
+ * [RFC-8391] Section 4.1.3.
+ */
+type PrivateKey = {
+    wots_sks: [2^^h]WOTS::PrivateKey,
+    idx: Word,
+    SK_PRF: [n]Byte,
+    root: [n]Byte,
+    seed: Seed
+}
+
+private
+    /**
+     * Set the index in a private key.
+     * This setter is defined implicitly in the spec.
+     *
+     * [RFC-8391] Section 2.7.
+     */
+    setIdx : PrivateKey -> Word -> PrivateKey
+    setIdx SK idx = SK' where
+        SK' = {
+            wots_sks = SK.wots_sks,
+            idx = idx,
+            SK_PRF = SK.SK_PRF,
+            root = SK.root,
+            seed = SK.seed
+        }
+
+    /**
+     * Take as input an XMSS private key `SK` and an integer `i` and output the
+     * `i`th WOTS+ private key.
+     *
+     * [RFC-8391] Section 4.1.3.
+     */
+    getWOTS_SK : PrivateKey -> Word -> WOTS::PrivateKey
+    getWOTS_SK SK i = SK.wots_sks @ i
+
+
+
+/**
+ * An XMSS public key.
+ *
+ * The XMSS public key consists of the root of the binary hash tree and the
+ * seed SEED, both also stored in the private key.
+ *
+ * Note: This differs from [RFC-8391] in that we do not include the OID.
+ *
+ * [RFC-8391] Section 4.1.7.
+ */
+type PublicKey = {
+    root: [n]Byte,
+    seed: Seed
+}
+
+/**
+ * An XMSS signature.
+ *
+ * An XMSS signature is a (4 + n + (len + h) * n)-byte string consisting
+ * of:
+ * -  the index idx_sig of the used WOTS+ key pair (4 bytes),
+ * -  a byte string r used for randomized message hashing (n bytes),
+ * -  a WOTS+ signature sig_ots (len * n bytes), and
+ * -  the so-called authentication path 'auth' for the leaf associated
+ *    with the used WOTS+ key pair (h * n bytes).
+ *
+ * [RFC-8391] Section 4.1.8.
+ */
+type Signature = {
+    idx_sig: Word,
+    r: [n]Byte,
+    sig_ots: WOTS::Signature,
+    auth: [h][n]Byte
+}
+
+private
+    /**
+     * Set the `OTS address` word (the 5th position) in a `WOTS::OTSHashAddress`.
+     * This setter is defined implicitly in the spec.
+     *
+     * [RFC-8391] Section 2.7.
+     */
+    setOTSAddress : WOTS::OTSHashAddress -> Word -> WOTS::OTSHashAddress
+    setOTSAddress address value = take`{4 * 4} address # (split value) # drop`{5 * 4} address
+
+    /**
+     * `RAND_HASH` - Randomized tree hashing.
+     *
+     * `RAND_HASH` takes as input two n-byte values LEFT and RIGHT that
+     * represent the left and the right halves of the hash function input, the
+     * seed SEED used as key for PRF, and the address ADRS of this hash function
+     * call.  RAND_HASH first uses PRF with SEED and ADRS to generate a key KEY
+     * and n-byte bitmasks BM_0, BM_1.  Then, it returns the randomized hash
+     * H(KEY, (LEFT XOR BM_0) || (RIGHT XOR BM_1)).
+     *
+     * Algorithm 7: RAND_HASH
+     *
+     *   Input:  n-byte value LEFT, n-byte value RIGHT, seed SEED,
+     *           address ADRS
+     *   Output: n-byte randomized hash
+     *
+     *   ADRS.setKeyAndMask(0);
+     *   KEY = PRF(SEED, ADRS);
+     *   ADRS.setKeyAndMask(1);
+     *   BM_0 = PRF(SEED, ADRS);
+     *   ADRS.setKeyAndMask(2);
+     *   BM_1 = PRF(SEED, ADRS);
+     *
+     *   return H(KEY, (LEFT XOR BM_0) || (RIGHT XOR BM_1));
+     *
+     * [RFC-8391] Section 4.1.4, Algorithm 7.
+     */
+    RAND_HASH : [n]Byte -> [n]Byte -> Seed -> LTreeAddress -> [n]Byte
+    RAND_HASH LEFT RIGHT SEED ADRS = hash where
+        ADRS' = setKeyAndMask ADRS 0
+        KEY = WOTS::PRF SEED ADRS'
+        ADRS'' = setKeyAndMask ADRS' 1
+        BM_0 = WOTS::PRF SEED ADRS''
+        ADRS''' = setKeyAndMask ADRS'' 2
+        BM_1 = WOTS::PRF SEED ADRS'''
+        hash = H KEY ((LEFT ^ BM_0) # (RIGHT ^ BM_1))
+
+    /**
+     * Helper function for `ltree` for computing `pk`.
+     *
+     * This corresponds to the `for`-loop in Algorithm 8:
+     *
+     *   for ( i = 0; i < floor(len' / 2); i++ ) {
+     *     ADRS.setTreeIndex(i);
+     *     pk[i] = RAND_HASH(pk[2i], pk[2i + 1], SEED, ADRS);
+     *   }
+     *
+     * [RFC-8391] Section 4.1.5, Algorithm 8.
+     */
+    ltree_pk : {len', half_floor} (
+            fin len',
+            /*
+             * We iterate over `i ∈ [0..floor(len' / 2) - 1]`, so we need `len'
+             * > 1`.
+             */
+            len' > 1,
+            half_floor == len' / 2, // Equivalent to `floor(len' / 2)`
+            /*
+             * The `tree index` is a word in `LTreeAddress`, so since we call
+             * `setTreeIndex` on `i ∈ [0 .. half_floor - 1]` we need that the
+             * width of `half_floor - 1` fits in a word.
+             */
+            width (half_floor - 1) <= 32
+
+        ) => [len'][n]Byte -> Seed -> LTreeAddress -> [half_floor][n]Byte
+    ltree_pk pk SEED ADRS = pk' where
+        pk' = [ pk_i where
+                ADRS' = setTreeIndex ADRS i
+                pk_i = RAND_HASH (pk @ (2 * i)) (pk @ (2 * i + 1)) SEED ADRS'
+              | i <- [0..half_floor - 1]
+              ]
+
+    /**
+     * Recursive version of `ltree`.
+     *
+     * This corresponds to the `while` loop in Algorithm 8:
+     *
+     *   while ( len' > 1 ) {
+     *     // This `for`-loop is implemented by `ltree_pk`.
+     *     for ( i = 0; i < floor(len' / 2); i++ ) {
+     *       ADRS.setTreeIndex(i);
+     *       pk[i] = RAND_HASH(pk[2i], pk[2i + 1], SEED, ADRS);
+     *     }
+     *     if ( len' % 2 == 1 ) {
+     *       pk[floor(len' / 2)] = pk[len' - 1];
+     *     }
+     *    len' = ceil(len' / 2);
+     *    ADRS.setTreeHeight(ADRS.getTreeHeight() + 1);
+     *  }
+     *
+     * [RFC-8391] Section 4.1.5, Algorithm 8.
+     */
+    ltree' : {len', half_floor, half_ceil} (
+            fin len',
+            len' >= 1,
+            half_floor == len' / 2, // Equivalent to `floor(len' / 2)`
+            width half_floor <= 32,
+            half_ceil == len' /^ 2  // Equivalent to `ceil(len' / 2)`
+        ) => [len'][n]Byte -> Seed -> LTreeAddress -> [n]Byte
+    ltree' pk SEED ADRS
+        /*
+         * The base case. Return the only value in `pk`.
+         */
+        | len' <= 1 => pk @ 0
+        /*
+         * The `while`-loop condition for when `len' % 2 == 0`.
+         *
+         * In this case, we do not need to append `pk[len' - 1]` to the end of
+         * `pk`.
+         */
+        | (len' > 1, len' % 2 == 0) => result where
+            pk' = ltree_pk pk SEED ADRS
+            ADRS' = setTreeIndex ADRS (`half_floor - 1)
+            ADRS'' = setTreeHeight ADRS' ((getTreeHeight ADRS') + 1)
+            result = ltree'`{half_ceil} pk' SEED ADRS''
+        /*
+         * The `while`-loop condition for when `len' % 2 == 1`.
+         *
+         * In this case, we need to append `pk[len' - 1]` to the end of `pk`.
+         */
+        | (len' > 1, len' % 2 == 1) => result where
+            pk' = (ltree_pk pk SEED ADRS) # split (pk ! 0)
+            ADRS' = setTreeIndex ADRS (`half_floor - 1)
+            ADRS'' = setTreeHeight ADRS' ((getTreeHeight ADRS') + 1)
+            result = ltree'`{half_ceil} pk' SEED ADRS''
+
+    /**
+     * `ltree` - unbalanced binary hash tree.
+     *
+     * To compute the leaves of the binary hash tree, a so-called L-tree is
+     * used.  An L-tree is an unbalanced binary hash tree, distinct but similar
+     * to the main XMSS binary hash tree.  The algorithm `ltree` takes as input
+     * a WOTS+ public key pk and compresses it to a single n-byte value pk[0].
+     * It also takes as input an L-tree address ADRS that encodes the address of
+     * the L-tree and the seed SEED.
+     *
+     * Note: we implement `ltree` using recursion instead of the `while`-loop as
+     * specified in Algorithm 8.
+     *
+     * Algorithm 8: ltree
+     *
+     *   Input: WOTS+ public key pk, seed SEED, address ADRS (Note: [Errata-5572])
+     *   Output: n-byte compressed public key value pk[0]
+     *
+     *   unsigned int len' = len;
+     *   ADRS.setTreeHeight(0);
+     *   while ( len' > 1 ) {
+     *     for ( i = 0; i < floor(len' / 2); i++ ) {
+     *       ADRS.setTreeIndex(i);
+     *       pk[i] = RAND_HASH(pk[2i], pk[2i + 1], SEED, ADRS);
+     *     }
+     *     if ( len' % 2 == 1 ) {
+     *       pk[floor(len' / 2)] = pk[len' - 1];
+     *     }
+     *     len' = ceil(len' / 2);
+     *     ADRS.setTreeHeight(ADRS.getTreeHeight() + 1);
+     *   }
+     *   return pk[0];
+     *
+     * [RFC-8391] Section 4.1.5, Algorithm 8.
+     * [Errata-5572] @see https://www.rfc-editor.org/errata/eid5572
+     */
+    ltree : WOTS::PublicKey -> Seed -> LTreeAddress -> [n]Byte
+    ltree pk SEED ADRS = result where
+        ADRS' = setTreeHeight ADRS 0
+        result = ltree'`{WOTS::len} pk SEED ADRS'
+
+    /**
+     * The "base case" for `treeHash`.
+     *
+     * This computes the nodes for all entries in the tree corresponding to the
+     * level associated with the start index `s`. That is, if `s` corresponds to
+     * the leftmost leaf of a sub-tree, `treeHash_base` returns a list of all
+     * the nodes at the same level as `s`.
+     *
+     * This roughly corresponds to the `for`-loop in `treeHash`.
+     *
+     * [RFC-8391] Section 4.1.6, Algorithm 9.
+     */
+    treeHash_base : {s, t} (
+            // The start index.
+            fin s,
+            // The target node height.
+            fin t,
+            // We set a word in `Address` to the value `s + i` for `i ∈ 0..2^^t
+            // - 1`. Thus, we require that `s + 2^^t - 1` fit in a word.
+            width (s + 2^^t - 1) <= 32,
+            // This comes from the above requirement, since `2^^t` for any `t >
+            // 32` would not fit in a word.
+            t <= 32,
+            // From the spec: `if( s % (1 << t) != 0 ) return -1`. We simply
+            // disallow this case.
+            //
+            // This enforces that the leaf at index `s` is a leftmost leaf of a
+            // sub-tree of height `t`.
+            s % (2^^t) == 0
+        ) => PrivateKey -> Address -> [2^^t]([n]Byte, Address)
+    treeHash_base SK ADRS = base where
+        base = [ (node, ADRS''') where
+                 SEED = SK.seed
+                 ADRS' = setOTSAddress (setType ADRS 0) (`s + i)
+                 pk = WOTS::genPK (getWOTS_SK SK (`s + i)) SEED ADRS'
+                 ADRS'' = setLTreeAddress (setType ADRS' 1) (`s + i)
+                 node = ltree pk SEED ADRS''
+                 ADRS''' = setTreeIndex (setTreeHeight (setType ADRS'' 2) 0) (i + `s)
+               | i <- [0..2^^t - 1]
+               ]
+
+    /**
+     * The "induction step" for `treeHash`.
+     *
+     * This takes a list of `2^^t` elements and combines them to produce a list
+     * of `2^^(t-1)` elements by pairwise hashing elements using `RAND_HASH`.
+     *
+     * This roughly corresponds to the `while`-loop in `treeHash`.
+     *
+     * [RFC-8391] Section 4.1.6, Algorithm 9.
+     */
+    treeHash_combine : {t} (
+            fin t
+        ) => [2^^t]([n]Byte, Address) -> Seed -> ([n]Byte, Address)
+    treeHash_combine list SEED
+        | t == 0 => list @ 0
+        | t >= 1 => treeHash_combine list' SEED where
+            list' = [ (node, ADRS'') where
+                      ADRS' = setTreeIndex a.1 (((getTreeIndex a.1) - 1) / 2)
+                      node = RAND_HASH a.0 b.0 SEED ADRS'
+                      ADRS'' = setTreeHeight ADRS' (getTreeHeight ADRS' + 1)
+                    | [a, b] <- groupBy`{2} list
+                    ]
+
+    /**
+     * The `treeHash` algorithm.
+     *
+     * This implementation does not closely mimic the algorithm in [RFC-8391].
+     * That algorithm utilizes a stack which is difficult to implement in
+     * Cryptol. Instead, we implement `treeHash` "level-by-level". To explain
+     * this, we first step back and explain the goal of `treeHash`.
+     *
+     * At a high level, `treeHash` takes a leftmost leaf of a sub-tree of height
+     * `t`, and computes the root node of that sub-tree. This can be done in two
+     * ways, which essentially boils down to a breadth-first versus depth-first
+     * approach. The breadth-first way is to first compute all the nodes at the
+     * same level as the leftmost leaf, use those nodes to compute the parent
+     * nodes at the next level, etc., until the root is reached. The depth-first
+     * way is to use a stack to store nodes as they are computed so we can
+     * continually complete sub-trees as we process all the nodes on the same
+     * level as `s`.
+     *
+     * The `treeHash` algorithm in [RFC-8391] does the computation in a
+     * depth-first manner, using a stack to store state. In this implementation,
+     * we use the breadth-first approach.
+     *
+     * [RFC-8391] Section 4.1.6, Algorithm 9.
+     */
+    treeHash : {s, t} (
+            // The start index.
+            fin s,
+            // The target node height.
+            fin t,
+            // We set a word in `Address` to the value `s + i` for `i ∈ 0..2^^t
+            // - 1`. Thus, we require that `s + 2^^t - 1` fit in a word.
+            width (s + 2^^t - 1) <= 32,
+            // This comes from the above requirement, since `2^^t` for any `t >
+            // 32` would not fit in a word.
+            t <= 32,
+            // From the spec: `if( s % (1 << t) != 0 ) return -1`. We simply
+            // disallow this case.
+            //
+            // This enforces that the leaf at index `s` is a leftmost leaf of a
+            // sub-tree of height `t`.
+            s % (2^^t) == 0
+        ) => PrivateKey -> Address -> [n]Byte
+    treeHash SK ADRS = node.0 where
+        list = treeHash_base`{s, t} SK ADRS
+        node = treeHash_combine`{t} list SK.seed
+
+

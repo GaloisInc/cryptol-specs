@@ -72,6 +72,12 @@ type len_2 = lg2 (len_1 * (w - 1)) / lg2 w + 1
  * [RFC-8391] Section 3.1.1.
  */
 type len = len_1 + len_2
+/**
+ * This constraint comes from the fact that we set locations in `Address` to
+ * functions of `len` (in particular, `len / 2`). These locations are 32 bits
+ * in size, so we require that `width len` is no greater than 32 bits.
+ */
+type constraint (width len <= 32)
 
 /**
  * A byte is a sequence of 8 bits using big-endian representation.
@@ -80,10 +86,38 @@ type len = len_1 + len_2
 type Byte = [8]
 
 /**
+ * An n-byte value used as the key to a PRF.
+ *
+ * This type is not formally defined in the spec but is defined here for
+ * clarity.
+ *
+ * [RFC-8391] Section 2.5.
+ */
+type Seed = [n]Byte
+
+/**
  * Address scheme for randomizing hash function calls in the OTS scheme.
  * [RFC-8391] Section 2.5.
  */
 type Address = [8 * 4]Byte
+
+/**
+ * Address scheme for randomizing hash function calls in the OTS scheme.
+ * [RFC-8391] Section 2.5.
+ *
+ * The address breaks down 7 components, each 1 word long unless specified.
+ * 1. Layer address
+ * 2-3. Tree address (2 Words)
+ * 4. Type (fixed at 0)
+ * 5. OTS address
+ * 6. Chain address
+ * 7. Hash address
+ * 8. keyAndMask
+ *
+ * Note that this isn't defined in terms of the `Word` type because it's
+ * operated on by things that require arrays of bytes.
+ */
+type OTSHashAddress = [8 * 4]Byte
 
 /**
  * A private, or secret, key in WOTS+ is a length `len` array of `n`-byte
@@ -121,8 +155,9 @@ type Signature = [len][n]Byte
 /**
  * Generate a WOTS+ public key from a private key.
  * [RFC-8391] Section 3.1.4, Algorithm 4 (called `WOTS_genPK` in the spec).
+ * [Errata-8382] @see https://www.rfc-editor.org/errata/eid8382
  */
-genPK : PrivateKey -> Address -> [n]Byte -> PublicKey
+genPK : PrivateKey -> [n]Byte -> Address -> PublicKey
 
 /**
  * Generate a signature from a private key and a message.

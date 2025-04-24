@@ -132,6 +132,16 @@ toByte : {y, m} (fin y, fin m) => [m] -> [y]Byte
 toByte x = split (drop (zext`{max m (y * 8)} x))
 
 /**
+ * An n-byte value used as the key to a PRF.
+ *
+ * This type is not formally defined in the spec but is defined here for
+ * clarity.
+ *
+ * [RFC-8391] Section 2.5.
+ */
+type Seed = [n]Byte
+
+/**
  * A word is a 32-bit sequence used to define hash addresses.
  * [RFC-8391] Section 2.5.
  */
@@ -185,9 +195,10 @@ type PublicKey = [len][n]Byte
 /**
  * Generate a WOTS+ public key from a private key.
  * [RFC-8391] Section 3.1.4, Algorithm 4 (called `WOTS_genPK` in the spec).
+ * [Errata-8382] @see https://www.rfc-editor.org/errata/eid8382
  */
-genPK : PrivateKey -> OTSHashAddress -> [n]Byte -> PublicKey
-genPK sk ADRS SEED = pk where
+genPK : PrivateKey -> [n]Byte -> OTSHashAddress -> PublicKey
+genPK sk SEED ADRS = pk where
     pk = [ pki where
             ADRSi = setChainAddress ADRS i
             pki = chain ski 0 (`w - 1) SEED ADRSi
@@ -400,6 +411,6 @@ pkFromSig M sig ADRS SEED = tmp_pk where
  * ```
  */
 property WOTSisCorrect M sk ADRS SEED = tmp_pk == pk where
-    pk = genPK sk ADRS SEED
+    pk = genPK sk SEED ADRS
     sig = sign M sk ADRS SEED
     tmp_pk = pkFromSig M sig ADRS SEED
