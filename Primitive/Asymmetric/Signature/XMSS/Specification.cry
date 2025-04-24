@@ -249,8 +249,6 @@ private
      * and n-byte bitmasks BM_0, BM_1.  Then, it returns the randomized hash
      * H(KEY, (LEFT XOR BM_0) || (RIGHT XOR BM_1)).
      *
-     * Algorithm 7: RAND_HASH
-     *
      *   Input:  n-byte value LEFT, n-byte value RIGHT, seed SEED,
      *           address ADRS
      *   Output: n-byte randomized hash
@@ -378,8 +376,6 @@ private
      * Note: we implement `ltree` using recursion instead of the `while`-loop as
      * specified in Algorithm 8.
      *
-     * Algorithm 8: ltree
-     *
      *   Input: WOTS+ public key pk, seed SEED, address ADRS (Note: [Errata-5572])
      *   Output: n-byte compressed public key value pk[0]
      *
@@ -491,6 +487,31 @@ private
      * The `treeHash` algorithm in [RFC-8391] does the computation in a
      * depth-first manner, using a stack to store state. In this implementation,
      * we use the breadth-first approach.
+     *
+     *   Input: XMSS private key SK, start index s, target node height t,
+     *          address ADRS
+     *   Output: n-byte root node - top node on Stack
+     *
+     *   if( s % (1 << t) != 0 ) return -1;
+     *   for ( i = 0; i < 2^t; i++ ) {
+     *     SEED = getSEED(SK);
+     *     ADRS.setType(0);   // Type = OTS hash address
+     *     ADRS.setOTSAddress(s + i);
+     *     pk = WOTS_genPK (getWOTS_SK(SK, s + i), SEED, ADRS);
+     *     ADRS.setType(1);   // Type = L-tree address
+     *     ADRS.setLTreeAddress(s + i);
+     *     node = ltree(pk, SEED, ADRS);
+     *     ADRS.setType(2);   // Type = hash tree address
+     *     ADRS.setTreeHeight(0);
+     *     ADRS.setTreeIndex(i + s);
+     *     while ( Top node on Stack has same height t' as node ) {
+     *        ADRS.setTreeIndex((ADRS.getTreeIndex() - 1) / 2);
+     *        node = RAND_HASH(Stack.pop(), node, SEED, ADRS);
+     *        ADRS.setTreeHeight(ADRS.getTreeHeight() + 1);
+     *     }
+     *     Stack.push(node);
+     *   }
+     *   return Stack.pop();
      *
      * [RFC-8391] Section 4.1.6, Algorithm 9.
      */
