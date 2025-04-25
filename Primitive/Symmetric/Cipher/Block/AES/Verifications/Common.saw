@@ -4,12 +4,12 @@
 
 print "Verifying that SBox unfolds";
 /* This performance trick is necessary because SAW doesn't memoize sboxTable */
-unfold_SBox <- prove_print (unint_z3 ["inverse", "add"])
+unfold_SBox <- prove_print (unint_z3 ["inverse", "add", "rotateR"])
   {{ \i -> (SBox i == GF28::add [b, b >>> 4, b >>> 5, b >>> 6, b >>> 7, 0x63] where b = GF28::inverse i) }};
 
 print "Verifying that InvSBox unfolds";
 /* This performance trick is necessary because SAW doesn't memoize sboxInvTable */
-unfold_SBoxInv <- prove_print (unint_z3 ["inverse", "add"])
+unfold_SBoxInv <- prove_print (unint_z3 ["inverse", "add", "rotateR"])
   {{ \i -> SBoxInv i == GF28::inverse (GF28::add [i >>> 2, i >>> 5, i >>> 7, 0x05]) }};
 
 print "Verifying that SBoxInv inverts SBox";
