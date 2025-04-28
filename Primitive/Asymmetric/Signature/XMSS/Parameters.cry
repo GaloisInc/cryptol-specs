@@ -18,6 +18,10 @@ type constraint (fin h)
  * See `treeHash` for more details.
  */
 type constraint (h <= 32)
+/**
+ * The height of the XMSS tree must be at least 1.
+ */
+type constraint (h >= 1)
 
 /**
  * The length (in bytes) of the message digest, as well as each node.
