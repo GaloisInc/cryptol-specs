@@ -126,8 +126,6 @@ private
     setKeyAndMask : LTreeAddress -> Word -> LTreeAddress
     setKeyAndMask address value = take`{7 * 4} address # split value
 
-
-
 /**
  * Address scheme for the main tree hash addresses.
  *
@@ -421,7 +419,17 @@ private
             fin t,
             // We set a word in `Address` to the value `s + i` for `i ∈ 0..2^^t
             // - 1`. Thus, we require that `s + 2^^t - 1` fit in a word.
-            width (s + 2^^t - 1) <= 32,
+            //
+            // Unfortunately, the following does NOT work:
+            // ```
+            // width (2^^t + s - 1) <= 32,
+            // ```
+            // Cryptol seems to have a hard time reasoning that if `width (2^^t
+            // + s - 1) <= 32` then that implies that `width (2^^(t-1) + s - 1)
+            //   <= 32`, which is needed by callers to `treeHash_base` when
+            //   using the above constraint. Instead, we use the constraint that
+            //   `s < 2^^h`, and thus `2^^t + s - 1 < 2^^32`.
+            width s <= 32,
             // This comes from the above requirement, since `2^^t` for any `t >
             // 32` would not fit in a word.
             t <= 32,
@@ -522,7 +530,10 @@ private
             fin t,
             // We set a word in `Address` to the value `s + i` for `i ∈ 0..2^^t
             // - 1`. Thus, we require that `s + 2^^t - 1` fit in a word.
-            width (2^^t + s - 1) <= 32,
+            //
+            // See documentation in `treeHash_base` for why we can't do the
+            // following: `width (2^^t + s - 1) <= 32`
+            width s <= 32,
             // This comes from the above requirement, since `2^^t` for any `t >
             // 32` would not fit in a word.
             t <= 32,
@@ -604,8 +615,10 @@ private
             fin i, fin j,
             j >= 0,
             j <= h - 1,
-            width (2^^j + i - 1) <= 32,
-            k == i / (2^^j) // ^ 1
+            // See documentation in `treeHash_base` for why we can't do the
+            // following: `width (2^^j + i - 1) <= 32`
+            width i <= 32,
+            k == i / (2^^j) // ^ 1 ⚠️⚠️⚠️⚠️⚠️⚠️
         ) => PrivateKey -> Address -> [n]Byte
     buildAuth_j SK ADRS = auth_j where
         auth_j = treeHash`{k * 2^^j, j} SK ADRS
@@ -626,12 +639,13 @@ private
             fin i, fin j,
             j >= 1,
             j <= h,
-            width (i + 1) <= 32,
-            width (2^^j + i - 1) <= 32
+            // See documentation in `treeHash_base` for why we can't do the
+            // following: `width (2^^j + i - 1) <= 32`
+            width i <= 32
         ) => PrivateKey -> Address -> [j][n]Byte
     buildAuth' SK ADRS
-        | j == 1 => split (buildAuth_j`{i, 0} SK ADRS)
-        | j > 1  => list # split (buildAuth_j`{i, j - 1} SK ADRS) where
+        | j == 1 => [ buildAuth_j`{i, 0} SK ADRS ]
+        | j > 1  => list # [ buildAuth_j`{i, j - 1} SK ADRS ] where
             list = buildAuth'`{i, j - 1} SK ADRS
 
     /**
@@ -652,7 +666,7 @@ private
      */
     buildAuth : {i} (
             fin i,
-            width (i + 1) <= 32,
+            i <= 2^^h,
             width (2^^h + i - 1) <= 32
         ) => PrivateKey -> Address -> [h][n]Byte
     buildAuth SK ADRS = buildAuth'`{i, h} SK ADRS
@@ -679,7 +693,6 @@ private
     treeSig : {idx_sig} (
             fin idx_sig,
             idx_sig <= 2^^h,
-            width (idx_sig + 1) <= 32,
             width (2^^h + idx_sig - 1) <= 32
         ) => [n]Byte -> PrivateKey -> Address -> (WOTS::Signature, [h][n]Byte)
     treeSig M' SK ADRS = (sig_ots, auth) where
