@@ -1,0 +1,130 @@
+/**
+ * Implementation of the XTS Tweakable Block Cipher mode.
+ *
+ * @copyright Galois, Inc
+ * @author Eric Mertens <emertens@galois.com>
+ *
+ * References:
+ * - NIST SP 800-38E: Recommendation for Block Cipher Modes of Operation:
+ *   The XTS-AES Mode for Confidentiality on Storage Devices
+ * - IEEE Std 1619-2007, The XTS-AES Tweakable Block Cipher, Institute of
+ *   Electrical and Electronics Engineers, Inc., Apr. 18, 2008.
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::XTS where
+
+import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
+
+// 128-bit blocks are necessary due to the GF128 operation used to advance the tweak.
+interface constraint (C::BlockSize == 128)
+
+/** Flip endianness. The specification treats bytes arrays as little-endian numbers. */
+flipEndian : [128] -> [128]
+flipEndian x = join (reverse (split`{each=8} x))
+
+property flipEndian_involutive x = flipEndian (flipEndian x) == x
+
+/**
+  NIST SP 800-38E states: The length of the data unit for any instance of
+  an implementation of XTS-AES shall not exceed 2^20 AES blocks.
+ */
+type constraint ValidLength n = (n /^ C::BlockSize <= 2^^20, n >= C::BlockSize, fin n)
+
+/**
+  5.1 Computing initial tweak from a data unit number.
+
+  The initialization vector is defined to be a little-endian, zero-padded
+  representation of the data unit sequence number.
+ */
+dataUnitSeqNoToIV : {n} (n <= 128) => [n] -> [128]
+dataUnitSeqNoToIV S = flipEndian (zext S)
+
+/**
+  Example found in 5.1
+ */
+property dataUnitSeqNoExample = dataUnitSeqNoToIV 0x123456789a == 0x9a785634120000000000000000000000
+
+/**
+  5.2 Multiplication by a primitive element ɑ
+
+  The next tweak value is computed by performing a GF128 multiplication of
+  alpha modulo an irreducible polynomial.
+ */
+stepTweak : [128] -> [128]
+stepTweak x = flipEndian (f (flipEndian x))
+  where
+    f p = pmod (pmult p alpha) irreducible
+
+alpha : [2]
+alpha = <| x |>
+
+/**
+  Irreducible polynomial in GF128 found in section 5.1
+ */
+irreducible : [129]
+irreducible = <| x^^128 + x^^7 + x^^2 + x + 1 |>
+
+/**
+  Generates an infinite stream of tweak blocks to be used in encryption and
+  decryption given an initialization vector.
+ */
+generateTweaks : [C::KeySize] -> [128] -> [inf][128]
+generateTweaks K2 i = iterate stepTweak (C::encrypt K2 i)
+
+/**
+  5.3.1 encryption of a single 128-bit block
+ */
+encryptBlock : [C::KeySize] -> [128] -> [128] -> [128]
+encryptBlock K T P = T ^ C::encrypt K (T ^ P)
+
+/**
+  5.3.2 encryption of a data unit.
+  */
+encrypt : {n} (ValidLength n) => [2 * C::KeySize] -> [128] -> [n] -> [n]
+encrypt (K1 # K2) i P
+  | 0 == n % 128 => join [ encryptBlock K1 T blk
+                         | T <- generateTweaks K2 i
+                         | blk <- split`{n / 128} P ]
+  | otherwise => C
+    where
+      // Number of full blocks of plaintext
+      type M = n / 128
+
+      T_0_m1 # [Tm1, Tm] = take`{M + 1} (generateTweaks K2 i)
+
+      P_0_m2 # Pm1 # Pm = P
+      C_0_m2 = join [encryptBlock K1 T blk | T <- T_0_m1 | blk <- split`{M - 1} P_0_m2]
+      Cm # CP = encryptBlock K1 Tm1 Pm1
+      Cm1 = encryptBlock K1 Tm (Pm # CP)
+      C = C_0_m2 # Cm1 # Cm
+
+type constraint otherwise = ()
+
+/**
+  5.4.1 decryption of a single 128-bit block
+ */
+decryptBlock : [C::KeySize] -> [128] -> [128] -> [128]
+decryptBlock K T C = T ^ C::decrypt K (T ^ C)
+
+/**
+  5.4.2 decryption of a data unit
+  */
+decrypt : {n} (ValidLength n) => [2 * C::KeySize] -> [128] -> [n] -> [n]
+decrypt (K1 # K2) i C
+  | 0 == n % 128 => join [ decryptBlock K1 T blk
+                         | T <- generateTweaks K2 i
+                         | blk <- split`{n / 128} C]
+  | otherwise => P
+    where
+      // Number of full blocks of ciphertext
+      type M = n / 128
+
+      T_0_m2 # [Tm1, Tm] = take`{M + 1} (generateTweaks K2 i)
+
+      P = P_0_m2 # Pm1 # Pm
+      Pm1 = decryptBlock K1 Tm1 (Cm # CP)
+      P_0_m2 = join [decryptBlock K1 T blk | T <- T_0_m2 | blk <- split`{M - 1} C_0_m2]
+      Pm # CP = decryptBlock K1 Tm Cm1
+      C_0_m2 # Cm1 # Cm = C
+
+decryptInvertsEncrypt : {n} (ValidLength n) => [2 * C::KeySize] -> [128] -> [n] -> Bool
+property decryptInvertsEncrypt K i P = decrypt K i (encrypt K i P) == P
