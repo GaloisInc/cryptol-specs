@@ -1,0 +1,33 @@
+/**
+ * Cryptol AES property verification.
+ *
+ * This module efficiently checks that decrypt is the inverse of encrypt.
+ *
+ * @copyright Galois Inc.
+ * @author Eric Mertens <emertens@galois.com>
+ */
+
+import "../Instantiations/AES256.cry";
+import "../../../../../../Common/GF28.cry" as GF28;
+
+let ss0 = cryptol_ss ();
+
+print "Verifying that cipher unrolls";
+unroll_cipher <- prove_print
+    (w4_unint_z3 ["AddRoundKey", "MixColumns", "SubBytes", "ShiftRows"])
+    {{ \w pt -> cipher w pt ==
+    (stateToMsg (AddRoundKey (w@14) (ShiftRows (SubBytes (t 13 (t 12 (t 11 (t 10 (t 9 (t 8 (t 7 (t 6 (t 5 (t 4 (t 3 (t 2 (t 1 (AddRoundKey (w@0) (msgToState pt))))))))))))))))))
+        where
+        t i state = AddRoundKey (w@i) (MixColumns (ShiftRows (SubBytes state))))
+    }};
+
+print "Verifying that invCipher unrolls";
+unroll_invCipher <- prove_print
+    (w4_unint_z3 ["AddRoundKey", "InvMixColumns", "InvSubBytes", "InvShiftRows"])
+    {{ \w ct -> invCipher w ct ==
+    (stateToMsg (AddRoundKey (w@0) (InvSubBytes (InvShiftRows (t 1 (t 2 (t 3 (t 4 (t 5 (t 6 (t 7 (t 8 (t 9 (t 10 (t 11 (t 12 (t 13 (AddRoundKey (w@14) ( msgToState ct))))))))))))))))))
+        where
+        t i state = InvMixColumns (AddRoundKey (w@i) (InvSubBytes (InvShiftRows state))))
+    }};
+
+include "Common.saw";
