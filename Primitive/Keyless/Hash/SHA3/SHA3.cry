@@ -93,3 +93,10 @@ hash M = KBO::reverseBitOrdering (Keccak`{d=digest} ((KBO::reverseBitOrdering M)
  */
 hashBytes : {m} (fin m) => [m][8] -> [digest / 8][8]
 hashBytes M = split (hash (join M))
+
+/**
+ * The permutation underlying SHA-3.
+ * This is made public for use in other modules,
+ * such as the generic sponge construction.
+ */
+underlyingPermutation = Keccak_p
