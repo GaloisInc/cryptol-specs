@@ -618,7 +618,9 @@ private
             // See documentation in `treeHash_base` for why we can't do the
             // following: `width (2^^j + i - 1) <= 32`
             width i <= 32,
-            k == i / (2^^j) // ^ 1 ⚠️⚠️⚠️⚠️⚠️⚠️
+            // The below is equivalent to `floor(i / 2^j) XOR 1`.
+            k == (i / 2^^j) + ((i / 2^^j + 1) % 2),
+            width ((i / 2^^j + 1) * 2^^j) <= 32
         ) => PrivateKey -> Address -> [n]Byte
     buildAuth_j SK ADRS = auth_j where
         auth_j = treeHash`{k * 2^^j, j} SK ADRS
@@ -641,7 +643,8 @@ private
             j <= h,
             // See documentation in `treeHash_base` for why we can't do the
             // following: `width (2^^j + i - 1) <= 32`
-            width i <= 32
+            width i <= 32,
+            width ((i / 2^^j + 1) * 2^^j) <= 32
         ) => PrivateKey -> Address -> [j][n]Byte
     buildAuth' SK ADRS
         | j == 1 => [ buildAuth_j`{i, 0} SK ADRS ]
@@ -667,7 +670,8 @@ private
     buildAuth : {i} (
             fin i,
             i <= 2^^h,
-            width (2^^h + i - 1) <= 32
+            width (2^^h + i - 1) <= 32,
+            width ((i / 2^^h + 1) * 2^^h) <= 32
         ) => PrivateKey -> Address -> [h][n]Byte
     buildAuth SK ADRS = buildAuth'`{i, h} SK ADRS
 
@@ -693,7 +697,8 @@ private
     treeSig : {idx_sig} (
             fin idx_sig,
             idx_sig <= 2^^h,
-            width (2^^h + idx_sig - 1) <= 32
+            width (2^^h + idx_sig - 1) <= 32,
+            width ((idx_sig / 2^^h + 1) * 2^^h) <= 32
         ) => [n]Byte -> PrivateKey -> Address -> (WOTS::Signature, [h][n]Byte)
     treeSig M' SK ADRS = (sig_ots, auth) where
         auth = buildAuth`{idx_sig} SK ADRS
