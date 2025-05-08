@@ -19,7 +19,7 @@ interface constraint (C::BlockSize == 128)
 
 /** Flip endianness. The specification treats bytes arrays as little-endian numbers. */
 flipEndian : [128] -> [128]
-flipEndian x = join (reverse (split`{each=8} x))
+flipEndian x = join (reverse (groupBy`{8} x))
 
 property flipEndian_involutive x = flipEndian (flipEndian x) == x
 
