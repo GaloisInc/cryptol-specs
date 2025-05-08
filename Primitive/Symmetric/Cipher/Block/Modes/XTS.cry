@@ -63,6 +63,11 @@ property flipEndianInvolutive x = flipEndian (flipEndian x) == x
  *
  * This restriction of _within a data unit_ is consistent with both
  * [IEEE2007] and [IEEE2018].
+ *
+ * [IEEE2007] and [IEEE2018] Section 5.3.2 imply the data unit must be
+ * at least the length of the block size. The final block, presuming there
+ * is at least one full block, can be extended with ciphertext stealing,
+ * but there is no such scheme if the plaintext length is too short.
  */
 type constraint ValidLength n = (n /^ C::BlockSize <= 2^^20, n >= C::BlockSize, fin n)
 
@@ -71,6 +76,17 @@ type constraint ValidLength n = (n /^ C::BlockSize <= 2^^20, n >= C::BlockSize, 
  *
  * The initialization vector is defined to be a little-endian, zero-padded
  * representation of the data unit sequence number.
+ *
+ * Technically, per 5.1 the tweak is a non-negative integer.
+ * When it is encrypted, it is converted to a little-endian byte array.
+ * It must be the correct block size for AES encryption/decryption, hence,
+ * the padding.
+ *
+ * Per section 5.3.1, the tweak is a 128 bit value.
+ *
+ * References:
+ *   [IEEE2007] Section 5.1, 5.3.1
+ *   [IEEE2018] Section 5.1, 5.3.1
  */
 dataUnitSeqNoToIV : {n} (n <= 128) => [n] -> [128]
 dataUnitSeqNoToIV S = flipEndian (zext S)
@@ -119,7 +135,12 @@ irreducible = <| x^^128 + x^^7 + x^^2 + x + 1 |>
 
 /**
  * Generates an infinite stream of tweak blocks to be used in encryption and
- * decryption given an initialization vector.
+ * decryption given an initialization vector. This can be thought of as
+ * multiplication by successive powers of α, starting with the zeroth power,
+ * with an initial value of the encryption of the first tweak.
+ *
+ * Here, the tweak has already been converted to a 128 bit value,
+ * per Section 5.3.1 of the IEEE standards.
  */
 generateTweaks : [C::KeySize] -> [128] -> [inf][128]
 generateTweaks K2 i = iterate stepTweak (C::encrypt K2 i)
@@ -128,25 +149,48 @@ generateTweaks K2 i = iterate stepTweak (C::encrypt K2 i)
  * 5.3.1 encryption of a single 128-bit block
  */
 encryptBlock : [C::KeySize] -> [128] -> [128] -> [128]
-encryptBlock K T P = T ^ C::encrypt K (T ^ P)
+encryptBlock K T P = C
+  where
+    // `T` is computed externally using the
+    // `generateTweaks` function in this implementation.
+    PP = T ^ P // line (2), 5.3.1
+    CC = C::encrypt K PP // line (3), 5.3.1
+    C  = CC ^ T // line (4), 5.3.1
 
 /**
  *  5.3.2 encryption of a data unit.
+ *
+ * Here, the sequence number `j` is implicit, and
+ * is handled by `generateTweaks`.
  */
 encrypt : {n} (ValidLength n) => [2 * C::KeySize] -> [128] -> [n] -> [n]
 encrypt (K1 # K2) i P
   | 0 == n % 128 => join [ encryptBlock K1 T blk
-                         | T <- generateTweaks K2 i
+                         | T <- generateTweaks K2 i // line (1), 5.3.1
                          | blk <- split`{n / 128} P ]
   | otherwise => C
     where
       // Number of full blocks of plaintext
+      // Section 5.3.2 calls `M` `m`.
       type M = n / 128
 
+      // Generate `M + 1` tweaks.
+      // If `Pm`, the final block, is empty,
+      // we will not need this tweak.
       T_0_m1 # [Tm1, Tm] = take`{M + 1} (generateTweaks K2 i)
 
+      // Partition `P` into `M + 1` blocks.
+      // The first `m` blocks are all 128 bits long.
+      // The final block, `Pm`, is between `0` and `127` bits long.
       P_0_m2 # Pm1 # Pm = P
+
+      // Encrypt all but the final two blocks.
       C_0_m2 = join [encryptBlock K1 T blk | T <- T_0_m1 | blk <- split`{M - 1} P_0_m2]
+
+      // Encrypt `P m - 1`, the final full block.
+      // Let `b` be the length of `Pm`.
+      // Steal the last `b` bits of the encryption
+      // to "pad" the length of `Pm`.
       Cm # CP = encryptBlock K1 Tm1 Pm1
       Cm1 = encryptBlock K1 Tm (Pm # CP)
       C = C_0_m2 # Cm1 # Cm
@@ -161,7 +205,13 @@ type constraint otherwise = ()
  * 5.4.1 decryption of a single 128-bit block
  */
 decryptBlock : [C::KeySize] -> [128] -> [128] -> [128]
-decryptBlock K T C = T ^ C::decrypt K (T ^ C)
+decryptBlock K T C = P
+  where
+    // Like `encryptBlock`, `T` is computed externally to
+    // this procedure in this implementation.
+    CC = C ^ T
+    PP = C::decrypt K CC
+    P = PP ^ T
 
 /**
  * 5.4.2 decryption of a data unit
@@ -176,12 +226,20 @@ decrypt (K1 # K2) i C
       // Number of full blocks of ciphertext
       type M = n / 128
 
+      // Generate tweaks.
       T_0_m2 # [Tm1, Tm] = take`{M + 1} (generateTweaks K2 i)
 
+      // Assemble the plaintext.
       P = P_0_m2 # Pm1 # Pm
+
+      // Decrypt the second to last block by replacing the stolen ciphertext.
       Pm1 = decryptBlock K1 Tm1 (Cm # CP)
+      // Decrypt the full blocks.
       P_0_m2 = join [decryptBlock K1 T blk | T <- T_0_m2 | blk <- split`{M - 1} C_0_m2]
+      // Retrieve the stolen ciphertext from the decryption of the final block.
       Pm # CP = decryptBlock K1 Tm Cm1
+      // Partiiton the ciphertext into `M` full blocks and a possibly
+      // empty final block.
       C_0_m2 # Cm1 # Cm = C
 
 /**
