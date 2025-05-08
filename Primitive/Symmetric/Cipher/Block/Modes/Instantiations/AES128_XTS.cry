@@ -1,0 +1,11 @@
+/*
+ * Instantiate XTS mode for AES 128.
+ *
+ * @copyright Galois, Inc.
+ * @author Eric Mertens <emertens@galois.com>
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES128_XTS =
+    Primitive::Symmetric::Cipher::Block::Modes::XTS {
+        Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES128
+    }
+
