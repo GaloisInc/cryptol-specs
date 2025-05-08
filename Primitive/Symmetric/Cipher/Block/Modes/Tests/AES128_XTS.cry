@@ -18,6 +18,9 @@ KAT : {n} (ValidLength n) => { Key1: [128], Key2: [128], Number: [128], PTX: [n]
 KAT p = encrypt (p.Key1 # p.Key2) p.Number (p.PTX) == p.CTX
      /\ decrypt (p.Key1 # p.Key2) p.Number (p.CTX) == p.PTX
 
+/**
+ * This test vector was derived from Annex B of [IEEE2007].
+ */
 property vector1 = KAT
     { Key1 = 0x00000000000000000000000000000000
     , Key2 = 0x00000000000000000000000000000000
@@ -26,6 +29,9 @@ property vector1 = KAT
     , CTX = 0x917cf69ebd68b2ec9b9fe9a3eadda692cd43d2f59598ed858c02c2652fbf922e
     }
 
+/**
+ * This test vector was derived from Annex B of [IEEE2007].
+ */
 property vector2 = KAT
     { Key1 = 0x11111111111111111111111111111111
     , Key2 = 0x22222222222222222222222222222222
@@ -34,6 +40,9 @@ property vector2 = KAT
     , CTX = 0xc454185e6a16936e39334038acef838bfb186fff7480adc4289382ecd6d394f0
     }
 
+/**
+ * This test vector was derived from Annex B of [IEEE2007].
+ */
 property vector3 = KAT
     { Key1 = 0xfffefdfcfbfaf9f8f7f6f5f4f3f2f1f0
     , Key2 = 0x22222222222222222222222222222222
@@ -42,6 +51,9 @@ property vector3 = KAT
     , CTX = 0xaf85336b597afc1a900b2eb21ec949d292df4c047e0b21532186a5971a227a89
     }
 
+/**
+ * This test vector was derived from Annex B of [IEEE2007].
+ */
 property vector4 = KAT
     { Key1 = 0x27182818284590452353602874713526
     , Key2 = 0x31415926535897932384626433832795
@@ -80,6 +92,9 @@ property vector4 = KAT
           # 0xeb4a427d1923ce3ff262735779a418f20a282df920147beabe421ee5319d0568
     }
 
+/**
+ * This test vector was derived from Annex B of [IEEE2007].
+ */
 property vector15 = KAT
     { Key1 = 0xfffefdfcfbfaf9f8f7f6f5f4f3f2f1f0
     , Key2 = 0xbfbebdbcbbbab9b8b7b6b5b4b3b2b1b0
@@ -88,6 +103,9 @@ property vector15 = KAT
     , CTX = 0x6c1625db4671522d3d7599601de7ca09ed
     }
 
+/**
+ * This test vector was derived from Annex B of [IEEE2007].
+ */
 property vector16 = KAT
     { Key1 = 0xfffefdfcfbfaf9f8f7f6f5f4f3f2f1f0
     , Key2 = 0xbfbebdbcbbbab9b8b7b6b5b4b3b2b1b0
@@ -96,6 +114,9 @@ property vector16 = KAT
     , CTX = 0xd069444b7a7e0cab09e24447d24deb1fedbf
     }
 
+/**
+ * This test vector was derived from Annex B of [IEEE2007].
+ */
 property vector17 = KAT
     { Key1 = 0xfffefdfcfbfaf9f8f7f6f5f4f3f2f1f0
     , Key2 = 0xbfbebdbcbbbab9b8b7b6b5b4b3b2b1b0
@@ -104,6 +125,9 @@ property vector17 = KAT
     , CTX = 0xe5df1351c0544ba1350b3363cd8ef4beedbf9d
     }
 
+/**
+ * This test vector was derived from Annex B of [IEEE2007].
+ */
 property vector18 = KAT
     { Key1 = 0xfffefdfcfbfaf9f8f7f6f5f4f3f2f1f0
     , Key2 = 0xbfbebdbcbbbab9b8b7b6b5b4b3b2b1b0
@@ -112,6 +136,9 @@ property vector18 = KAT
     , CTX = 0x9d84c813f719aa2c7be3f66171c7c5c2edbf9dac
     }
 
+/**
+ * This test vector was derived from Annex B of [IEEE2007].
+ */
 property vector19 = KAT
     { Key1 = 0xe0e1e2e3e4e5e6e7e8e9eaebecedeeef
     , Key2 = 0xc0c1c2c3c4c5c6c7c8c9cacbcccdcecf
@@ -149,7 +176,9 @@ property vector19 = KAT
           # 0x5fd46cd312021d4b438862419a791be03bb4d97c0e59578542531ba466a83baf
           # 0x92cefc151b5cc1611a167893819b63fb8a6b18e86de60290fa72b797b0ce59f3
     }
-
+/**
+ * This test vector was derived from the set of CAVP test vectors.
+ */
 property cavp_210 = KAT
     { Key1 = 0x8073f018d40fd8b77eb49a126b545397
     , Key2 = 0x3620d517ea5b0d4a9d3619cb9869c3ee
