@@ -6,24 +6,44 @@
  *
  * References:
  * - NIST SP 800-38E: Recommendation for Block Cipher Modes of Operation:
- *   The XTS-AES Mode for Confidentiality on Storage Devices
+ *   The XTS-AES Mode for Confidentiality on Storage Devices [NIST]
  * - IEEE Std 1619-2007, The XTS-AES Tweakable Block Cipher, Institute of
- *   Electrical and Electronics Engineers, Inc., Apr. 18, 2008.
+ *   Electrical and Electronics Engineers, Inc., Apr. 18, 2008. [IEEE2007]
  * - IEEE Std 1619-2018, The XTS-AES Tweakable Block Cipher, Institute of
- *   Electrical and Electronics Engineers, Inc., Oct. 23 2018
+ *   Electrical and Electronics Engineers, Inc., Oct. 23 2018 [IEEE2018]
  */
 module Primitive::Symmetric::Cipher::Block::Modes::XTS where
 
 import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
 
+/*
+ * XTS encrypts a `data stream` that is divided into consecutive equal size
+ * `data units`.
+ *
+ * References:
+ *   [IEEE2007] Section 5.1
+ *   [IEEE2018] Section 5.1
+ */
+
 /**
- * 128-bit blocks are necessary due to the GF128 operation used to advance the tweak.
+ * In particular, the result of AES encryption and decryption (a 16-byte value) is
+ * multiplied by a primitive element of GF(2^128) during the encryption and decryption
+ * procedures.
+ *
+ * References:
+ *   [IEEE2007] Section 5.2
+ *   [IEEE2018] Section 5.2
  */
 interface constraint (C::BlockSize == 128)
 
 /**
  * Cryptol treats all bitvectors in big-endian numbers.
- * The specification treats bytes arrays as little-endian numbers.
+ * The specification treats byte arrays as little-endian numbers
+ * for the purposes of encrypting the tweak.
+ *
+ * References:
+ *   [IEEE2007] Section 5.2
+ *   [IEEE2018] Section 5.2
  */
 flipEndian : [128] -> [128]
 flipEndian x = join (reverse (groupBy`{8} x))
@@ -40,7 +60,9 @@ property flipEndianInvolutive x = flipEndian (flipEndian x) == x
 /**
  * NIST SP 800-38E states: The length of the data unit for any instance of
  * an implementation of XTS-AES shall not exceed 2^20 AES blocks.
- * TODO: section
+ *
+ * This restriction of _within a data unit_ is consistent with both
+ * [IEEE2007] and [IEEE2018].
  */
 type constraint ValidLength n = (n /^ C::BlockSize <= 2^^20, n >= C::BlockSize, fin n)
 
@@ -55,6 +77,10 @@ dataUnitSeqNoToIV S = flipEndian (zext S)
 
 /**
  * Example found in 5.1
+ *
+ * ```repl
+ * :prove dataUnitSeqNoExample
+ * ```
  */
 property dataUnitSeqNoExample = dataUnitSeqNoToIV 0x123456789a == 0x9a785634120000000000000000000000
 
@@ -62,21 +88,31 @@ property dataUnitSeqNoExample = dataUnitSeqNoToIV 0x123456789a == 0x9a7856341200
  * 5.2 Multiplication by a primitive element ɑ
  *
  *  The next tweak value is computed by performing a GF128 multiplication of
- *  alpha modulo an irreducible polynomial.
+ *  α modulo an irreducible polynomial.
  */
 stepTweak : [128] -> [128]
 stepTweak x = flipEndian (f (flipEndian x))
   where
-    f p = pmod (pmult p alpha) irreducible
+    f p = pmod (pmult p α) irreducible
 
 /**
- * TODO
+ * The IEEE standard `α` to be the polynomial `x` in GF(2^128).
+ * This is a primitive polynomial in this field, which means taking
+ * powers of `α` generate all non-zero elements of the field.
+ *
+ * References:
+ *  [IEEE2007] Section 4.2
+ *  [IEEE2018] Section 4.2
  */
-alpha : [2]
-alpha = <| x |>
+α : [2]
+α = <| x |>
 
 /**
- * Irreducible polynomial in GF128 found in section 5.1
+ * Irreducible polynomial defining GF(2^128).
+ *
+ * References:
+ *  [IEEE2007] Section 4.2
+ *  [IEEE2018] Section 4.2
  */
 irreducible : [129]
 irreducible = <| x^^128 + x^^7 + x^^2 + x + 1 |>
