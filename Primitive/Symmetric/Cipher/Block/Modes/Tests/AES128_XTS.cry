@@ -1,4 +1,4 @@
-/*
+/**
  * Test vectors for AES128 in XTS mode.
  * These are taken from [P1619-2007] Annex B
  *
@@ -9,6 +9,9 @@
  * [P1619-2007]: IEEE P1619™ Standard for Cryptographic Protection of Data on
  *               Block-Oriented Storage Devices
  *
+ * ```repl 
+ * :exhaust
+ * ```
  */
 module Primitive::Symmetric::Cipher::Block::Modes::Tests::AES128_XTS where
 
