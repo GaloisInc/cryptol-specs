@@ -1,0 +1,300 @@
+/**
+ * Implementation of the XTS Tweakable Block Cipher mode.
+ *
+ * This version implements the specification as defined in [IEEE2007].
+ * The primary difference in [IEEE2018] constraints the overall
+ * size of a data stream in a way that isn't constrained by this
+ * implementation and would need to be enforced by the application.
+ *
+ * This implementation does not define key scopes or key export as described
+ * in sections 6 and 7.
+ *
+ * @copyright Galois, Inc
+ * @author Eric Mertens <emertens@galois.com>
+ * @author John Christensen <jchristensen@galois.com>
+ *
+ * References:
+ * [NIST]: NIST SP 800-38E: Recommendation for Block Cipher Modes of Operation:
+ *   The XTS-AES Mode for Confidentiality on Storage Devices.
+ * [IEEE2007]: IEEE Std 1619-2007, The XTS-AES Tweakable Block Cipher, Institute of
+ *   Electrical and Electronics Engineers, Inc., Apr. 18, 2008.
+ * [IEEE2018]: IEEE Std 1619-2018, The XTS-AES Tweakable Block Cipher, Institute of
+ *   Electrical and Electronics Engineers, Inc., Oct. 23 2018.
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::XTS where
+
+// [IEEE2007] only defines XTS-AES-128 and XTS-AES-256. Other instantiations
+// of this functor are not permitted by [NIST].
+import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
+
+/*
+ * XTS encrypts a `data stream` that is divided into consecutive equal size
+ * `data units`.
+ *
+ * References:
+ *   [IEEE2007] Section 5.1
+ *   [IEEE2018] Section 5.1
+ */
+
+/**
+ * In particular, the result of AES encryption and decryption (a 16-byte value) is
+ * multiplied by a primitive element of GF(2^128) during the encryption and decryption
+ * procedures.
+ *
+ * References:
+ *   [IEEE2007] Section 5.2
+ *   [IEEE2018] Section 5.2
+ */
+interface constraint (C::BlockSize == 128)
+
+/**
+ * Cryptol treats all bitvectors in big-endian numbers.
+ * The specification treats byte arrays as little-endian numbers
+ * for the purposes of encrypting the tweak.
+ *
+ * References:
+ *   [IEEE2007] Section 5.2
+ *   [IEEE2018] Section 5.2
+ */
+flipEndian : [128] -> [128]
+flipEndian x = join (reverse (groupBy`{8} x))
+
+/**
+ * The `flipEndian` procedure is its own inverse.
+ *
+ * ```repl
+ * :prove flipEndianInvolutive
+ * ```
+ */
+property flipEndianInvolutive x = flipEndian (flipEndian x) == x
+
+/**
+ * NIST SP 800-38E states: The length of the data unit for any instance of
+ * an implementation of XTS-AES shall not exceed 2^20 AES blocks.
+ *
+ * This restriction of _within a data unit_ is consistent with both
+ * [IEEE2007] and [IEEE2018].
+ *
+ * [IEEE2007] and [IEEE2018] Section 5.3.2 imply the data unit must be
+ * at least the length of the block size. The final block, presuming there
+ * is at least one full block, can be extended with ciphertext stealing,
+ * but there is no such scheme if the plaintext length is too short.
+ *
+ * [IEEE2007] and [IEEE2018] Section 5.1:
+ * - The data unit size shall be at least 128 bits.
+ * - The number of 128-bit blocks should not exceed 2^20.
+ */
+type constraint ValidLength n = (n /^ C::BlockSize <= 2^^20, n >= C::BlockSize, fin n)
+
+/**
+ * 5.1 Computing initial tweak from a data unit number.
+ *
+ * The initialization vector is defined to be a little-endian, zero-padded
+ * representation of the data unit sequence number.
+ *
+ * Technically, per 5.1 the tweak is a non-negative integer.
+ * When it is encrypted, it is converted to a little-endian byte array.
+ * It must be the correct block size for AES encryption/decryption, hence,
+ * the padding.
+ *
+ * Per section 5.3.1, the tweak is a 128 bit value.
+ *
+ * References:
+ *   [IEEE2007] Section 5.1, 5.3.1
+ *   [IEEE2018] Section 5.1, 5.3.1
+ */
+dataUnitSeqNoToIV : {n} (n <= 128) => [n] -> [128]
+dataUnitSeqNoToIV S = flipEndian (zext S)
+
+/**
+ * Example found in 5.1
+ *
+ * ```repl
+ * :prove dataUnitSeqNoExample
+ * ```
+ */
+property dataUnitSeqNoExample = dataUnitSeqNoToIV 0x123456789a == 0x9a785634120000000000000000000000
+
+/**
+ * 5.2 Multiplication by a primitive element ɑ
+ *
+ *  The next tweak value is computed by performing a GF128 multiplication of
+ *  α modulo an irreducible polynomial. This arithmetic is defined to be
+ *  performed using a little-endian byte order.
+ *
+ * This is a single iteration of the formula in Section 5.2.
+ */
+multAlphaLE : [128] -> [128]
+multAlphaLE x = flipEndian (multAlpha (flipEndian x))
+  where
+    multAlpha p = pmod (pmult p alpha) irreducible
+
+/**
+ * The IEEE standard `α` to be the polynomial `x` in GF(2^128).
+ * This is a primitive polynomial in this field, which means taking
+ * powers of `α` generate all non-zero elements of the field.
+ *
+ * References:
+ *  [IEEE2007] Section 4.2
+ *  [IEEE2018] Section 4.2
+ */
+alpha : [2]
+alpha = <| x |>
+
+/**
+ * Irreducible polynomial defining GF(2^128).
+ *
+ * References:
+ *  [IEEE2007] Section 4.2
+ *  [IEEE2018] Section 4.2
+ */
+irreducible : [129]
+irreducible = <| x^^128 + x^^7 + x^^2 + x + 1 |>
+
+/**
+ * Generates an infinite stream of tweak blocks to be used in encryption and
+ * decryption given an initialization vector. This can be thought of as
+ * multiplication by successive powers of α, starting with the zeroth power,
+ * with an initial value of the encryption of the first tweak.
+ *
+ * Each element of the resulting stream at index `j` has the value
+ * `AES-enc(Key₂, i) ⊗ α^j`
+ * (using the notation from [IEEE2007]).
+ *
+ * Here, the tweak has already been converted to a 128 bit value,
+ * per Section 5.3.1 of the IEEE standards.
+ *
+ * The iteration is defined in [IEEE2007] Section 5.2.
+ * The initial value is defined in [IEEE2007] Section 5.3.1, Step 1.
+ */
+generateTweaks : [C::KeySize] -> [128] -> [inf][128]
+generateTweaks K2 i = iterate multAlphaLE (C::encrypt K2 i)
+
+/**
+ * 5.3.1 encryption of a single 128-bit block
+ */
+encryptBlock : [C::KeySize] -> [128] -> [128] -> [128]
+encryptBlock K T P = C
+  where
+    // `T` is computed externally using the
+    // `generateTweaks` function in this implementation.
+    PP = T ^ P // line (2), 5.3.1
+    CC = C::encrypt K PP // line (3), 5.3.1
+    C  = CC ^ T // line (4), 5.3.1
+
+/**
+ *  5.3.2 encryption of a data unit.
+ *
+ * Here, the sequence number `j` is implicit, and
+ * is handled by `generateTweaks`.
+ *
+ * This implementation separates out the case where the plaintext is a
+ * multiple of the blocksize.
+ *
+ */
+encrypt : {n} (ValidLength n) => [2 * C::KeySize] -> [128] -> [n] -> [n]
+encrypt (K1 # K2) i P
+  | 0 == n % 128 =>
+    join
+      [ encryptBlock K1 T blk
+      | T <- generateTweaks K2 i
+      | blk <- split`{n / 128} P ]
+  | otherwise => C
+    where
+      // Number of full blocks of plaintext
+      // Section 5.3.2 calls `M` `m`.
+      type M = n / 128
+
+      // Generate `M + 1` tweaks.
+      // If `Pm`, the final block, is empty,
+      // we will not need this tweak.
+      T_0_m1 # [Tm1, Tm] = take`{M + 1} (generateTweaks K2 i)
+
+      // Partition `P` into `M + 1` blocks.
+      // The first `m` blocks are all 128 bits long.
+      // The final block, `Pm`, is between `1` and `127` bits long.
+      P_0_m2 # Pm1 # Pm = P
+
+      // Step 1.
+      C_0_m2 = join [encryptBlock K1 T blk | T <- T_0_m1 | blk <- split`{M - 1} P_0_m2]
+
+      // Step 4a.
+      CC = encryptBlock K1 Tm1 Pm1
+
+      // Step 4b - 4c.
+      Cm # CP = CC
+
+      // Step 4d.
+      PP = Pm # CP
+
+      // Step 4e.
+      Cm1 = encryptBlock K1 Tm PP
+
+      // Step 5.
+      C = C_0_m2 # Cm1 # Cm
+
+/**
+ * Convenience type-constraint that is always satisified.
+ * The name is inspired by the Haskell `otherwise` guard.
+ */
+type constraint otherwise = ()
+
+/**
+ * 5.4.1 decryption of a single 128-bit block
+ */
+decryptBlock : [C::KeySize] -> [128] -> [128] -> [128]
+decryptBlock K T C = P
+  where
+    // Like `encryptBlock`, `T` is computed externally to
+    // this procedure in this implementation.
+    CC = C ^ T // line (2), 5.4.1
+    PP = C::decrypt K CC // line (3), 5.4.1
+    P = PP ^ T // line (4), 5.4.1
+
+/**
+ * 5.4.2 decryption of a data unit
+ */
+decrypt : {n} (ValidLength n) => [2 * C::KeySize] -> [128] -> [n] -> [n]
+decrypt (K1 # K2) i C
+  | 0 == n % 128 =>
+    join
+      [ decryptBlock K1 T blk
+      | T <- generateTweaks K2 i
+      | blk <- split`{n / 128} C ]
+  | otherwise => P
+    where
+      // Number of full blocks of ciphertext
+      type M = n / 128
+
+      // Generate tweaks.
+      T_0_m2 # [Tm1, Tm] = take`{M + 1} (generateTweaks K2 i)
+
+      // Partition the ciphertext into `M` full blocks and a partial final block.
+      C_0_m2 # Cm1 # Cm = C
+      
+      // Step 1.
+      P_0_m2 = join [decryptBlock K1 T blk | T <- T_0_m2 | blk <- split`{M - 1} C_0_m2]
+      
+      // Steps 4d - 4f.
+      Pm # CP = decryptBlock K1 Tm Cm1
+      
+      // Step 4g.
+      CC = Cm # CP
+
+      // Step 4h.
+      Pm1 = decryptBlock K1 Tm1 (Cm # CP)
+      
+      // Step 5.
+      P = P_0_m2 # Pm1 # Pm
+
+
+/**
+ * Decryption inverts encryption.
+ * This is a fundamental correctness property.
+ *
+ * ```repl
+ * :check decryptInvertsEncrypt `{192}
+ * ```
+ */
+decryptInvertsEncrypt : {n} (ValidLength n) => [2 * C::KeySize] -> [128] -> [n] -> Bool
+property decryptInvertsEncrypt K i P = decrypt K i (encrypt K i P) == P
