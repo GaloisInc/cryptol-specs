@@ -1,5 +1,18 @@
-/*
+/**
  * XMSS: eXtended Merkle Signature Scheme.
+ *
+ * XMSS is a hash-based stateful digital signature scheme defined in
+ * [RFC-8391]. It builds on top of the WOTS+ one-time signature scheme,
+ * also defined in [RFC-8391]. XMSS (and WOTS+) provide digital signatures
+ * under the security of some underlying cryptographic hash function, and
+ * require no additional conjectured hardness assumption. In addition,
+ * XMSS (and WOTS+) are side-channel resistent and withstand existing
+ * quantum attacks.
+ *
+ * On the other hand, XMSS is a _stateful_ signature scheme, and thus has
+ * an upper bound on the number of signatures able to be produced by a given
+ * secret key. In addition, one must be careful not to reuse the secret key
+ * state across multiple signing operations.
  *
  * References:
  * [RFC-8391]: Andreas Huelsing, Denis Butin, Stefan-Lukas Gazdag, Joost
@@ -210,12 +223,12 @@ type PublicKey = {
 /**
  * An XMSS signature.
  *
- * An XMSS signature is a (4 + n + (len + h) * n)-byte string consisting
+ * An XMSS signature is a `(4 + n + (len + h) * n)`-byte string consisting
  * of:
- * -  the index idx_sig of the used WOTS+ key pair (4 bytes),
- * -  a byte string r used for randomized message hashing (n bytes),
- * -  a WOTS+ signature sig_ots (len * n bytes), and
- * -  the so-called authentication path 'auth' for the leaf associated
+ * -  the index `idx_sig` of the used WOTS+ key pair (4 bytes),
+ * -  a byte string `r` used for randomized message hashing (n bytes),
+ * -  a WOTS+ signature `sig_ots` (len * n bytes), and
+ * -  the so-called authentication path `auth` for the leaf associated
  *    with the used WOTS+ key pair (h * n bytes).
  *
  * [RFC-8391] Section 4.1.8.
@@ -406,50 +419,31 @@ private
      * This computes the nodes for all entries in the tree corresponding to the
      * level associated with the start index `s`. That is, if `s` corresponds to
      * the leftmost leaf of a sub-tree, `treeHash_base` returns a list of all
-     * the nodes at the same level as `s`.
+     * the nodes (and corresponding addresses) at the same level as `s`.
      *
      * This roughly corresponds to the `for`-loop in `treeHash`.
      *
      * [RFC-8391] Section 4.1.6, Algorithm 9.
      */
-    treeHash_base : {s, t} (
-            // The start index.
-            fin s,
+    treeHash_base : {t} (
             // The target node height.
             fin t,
-            // We set a word in `Address` to the value `s + i` for `i ∈ 0..2^^t
-            // - 1`. Thus, we require that `s + 2^^t - 1` fit in a word.
-            //
-            // Unfortunately, the following does NOT work:
-            // ```
-            // width (2^^t + s - 1) <= 32,
-            // ```
-            // Cryptol seems to have a hard time reasoning that if `width (2^^t
-            // + s - 1) <= 32` then that implies that `width (2^^(t-1) + s - 1)
-            //   <= 32`, which is needed by callers to `treeHash_base` when
-            //   using the above constraint. Instead, we use the constraint that
-            //   `s < 2^^h`, and thus `2^^t + s - 1 < 2^^32`.
-            width s <= 32,
-            // This comes from the above requirement, since `2^^t` for any `t >
-            // 32` would not fit in a word.
-            t <= 32,
-            // From the spec: `if( s % (1 << t) != 0 ) return -1`. We simply
-            // disallow this case.
-            //
-            // This enforces that the leaf at index `s` is a leftmost leaf of a
-            // sub-tree of height `t`.
-            s % (2^^t) == 0
-        ) => PrivateKey -> Address -> [2^^t]([n]Byte, Address)
-    treeHash_base SK ADRS = base where
-        base = [ (node, ADRS''') where
-                 SEED = SK.seed
-                 ADRS' = setOTSAddress (setType ADRS 0) (`s + i)
-                 pk = WOTS::genPK (getWOTS_SK SK (`s + i)) SEED ADRS'
-                 ADRS'' = setLTreeAddress (setType ADRS' 1) (`s + i)
-                 node = ltree pk SEED ADRS''
-                 ADRS''' = setTreeIndex (setTreeHeight (setType ADRS'' 2) 0) (i + `s)
-               | i <- [0..2^^t - 1]
-               ]
+            // The target height must be less than or equal the height of the
+            // XMSS tree itself.
+            t <= h
+        ) => PrivateKey -> Word -> Address -> [2^^t]([n]Byte, Address)
+    treeHash_base SK s ADRS = if s % (2^^`t) != 0 then
+        error "Invalid `s`: `s % (1 << t) != 0` must hold" else
+        base where
+            base = [ (node, ADRS''') where
+                    SEED = SK.seed
+                    ADRS' = setOTSAddress (setType ADRS 0) (s + i)
+                    pk = WOTS::genPK (getWOTS_SK SK (s + i)) SEED ADRS'
+                    ADRS'' = setLTreeAddress (setType ADRS' 1) (s + i)
+                    node = ltree pk SEED ADRS''
+                    ADRS''' = setTreeIndex (setTreeHeight (setType ADRS'' 2) 0) (i + s)
+                | i <- [0..2^^t - 1]
+                ]
 
     /**
      * The "induction step" for `treeHash`.
@@ -523,30 +517,18 @@ private
      *
      * [RFC-8391] Section 4.1.6, Algorithm 9.
      */
-    treeHash : {s, t} (
-            // The start index.
-            fin s,
+    treeHash : {t} (
             // The target node height.
             fin t,
-            // We set a word in `Address` to the value `s + i` for `i ∈ 0..2^^t
-            // - 1`. Thus, we require that `s + 2^^t - 1` fit in a word.
-            //
-            // See documentation in `treeHash_base` for why we can't do the
-            // following: `width (2^^t + s - 1) <= 32`
-            width s <= 32,
-            // This comes from the above requirement, since `2^^t` for any `t >
-            // 32` would not fit in a word.
-            t <= 32,
-            // From the spec: `if( s % (1 << t) != 0 ) return -1`. We simply
-            // disallow this case.
-            //
-            // This enforces that the leaf at index `s` is a leftmost leaf of a
-            // sub-tree of height `t`.
-            s % (2^^t) == 0
-        ) => PrivateKey -> Address -> [n]Byte
-    treeHash SK ADRS = node.0 where
-        list = treeHash_base`{s, t} SK ADRS
-        node = treeHash_combine`{t} list SK.seed
+            // The target height must be less than or equal the height of the
+            // XMSS tree itself.
+            t <= h
+        ) => PrivateKey -> Word -> Address -> [n]Byte
+    treeHash SK s ADRS = if s % (2^^`t) != 0 then
+        error "Invalid `s`: `s % (1 << t) != 0` must hold" else
+        node.0 where
+            list = treeHash_base`{t} SK s ADRS
+            node = treeHash_combine`{t} list SK.seed
 
 /**
  * `keyGen` - Generate an XMSS key pair.
@@ -593,10 +575,10 @@ private
  */
 keyGen : [2^^h]WOTS::PrivateKey -> [n]Byte -> Seed -> (PrivateKey, PublicKey)
 keyGen wots_sks SK_PRF SEED = (SK, PK) where
-    SK_no_root = { wots_sks = wots_sks, idx = 0 : Word, SK_PRF = SK_PRF, root = zero : [n]Byte, seed = SEED }
+    SK_no_root = { idx = 0 : Word, wots_sks = wots_sks, SK_PRF = SK_PRF, root = zero : [n]Byte, seed = SEED }
     ADRS = zero // Equivalent to `WOTS::toByte`{32} 0`.
-    root = treeHash`{0, h} SK_no_root ADRS
-    SK = { wots_sks = wots_sks, idx = 0 : Word, SK_PRF = SK_PRF, root = root, seed = SEED }
+    root = treeHash`{h} SK_no_root 0 ADRS
+    SK = { idx = 0 : Word, wots_sks = wots_sks, SK_PRF = SK_PRF, root = root, seed = SEED }
     PK = { root = root, seed = SEED }
 
 private
@@ -611,19 +593,15 @@ private
      *
      * [RFC-8391] Section 4.1.9.
      */
-    buildAuth_j : {i, j, k} (
-            fin i, fin j,
+    buildAuth_j : {j} (
+            fin j,
+            // The `for`-loop body is over values `j ∈ [0..h-1]`.
             j >= 0,
-            j <= h - 1,
-            // See documentation in `treeHash_base` for why we can't do the
-            // following: `width (2^^j + i - 1) <= 32`
-            width i <= 32,
-            // The below is equivalent to `floor(i / 2^j) XOR 1`.
-            k == (i / 2^^j) + ((i / 2^^j + 1) % 2),
-            width ((i / 2^^j + 1) * 2^^j) <= 32
-        ) => PrivateKey -> Address -> [n]Byte
-    buildAuth_j SK ADRS = auth_j where
-        auth_j = treeHash`{k * 2^^j, j} SK ADRS
+            j <= h - 1
+        ) => PrivateKey -> Word -> Address -> [n]Byte
+    buildAuth_j SK i ADRS = auth_j where
+        k = i / 2^^`j ^ 1 // Equivalent to `floor(i / (2^j)) XOR 1`
+        auth_j = treeHash`{j} SK (k * 2^^`j) ADRS
 
     /**
      * Recursive version of `buildAuth`.
@@ -637,19 +615,20 @@ private
      *
      * [RFC-8391] Section 4.1.9.
      */
-    buildAuth' : {i, j} (
-            fin i, fin j,
+    buildAuth' : {j} (
+            fin j,
+            // We loop over `j ∈ [0..h-1]`, but in order for us to use
+            // `buildAuth'` recursively we need `j >= 1` (due to the output
+            // being of type `[j][n]Byte`). Thus, here we iterate over
+            // `j ∈ [1..h]` but feed `buildAuth_j` the value `j - 1` to
+            // correct this "off-by-one" issue.
             j >= 1,
-            j <= h,
-            // See documentation in `treeHash_base` for why we can't do the
-            // following: `width (2^^j + i - 1) <= 32`
-            width i <= 32,
-            width ((i / 2^^j + 1) * 2^^j) <= 32
-        ) => PrivateKey -> Address -> [j][n]Byte
-    buildAuth' SK ADRS
-        | j == 1 => [ buildAuth_j`{i, 0} SK ADRS ]
-        | j > 1  => list # [ buildAuth_j`{i, j - 1} SK ADRS ] where
-            list = buildAuth'`{i, j - 1} SK ADRS
+            j <= h
+        ) => PrivateKey -> Word -> Address -> [j][n]Byte
+    buildAuth' SK i ADRS
+        | j == 1 => [ buildAuth_j`{0} SK i ADRS ]
+        | j > 1  => list # [ buildAuth_j`{j - 1} SK i ADRS ] where
+            list = buildAuth'`{j - 1} SK i ADRS
 
     /**
      * `buildAuth` - Compute the authentication path for the i^th WOTS+ key
@@ -667,13 +646,8 @@ private
      *
      * [RFC-8391] Section 4.1.9.
      */
-    buildAuth : {i} (
-            fin i,
-            i <= 2^^h,
-            width (2^^h + i - 1) <= 32,
-            width ((i / 2^^h + 1) * 2^^h) <= 32
-        ) => PrivateKey -> Address -> [h][n]Byte
-    buildAuth SK ADRS = buildAuth'`{i, h} SK ADRS
+    buildAuth : PrivateKey -> Word -> Address -> [h][n]Byte
+    buildAuth SK i ADRS = buildAuth'`{h} SK i ADRS
 
     /**
      * `treeSig` - Generate a WOTS+ signature on a message with corresponding
@@ -694,19 +668,12 @@ private
      *
      * [RFC-8391] Section 4.1.9, Algorithm 11.
      */
-    treeSig : {idx_sig} (
-            fin idx_sig,
-            idx_sig <= 2^^h,
-            width (2^^h + idx_sig - 1) <= 32,
-            width ((idx_sig / 2^^h + 1) * 2^^h) <= 32
-        ) => [n]Byte -> PrivateKey -> Address -> (WOTS::Signature, [h][n]Byte)
-    treeSig M' SK ADRS = (sig_ots, auth) where
-        auth = buildAuth`{idx_sig} SK ADRS
-        ADRS' = setOTSAddress (setType ADRS 0) `idx_sig
+    treeSig : [n]Byte -> Word -> PrivateKey -> Address -> (WOTS::Signature, [h][n]Byte)
+    treeSig M' idx_sig SK ADRS = (sig_ots, auth) where
+        auth = buildAuth SK idx_sig ADRS
+        ADRS' = setOTSAddress (setType ADRS 0) idx_sig
         // NOTE: The spec incorrectly calls `WOTS::sign`. [Errata-8383].
-        sig_ots = WOTS::sign M' (getWOTS_SK SK `idx_sig) ADRS' SK.seed
-
-
+        sig_ots = WOTS::sign M' (getWOTS_SK SK idx_sig) ADRS' SK.seed
 
 /**
  * `sign` - Generate an XMSS signature and update the XMSS private key.
@@ -735,19 +702,17 @@ private
  *
  * [RFC-8391] Section 4.1.9, Algorithm 12 (called `XMSS_sign` in the spec).
  */
-sign : {idx, m} (
-        fin m, fin idx,
-        idx <= 2^^h,
-        width (2^^h + idx - 1) <= 32,
+sign : {m} (
+        fin m,
         (PaddingWidth + width (8 * m)) < MessageUpperBound
-    ) => [m]Byte -> PrivateKey -> Option (PrivateKey, Signature)
-sign M SK = if `idx != SK.idx then None else Some (SK', Sig) where
+    ) => [m]Byte -> PrivateKey -> (PrivateKey, Signature)
+sign M SK = (SK', Sig) where
     idx_sig = SK.idx
     SK' = setIdx SK (idx_sig + 1)
     ADRS = zero : Address // Equivalent to `WOTS::toByte`{32} 0`.
     r = WOTS::PRF SK.SK_PRF (WOTS::toByte`{32} idx_sig)
     M' = H_msg (r # SK.root # WOTS::toByte`{n} idx_sig) M
-    treesig = treeSig`{idx} M' SK ADRS
+    treesig = treeSig M' idx_sig SK ADRS
     Sig = { idx_sig = idx_sig, r = r, sig_ots = treesig.0, auth = treesig.1 }
 
 /**
@@ -833,3 +798,11 @@ verify Sig M PK = result where
     node = rootFromSig Sig.idx_sig Sig.sig_ots Sig.auth M' PK.seed ADRS
     result = if node == PK.root then True else False
 
+/**
+ * ```repl
+ * :check XMSSisCorrect
+ * ```
+ */
+property XMSSisCorrect M wots_sks SK_PRF SEED = verify sig M pk where
+    (sk, pk) = keyGen wots_sks SK_PRF SEED
+    (sk', sig) = sign M sk
