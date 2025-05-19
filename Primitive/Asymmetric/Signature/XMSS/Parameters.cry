@@ -64,5 +64,5 @@ type PaddingWidth : #
  * have a maximum width for messages. The type constraint enforces this by
  * limiting the length of the hashed message to the maximum width.
  */
-H_msg : {m} (fin m, (PaddingWidth + width (8 * m)) < MessageUpperBound)
+H_msg : {m} (fin m, width (PaddingWidth + 8 * m) < MessageUpperBound)
     => [3 * n][8] -> [m][8] -> [n][8]

@@ -704,7 +704,7 @@ private
  */
 sign : {m} (
         fin m,
-        (PaddingWidth + width (8 * m)) < MessageUpperBound
+        width (PaddingWidth + 8 * m) < MessageUpperBound
     ) => [m]Byte -> PrivateKey -> (PrivateKey, Signature)
 sign M SK = (SK', Sig) where
     idx_sig = SK.idx
@@ -790,7 +790,7 @@ rootFromSig idx_sig sig_ots auth M' SEED ADRS = nodes ! 0 where
  * [RFC-8391] Section 4.1.10, Algorithm 14 (called `XMSS_verify` in the
  * spec).
  */
-verify : {m} (fin m, (PaddingWidth + width (8 * m)) < MessageUpperBound)
+verify : {m} (fin m, width (PaddingWidth + 8 * m) < MessageUpperBound)
     => Signature -> [m]Byte -> PublicKey -> Bit
 verify Sig M PK = result where
     ADRS = zero // Equivalent to `WOTS::toByte`{32} 0`.
