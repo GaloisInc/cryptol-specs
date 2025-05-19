@@ -161,15 +161,17 @@ type HashTreeAddress = [8 * 4]Byte
 /**
  * An XMSS private key.
  *
- * An XMSS private key contains `2^^h` WOTS+ private keys, the leaf index of the
- * next WOTS+ private key that has not yet been used, an `n`-byte key to generate
- * pseudorandom values for randomized message hashing, the `n`-byte root node of
- * the tree and `SEED`, the n-byte public seed used to pseudorandomly generate
- * bitmasks and hash function keys.
+ * An XMSS private key contains an algorithm OID [Errata-8424], `2^^h` WOTS+
+ * private keys, the leaf index of the next WOTS+ private key that has not yet
+ * been used, an `n`-byte key to generate pseudorandom values for randomized
+ * message hashing, the `n`-byte root node of the tree and `SEED`, the n-byte
+ * public seed used to pseudorandomly generate bitmasks and hash function keys.
  *
  * [RFC-8391] Section 4.1.3.
+ * [Errata-8424] @see https://www.rfc-editor.org/errata/eid8424
  */
 type PrivateKey = {
+    oid: [32],
     wots_sks: [2^^h]WOTS::PrivateKey,
     idx: Word,
     SK_PRF: [n]Byte,
@@ -187,6 +189,7 @@ private
     setIdx : PrivateKey -> Word -> PrivateKey
     setIdx SK idx = SK' where
         SK' = {
+            oid = SK.oid,
             wots_sks = SK.wots_sks,
             idx = idx,
             SK_PRF = SK.SK_PRF,
@@ -574,10 +577,10 @@ private
  */
 keyGen : [2^^h]WOTS::PrivateKey -> [n]Byte -> Seed -> (PrivateKey, PublicKey)
 keyGen wots_sks SK_PRF SEED = (SK, PK) where
-    SK_no_root = { idx = 0 : Word, wots_sks = wots_sks, SK_PRF = SK_PRF, root = zero : [n]Byte, seed = SEED }
+    SK_no_root = { oid = oid, idx = 0 : Word, wots_sks = wots_sks, SK_PRF = SK_PRF, root = zero : [n]Byte, seed = SEED }
     ADRS = zero // Equivalent to `WOTS::toByte`{32} 0`.
     root = treeHash`{h} SK_no_root 0 ADRS
-    SK = { idx = 0 : Word, wots_sks = wots_sks, SK_PRF = SK_PRF, root = root, seed = SEED }
+    SK = { oid = oid, idx = 0 : Word, wots_sks = wots_sks, SK_PRF = SK_PRF, root = root, seed = SEED }
     PK = { oid = oid, root = root, seed = SEED }
 
 private
