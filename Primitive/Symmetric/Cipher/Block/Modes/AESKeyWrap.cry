@@ -7,6 +7,13 @@
  * matches the index-based algorithm description as that description is more
  * similar to the BoringSSL AES Key Wrap implementation.
  *
+ * Note: Although [RFC-3394] explicitly places no upper bound on the number `n`
+ * of 64-bit message blocks (cf. Section 2), the algorithms _do in fact_ place a
+ * bound in that `width n <= 64`, since the computation of `A = MSB(64, B) ^ t
+ * where t = (n*j)+i` in the Key Wrap algorithm (and likewise a similar
+ * statement in the Key Unwrap algorithm) implicitly requires that `width n <=
+ * 64`. Thus we retain that bound on `n` in our implementation.
+ *
  * References:
  * [RFC-3394]: J. Schaad, R. Housley. Advanced Encryption Standard (AES) Key
  *     Wrap Algorithm. Internet Request for Comments (RFC) 3394. September
@@ -76,12 +83,12 @@ DefaultIV = [0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6]
  *
  * [RFC-3394] Section 2.2.1.
  */
-keyWrap : {n} (fin n, n >= 16, n % 8 == 0, width (n / 8) <= 64) =>
-          [n][8] -> [AESKeySize] -> [8][8] -> [n + 8][8]
-keyWrap plaintext key iv = split (join C) where
+keyWrap : {n} (fin n, n >= 1, width n <= 64) =>
+          [n][64] -> [AESKeySize] -> [8][8] -> [n + 1][64]
+keyWrap plaintext key iv = C where
   // 1) Initialize variables.
   A = join iv
-  R = split`{parts=n/8, each=64} (join plaintext)
+  R = plaintext
   // 2) Calculate intermediate values.
   intermediates = [(A, R)] # [wrapRound key s j | s <- intermediates
                                                 | j <- [0..5]]
@@ -124,18 +131,18 @@ keyWrap plaintext key iv = split (join C) where
  *
  * [RFC-3394] Section 2.2.2.
  */
-keyUnwrap : {n} (fin n, n >= 24, n % 8 == 0, width (n / 8) <= 64) =>
-            [n][8] -> [AESKeySize] -> [8][8] -> Option ([n-8][8])
+keyUnwrap : {n} (fin n, n >= 1, width n <= 64) =>
+            [n + 1][64] -> [AESKeySize] -> [8][8] -> Option ([n][64])
 keyUnwrap ciphertext key iv = plaintext where
   // 1) Initialize variables.
-  A = join (take`{8} ciphertext)
-  R = split`{parts=(n-8)/8, each=64} (join (drop`{8} ciphertext))
+  A = join (take`{1} ciphertext)
+  R = drop`{1} ciphertext
   // 2) Compute intermediate values.
   intermediates = [(A, R)] # [unwrapRound key s j | s <- intermediates
                                                   | j <- [5, 4 .. 0]]
   (A', R') = intermediates ! 0
   // 3) Output results.
-  plaintext = if A' == join iv then Some (split (join R')) else None
+  plaintext = if A' == join iv then Some R' else None
 
 private
   /**
@@ -147,7 +154,7 @@ private
    *
    * [RFC-3394] Section 2.2.1, Step 2.
    */
-  wrapBlock : {n} (fin n, width n <= 64) =>
+  wrapBlock : {n} (fin n, n >= 1, width n <= 64) =>
               [AESKeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
   wrapBlock key (A, R) j i = (A', R') where
     B  = AES::encrypt key (A # (R @ (i-1)))
