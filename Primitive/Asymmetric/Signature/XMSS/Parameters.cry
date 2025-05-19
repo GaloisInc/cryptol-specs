@@ -44,7 +44,7 @@ H : [n][8] -> [2 * n][8] -> [n][8]
  * functions used to instantiate it may limit their input to some maximum
  * width.
  */
-type MessageUpperBound: #
+type MessageUpperBound : #
 
 /**
  * Width of the non-message bits passed to the hash function in `H_msg`.
@@ -54,6 +54,16 @@ type MessageUpperBound: #
  * This is used to enforce the max message width constraint.
  */
 type PaddingWidth : #
+
+/**
+ * The Object Identifier (OID) for the XMSS public key.
+ *
+ * See [RFC-8391] Section 8 for the specific values to set this to for a given
+ * instantiation.
+ *
+ * [RFC-8391] Section 4.1.7.
+ */
+oid : [32]
 
 /**
  * A cryptographic hash function that takes a key and an arbitrary-length

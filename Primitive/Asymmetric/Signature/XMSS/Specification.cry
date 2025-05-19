@@ -6,7 +6,7 @@
  * also defined in [RFC-8391]. XMSS (and WOTS+) provide digital signatures
  * under the security of some underlying cryptographic hash function, and
  * require no additional conjectured hardness assumption. In addition,
- * XMSS (and WOTS+) are side-channel resistent and withstand existing
+ * XMSS (and WOTS+) are side-channel resistant and withstand existing
  * quantum attacks.
  *
  * On the other hand, XMSS is a _stateful_ signature scheme, and thus has
@@ -161,10 +161,10 @@ type HashTreeAddress = [8 * 4]Byte
 /**
  * An XMSS private key.
  *
- * An XMSS private key contains 2^^h WOTS+ private keys, the leaf index of the
- * next WOTS+ private key that has not yet been used, an n-byte key to generate
- * pseudorandom values for randomized message hashing, the n-byte root node of
- * the tree and SEED, and the n-byte public seed used to pseudorandomly generate
+ * An XMSS private key contains `2^^h` WOTS+ private keys, the leaf index of the
+ * next WOTS+ private key that has not yet been used, an `n`-byte key to generate
+ * pseudorandom values for randomized message hashing, the `n`-byte root node of
+ * the tree and `SEED`, the n-byte public seed used to pseudorandomly generate
  * bitmasks and hash function keys.
  *
  * [RFC-8391] Section 4.1.3.
@@ -209,13 +209,13 @@ private
  * An XMSS public key.
  *
  * The XMSS public key consists of the root of the binary hash tree and the
- * seed SEED, both also stored in the private key.
- *
- * Note: This differs from [RFC-8391] in that we do not include the OID.
+ * seed `SEED`, both also stored in the private key. It also includes an
+ * object identifier `oid` to identify the specific XMSS instantiation.
  *
  * [RFC-8391] Section 4.1.7.
  */
 type PublicKey = {
+    oid: [32],
     root: [n]Byte,
     seed: Seed
 }
@@ -253,12 +253,13 @@ private
     /**
      * `RAND_HASH` - Randomized tree hashing.
      *
-     * `RAND_HASH` takes as input two n-byte values LEFT and RIGHT that
+     * `RAND_HASH` takes as input two n-byte values `LEFT` and `RIGHT` that
      * represent the left and the right halves of the hash function input, the
-     * seed SEED used as key for PRF, and the address ADRS of this hash function
-     * call.  RAND_HASH first uses PRF with SEED and ADRS to generate a key KEY
-     * and n-byte bitmasks BM_0, BM_1.  Then, it returns the randomized hash
-     * H(KEY, (LEFT XOR BM_0) || (RIGHT XOR BM_1)).
+     * seed `SEED` used as key for `PRF`, and the address `ADRS` of this hash
+     * function call.  `RAND_HASH` first uses `PRF` with `SEED` and `ADRS` to
+     * generate a key `KEY` and `n`-byte bitmasks `BM_0`, `BM_1`.  Then, it
+     * returns the randomized hash `H(KEY, (LEFT XOR BM_0) || (RIGHT XOR
+     * BM_1))`.
      *
      *   Input:  n-byte value LEFT, n-byte value RIGHT, seed SEED,
      *           address ADRS
@@ -540,8 +541,6 @@ private
  *   private keys `wots_sks`, the secret key to the PRF `SK_PRF`, and the
  *   seed `SEED`.
  *
- * - We do not include an OID in the public key.
- *
  * ⚠️ Warning ⚠️: To ensure security, XMSS requires that the WOTS+ private
  * keys, PRF secret key, and seed are generated uniformly at random. This
  * specification does not verify the generation of those values;
@@ -579,7 +578,7 @@ keyGen wots_sks SK_PRF SEED = (SK, PK) where
     ADRS = zero // Equivalent to `WOTS::toByte`{32} 0`.
     root = treeHash`{h} SK_no_root 0 ADRS
     SK = { idx = 0 : Word, wots_sks = wots_sks, SK_PRF = SK_PRF, root = root, seed = SEED }
-    PK = { root = root, seed = SEED }
+    PK = { oid = oid, root = root, seed = SEED }
 
 private
     /**
