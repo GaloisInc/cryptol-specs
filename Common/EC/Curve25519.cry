@@ -94,24 +94,6 @@ type Bytes b = [b /^ 8][8]
 type constraint Fit b n = (b /^ 8 <= n, fin b, fin n)
 
 /**
- * Take an array of bytes, and encode this
- * as a value modulo `p`.
- *
- * This implementation utilizes Cryptol
- * intrinsics rather than attempting to follow
- * the Python reference implementation provided
- * in [rfc7748] Section 5.
- *
- * ```repl
- * :prove decodeLittleEndian' `{16} [0x7f, 0xff] == fromInteger(toInteger 0xff7f)
- * ```
- */
-decodeLittleEndian' : {bits, n} (Fit bits n) => [n][8] -> Z p
-decodeLittleEndian' x = fromInteger (toInteger (join (reverse x)))
-    where
-        x' = take x : Bytes bits
-
-/**
  * Take an array of bytes and decode as a little endian number.
  * Follow the specification. Assume that the array is "already"
  * little endian.
@@ -124,16 +106,6 @@ decodeLittleEndian x = fromInteger (sum iterates)
     where
         lshft y i = y * 256 ^^ i // left shift on integers
         iterates = [lshft (toInteger b) i | b <- x | i <- [0..bits /^ 8]]
-
-/**
- * Both decoding versions are equivalent.
- *
- * ```repl
- * :prove decodeLittleEndianOk `{16}
- * ```
- */
-decodeLittleEndianOk : {bits} (fin bits) => [bits /^ 8][8] -> Bit
-property decodeLittleEndianOk x = decodeLittleEndian `{bits} x == decodeLittleEndian' `{bits} x
 
 /**
  * Test vector for encoding derived
@@ -317,7 +289,7 @@ X25519 kb ub = result
  * Reference:
  * [rfc7748] Section 5.2.
  */
-testVector1 = X25519 k u == u'
+property testVector1 = X25519 k u == u'
     where
         k = split 0xa546e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449ac4
         u = split 0xe6db6867583030db3594c1a424b15f7c726624ec26b3353b10a903a6d0ab1c4c
@@ -333,46 +305,61 @@ testVector1 = X25519 k u == u'
  * Reference:
  * [rfc7748] Section 5.2.
  */
-testVector2 = X25519 k u == u'
+property testVector2 = X25519 k u == u'
     where
         k = split 0x4b66e9d4d1b4673c5ad22691957d6af5c11b6421e0ea01d42ca4169e7918ba0d
         u = split 0xe5210f12786811d3f4b7959d0538ae2c31dbe7106fc03c3efc4cd549c715a493
         u' = split 0x95cbde9476e8907d7aade45cb4b873f88b595a68799fa152e6f8f7647aac7957
 
 /**
- * "Monte Carlo" style testing.
+ * Iterative testing.
  */
-mc : {n} (fin n) => [32][8] -> [32][8] -> [32][8]
-mc k u
+iterTest : {n} (fin n) => [32][8] -> [32][8] -> [32][8]
+iterTest k u
     | n == 0 => k
-    | n >= 1 => mc `{n-1} (X25519 k u) k
+    | n >= 1 => iterTest `{n-1} (X25519 k u) k
 
 /**
- * A "Monte Carlo" test vector.
+ * An "iterative" test vector.
  *
  * ```repl
  * :prove mcTv1
  * ```
  */
-property mcTv1 = mc `{1} k u == r
+property mcTv1 = iterTest `{1} k u == r
     where
         k = split 0x0900000000000000000000000000000000000000000000000000000000000000
         u = k
         r = split 0x422c8e7a6227d7bca1350b3e2bb7279f7897b87bb6854b783c60e80311ae3079
 
 /**
- * A "Monte Carlo" test vector.
+ * An "iterative" test vector.
  *
  * ```repl
  * :prove mcTv2
  * ```
  */
-property mcTv2 = mc `{1000} k u == r
+property mcTv2 = iterTest `{1000} k u == r
     where
         k = split 0x0900000000000000000000000000000000000000000000000000000000000000
         u = k
         r = split 0x684cf59ba83309552800ef566f2f4d3c1c3887c49360e3875f2eb94d99532c51
 
+/*
+ * Cryptol is too slow to efficiently
+ * execute the "iterative" test vector
+ * for a million iterations.
+ *
+ * We include the test vector for
+ * documentary purposes, and omit the
+ * property keyword so it is not executed
+ * by `check`, `prove`, etc...
+ */
+mcTv3 = iterTest `{1000} k u == r
+    where
+        k = split 0x0900000000000000000000000000000000000000000000000000000000000000
+        u = k
+        r = split 0x7c3911e0ab2586fd864497297e575e6f3bc601c0883c30df5f4dd2d24f665424
 /**
  * Cryptol uses a big-endian convention when
  * using intrinsics such as `toInteger`.
