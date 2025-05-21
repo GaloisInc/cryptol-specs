@@ -15,10 +15,17 @@
  * 64`. Thus we retain that bound on `n` in our implementation.
  *
  * References:
+ *
  * [RFC-3394]: J. Schaad, R. Housley. Advanced Encryption Standard (AES) Key
  *     Wrap Algorithm. Internet Request for Comments (RFC) 3394. September
  *     2002.
  *     @see https://datatracker.ietf.org/doc/rfc3394
+ *
+ * [RFC-5649]: R. Housley, M. Dworkin. Advanced Encryption Standard (AES) Key
+ *     Wrap with Padding Algorithm. Internet Request for Comments (RFC) 5649.
+ *     August 2009.
+ *     @see https://datatracker.ietf.org/doc/rfc5649
+
  *
  * @copyright Galois Inc.
  * @author Brett Boston
@@ -55,7 +62,7 @@ DefaultIV = [0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6]
  * Key Wrap.
  *
  * This differs from the algorithm in [RFC-3394] in that we include an explicit
- * IV argument.
+ * IV argument. We use this variable IV in AES Key Wrap with Padding.
  *
  *   Inputs:  Plaintext, n 64-bit values {P1, P2, ..., Pn}, and
  *            Key, K (the KEK).
@@ -100,7 +107,7 @@ keyWrap plaintext key iv = C where
  * Key Unwrap.
  *
  * This differs from the algorithm in [RFC-3394] in that we include an explicit
- * IV argument.
+ * IV argument. We use this variable IV in AES Key Unwrap with Padding.
  *
  *   Inputs:  Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}, and
  *            Key, K (the KEK).
@@ -134,6 +141,28 @@ keyWrap plaintext key iv = C where
 keyUnwrap : {n} (fin n, n >= 1, width n <= 64) =>
             [n + 1][64] -> [AESKeySize] -> [8][8] -> Option ([n][64])
 keyUnwrap ciphertext key iv = plaintext where
+  // The following steps are done as part of `keyUnwrapUnchecked`.
+  // 1) Initialize variables.
+  // 2) Compute intermediate values.
+  (A', R') = keyUnwrapUnchecked ciphertext key
+  // 3) Output results.
+  plaintext = if A' == join iv then Some R' else None
+
+/**
+ * Key Unwrap without checking the validity of the IV.
+ *
+ * This algorithm is not explicitly defined in [RFC-3394], however it is used
+ * to implement AES Key Unwrap with Padding as defined in [RFC-5649].
+ *
+ * ⚠️ WARNING ⚠️: This algorithm _does not validate the IV_. Do not use it
+ * unless you have a verify specific requirement where you do not need to check
+ * the IV!
+ *
+ * [RFC-3394] Section 2.2.2.
+ */
+keyUnwrapUnchecked : {n} (fin n, n >= 1, width n <= 64) =>
+                     [n + 1][64] -> [AESKeySize] -> ([64], [n][64])
+keyUnwrapUnchecked ciphertext key = (A', R') where
   // 1) Initialize variables.
   A = join (take`{1} ciphertext)
   R = drop`{1} ciphertext
@@ -141,8 +170,6 @@ keyUnwrap ciphertext key iv = plaintext where
   intermediates = [(A, R)] # [unwrapRound key s j | s <- intermediates
                                                   | j <- [5, 4 .. 0]]
   (A', R') = intermediates ! 0
-  // 3) Output results.
-  plaintext = if A' == join iv then Some R' else None
 
 private
   /**
@@ -208,3 +235,15 @@ private
   unwrapRound key (A, R) j = unwrappedBlocks ! 0 where
     unwrappedBlocks = [(A, R)] # [unwrapBlock key s j i | s <- unwrappedBlocks
                                                         | i <- [n, n-1 .. 1]]
+
+import Common::OptionUtils(optTest)
+
+/**
+ * Key unwrap must be the inverse of key wrap.
+ * ```repl
+ * :check keyWrapCorrect`{n=5}
+ * ```
+ */
+keyWrapCorrect : {n} (fin n, n >= 1, width n <= 64) => [n][64] -> [AESKeySize] -> Bool
+property keyWrapCorrect plaintext key =
+  optTest (\result -> result == plaintext) (keyUnwrap (keyWrap plaintext key DefaultIV) key DefaultIV)

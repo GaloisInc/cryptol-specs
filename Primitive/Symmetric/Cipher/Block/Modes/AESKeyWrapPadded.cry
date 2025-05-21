@@ -1,15 +1,22 @@
-// Cryptol AES Key Wrap Padded Implementation
-//
-// @copyright Galois Inc.
-// @author Brett Boston
-// @author Ryan Scott <rscott@galois.com>
-// @author Marcella Hastings <marcella@galois.com>
-// www.cryptol.net
-
-// This is a close implementation of RFC 5649:
-// https://tools.ietf.org/html/rfc5649
-//
-
+/**
+ * Advanced Encryption Standard (AES) Key Wrap with Padding Algorithm.
+ *
+ * This is an implementation of the Key Wrap and Key Unwrap algorithms in
+ * [RFC-5649].
+ *
+ * Reference:
+ * [RFC-5649]: R. Housley, M. Dworkin. Advanced Encryption Standard (AES) Key
+ *     Wrap with Padding Algorithm. Internet Request for Comments (RFC) 5649.
+ *     August 2009.
+ *     @see https://datatracker.ietf.org/doc/rfc5649
+ *
+ * @copyright Galois Inc.
+ * @author Brett Boston
+ * @author Ryan Scott <rscott@galois.com>
+ * @author Marcella Hastings <marcella@galois.com>
+ * @author Alex J Malozemoff <amaloz@galois.com>
+ *  www.cryptol.net
+ */
 module Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrapPadded where
 
 parameter
@@ -18,7 +25,11 @@ parameter
   type AESKeySize' : #
   type constraint (fin AESKeySize', AESKeySize' % 64 == 0, AESKeySize' / 64 >= 2, AESKeySize' / 64 <= 4)
 
-// Make the key size type available outside the module.
+/**
+ * The AES key-encryption key size (in bits).
+ *
+ * [RFC-5649] Section 1.
+ */
 type AESKeySize = AESKeySize'
 
 import Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap where
