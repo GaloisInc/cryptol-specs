@@ -83,7 +83,7 @@ TV_04C = split`{each=64} 0xa5b63618fc0c4512960f00a1f226d9837a90480baea75265453b9
 property TV_04KWrap = extendedKeyWrap`{512, 0} TV_04P TV_04K == TV_04C
 property TV_04KUnwrap = testUnwrap`{64, 512} TV_04K TV_04C TV_04P
 
-/*
+/**
  * The following tests come from the NIST Key Wrap Validation System (KWVS)
  * KWP-AD-AES256 test vectors.
  *
