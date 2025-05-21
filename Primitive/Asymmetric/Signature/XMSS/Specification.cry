@@ -619,17 +619,11 @@ private
      */
     buildAuth' : {j} (
             fin j,
-            // We loop over `j ∈ [0..h-1]`, but in order for us to use
-            // `buildAuth'` recursively we need `j >= 1` (due to the output
-            // being of type `[j][n]Byte`). Thus, here we iterate over
-            // `j ∈ [1..h]` but feed `buildAuth_j` the value `j - 1` to
-            // correct this "off-by-one" issue.
-            j >= 1,
-            j <= h
-        ) => PrivateKey -> Word -> Address -> [j][n]Byte
+            j < h
+        ) => PrivateKey -> Word -> Address -> [j + 1][n]Byte
     buildAuth' SK i ADRS
-        | j == 1 => [ buildAuth_j`{0} SK i ADRS ]
-        | j > 1  => list # [ buildAuth_j`{j - 1} SK i ADRS ] where
+        | j == 0 => [ buildAuth_j`{0} SK i ADRS ]
+        | j > 0  => list # [ buildAuth_j`{j} SK i ADRS ] where
             list = buildAuth'`{j - 1} SK i ADRS
 
     /**
@@ -649,7 +643,7 @@ private
      * [RFC-8391] Section 4.1.9.
      */
     buildAuth : PrivateKey -> Word -> Address -> [h][n]Byte
-    buildAuth SK i ADRS = buildAuth'`{h} SK i ADRS
+    buildAuth SK i ADRS = buildAuth'`{h - 1} SK i ADRS
 
     /**
      * `treeSig` - Generate a WOTS+ signature on a message with corresponding
@@ -670,23 +664,15 @@ private
      *
      * [RFC-8391] Section 4.1.9, Algorithm 11.
      */
-    treeSig : [n]Byte -> Word -> PrivateKey -> Address -> (WOTS::Signature, [h][n]Byte)
-    treeSig M' idx_sig SK ADRS = (sig_ots, auth) where
+    treeSig : [n]Byte -> PrivateKey -> Word -> Address -> (WOTS::Signature, [h][n]Byte)
+    treeSig M' SK idx_sig ADRS = (sig_ots, auth) where
         auth = buildAuth SK idx_sig ADRS
         ADRS' = setOTSAddress (setType ADRS 0) idx_sig
-        // NOTE: The spec incorrectly calls `WOTS::sign`. [Errata-8383].
+        // NOTE: The spec calls `WOTS::sign` with the wrong parameter order. [Errata-8383].
         sig_ots = WOTS::sign M' (getWOTS_SK SK idx_sig) ADRS' SK.seed
 
 /**
  * `sign` - Generate an XMSS signature and update the XMSS private key.
- *
- * Note: This differs somewhat from the "expected" API because one must
- * additionally specify the type `idx`, and this must match the `idx` value in
- * the private key. That is, instead of calling `sign M SK` one needs to call
- * `sign`{idx} M SK` where `idx = SK.idx`. This is required due to limitations
- * in Cryptol: we need `idx` as a _type_ in order to construct the hash, but the
- * private key stores `idx` as a _value_. Thus it is up to the caller to make
- * sure these two uses of `idx` are aligned; if not, `None` is returned.
  *
  *   Input: Message M, XMSS private key SK
  *   Output: Updated SK, XMSS signature Sig
@@ -714,8 +700,8 @@ sign M SK = (SK', Sig) where
     ADRS = zero : Address // Equivalent to `WOTS::toByte`{32} 0`.
     r = WOTS::PRF SK.SK_PRF (WOTS::toByte`{32} idx_sig)
     M' = H_msg (r # SK.root # WOTS::toByte`{n} idx_sig) M
-    treesig = treeSig M' idx_sig SK ADRS
-    Sig = { idx_sig = idx_sig, r = r, sig_ots = treesig.0, auth = treesig.1 }
+    (sig_ots, auth) = treeSig M' SK idx_sig ADRS
+    Sig = { idx_sig = idx_sig, r = r, sig_ots = sig_ots, auth = auth }
 
 /**
  * `rootFromSig` - Compute a root node from a tree signature.
@@ -752,7 +738,7 @@ sign M SK = (SK', Sig) where
 rootFromSig : Word -> WOTS::Signature -> [h][n]Byte -> [n]Byte -> Seed -> Address -> [n]Byte
 rootFromSig idx_sig sig_ots auth M' SEED ADRS = nodes ! 0 where
     ADRS' = setOTSAddress (setType ADRS 0) idx_sig
-    // NOTE: The spec incorrectly calls `WOTS_pkFromSig`. [Errata-8396].
+    // NOTE: The spec calls `WOTS_pkFromSig` with the wrong parameter order. [Errata-8396].
     pk_ots = WOTS::pkFromSig M' sig_ots ADRS' SEED
     ADRS'' = setLTreeAddress (setType ADRS' 1) idx_sig
     node_0 = ltree pk_ots SEED ADRS''
@@ -760,9 +746,9 @@ rootFromSig idx_sig sig_ots auth M' SEED ADRS = nodes ! 0 where
     nodes = [ node_0 ] # [ node_1 where
             ADRS_ = setTreeHeight ADRS''' k
             treeindex = getTreeIndex ADRS_
-            node_1 = if (idx_sig / 2^^k) % 2 == 0 then
-                RAND_HASH node_0 (auth @ k) SEED (setTreeIndex ADRS (treeindex / 2)) else
-                RAND_HASH (auth @ k) node_0 SEED (setTreeIndex ADRS ((treeindex - 1) / 2))
+            node_1 = if (idx_sig / 2^^k) % 2 == 0
+                then RAND_HASH node_0 (auth @ k) SEED (setTreeIndex ADRS (treeindex / 2))
+                else RAND_HASH (auth @ k) node_0 SEED (setTreeIndex ADRS ((treeindex - 1) / 2))
         | k <- [0..h - 1]
     ]
 
