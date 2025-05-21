@@ -120,8 +120,8 @@ extendedKeyWrap plaintext key =
   // the AIV as the initial value.  The result is n+1 64-bit blocks {C[0], C[1],
   // ..., C[n]}.
   //
-  // The `drop` and append of `zero` have runtime effect and exist to make the
-  // types work out, as the type checker cannot deduce that `n >= 2` in this
+  // The `drop` and append of `zero` have no runtime effect and exist to make
+  // the types work out, as the type checker cannot deduce that `n >= 2` in this
   // branch.
   else drop (keyWrap ((P # zero) : [n][64]) key (split`{each=8} AIV`{m}))
   where
