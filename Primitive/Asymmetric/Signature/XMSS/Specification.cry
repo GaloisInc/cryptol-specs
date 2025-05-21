@@ -736,21 +736,20 @@ sign M SK = (SK', Sig) where
  * spec).
  */
 rootFromSig : Word -> WOTS::Signature -> [h][n]Byte -> [n]Byte -> Seed -> Address -> [n]Byte
-rootFromSig idx_sig sig_ots auth M' SEED ADRS = nodes ! 0 where
+rootFromSig idx_sig sig_ots auth M' SEED ADRS = node_0' where
     ADRS' = setOTSAddress (setType ADRS 0) idx_sig
     // NOTE: The spec calls `WOTS_pkFromSig` with the wrong parameter order. [Errata-8396].
     pk_ots = WOTS::pkFromSig M' sig_ots ADRS' SEED
     ADRS'' = setLTreeAddress (setType ADRS' 1) idx_sig
     node_0 = ltree pk_ots SEED ADRS''
     ADRS''' = setTreeIndex (setType ADRS'' 2) idx_sig
-    nodes = [ node_0 ] # [ node_1 where
+    node_0' = foldl updateNode node_0 [0..h-1] where
+        updateNode node0 k = node_1 where
             ADRS_ = setTreeHeight ADRS''' k
             treeindex = getTreeIndex ADRS_
             node_1 = if (idx_sig / 2^^k) % 2 == 0
                 then RAND_HASH node_0 (auth @ k) SEED (setTreeIndex ADRS (treeindex / 2))
                 else RAND_HASH (auth @ k) node_0 SEED (setTreeIndex ADRS ((treeindex - 1) / 2))
-        | k <- [0..h - 1]
-    ]
 
 /**
  * `verify` - Verify an XMSS signature using the corresponding XMSS public key
