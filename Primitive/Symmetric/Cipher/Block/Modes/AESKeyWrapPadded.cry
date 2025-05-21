@@ -38,80 +38,193 @@ import Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap where
 import Primitive::Symmetric::Cipher::Block::AES::Specification as AES where
   type KeySize' = AESKeySize'
 
-// Most significant bits of alternate initial value (Section 3)
-AlternativeIV : [4][8]
-AlternativeIV = [0xA6, 0x59, 0x59, 0xA6]
+private
+  /**
+  * Alternative Initial Value (AIV) constant.
+  *
+  * The constant is 0xA65959A6 and occupies the high-order half of the AIV.
+  *
+  * [RFC-5649] Section 3.
+  */
+  AIVConstant : [4][8]
+  AIVConstant = [0xA6, 0x59, 0x59, 0xA6]
 
-// Pad a plaintext out to the nearest 8 bytes
-padPlaintext : {n, m} (fin n, (n+m) % 8 == 0, m <= 7) => [n][8] -> [n + m][8]
-padPlaintext p = p # zero
+  /**
+  * Alternative Initial Value (AIV).
+  *
+  * The Alternative Initial Value (AIV) required by this specification is a
+  * 32-bit constant concatenated to a 32-bit Message Length Indicator (MLI).  The
+  * constant is 0xA65959A6 and occupies the high-order half of the AIV.  The
+  * 32-bit MLI, which occupies the low-order half of the AIV, is an unsigned
+  * binary integer equal to the octet length of the plaintext key data, in
+  * network order -- that is, with the most significant octet first.
+  *
+  * [RFC-5649] Section 3.
+  */
+  AIV : {n} (fin n, width n <= 32) => [64]
+  AIV = join (AIVConstant # (split`{each=8} (`n : [32])))
 
-// Wrap `plaintext` using `key` as the encryption key.  `iv` is the most
-// significant 4 bytes of the alternative initial value (see Section 3 of
-// RFC 5649).  This function implements the algorithm from Section 4.1.
-aesWrapKeyPadded : {n, m} (n >= 1 , n < 2^^32 , (n+m) % 8 == 0 , m <= 7) =>
-                   [AESKeySize] -> [4][8] -> [n][8] -> [n+m+8][8]
-aesWrapKeyPadded key iv plaintext =
-  if `n <= 8
-  // If padded plaintext is 8 bytes, encrypt in AEC ECB mode.  The `drop` and
-  // append of `zero` have no effect at runtime and exist to make the types
-  // work out, as the type checker cannot deduce that `n <= 8` in this branch.
-  then (split (AES::encrypt key (drop (join (AIV # P))))) # zero
-  // Otherwise perform standard key wrap algorithm on padded plaintext.  The
-  // `drop` and append of `zero` have runtime effect and exist to make the
-  // types work out, as the type checker cannot deduce that `n >= 16` in this
+  checkAIV : {n, m} (fin n, fin m, width n <= 32, width m <= 32) => [64] -> [m][8] -> Bit
+  checkAIV A P = check1 && check2 && check3 where
+    aivConstant = take`{32} A
+    MLI = drop`{32} A
+    // 1) Check that `MSB(32, A) = 0xA65959A6`.
+    check1 = aivConstant == join AIVConstant
+    // 2) Check that `8 * (n - 1) < MLI <= 8 * n`.
+    check2 = (8 * (`n - 1) < MLI) && (MLI <= 8 * `n)
+    // 3) Let `b = (8 * n) - MLI`, and then check that the rightmost `b` octets of
+    //    the output data are zero.
+    check3 = and [(i < MLI) || (x == zero) | x <- P | i <- [0...]]
+
+/**
+ * Extended Key Wrapping Process.
+ *
+ * [RFC-5649] Section 4.1.
+ */
+extendedKeyWrap : {m, r', n} (
+                    fin m,
+                    /*
+                     * The plaintext consists of between one and 2^^32 octets.
+                     */
+                    m >= 1 , m <= 2^^32, width m <= 32,
+                    /*
+                     * If `m` is not a multiple of 8, pad the plaintext octet
+                     * string on the right with octets `{Q[m+1], ..., Q[r]}` of
+                     * zeros, where `r` is the smallest multiple of 8 that is
+                     * greater than `m`.
+                     *
+                     * We use `r' = r - m` to denote the amount of padding.
+                     */
+                    (m + r') % 8 == 0,
+                    r' <= 7,
+                    /*
+                     * The ciphertext contains `n` 64-bit blocks, where `n`
+                     * equals the padded plaintext divided by 8 (since the
+                     * plaintext is given in bytes).
+                     */
+                    n == (m + r') / 8
+                ) => [m][8] -> [AESKeySize] -> [n + 1][64]
+extendedKeyWrap plaintext key =
+  // 2) Wrapping
+  if `n == 1 then
+  // If the padded plaintext contains exactly eight octets, then prepend the AIV
+  // to P[1] and encrypt the resulting 128-bit block using AES in ECB mode with
+  // key K (the KEK).
+  //
+  // Note: The `drop` and append of `zero` have no effect at runtime and exist
+  // to make the types work out, as the type checker cannot deduce that `n == 1`
+  // in this branch.
+  (split (AES::encrypt key (drop (join (split`{each=64} AIV`{m} # P))))) # zero
+  // Otherwise, apply the wrapping process specified in Section 2.2.1 of
+  // [RFC-3394] to the padded plaintext {P[1], ..., P[n]} with K (the KEK) and
+  // the AIV as the initial value.  The result is n+1 64-bit blocks {C[0], C[1],
+  // ..., C[n]}.
+  //
+  // The `drop` and append of `zero` have runtime effect and exist to make the
+  // types work out, as the type checker cannot deduce that `n >= 2` in this
   // branch.
-  else drop (aesWrapKey key AIV ((P # zero) : [max 16 (n+m)][8]))
+  else drop (keyWrap ((P # zero) : [n][64]) key (split`{each=8} AIV`{m}))
   where
-    // Append padding
-    P = padPlaintext`{n, m} plaintext
-    // Compute alternative initial value
-    AIV = iv # (split`{4,8} (`n : [32]))
+    // 1) Append padding
+    P = padPlaintext`{m, m + r'} plaintext
 
-// Unwrap `ciphertext` using `key` as the key encryption key.  `iv` is most
-// significant 4 bytes of the expected initial value.  This function implements
-// the algorithm from Section 4.2.  It also performs the integrity check from
-// Section 3.  This function returns a tuple where the first element indicates
-// whether or not the integrity check passed (`True` indicates the check
-// passed), the second element is the size of the plaintext, and the final
-// element is the decrypted plaintext with the added padding.  The caller of
-// the function must remove this padding themselves.  If the integrity check
-// fails, the second and third elements will be zeros.
-aesUnwrapKeyPadded : {n} (fin n, n >= 16, n % 8 == 0, width n <= 32) =>
-                     [AESKeySize] -> [4][8] -> [n][8] -> Option ([4][8], [n-8][8])
-aesUnwrapKeyPadded key iv ciphertext =
+private
+  /**
+   * Pad a plaintext out to the nearest 8 bytes, and return as 64-bit blocks.
+   */
+  padPlaintext : {m, n} (
+                  fin m, fin n,
+                  m >= 1, m <= 2^^32,
+                  n % 8 == 0,
+                  n >= m
+                ) => [m][8] -> [n / 8][64]
+  padPlaintext p = split`{each=64} ((join p) # zero)
+
+/**
+ * Extended Key Unwrapping Process.
+ *
+ * ⚠️ Note ⚠️: This differs from the spec in that we output the message length
+ * indicator (MLI) alongside the _padded_ plaintext. It is up to the caller of
+ * this function to remove the padding themselves! This is done this way because
+ * the MLI as returned by the AES Key Unwrap is a _value_, but we need it as a
+ * _type_ in Cryptol in order to strip the padding.
+ *
+ * [RFC-5649] Section 4.2.
+ */
+extendedKeyUnwrap : {n} (
+                      fin n,
+                      /*
+                       * The minimal ciphertext length is two 64-bit blocks.
+                       */
+                      n >= 1,
+                      /*
+                       * The maximal ciphertext length must fit in 64-bits due
+                       * to our use of AES Key Unwrap under-the-hood.
+                       */
+                      width n <= 64,
+                      /*
+                       * We feed `n * 8` into the `checkAIV` function, and hence
+                       * we need that `width (n * 8) <= 32`.
+                       */
+                      width (n * 8) <= 32
+                  ) => [n + 1][64] -> [AESKeySize] -> Option ([4][8], [n * 8][8])
+extendedKeyUnwrap ciphertext key =
   if valid
   then Some (size, P)
   else None
   where
-    S : [n][8]
-    S = if `n == 16
-      // If the cipher text is 16 bytes, decrypt in AES ECB mode.  The `drop`
-      // and append of `zero` have no effect at runtime and exist to make the
-      // types work out, as the type checker cannot deduce that `n == 16` in
-      // this branch.
+    // 1) Key unwrapping
+    // `S` contains the AIV (`A`) plus the plaintext (`P`).
+    S : [(n + 1) * 8][8]
+    S = if `n == 1
+      // When `n = 1`, the ciphertext contains exactly two 64-bit blocks, and
+      // they are decrypted as a single AES block using AES in ECB mode with `K`
+      // (the KEK) to recover the AIV and the padded plaintext key.
+      //
+      // Note: The `drop` and append of `zero` have no effect at runtime and
+      // exist to make the types work out, as the type checker cannot deduce
+      // that `n == 1` in this branch.
       then (split (AES::decrypt key (drop (join ciphertext)))) # zero
-      // Otherwise perform the standard key unwrap algorithm.  The `drop`
-      // and append of `zero` have no effect at runtime and exist to make the
-      // types work out, as the type checker cannot deduce that `n >= 24` in
-      // this branch.
+      // Otherwise, apply Steps 1 and 2 of the AES Key Unwrap process to the
+      // `n+1` 64-bit ciphertext blocks, `{C[0], C[1], ..., C[n]}`, and to the
+      // KEK, `K`.  Define the padded plaintext blocks, `R' = {P[1], ...,
+      // P[n]}`, as specified in Step 3 of that process, with `A[0]` as the `A`
+      // value.  Note that checking "If `A[0]` is an appropriate value" is
+      // slightly delayed to Step 2 below since the padded plaintext is needed
+      // to perform this verification when the AIV is used.
+      //
+      // Note: The `drop` and append of `zero` have no effect at runtime and
+      // exist to make the types work out, as the type checker cannot deduce
+      // that `n > 1` in this branch.
       else drop (split`{each=8} (join (([A'] # R'))))
       where
-        (A', R') = aesUnwrapKeyUnchecked key ((ciphertext # zero) : [max 24 n][8])
-    // Break decrypted ciphertext into the most significant 4 bytes of the IV,
-    // the size of the plaintext without padding, and the plaintext with
-    // padding
-    iv' : [4][8]
+        (A', R') = keyUnwrapUnchecked ((ciphertext # zero) : [n + 1][64]) key
+    // Break the plaintext into the most significant 4 bytes of the AIV, the
+    // least significant 4 bytes of the AIV (which corresponds to the size of
+    // the plaintext without padding), and the plaintext with padding.
+    aivConstant : [4][8]
     size : [4][8]
-    P : [n-8][8]
-    iv' # size # P = S
-    // Validation check
-    valid =
-      // Most significant bytes of IV should match `iv`
-      (iv' == iv) &&
-      // n - 16 < size <= n - 8
-      (((`n : [32]) - 16) < (join size)) &&
-      ((join size) <= ((`n : [32]) - 8)) &&
-      // All bytes of the padding must be zeros
-      and [(i < (join size)) || (x == zero) | x <- P | i <- [0...]]
+    P : [n * 8][8]
+    aivConstant # size # P = S
+    valid = checkAIV`{n} (join (aivConstant # size)) P
 
+import Common::OptionUtils(optTest)
+
+/**
+ * Extended key unwrap must be the inverse of extended key wrap.
+ * ```repl
+ * :check extendedKeyWrapCorrect`{m=5}
+ * ```
+ */
+extendedKeyWrapCorrect : {m, r'} (
+                          fin m,
+                          m >= 8, m <= 2^^32,
+                          width m <= 32,
+                          (m + r') % 8 == 0,
+                          r' <= 7,
+                          8 >= (m + r') / 8
+                        ) => [m][8] -> [AESKeySize] -> Bool
+property extendedKeyWrapCorrect plaintext key =
+  optTest (\result -> result.1 == plaintext # zero) plaintext_ where
+    ciphertext = extendedKeyWrap`{m, r'} plaintext key
+    plaintext_ = extendedKeyUnwrap`{(m + r') / 8} ciphertext key
