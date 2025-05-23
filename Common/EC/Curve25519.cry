@@ -11,6 +11,11 @@
  * specification does NOT model all of the constant-time
  * recommendations that the RFC does.
  *
+ * The RFC defines a function X448 over Curve448
+ * in addition to X25519 and Curve25519. This
+ * executable specification includes neither
+ * X448 nor Curve448.
+ *
  * References:
  *  [rfc 7748]
  *  Elliptic Curves for Security (IRTF RFC 7748)
