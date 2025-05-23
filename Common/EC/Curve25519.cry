@@ -14,10 +14,18 @@
  * References:
  *  [rfc 7748]
  *  Elliptic Curves for Security (IRTF RFC 7748)
- *  Langley, Google, Hamburg, Rambus Cryptography Research,
- *  Turner, sn3rd
+ *  A. Langley, Google; M. Hamburg, Rambus;
+ *  S. Turner, sn3rd.
  *  January 2016
  *  @see https://datatracker.ietf.org/doc/html/rfc7748
+ *
+ *  [SP 800-186]
+ *  Recommendations for Discrete Logarithm-based Cryptography:
+ *  Elliptic Curve Domain Parameters.
+ *  L. Chen, D. Moody, K. Randall, A. Regenscheid, A. Robinson.
+ *  February 2023
+ *  @see https://doi.org/10.6028/NIST.SP.800-186
+ *
  *
  * @copyright Galois, Inc.
  * @author John Christensen <jchristensen@galois.com>
