@@ -1,0 +1,84 @@
+/**
+ * A couple instances of sponge compliant padding functions.
+ * These are described in [SPONGE].
+ *
+ * This reference defines the notion of a "sponge compliance"
+ * as a functional property. It would ideal to have the padding
+ * function associated with a given sponge construction be a parameter of
+ * the specification. Unfortunately, the notion of "sponge compliance"
+ * is very broad, and cannot be easily expressed in Cryptol's type
+ * system parametrically (technically, Cryptol does not allow
+ * type constraints as parameters, so it is not ergonomic to
+ * define the output length of a padded bitstring for arbitrary
+ * padding functions).
+ *
+ * As a stopgap of sorts, we enumerate all of the sponge compliant
+ * padding functions described in [SPONGE] in this module.
+ *
+ * References:
+ * [SPONGE]
+ *    Cryptographic Sponge Functions (Version 0.1)
+ *    Bertoni, Daemen, Peeters, Van Assche
+ *    January 14, 2011
+ *    @see https://keccak.team/files/CSF-0.1.pdf
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ * @author Marcella Hastings <marcella@galois.com>
+ *
+ */
+
+module Primitive::Keyless::Sponge::Padding where
+
+/**
+ * A type taken from the SHA3 specification for multi-rate padding.
+ * The meaning of `x` and `m` are taken from that specification.
+ * The comment below is also taken from that specification.
+ * For convenience, consider `m` to be the message length
+ * and `x` to be a fixed block length. The type describes
+ * the length of the padding alone.
+ *
+ * Note: The spec says the output length is a positive multiple of `x` and
+ * defines it to be, basically: `(- m - 2) mod x + 2`. We can't encode this
+ * exactly as-is in the type signature because Cryptol doesn't support
+ * negative numbers in types (`-m`). Instead, we do the following:
+ *      (m + 2)           : The minimum length of the original message and
+ *                        : the padding
+ *      (m + 2) /^ x      : The multiplier of `x` that determines the
+ *                        : ultimate length of the message + padding
+ * x * ((m + 2) /^ x)     : The total length of the message + padding
+ * x * ((m + 2) /^ x) - m : The total length of the padding alone
+ *
+ */
+type MultiRate x m = x * ((m + 2) /^ x) - m
+
+/**
+ * Multi-rate padding appends a single bit `1` followed by
+ * the minimum number of bits `0` and a final bit `1`
+ * such that the length of the result is a multiple of the block length.
+ *
+ * This implementation is heavily influenced by the current
+ * SHA3 cryptol specification in this repository.
+ *
+ * See [SPONGE] Section 2.1.2 Definition 3.
+ */
+multiratePadding: {L, x} (fin L, x > 0, fin x) => [MultiRate x L]
+multiratePadding = 0b1 # zero # 0b1
+
+/**
+ * A type describing simple padding.
+ * This type describes the length of padding alone
+ * for some message of length `m` and fixed block
+ * length `x`.
+ */
+type Simple x m = x * ((m + 1) /^ x) - m
+
+/**
+ * Simple padding appends a single bit `1` followed by
+ * the minimum number of bits `0` such that the length of the
+ * result is a multiple of the block length.
+ *
+ * See [SPONGE] Section 2.1.2 Definition 2.
+ */
+simplePadding: {L, x} (fin L, fin x, x > 0) => [Simple x L]
+simplePadding = 0b1 # zero
