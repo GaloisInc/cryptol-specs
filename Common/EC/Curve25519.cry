@@ -46,7 +46,7 @@ type p = 2^^255 - 19
  * avoids the direct use of `A`, but it is included
  * for completion.
  */
-type A = 48662
+type A = 486662
 
 /**
  * The order of the curve.
@@ -97,6 +97,16 @@ type constraint Fit b n = (b /^ 8 <= n, fin b, fin n)
  * Take an array of bytes and decode as a little endian number.
  * Follow the specification. Assume that the array is "already"
  * little endian.
+ *
+ * For Curve25519, `bits` is always fixed to be `255`.
+ * RFC7748 defines other curves with different bit parameters.
+ * To faciliate eventual refactoring, we make this function
+ * polymorphic in the parameter `bits`.
+ *
+ * RFC7748 specifies that the operations work internally
+ * with integers, with all operations done `% p`. We use
+ * a modular integer type directly, to more closely match
+ * the notation in the multiplication formula later.
  *
  * Reference:
  * [rfc7748] Section 5.
