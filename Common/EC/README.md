@@ -8,6 +8,16 @@ Structurally, the curve implementation is generic over concrete parameters but w
 
 This is one of many, many implementations of the NIST prime field curves that have been written in Cryptol over the years. One grandparent of particular interest is a 2011 curve implementation that was used to verify a Java implementation of ECDSA in combination with [SAWScript](https://github.com/GaloisInc/saw-script/). This implementation no longer lives in this repo, but it can be seen together with the Java code and the SAW scripts used in the full verification toolchain [in the examples directory of the SAWScript repository](https://github.com/GaloisInc/saw-script/tree/master/examples/ecdsa).
 
+This repository also contains an implementation of [Curve25519](https://datatracker.ietf.org/doc/html/rfc7748), a prime field curve proposed by [Daniel Bernstein](https://cr.yp.to/ecdh/curve25519-20060209.pdf). SP 800-186 allows the use of Curve25519 for some uses, and it is widely used as a fully fledged EC primitive when conformance to the NIST standard is not a concern.
+
 Several other implementations of elliptic curves used to live in this repository. If you would like to explore these, they were removed in the commit with hash:
 > [9ae493eeb6eb0df0a149b416c5f1ccb6a1de5fc5](https://github.com/GaloisInc/cryptol-specs/commit/9ae493eeb6eb0df0a149b416c5f1ccb6a1de5fc5)
 
+| Scheme | [Gold standard](https://github.com/GaloisInc/cryptol-specs/wiki/Reviewing-guidelines)? | Literate |
+| --- | --- | --- |
+| P192 | Yes | No |
+| P224 | Yes | No |
+| P256 | Yes | No |
+| P384 | Yes | No |
+| P521 | Yes | No |
+| Curve25519 | | No |
