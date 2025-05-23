@@ -25,7 +25,7 @@
 
 module Common::EC::Curve25519 where
 
-import Common::utils(ZtoBV)
+import Common::utils(ZtoBV, BVtoZ)
 
 /*
  * Curve 25519 is a Montgomery curve of the form
@@ -138,15 +138,54 @@ property decodeTest = decodeLittleEndian `{88} "hello world" == x
  * [rfc7748] Section 5.
  */
 decodeUCoordinate : {bits, n} (Fit bits n, bits >= 1) => [n][8] -> Z p
-decodeUCoordinate arr = decodeLittleEndian `{bits} arr''
+decodeUCoordinate u_list = decodeLittleEndian `{bits} u_list''
     where
         mask = (1 << (`bits % 8)) - 1 : [8]
         type m = bits /^ 8
-        arr' = take `{m} arr
+        u_list' = take `{m} u_list
         l = `m - 1
-        arr'' = if `bits % 8 != 0
-                then update arr' l (last arr' && mask)
-                else arr'
+        u_list'' = if `bits % 8 != 0
+                then update u_list' l (last u_list' && mask)
+                else u_list'
+
+/**
+ * Encode the `u` coordinate from `Z p` as a little endian byte array.
+ * Since we use a modular arithmetic type directly, we do not need
+ * to reduce the coordinate modulo `p`.
+ *
+ * We also use Cryptol intrinsics rather than following the specification.
+ */
+encodeUCoordinate : {bits, n} (Fit bits n, bits >= 1) => Z p -> [n][8]
+encodeUCoordinate u = reverse (split (ZtoBV u))
+
+/**
+ * `encodeUCoordinate` inverts `decodeUCoordinate` if the
+ * type parameters are coherent for Curve25519 and the
+ * little endian value fits in `255` bits.
+ *
+ * The final bit affects the correctness of this property
+ * because the decoding procedure masks it.
+ *
+ * ```repl
+ * :check encodePartiallyInvertsDecode
+ * ```
+ */
+encodePartiallyInvertsDecode : [32][8] -> Bit
+property encodePartiallyInvertsDecode x = ~((x ! 0) @ 0) ==>
+    encodeUCoordinate `{255} (decodeUCoordinate `{255} x) == x
+
+/**
+ * `decodeUCoordinate` inverts `encodeUCoordinate`.
+ * Since the `u` coordinates are represented as members of `Z p`,
+ * there is no restriction on this property.
+ *
+ * ```repl
+ * :check decodeInvertsEncode
+ * ```
+ */
+decodeInvertsEncode : Z p -> Bit
+property decodeInvertsEncode x =
+    decodeUCoordinate `{255} (encodeUCoordinate `{255, 32} x) == x
 
 /**
  * Test vector derived from running the Python code
@@ -193,49 +232,8 @@ property decodeScalarOk = decodeScalar25519 (repeat 0x61) == x
         x = 44046402572626160612103472728795008085361523578694645928734845681441465000288
 
 /**
- * "Conditional swap".
- */
-cswap : {a} () => Bit -> (a, a) -> (a, a)
-cswap swap (x, y) = if swap then (y, x) else (x, y)
-
-/**
- * `cswap False` is the identity.
- *
- * ```repl
- * :prove cswapFalse `{[8]}
- * ```
- */
-cswapFalse : {a} (Eq a) => (a, a) -> Bit
-property cswapFalse x = cswap False x == x
-
-/**
- * `cswap True` is an involution.
- *
- * ```repl
- * :prove cswapTrue `{[8]}
- * ```
- */
-cswapTrue : {a} (Eq a) => (a, a) -> Bit
-property cswapTrue x = c (c x) == x
-    where
-        c = cswap True
-
-/**
- * Compute the new swap.
- * This is "XOR", which is "not equal".
- */
-newSwap : Bit -> [255] -> Bit
-newSwap oldSwap kt = newSwap' ! 0
-    where
-        // consider the old swap as a 255 bit number.
-        oldSwap' = if oldSwap then 1 else 0 : [255]
-        // do the XOR
-        newSwap' = kt ^ oldSwap'
-
-/**
  * The function `X25519(k, u)`, described in Section 5.
  * Assume that the input arrays are already little endian.
- *
  *
  * Reference:
  * [rfc7748] Section 5.
@@ -252,11 +250,11 @@ X25519 kb ub = result
         // define the loop
         loop (x1, x2, z2, x3, z3, swap) t = (x1', x2', z2', x3', z3', swap')
             where
-                kt = (k >> t) && 1
-                swapt = newSwap swap kt
-                (x2s, x3s) = cswap swapt (x2, x3)
-                (z2s, z3s) = cswap swapt (z2, z3)
-                swap' = kt ! 0
+                k_t = (k >> t) && 1
+                swapt = swap ^ k_t
+                (x2s, x3s) = cswap' swapt (x2, x3)
+                (z2s, z3s) = cswap' swapt (z2, z3)
+                swap' = zext [k_t ! 0]
 
                 A = x2s + z2s
                 AA = A^^2
@@ -274,20 +272,68 @@ X25519 kb ub = result
                 z2' = E * (AA + a24 * E)
 
         // execute the loop
-        (x1l, x2l, z2l, x3l, z3l, swapl) = foldl loop (u, 1 : Z p, 0 : Z p, u, 1 : Z p, False) (reverse [0..255-1])
+        (x1l, x2l, z2l, x3l, z3l, swapl) = foldl loop (u, 1 : Z p, 0 : Z p, u, 1 : Z p, 0 : [255]) (reverse [0..255-1])
 
         // final swaps
-        (x2ls, x3ls) = cswap swapl (x2l, x3l)
-        (z2ls, z3ls) = cswap swapl (z2l, z3l)
+        (x2ls, x3ls) = cswap' swapl (x2l, x3l)
+        (z2ls, z3ls) = cswap' swapl (z2l, z3l)
 
         // result in `Z p`
         rzp = x2ls * (z2ls ^^ `(p - 2))
 
-        // result as bitvector
-        rzbv = ZtoBV `{a=32*8} rzp
+        // result as byte array
+        result = encodeUCoordinate `{255, 32} rzp
 
-        // result as byte array (little endian)
-        result = reverse (split rzbv)
+/**
+ * "Conditional swap".
+ * This function must be constant time in a production implementation.
+ * Cryptol cannot enforce this.
+ */
+cswap : [255] -> (Z p, Z p) -> (Z p, Z p)
+cswap swap (x, y) = (BVtoZ `{p} (dummy ^ x_2), BVtoZ `{p} (dummy ^ x_3))
+    where
+        mask : [255] -> [255]
+        mask z = 0 - z
+
+        (x_2, x_3) = (ZtoBV x, ZtoBV y)
+        dummy = mask swap && (x_2 ^ x_3)
+
+/**
+ * Faster conditional swap that will definitely not
+ * be constant time (branches on the bits of the scalar)
+ * but faciliates slightly faster test execution.
+ *
+ * Performance can be improved further by using `Bit` instead `[255]`,
+ * but the same constant time issue remains.
+ */
+cswap' : [255] -> (Z p, Z p) -> (Z p, Z p)
+cswap' swap (x, y) = if swap == 0 then (x, y) else (y, x)
+
+/**
+ * The swap implementations are equivalent.
+ * ```
+ * :check cswapEq
+ * ```
+ */
+cswapEq s x = elem s [0, 1] ==> cswap s x == cswap' s x
+
+/**
+ * `cswap False` is the identity.
+ *
+ * ```repl
+ * :check cswapFalse
+ * ```
+ */
+property cswapFalse x = cswap 0 x == x
+
+/**
+ * `cswap True` is an involution.
+ *
+ * ```repl
+ * :check cswapTrue
+ * ```
+ */
+property cswapTrue y x = y > 0 ==> cswap y (cswap y x) == x
 
 /**
  * Test vector from section 5.2.
