@@ -451,14 +451,14 @@ property bigOk k u = reverse (X25519 (reverse k) (reverse u)) == X25519' k u
  * let Ga = split `{32} 0x8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a
  * let Gb = split `{32} 0xde9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f
  * let K = split `{32} 0x4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742
- * :prove DH a == Ga
- * :prove DH b == Gb
+ * :prove DH_sender a == Ga
+ * :prove DH_sender b == Gb
  * :prove X25519 a Gb == K
  * :prove X25519 b Ga == K
  * ```
  */
-DH : [32][8] -> [32][8]
-DH a = X25519 a (reverse (split Gu'))
+DH_sender : [32][8] -> [32][8]
+DH_sender a = X25519 a (reverse (split Gu'))
     where
         // must be little-endian.
         // Cryptol `fromInteger` semantics will
@@ -469,8 +469,8 @@ DH a = X25519 a (reverse (split Gu'))
  * Generate the shared value `K` given the received value `Gr`
  * and the secret `a`.
  */
-DH' : [32][8] -> [32][8] -> [32][8]
-DH' a Gr = X25519 a Gr
+DH_receiver : [32][8] -> [32][8] -> [32][8]
+DH_receiver a Gr = X25519 a Gr
 
 
 /**
@@ -480,7 +480,7 @@ DH' a Gr = X25519 a Gr
  * :check DHSharedSecret
  * ```
  */
-property DHSharedSecret a b = DH' a Gb == DH' b Ga
+property DHSharedSecret a b = DH_receiver a Gb == DH_receiver b Ga
     where
-        Ga = DH a
-        Gb = DH b
+        Ga = DH_sender a
+        Gb = DH_sender b
