@@ -187,15 +187,7 @@ private
      * [RFC-8391] Section 2.7.
      */
     setIdx : PrivateKey -> Word -> PrivateKey
-    setIdx SK idx = SK' where
-        SK' = {
-            oid = SK.oid,
-            wots_sks = SK.wots_sks,
-            idx = idx,
-            SK_PRF = SK.SK_PRF,
-            root = SK.root,
-            seed = SK.seed
-        }
+    setIdx SK idx = { SK | idx = idx }
 
     /**
      * Take as input an XMSS private key `SK` and an integer `i` and output the
