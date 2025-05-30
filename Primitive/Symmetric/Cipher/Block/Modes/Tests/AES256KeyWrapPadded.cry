@@ -1,5 +1,5 @@
 /*
- * Test vectors for AES Key Wrap with Padding [RF-5649].
+ * Test vectors for AES Key Wrap with Padding [RFC-5649].
  *
  * Reference:
  * [RFC-5649]: R. Housley, M. Dworkin. Advanced Encryption Standard (AES) Key
