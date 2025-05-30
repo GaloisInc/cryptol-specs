@@ -62,7 +62,8 @@ DefaultIV = [0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6]
  * Key Wrap.
  *
  * This differs from the algorithm in [RFC-3394] in that we include an explicit
- * IV argument. We use this variable IV in AES Key Wrap with Padding.
+ * IV argument. We use this variable IV in AES Key Wrap with Padding (cf.
+ * [RFC-3394] Section 2.2.3.2).
  *
  *   Inputs:  Plaintext, n 64-bit values {P1, P2, ..., Pn}, and
  *            Key, K (the KEK).
@@ -183,9 +184,13 @@ private
    */
   wrapBlock : {n} (fin n, n >= 1, width n <= 64) =>
               [AESKeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
-  wrapBlock key (A, R) j i = (A', R') where
+  wrapBlock key (A, R) j i =
+    if i == 0 then error "`i` must be greater than 0"
+              else (A', R') where
+    // `i ∈ [1..n]` but `R` is 0-index, so we use `i - 1` here.
     B  = AES::encrypt key (A # (R @ (i-1)))
     A' = (take`{64} B) ^ (((`n : [64]) * j) + i)
+    // See above comment for use of `i - 1`.
     R' = update R (i-1) (drop`{64} B)
 
   /**
@@ -241,9 +246,9 @@ import Common::OptionUtils(optTest)
 /**
  * Key unwrap must be the inverse of key wrap.
  * ```repl
- * :check keyWrapCorrect`{n=5}
+ * :check keyWrapInverts`{n=5}
  * ```
  */
-keyWrapCorrect : {n} (fin n, n >= 1, width n <= 64) => [n][64] -> [AESKeySize] -> Bool
-property keyWrapCorrect plaintext key =
+keyWrapInverts : {n} (fin n, n >= 1, width n <= 64) => [n][64] -> [AESKeySize] -> Bool
+property keyWrapInverts plaintext key =
   optTest (\result -> result == plaintext) (keyUnwrap (keyWrap plaintext key DefaultIV) key DefaultIV)
