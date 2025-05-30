@@ -741,10 +741,10 @@ rootFromSig idx_sig sig_ots auth M' SEED ADRS = node_0' where
     // NOTE: The spec calls `WOTS_pkFromSig` with the wrong parameter order. [Errata-8396].
     pk_ots = WOTS::pkFromSig M' sig_ots ADRS' SEED
     ADRS'' = setLTreeAddress (setType ADRS' 1) idx_sig
-    node_0 = ltree pk_ots SEED ADRS''
+    node_0_initial = ltree pk_ots SEED ADRS''
     ADRS''' = setTreeIndex (setType ADRS'' 2) idx_sig
-    node_0' = foldl updateNode node_0 [0..h-1] where
-        updateNode node0 k = node_1 where
+    node_0' = foldl updateNode node_0_initial [0..h-1] where
+        updateNode node_0 k = node_1 where
             ADRS_ = setTreeHeight ADRS''' k
             treeindex = getTreeIndex ADRS_
             node_1 = if (idx_sig / 2^^k) % 2 == 0
