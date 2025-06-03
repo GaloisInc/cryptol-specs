@@ -1,0 +1,76 @@
+/**
+ * Tests of the SHA3 hash functions.
+ *
+ * Test vectors drawn from the NIST Cryptographic Algorithm Validation Program.
+ * This program includes test vectors that can be used to spot-check an
+ * implementation. It includes tests for bitwise inputs (where the input length
+ * is any nonnegative integer) and for bytewise inputs (where the input length
+ * is a multiple of 8).
+ * @see CAVP. https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing#sha3vsha3vss
+ * @see SHA3 bitwise test vectors. https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/sha-3bittestvectors.zip
+ * @see SHA3 bytewise test vectors. https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/sha-3bytetestvectors.zip
+ *
+ * Some of the bitwise tests in this file use the `KOP::truncate` function. The
+ * CAVP vectors use the format described in [FIPS-202] Appendix B, where inputs
+ * to SHA3 are provided as hex strings with an even number of digits and a
+ * length parameter. The `h2b` function for processing such inputs has an
+ * implicit truncation step. We've written the SHA3 spec to take arbitrary bit
+ * vectors, but this assumes that the length of the input is its actual length.
+ * The `truncate` function is written to support the even-hex-digit format and
+ * must be called on an input before passing it to SHA3.
+ *
+ * @copyright Galois Inc.
+ * @author Ajay Kumar Eeralla
+ * @editor Iavor Diatchki <diatchki@galois.com>
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Keyless::Hash::SHA3::Tests::SHA3 where
+
+import Primitive::Keyless::Hash::SHA3::KeccakBitOrdering as KBO
+
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_224 as SHA3_224
+
+/**
+ * This is from the bitwise tests.
+ * ```repl
+ * :prove t1
+ * ```
+ */
+property t1 = SHA3_224::hash [] ==
+    0x6b4e03423667dbb73b6e15454f0eb1abd4597f9a1b078e3f5b5a6bc7
+
+/**
+ * This is from the bitwise tests.
+ * ```repl
+ * :prove t5
+ * ```
+ */
+property t5 = SHA3_224::hash (KBO::truncate`{5} 0x1f) ==
+    0x65ad282dcf9642a2facc1e7545c58f3b17523e795fee58e4d21b10bf
+
+/**
+ * This is from the bytewise tests.
+ * ```repl
+ * :prove t72
+ * ```
+ */
+property t72 = hashWorks && hashBytesWorks where
+    hashWorks = SHA3_224::hash input == output
+    hashBytesWorks = SHA3_224::hashBytes (split input) == split output
+    input = 0xb29373f6f8839bd498
+    output = 0xe02a13fa4770f824bcd69799284878f19bfdc833ac6d865f28b757d0
+
+/**
+ * This is from the bitwise tests.
+ * ```repl
+ * :prove t512
+ * ```
+ */
+property t512 = SHA3_224::hash input == output where
+    input = join [
+        0xfc286db63e69d24c6962bb515cc32c86,
+        0x67ed0c08ba9f331d1dd2c42de2e1bd0f,
+        0x18edcc870280650cc87011ce6b0709f7,
+        0xfe60033114144c69751717d315dc152f
+    ]
+    output = 0x157fd9f423a498868e233d9d64631f61aa5e8fbc23df413f7826c962
