@@ -7,13 +7,6 @@
  * matches the index-based algorithm description as that description is more
  * similar to the BoringSSL AES Key Wrap implementation.
  *
- * Note: Although [RFC-3394] explicitly places no upper bound on the number `n`
- * of 64-bit message blocks (cf. Section 2), the algorithms _do in fact_ place a
- * bound in that `width n <= 64`, since the computation of `A = MSB(64, B) ^ t
- * where t = (n*j)+i` in the Key Wrap algorithm (and likewise a similar
- * statement in the Key Unwrap algorithm) implicitly requires that `width n <=
- * 64`. Thus we retain that bound on `n` in our implementation.
- *
  * References:
  *
  * [RFC-3394]: J. Schaad, R. Housley. Advanced Encryption Standard (AES) Key
@@ -49,6 +42,17 @@ import Primitive::Symmetric::Cipher::Block::AES::Specification as AES where
  * The AES key size to use.
  */
 type AESKeySize = AESKeySize'
+
+/**
+ * A valid input corresponds to two or more 64-bit blocks (cf., [RFC-3394]
+ * Section 2). In addition, Although [RFC-3394] explicitly places no upper bound
+ * on the number `n` of 64-bit message blocks (cf. Section 2), the algorithms
+ * _do_ in fact place a bound in that `width n <= 64`, since the computation of
+ * `A = MSB(64, B) ^ t where t = (n*j)+i` in the Key Wrap algorithm (and
+ * likewise a similar statement in the Key Unwrap algorithm) implicitly requires
+ * that `width n <= 64`. Thus we retain that bound on `n` in our implementation.
+ */
+type constraint ValidInputSize n = (fin n, n >= 2, width n <= 64)
 
 /**
  * Default initial value.
@@ -91,8 +95,8 @@ DefaultIV = [0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6]
  *
  * [RFC-3394] Section 2.2.1.
  */
-keyWrap : {n} (fin n, n >= 1, width n <= 64) =>
-          [n][64] -> [AESKeySize] -> [8][8] -> [n + 1][64]
+keyWrap : {n} (ValidInputSize n)
+  => [n][64] -> [AESKeySize] -> [8][8] -> [n + 1][64]
 keyWrap plaintext key iv = C where
   // 1) Initialize variables.
   A = join iv
@@ -139,8 +143,8 @@ keyWrap plaintext key iv = C where
  *
  * [RFC-3394] Section 2.2.2.
  */
-keyUnwrap : {n} (fin n, n >= 1, width n <= 64) =>
-            [n + 1][64] -> [AESKeySize] -> [8][8] -> Option ([n][64])
+keyUnwrap : {n} (ValidInputSize n)
+  => [n + 1][64] -> [AESKeySize] -> [8][8] -> Option ([n][64])
 keyUnwrap ciphertext key iv = plaintext where
   // The following steps are done as part of `keyUnwrapUnchecked`.
   // 1) Initialize variables.
@@ -249,6 +253,7 @@ import Common::OptionUtils(optTest)
  * :check keyWrapInverts`{n=5}
  * ```
  */
-keyWrapInverts : {n} (fin n, n >= 1, width n <= 64) => [n][64] -> [AESKeySize] -> Bool
+keyWrapInverts : {n} (ValidInputSize n)
+  => [n][64] -> [AESKeySize] -> Bool
 property keyWrapInverts plaintext key =
   optTest (\result -> result == plaintext) (keyUnwrap (keyWrap plaintext key DefaultIV) key DefaultIV)
