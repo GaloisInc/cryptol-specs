@@ -19,18 +19,14 @@ import Common::OptionUtils(optTest, isNone)
 import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_KeyWrapPadded
 
 testUnwrap : {n, m} (
-              fin n, fin m,
-              n >= 1,
-              /*
-               * The plaintext length must be less than or equal the ciphertext.
-               */
-              m <= 8 * n,
-              /*
-               * The plaintext and ciphertext lengths, as bytes, must fit in a
-               * 32-bit value (to be used as the MLI for the AIV check).
-               */
-              width (n * 8) <= 32, width m <= 32
-            ) => [AESKeySize] -> [n + 1][64] -> [m][8] -> Bit
+    fin n, fin m,
+    n >= 1,
+    // The plaintext length must be less than or equal the ciphertext.
+    m <= 8 * n,
+    // The plaintext and ciphertext lengths, as bytes, must fit in a
+    // 32-bit value (to be used as the MLI for the AIV check).
+    width (n * 8) <= 32, width m <= 32
+  ) => [AESKeySize] -> [n + 1][64] -> [m][8] -> Bit
 testUnwrap key ct pt = optTest (\a -> (join a.0, take`{m} a.1) == (`m, pt)) result
   where
     result = extendedKeyUnwrap ct key
@@ -56,31 +52,31 @@ testUnwrap key ct pt = optTest (\a -> (join a.0, take`{m} a.1) == (`m, pt)) resu
 TV_00K = 0x95da2700ca6fd9a52554ee2a8df1386f5b94a1a60ed8a4aef60a8d61ab5f225a
 TV_00P = split`{each=8} 0xd1
 TV_00C = split`{each=64} 0x06ba7ae6f3248cfdcf267507fa001bc4
-property TV_00KWrap = extendedKeyWrap`{1, 7} TV_00P TV_00K == TV_00C
+property TV_00KWrap = extendedKeyWrap`{1} TV_00P TV_00K == TV_00C
 property TV_00KUnwrap = testUnwrap`{1, 1} TV_00K TV_00C TV_00P
 
 TV_01K = 0x3517f0efa7f0c4d74f91af83ece5e7503bcc5ab82907a6e4b7ed34d87b69ab1d
 TV_01P = split`{each=8} 0x897e0456b289ad31
 TV_01C = split`{each=64} 0x0b06a9b635d50cda9d4210cb3a71f990
-property TV_01KWrap = extendedKeyWrap`{8, 0} TV_01P TV_01K == TV_01C
+property TV_01KWrap = extendedKeyWrap`{8} TV_01P TV_01K == TV_01C
 property TV_01KUnwrap = testUnwrap`{1, 8} TV_01K TV_01C TV_01P
 
 TV_02K = 0x70da43aac823c6dd37d1109f5b18feb4503c973288989745e2cc1cc21d9570c6
 TV_02P = split`{each=8} 0xedf17d966ed896aee3
 TV_02C = split`{each=64} 0xd67b5b2ad15c645450e23b5e7b6d682f8ae20e716d470db7
-property TV_02KWrap = extendedKeyWrap`{9, 7} TV_02P TV_02K == TV_02C
+property TV_02KWrap = extendedKeyWrap`{9} TV_02P TV_02K == TV_02C
 property TV_02KUnwrap = testUnwrap`{2, 9} TV_02K TV_02C TV_02P
 
 TV_03K = 0xe9bb7f44c7baafbf392ab912589a2f8db53268106eafb74689bb1833136e6113
 TV_03P = split`{each=8} 0xffe952604834bff899e63658f34246815c91597eb40a21729e0a8a959b61f2
 TV_03C = split`{each=64} 0x15b9f06fbc765e5e3d55d6b824616f21921d2a6918ee7bf1406b524274e170b4a78333ca5ee92af5
-property TV_03KWrap = extendedKeyWrap`{31, 1} TV_03P TV_03K == TV_03C
+property TV_03KWrap = extendedKeyWrap`{31} TV_03P TV_03K == TV_03C
 property TV_03KUnwrap = testUnwrap`{4, 31} TV_03K TV_03C TV_03P
 
 TV_04K = 0x20f31cded60b8ed8d9d3fd1e1fa6244e76c7cb7628bfd28a5d63ce8aa2c9494d
 TV_04P = split`{each=8} 0xf07225202842c8dede42215301e44b9bb7e625d3812f74f9b6ddbcd024ebd1f33e2cbf280b9004941f3cbf86c880a2357f88f92a6dcf8dad9da7dddcd00f3635efdff0af4382024e93c2af66b991e565eacca6b886f07178c9b4adad6f0d6ada5ff6aa7cd0712519a947a8089cea5e1e3e40ffe1806010b0149f9ffc7c4dd3c31b3d08d5ae1997c52369393d58611dff9bec501c1ab35e6ed3e7f9445a34e211010a8236686f154e0a5ae3433d6a844eb3884961aa6592216d93952b46bb58a4195aa80966ad0ccd4a7e23823912556a90d5ee9c3bb952ecbb9d895dabd3b11ab4f2e3a6c2582de50403289230ef4dc46e7c0d870a3f0cba9d643a0349503c1b162ddb6350e699589eb47bd563999f55a1adb6b78b52f006901b0427ea7d3394bb0adae4637b4f1ad5d5425e2c8ff3083506d7ad7ba4c7405a778b0a3a11760c96900a5256956cc9710091d073a19f46a985d004651fe2b6448ed761bf9bc81619cf273a6783d868d090753bf01318be21afd88d9f3a961a69f93e9d9fb822c80acc7b48cf14a08b5b7ef15c66975721b7cde9761a145b679155472a44dea8fedc0f86ae7ebf6283ecfde5f2444b51569e6723a7a19e28cdf8dec6791ccc14af95abad018f741575b343cb1a20a2a9adf4248f99728069a1e2e78ad8966c41c9918fb7019ef56c153a183a6247d22d9956564bb03075cbfd1b43d96818b28484
 TV_04C = split`{each=64} 0xa5b63618fc0c4512960f00a1f226d9837a90480baea75265453b9553b12a58c72153080842d7f8710f317f88fbbbf97caf879ab4bf416ba767ee9aeb34357f4a2d0e8b9571054d98e28804a70bc4d74807f2bfd95ee955bfdbb6f4d6969a0c3c3b541a514647d5cd8c9740ac3496095c3f145c50c97ec98b935158fbdf89705d5330015e48ece89188b8c1bcb2ad6825d865b375a9b9056b743dac720feeac033c9f757f6fe73dd7c4a747661b64cf490a0dd43b547cd791a5d78dac97efcd355f7ebac248fa2a33e4fad640dc34e0d40b0d36588aa32f0864c9446739a6b44ff84666d723bd7d646c5172cda932fec34ddaaba342b02a9604087ef042a2be4774194b5d32cb3fb112438fbf2801050b5424635fa2d3d3fb10332965c73e6669e65195310a3a30602640e9809179cdfc50de585aa1c0072423c626815d281a06eac3b6ffa137716318e288e3f9970e415ef0451bdc557968febf9eb6772c1f77cb8e95701246d9c567048142bb25e340351b87d7391822d9ee7fe51378bc0d08135f9f39cf44b348b87937939dc61f430dfe308cada632722e23aed5a0699e039cf0563ab8025163744b136a13ce3c62c748c89f5e17540f105e7c6ec9ba13515b504342f9e6dc7d65b9a633d8c0b5c9fa858dbb9b3a594406d478a81bb9abfa289730408c1e303c663a61d5caca00f615065312580042862397b9aa8c80ca812887664c439c8c68
-property TV_04KWrap = extendedKeyWrap`{512, 0} TV_04P TV_04K == TV_04C
+property TV_04KWrap = extendedKeyWrap`{512} TV_04P TV_04K == TV_04C
 property TV_04KUnwrap = testUnwrap`{64, 512} TV_04K TV_04C TV_04P
 
 /**
@@ -110,7 +106,7 @@ property TV_04KUnwrap = testUnwrap`{64, 512} TV_04K TV_04C TV_04P
 TV_INV_00K = 0x20e4ff6a88ffa9a2818b81702793d8a016722c2fa1ff445f24b9db293cb12069
 TV_INV_00C = split`{each=64} 0x85011dc927b167f411b0b8e21b11d819
 TV_INV_00P = split`{each=8} 0xd2
-property TV_INV_00KWrap = extendedKeyWrap`{1, 7} TV_INV_00P TV_INV_00K == TV_INV_00C
+property TV_INV_00KWrap = extendedKeyWrap`{1} TV_INV_00P TV_INV_00K == TV_INV_00C
 property TV_INV_00KUnwrap = testUnwrap`{1, 1} TV_INV_00K TV_INV_00C TV_INV_00P
 
 TV_INV_00K' = 0x20e4ff6a88ffa9a2818b81702793d8a016722c2fa1ff445f24b9db293cb12069
@@ -120,7 +116,7 @@ property TV_INV_00KUnwrap' = isNone (extendedKeyUnwrap TV_INV_00C' TV_INV_00K')
 TV_INV_01K = 0x96503e950d01ee1664de77ef6c0108aea2cffcffd0cf282e58a3fb982914ff9c
 TV_INV_01C = split`{each=64} 0xe5fa8bf0919d5a7163f2af43b3b549b8
 TV_INV_01P = split`{each=8} 0xe731cf7c44ac7722
-property TV_INV_01KWrap = extendedKeyWrap`{8, 0} TV_INV_01P TV_INV_01K == TV_INV_01C
+property TV_INV_01KWrap = extendedKeyWrap`{8} TV_INV_01P TV_INV_01K == TV_INV_01C
 property TV_INV_01KUnwrap = testUnwrap`{1, 8} TV_INV_01K TV_INV_01C TV_INV_01P
 
 TV_INV_01K' = 0x96503e950d01ee1664de77ef6c0108aea2cffcffd0cf282e58a3fb982914ff9c
@@ -130,7 +126,7 @@ property TV_INV_01KUnwrap' = isNone (extendedKeyUnwrap TV_INV_01C' TV_INV_01K')
 TV_INV_02K = 0x0e6d542f960c7e61ca190d7fd719fda157030a0a013164613a8c522b52ae685d
 TV_INV_02C = split`{each=64} 0xb5cae8a82095abb3478ab167dbc0201d2f4dfc5f81bbe44e
 TV_INV_02P = split`{each=8} 0xa957eb4ea02e68ba8b
-property TV_INV_02KWrap = extendedKeyWrap`{9, 7} TV_INV_02P TV_INV_02K == TV_INV_02C
+property TV_INV_02KWrap = extendedKeyWrap`{9} TV_INV_02P TV_INV_02K == TV_INV_02C
 property TV_INV_02KUnwrap = testUnwrap`{2, 9} TV_INV_02K TV_INV_02C TV_INV_02P
 
 TV_INV_02K' = 0x0e6d542f960c7e61ca190d7fd719fda157030a0a013164613a8c522b52ae685d
@@ -140,7 +136,7 @@ property TV_INV_02KUnwrap' = isNone (extendedKeyUnwrap TV_INV_02C' TV_INV_02K')
 TV_INV_03K = 0x09ab4286a845c18bb481da91c39a58fd52ed78d54973fc41f25163a0c33f4727
 TV_INV_03C = split`{each=64} 0x0a180a84b01fc1e44b9f9301cc89af95de758219015abc86c3e48e764e7379246ae7209aaa4f889d
 TV_INV_03P = split`{each=8} 0x4c1b6accb492c88b10a56a56eb9b6d6ed9797056a559fe3f0c7c0429a200af
-property TV_INV_03KWrap = extendedKeyWrap`{31, 1} TV_INV_03P TV_INV_03K == TV_INV_03C
+property TV_INV_03KWrap = extendedKeyWrap`{31} TV_INV_03P TV_INV_03K == TV_INV_03C
 property TV_INV_03KUnwrap = testUnwrap`{4, 31} TV_INV_03K TV_INV_03C TV_INV_03P
 
 TV_INV_03K' = 0x09ab4286a845c18bb481da91c39a58fd52ed78d54973fc41f25163a0c33f4727
@@ -150,7 +146,7 @@ property TV_INV_03KUnwrap' = isNone (extendedKeyUnwrap TV_INV_03C' TV_INV_03K')
 TV_INV_04K = 0x08f5c088acec18e6cf1f03a8f85d772e327e7fb07f8c2939eb554e84c42ab93d
 TV_INV_04C = split`{each=64} 0xdff30fd43647d4be54cf2dfd6187e2ddffb55267313f980fb09c833a9c2bfa558a95861711f0acb2a5c7e731ba22f24a9c4dfdd9e9b0216e9088f817a175b9835b0e17615687a20f68c067205626494cd04fbabc0b3eea7c0a4cd6236bc8b3e52e721dfc357fb8a3722bfcc4c690d8f63dbb864bb6e3a15805aea7270f8eb748deebaa2d066fcda11c2e67221f9a91d2c29a6c79ffae76aa80a2590b4f9e35f623fbf2f8ceb2a205493077556a186e25e5bd52dcff7bcc6909b37a66c1d1431be1b363bb40da25386eaaf5fcabc7be6422a04434a21d1d3105328e7c56770b9f59b03395e4138f5f06fc7e6b80dab87b08caa7bfffc45a095c15263efd3f06c651ded6f58074efc20620d704997fc84721a0a8e9e5b9f5cd330bbb156b31d9d1b1c260e4a24535f30404dc5b2dd6b35d916a1391b25a7d8790be09d85483ed1522074a2785812005bda10dd55acb245b3bd3d9bb777dd23f9b02538ba1a114ba53386d7ca4d9524b2f8a18e0ffb21580b560540bb2146f08f04974b90eb324547d56222df95f44bc6e5f183bef283e4816fb1b2933f9c7c6726a245a495e304d8318d0008c51b0be8090f8f668fbc3f31e073be4b9e97468f4dd8c798e9d682868df493db8a85738b58cfd005190f365849072577772672c6f82555c65046eb34e86fe61103327a063bacbbe33cea7eaa3d1de45471b7269e1b6b38608626e323447a3d5fe0599a6
 TV_INV_04P = split`{each=8} 0x8b68f66a3d2f59d419851b94d9a6f2f0e667f8125e11d463a6bc2cea46b12dcc40ce8018b204972c735fdd6d2d05b628f4905c6690f5ac5b1b51e12f3af2dc3ae9b9dab616f0a2a66a1ac197592fd5b15900547f32f54110b58d51a0340aa80e9eeb7b2e0eb97e80aa22ba918f2fe1c678c730ed5c3d8d24774f17d8ab6e01a06243d36e764df1dbb8af1faadbc55281f0242abd7a162c984fd0b05ab8b0bcaedffb2962024f009a8d7c9e71281c09f52ec0707ee3bbeb1ecb918be6ae3e9c1fabbcd3512af928db3ba6c109ff9e9839a616b2a53f092160a48222b84d53cd52490515ef93e1ebb33897263492ab8ec6fad2e633276ae367f76d7f926309478c0205d4f22506a451795dc98f5410d8f5d3e049cbedf381620861e7b4ae08f2d8a71abc1f230248cb636a2d7b4e7717ab2b7b5f2dc6e5b5a18e8043254208b50fd6f8929eaf974c48551233661ad67321b64d69245d536d9a8ca2a6a10966dddb9d2ce36641c9281c460ae524b077867258f638e6ac872cb5f5c6fb216b1ae60a9d0c5ea0dbcd060f255da26111175af4e9935df59ddade6a2a70cddff8cae6a98e4f3843c2dd59d09053b07b648a46f5de0eb21ebb192828279a386ea3eedf2cdc355d73d51111e8c1d522e059752bc56226a4225bcab713bfaaaec78167d7cfd33e913b26fda93ca7524aa8a8b17977c88ff9bc23ea810b4de59eac18d1523b
-property TV_INV_04KWrap = extendedKeyWrap`{512, 0} TV_INV_04P TV_INV_04K == TV_INV_04C
+property TV_INV_04KWrap = extendedKeyWrap`{512} TV_INV_04P TV_INV_04K == TV_INV_04C
 property TV_INV_04KUnwrap = testUnwrap`{64, 512} TV_INV_04K TV_INV_04C TV_INV_04P
 
 TV_INV_04K' = 0x08f5c088acec18e6cf1f03a8f85d772e327e7fb07f8c2939eb554e84c42ab93d
