@@ -35,6 +35,15 @@ modules = [
     "Primitive/Symmetric/Cipher/Authenticated/GCM/Tests/*",
 
     # SHA2
-    "Primitive/Keyless/Hash/SHA2/Instantiations/*",
-    "Primitive/Keyless/Hash/SHA2/Tests/*",
+    "Primitive/Keyless/Hash/SHA2/Instantiations/SHA224.cry",
+    "Primitive/Keyless/Hash/SHA2/Instantiations/SHA256.cry",
+    "Primitive/Keyless/Hash/SHA2/Instantiations/SHA384.cry",
+    "Primitive/Keyless/Hash/SHA2/Instantiations/SHA512_224.cry",
+    "Primitive/Keyless/Hash/SHA2/Instantiations/SHA512_256.cry",
+    "Primitive/Keyless/Hash/SHA2/Instantiations/SHA512.cry",
+    "Primitive/Keyless/Hash/SHA2/Tests/SHA224.cry",
+    "Primitive/Keyless/Hash/SHA2/Tests/SHA256.cry",
+    "Primitive/Keyless/Hash/SHA2/Tests/SHA384.cry",
+    "Primitive/Keyless/Hash/SHA2/Tests/SHA512.cry",
+    "Primitive/Keyless/Hash/SHA2/Tests/CAVP/*",
 ]
