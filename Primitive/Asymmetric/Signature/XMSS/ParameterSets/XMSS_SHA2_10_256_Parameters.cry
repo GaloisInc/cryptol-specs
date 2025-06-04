@@ -22,4 +22,7 @@ where
     // bytes) and the key (3n bytes).
     type PaddingWidth = (32 * 8) + (3 * n * 8)
 
+    // The OID as specified in [RFC-8391] Section 8.
+    oid = 0x00000001
+
     H_msg KEY M = split (SHA256::hash ((2 : [32 * 8]) # join (KEY # M)))
