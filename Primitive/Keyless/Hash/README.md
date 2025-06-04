@@ -11,10 +11,10 @@ This directory includes executable specifications for several hash functions.
 | SHA1 |  | No |
 
 ## SHA2
-There are two versions of SHA2 here, as defined in [FIPS 180-4](https://doi.org/10.6028/NIST.FIPS.180-4). The [`SHA2`](/Primitive/Keyless/Hash/SHA2/) directory contains the spec-adherent version and should be used for the vast majority of applications.
+There are two versions of SHA2 here, as defined in [FIPS 180-4](https://doi.org/10.6028/NIST.FIPS.180-4). The [`SHA2`](/Primitive/Keyless/Hash/SHA2/) directory contains the spec-adherent version and should be used for the vast majority of applications. In addition, the directory contains an FFI implementation of SHA256. This can be used to test algorithms that require many invocations of SHA256 (such as WOTS+), and it has been checked equivalent (but not _proven_ equivalent) to the gold-standard [`SHA256`](/Primitive/Keyless/Hash/SHA2/Instantiations/SHA256.cry) spec.
 
 The [`SHA2Internal`](/Primitive/Keyless/Hash/SHA2Internal/) directory contains an equivalent implementation. It was originally written as part of a proof of correctness for a Java implementation of SHA2. It makes public several internal components of SHA2, like the compression function and the state representation, that are not part of the public interface defined in FIPS 180-4.
-These are used in the implementation of several other algorithms in this repo, like [HMAC](/Primitive/Symmetric/MAC/HMAC_SHA384.cry) and [SHACAL](/Primitive/Symmetric/Cipher/Block/SHACAL.cry). We've kept the two instantiations that these dependencies use and [checked equivalence of the two versions](SHA2Internal/Equivalence.cry) but recommend using the spec-adherent version where possible.
+These are used in the implementation of several other algorithms in this repo, like [SHACAL](/Primitive/Symmetric/Cipher/Block/SHACAL.cry). We've kept the two instantiations that these dependencies use and [checked equivalence of the two versions](SHA2Internal/Equivalence.cry) but recommend using the spec-adherent version where possible.
 
 ## SHA3
 The SHA3 executable specification is based on [FIPS 202](https://doi.org/10.6028/NIST.FIPS.202).
