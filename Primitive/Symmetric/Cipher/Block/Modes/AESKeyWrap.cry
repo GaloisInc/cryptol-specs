@@ -59,8 +59,8 @@ type constraint ValidInputSize n = (fin n, n >= 2, width n <= 64)
  *
  * [RFC-3394] Section 2.2.3.
  */
-DefaultIV : [8][8]
-DefaultIV = [0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6]
+DefaultIV : [64]
+DefaultIV = 0xA6A6A6A6A6A6A6A6
 
 /**
  * Key Wrap.
@@ -96,10 +96,10 @@ DefaultIV = [0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6]
  * [RFC-3394] Section 2.2.1.
  */
 keyWrap : {n} (ValidInputSize n)
-  => [n][64] -> [AESKeySize] -> [8][8] -> [n + 1][64]
+  => [n][64] -> [AESKeySize] -> [64] -> [n + 1][64]
 keyWrap plaintext key iv = C where
   // 1) Initialize variables.
-  A = join iv
+  A = iv
   R = plaintext
   // 2) Calculate intermediate values.
   intermediates = [(A, R)] # [wrapRound key s j | s <- intermediates
@@ -144,14 +144,14 @@ keyWrap plaintext key iv = C where
  * [RFC-3394] Section 2.2.2.
  */
 keyUnwrap : {n} (ValidInputSize n)
-  => [n + 1][64] -> [AESKeySize] -> [8][8] -> Option ([n][64])
+  => [n + 1][64] -> [AESKeySize] -> [64] -> Option ([n][64])
 keyUnwrap ciphertext key iv = plaintext where
   // The following steps are done as part of `keyUnwrapUnchecked`.
   // 1) Initialize variables.
   // 2) Compute intermediate values.
   (A', R') = keyUnwrapUnchecked ciphertext key
   // 3) Output results.
-  plaintext = if A' == join iv then Some R' else None
+  plaintext = if A' == iv then Some R' else None
 
 /**
  * Key Unwrap without checking the validity of the IV.
