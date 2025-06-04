@@ -27,11 +27,7 @@ import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
 interface constraint (C::KeySize >= 64)
 interface constraint (C::BlockSize == 128)
 
-import Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap where
-  type BlockSize = C::BlockSize
-  type KeySize = C::KeySize
-  decrypt = C::decrypt
-  encrypt = C::encrypt
+import Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap { interface C }
 
 /**
  * The key size (in bits).
