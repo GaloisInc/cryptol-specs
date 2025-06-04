@@ -1,0 +1,24 @@
+/**
+ * Test for SHA256 FFI implementation.
+ *
+ * We test the SHA256 FFI implementation by comparing its output to the Cryptol
+ * implementation's output.
+ *
+ * @copyright Galois, Inc
+ * @author Alex J. Malozemoff <amaloz@galois.com>
+ */
+module Primitive::Keyless::Hash::SHA2::Tests::SHA256 where
+import Primitive::Keyless::Hash::SHA2::Instantiations::SHA256_FFI as SHA256_FFI
+import Primitive::Keyless::Hash::SHA2::Instantiations::SHA256 as SHA256
+
+/**
+ * ```repl
+ * :check FFIAndCryptolAreEqual`{l=1000}
+ * ```
+ */
+FFIAndCryptolAreEqual : {l} (SHA256::ValidMessageLength (8 * l))
+    => [l][8] -> Bool
+property FFIAndCryptolAreEqual M = ffi == cryptol where
+    ffi = SHA256_FFI::hashBytes M
+    cryptol = SHA256::hashBytes M
+

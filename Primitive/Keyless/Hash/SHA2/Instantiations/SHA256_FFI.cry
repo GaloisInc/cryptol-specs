@@ -1,0 +1,44 @@
+/**
+ * FFI instantiation of the secure hash algorithm SHA-256 as specified in
+ * [FIPS-180-4], Section 5.3.3.
+ *
+ * The FFI implementation is taken from
+ * https://github.com/B-Con/crypto-algorithms, which is released into the public
+ * domain free of any restrictions.
+ *
+ * To use, you must compile the associated `SHA256_FFI.c` file according to your
+ * operating system:
+ *
+ * • Linux: cc -fPIC -shared SHA256_FFI.c -o SHA256_FFI.so
+ * • macOS: cc -dynamiclib SHA256_FFI.c -o SHA256_FFI.dylib
+ * • Windows: cc -fPIC -shared SHA256_FFI.c -o SHA256_FFI.dll
+ *
+ * In addition, you need to be using Cryptol with FFI enabled.
+ *
+ * @copyright Galois, Inc.
+ * @author Alex J Malozemoff <amaloz@galois.com>
+ *
+ * [FIPS-180-4]: National Institute of Standards and Technology. Secure Hash
+ *     Standard (SHS). (Department of Commerce, Washington, D.C.), Federal
+ *     Information Processing Standards Publication (FIPS) NIST FIPS 180-4.
+ *     August 2015.
+ *     @see https://doi.org/10.6028/NIST.FIPS.180-4
+ */
+module Primitive::Keyless::Hash::SHA2::Instantiations::SHA256_FFI where
+    import Primitive::Keyless::Hash::SHA2::Instantiations::SHA256 as SHA256
+
+    // Cryptol FFI does not support bit respresentation types, and hence
+    // the below `hash` function is not supported in FFI.
+    //
+    // foreign hash : {l} (SHA256::ValidMessageLength l)
+    //     => [l] -> [SHA256::DigestLength]
+
+    /**
+     * Secure hash function, computed over bytes.
+     *
+     * This is not explicitly part of the spec, but many applications represent
+     * their input and output over byte strings (rather than bit strings as used
+     * in the spec itself).
+     */
+    foreign hashBytes : {l} (SHA256::ValidMessageLength (8 * l))
+        => [l][8] -> [SHA256::DigestLength / 8][8]
