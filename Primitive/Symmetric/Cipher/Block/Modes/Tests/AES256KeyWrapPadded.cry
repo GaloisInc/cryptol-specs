@@ -26,7 +26,7 @@ testUnwrap : {n, m} (
     // The plaintext and ciphertext lengths, as bytes, must fit in a
     // 32-bit value (to be used as the MLI for the AIV check).
     width (n * 8) <= 32, width m <= 32
-  ) => [AESKeySize] -> [n + 1][64] -> [m][8] -> Bit
+  ) => [KeySize] -> [n + 1][64] -> [m][8] -> Bit
 testUnwrap key ct pt = optTest (\a -> (join a.0, take`{m} a.1) == (`m, pt)) result
   where
     result = extendedKeyUnwrap ct key

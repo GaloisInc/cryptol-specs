@@ -19,24 +19,26 @@
  */
 module Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrapPadded where
 
-parameter
-  // This constraint enforces the standard key sizes of 128, 192, and
-  // 256 bits.
-  type AESKeySize' : #
-  type constraint (fin AESKeySize', AESKeySize' % 64 == 0, AESKeySize' / 64 >= 2, AESKeySize' / 64 <= 4)
+/*
+ * While this algorithm is only valid when instantiated with AES, we use the
+ * generic block cipher interface to avoid reinstantiating AES.
+ */
+import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
+interface constraint (C::KeySize >= 64)
+interface constraint (C::BlockSize == 128)
+
+import Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap where
+  type BlockSize = C::BlockSize
+  type KeySize = C::KeySize
+  decrypt = C::decrypt
+  encrypt = C::encrypt
 
 /**
- * The AES key-encryption key size (in bits).
+ * The key size (in bits).
  *
  * [RFC-5649] Section 1.
  */
-type AESKeySize = AESKeySize'
-
-import Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap where
-  type AESKeySize' = AESKeySize
-
-import Primitive::Symmetric::Cipher::Block::AES::Specification as AES where
-  type KeySize' = AESKeySize'
+type KeySize = C::KeySize
 
 private
   /**
@@ -86,7 +88,7 @@ extendedKeyWrap : {m, n} (
     // The plaintext consists of between one and 2^^32 octets.
     m >= 1 , m <= 2^^32, width m <= 32,
     n == m /^ 8
-  ) => [m][8] -> [AESKeySize] -> [n + 1][64]
+  ) => [m][8] -> [C::KeySize] -> [n + 1][64]
 extendedKeyWrap plaintext key
   // If the padded plaintext contains exactly eight octets, then prepend the
   // AIV to P[1] and encrypt the resulting 128-bit block using AES in ECB mode
@@ -95,7 +97,7 @@ extendedKeyWrap plaintext key
   // `n == 1` implies that `m /^ 8 == 1`, but we need to add this latter
   // constraint explicitly to satisfy the Cryptol type-checker.
   | (n == 1, m /^ 8 == 1) =>
-    split (AES::encrypt key (join ([AIV`{m}] # P)))
+    split (C::encrypt key (join ([AIV`{m}] # P)))
     where
       P = padPlaintext`{m} plaintext
 
@@ -140,7 +142,7 @@ extendedKeyUnwrap : {n} (
     // We feed `n * 8` into the `checkAIV` function, and hence
     // we need that `width (n * 8) <= 32`.
     width (n * 8) <= 32
-  ) => [n + 1][64] -> [AESKeySize] -> Option ([4][8], [n * 8][8])
+  ) => [n + 1][64] -> [C::KeySize] -> Option ([4][8], [n * 8][8])
 extendedKeyUnwrap ciphertext key =
   if valid
   then Some (size, P)
@@ -167,12 +169,12 @@ private
       // The maximal ciphertext length must fit in 64-bits due
       // to our use of AES Key Unwrap under-the-hood.
       width n <= 64
-    ) => [n + 1][64] -> [AESKeySize] -> [(n + 1) * 8][8]
+    ) => [n + 1][64] -> [C::KeySize] -> [(n + 1) * 8][8]
   extendedKeyUnwrapUnchecked ciphertext key
     // When `n = 1`, the ciphertext contains exactly two 64-bit blocks, and
     // they are decrypted as a single AES block using AES in ECB mode with `K`
     // (the KEK) to recover the AIV and the padded plaintext key.
-    | n == 1 => split (AES::decrypt key (join ciphertext))
+    | n == 1 => split (C::decrypt key (join ciphertext))
 
     // Otherwise, apply Steps 1 and 2 of the AES Key Unwrap process to the
     // `n+1` 64-bit ciphertext blocks, `{C[0], C[1], ..., C[n]}`, and to the
@@ -199,7 +201,7 @@ extendedKeyWrapInverts : {m, n} (
     n == m /^ 8,
     width n <= 64,
     width (n * 8) <= 32
-  ) => [m][8] -> [AESKeySize] -> Bool
+  ) => [m][8] -> [C::KeySize] -> Bool
 property extendedKeyWrapInverts plaintext key =
   optTest (\result -> result.1 == plaintext # zero) plaintext_ where
     ciphertext = extendedKeyWrap`{m} plaintext key

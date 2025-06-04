@@ -24,7 +24,7 @@ import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_KeyWra
  *
  * [RFC-3394] Sections 4.3, 4.5, and 4.6.
  */
-KEK256 : [AESKeySize]
+KEK256 : [KeySize]
 KEK256 = 0x000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F
 
 /**

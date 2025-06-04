@@ -29,19 +29,18 @@
  */
 module Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap where
 
-parameter
-  // This constraint enforces the standard key sizes of 128, 192, and
-  // 256 bits.
-  type AESKeySize' : #
-  type constraint (fin AESKeySize', AESKeySize' % 64 == 0, AESKeySize' / 64 >= 2, AESKeySize' / 64 <= 4)
-
-import Primitive::Symmetric::Cipher::Block::AES::Specification as AES where
-  type KeySize' = AESKeySize'
+/*
+ * While this algorithm is only valid when instantiated with AES, we use the
+ * generic block cipher interface to avoid reinstantiating AES.
+ */
+import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
+interface constraint (C::KeySize >= 64)
+interface constraint (C::BlockSize == 128)
 
 /**
- * The AES key size to use.
+ * The key size (in bits).
  */
-type AESKeySize = AESKeySize'
+type KeySize = C::KeySize
 
 /**
  * A valid input corresponds to two or more 64-bit blocks (cf., [RFC-3394]
@@ -96,7 +95,7 @@ DefaultIV = 0xA6A6A6A6A6A6A6A6
  * [RFC-3394] Section 2.2.1.
  */
 keyWrap : {n} (ValidInputSize n)
-  => [n][64] -> [AESKeySize] -> [64] -> [n + 1][64]
+  => [n][64] -> [C::KeySize] -> [64] -> [n + 1][64]
 keyWrap plaintext key iv = C where
   // 1) Initialize variables.
   A = iv
@@ -144,7 +143,7 @@ keyWrap plaintext key iv = C where
  * [RFC-3394] Section 2.2.2.
  */
 keyUnwrap : {n} (ValidInputSize n)
-  => [n + 1][64] -> [AESKeySize] -> [64] -> Option ([n][64])
+  => [n + 1][64] -> [C::KeySize] -> [64] -> Option ([n][64])
 keyUnwrap ciphertext key iv = plaintext where
   // The following steps are done as part of `keyUnwrapUnchecked`.
   // 1) Initialize variables.
@@ -166,7 +165,7 @@ keyUnwrap ciphertext key iv = plaintext where
  * [RFC-3394] Section 2.2.2.
  */
 keyUnwrapUnchecked : {n} (fin n, n >= 1, width n <= 64) =>
-                     [n + 1][64] -> [AESKeySize] -> ([64], [n][64])
+                     [n + 1][64] -> [C::KeySize] -> ([64], [n][64])
 keyUnwrapUnchecked ciphertext key = (A', R') where
   // 1) Initialize variables.
   A = join (take`{1} ciphertext)
@@ -187,12 +186,12 @@ private
    * [RFC-3394] Section 2.2.1, Step 2.
    */
   wrapBlock : {n} (fin n, n >= 1, width n <= 64) =>
-              [AESKeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
+              [C::KeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
   wrapBlock key (A, R) j i =
     if i == 0 then error "`i` must be greater than 0"
               else (A', R') where
     // `i ∈ [1..n]` but `R` is 0-index, so we use `i - 1` here.
-    B  = AES::encrypt key (A # (R @ (i-1)))
+    B  = C::encrypt key (A # (R @ (i-1)))
     A' = (take`{64} B) ^ (((`n : [64]) * j) + i)
     // See above comment for use of `i - 1`.
     R' = update R (i-1) (drop`{64} B)
@@ -208,7 +207,7 @@ private
    * [RFC-3394] Section 2.2.1 Step 2.
    */
   wrapRound : {n} (fin n, n >= 1, width n <= 64) =>
-              [AESKeySize] -> ([64], [n][64]) -> [64] -> ([64], [n][64])
+              [C::KeySize] -> ([64], [n][64]) -> [64] -> ([64], [n][64])
   wrapRound key (A, R) j = wrappedBlocks ! 0 where
     wrappedBlocks = [(A, R)] # [wrapBlock key s j i | s <- wrappedBlocks
                                                     | i <- [1..n]]
@@ -223,9 +222,9 @@ private
    * [RFC-3394] Section 2.2.2, Step 2.
    */
   unwrapBlock : {n} (fin n, width n <= 64) =>
-                [AESKeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
+                [C::KeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
   unwrapBlock K (A, R) j i = (A', R') where
-    B  = AES::decrypt K ((A ^ (((`n : [64]) * j) + i)) # (R @ (i-1)))
+    B  = C::decrypt K ((A ^ (((`n : [64]) * j) + i)) # (R @ (i-1)))
     A' = take`{64} B
     R' = update R (i-1) (drop`{64} B)
 
@@ -240,7 +239,7 @@ private
    * [RFC-3394] Section 2.2.2, Step 2.
    */
   unwrapRound : {n} (fin n, n >= 1, width n <= 64) =>
-                [AESKeySize] -> ([64], [n][64]) -> [64] -> ([64], [n][64])
+                [C::KeySize] -> ([64], [n][64]) -> [64] -> ([64], [n][64])
   unwrapRound key (A, R) j = unwrappedBlocks ! 0 where
     unwrappedBlocks = [(A, R)] # [unwrapBlock key s j i | s <- unwrappedBlocks
                                                         | i <- [n, n-1 .. 1]]
@@ -254,6 +253,6 @@ import Common::OptionUtils(optTest)
  * ```
  */
 keyWrapInverts : {n} (ValidInputSize n)
-  => [n][64] -> [AESKeySize] -> Bool
+  => [n][64] -> [C::KeySize] -> Bool
 property keyWrapInverts plaintext key =
   optTest (\result -> result == plaintext) (keyUnwrap (keyWrap plaintext key DefaultIV) key DefaultIV)
