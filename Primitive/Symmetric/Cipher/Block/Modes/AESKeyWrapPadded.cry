@@ -104,7 +104,7 @@ extendedKeyWrap plaintext key
   // the AIV as the initial value.  The result is n+1 64-bit blocks {C[0], C[1],
   // ..., C[n]}.
   | n > 1 =>
-    keyWrap P key (split`{each=8} AIV`{m})
+    keyWrap P key AIV`{m}
     where
       P = padPlaintext`{m} plaintext
 
