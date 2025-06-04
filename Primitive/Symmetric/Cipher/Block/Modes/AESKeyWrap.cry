@@ -1,119 +1,258 @@
-// Cryptol AES Key Wrap Implementation
-//
-// @copyright Galois Inc.
-// @author Brett Boston
-// @author Ryan Scott <rscott@galois.com>
-// @author Marcella Hastings <marcella@galois.com>
-// www.cryptol.net
-//
-// This is a close implementation of RFC 3394:
-// https://tools.ietf.org/html/rfc3394
-// RFC 3394 provides two equivalent descriptions of AES Key Wrap, one using
-// shifting and the other using indexing.  This specification closely matches
-// the index-based algorithm description as that description is more similar
-// to the BoringSSL AES Key Wrap implementation.
-//
+/**
+ * AES Key Wrap Algorithm.
+ *
+ * This is an implementation of the Key Wrap and Key Unwrap algorithms in
+ * [RFC-3394]. [RFC-3394] provides two equivalent descriptions of Key Wrap, one
+ * using shifting and the other using indexing. This specification closely
+ * matches the index-based algorithm description as that description is more
+ * similar to the BoringSSL AES Key Wrap implementation.
+ *
+ * References:
+ *
+ * [RFC-3394]: J. Schaad, R. Housley. Advanced Encryption Standard (AES) Key
+ *     Wrap Algorithm. Internet Request for Comments (RFC) 3394. September
+ *     2002.
+ *     @see https://datatracker.ietf.org/doc/rfc3394
+ *
+ * [RFC-5649]: R. Housley, M. Dworkin. Advanced Encryption Standard (AES) Key
+ *     Wrap with Padding Algorithm. Internet Request for Comments (RFC) 5649.
+ *     August 2009.
+ *     @see https://datatracker.ietf.org/doc/rfc5649
 
+ *
+ * @copyright Galois Inc.
+ * @author Brett Boston
+ * @author Ryan Scott <rscott@galois.com>
+ * @author Marcella Hastings <marcella@galois.com>
+ * @author Alex J Malozemoff <amaloz@galois.com>
+ *  www.cryptol.net
+ */
 module Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap where
 
-parameter
-  // This constraint enforces the standard key sizes of 128, 192, and
-  // 256 bits.
-  type AESKeySize' : #
-  type constraint (fin AESKeySize', AESKeySize' % 64 == 0, AESKeySize' / 64 >= 2, AESKeySize' / 64 <= 4)
+/*
+ * While this algorithm is only valid when instantiated with AES, we use the
+ * generic block cipher interface to avoid reinstantiating AES.
+ */
+import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
+interface constraint (C::KeySize >= 64)
+interface constraint (C::BlockSize == 128)
 
-import Primitive::Symmetric::Cipher::Block::AES::Specification as AES where
-  type KeySize' = AESKeySize'
+/**
+ * The key size (in bits).
+ */
+type KeySize = C::KeySize
 
-// Make the key size parameter available outside the module
-type AESKeySize = AESKeySize'
+/**
+ * A valid input corresponds to two or more 64-bit blocks (cf., [RFC-3394]
+ * Section 2). In addition, Although [RFC-3394] explicitly places no upper bound
+ * on the number `n` of 64-bit message blocks (cf. Section 2), the algorithms
+ * _do_ in fact place a bound in that `width n <= 64`, since the computation of
+ * `A = MSB(64, B) ^ t where t = (n*j)+i` in the Key Wrap algorithm (and
+ * likewise a similar statement in the Key Unwrap algorithm) implicitly requires
+ * that `width n <= 64`. Thus we retain that bound on `n` in our implementation.
+ */
+type constraint ValidInputSize n = (fin n, n >= 2, width n <= 64)
 
-// Default intial value (Section 2.2.3)
-DefaultIV : [8][8]
-DefaultIV = [0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6, 0xA6]
+/**
+ * Default initial value.
+ *
+ * [RFC-3394] Section 2.2.3.
+ */
+DefaultIV : [64]
+DefaultIV = 0xA6A6A6A6A6A6A6A6
 
-// Wrap `plaintext` using `key` as the key encryption key.  `iv` is the initial
-// value to use.  This function implements the algorithm from Section 2.2.1
-// using the index-based definition.
-aesWrapKey : {n} (fin n, n >= 16, n % 8 == 0, width (n / 8) <= 64) =>
-             [AESKeySize] -> [8][8] -> [n][8] -> [n+8][8]
-aesWrapKey key iv plaintext = split (join C) where
-  // Step 1: Initialize variables
-  A = join iv
-  R = split`{parts=n/8, each=64} (join plaintext)
-  // Step 2: calculate intermediate values
+/**
+ * Key Wrap.
+ *
+ * This differs from the algorithm in [RFC-3394] in that we include an explicit
+ * IV argument. We use this variable IV in AES Key Wrap with Padding (cf.
+ * [RFC-3394] Section 2.2.3.2).
+ *
+ *   Inputs:  Plaintext, n 64-bit values {P1, P2, ..., Pn}, and
+ *            Key, K (the KEK).
+ *   Outputs: Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}.
+ *
+ *   1) Initialize variables.
+ *
+ *      Set A = IV, an initial value (see 2.2.3)
+ *      For i = 1 to n
+ *          R[i] = P[i]
+ *
+ *   2) Calculate intermediate values.
+ *
+ *      For j = 0 to 5
+ *          For i=1 to n
+ *              B = AES(K, A | R[i])
+ *              A = MSB(64, B) ^ t where t = (n*j)+i
+ *              R[i] = LSB(64, B)
+ *
+ *   3) Output the results.
+ *
+ *      Set C[0] = A
+ *      For i = 1 to n
+ *          C[i] = R[i]
+ *
+ * [RFC-3394] Section 2.2.1.
+ */
+keyWrap : {n} (ValidInputSize n)
+  => [n][64] -> [C::KeySize] -> [64] -> [n + 1][64]
+keyWrap plaintext key iv = C where
+  // 1) Initialize variables.
+  A = iv
+  R = plaintext
+  // 2) Calculate intermediate values.
   intermediates = [(A, R)] # [wrapRound key s j | s <- intermediates
                                                 | j <- [0..5]]
-  // Step 3: Prepare outputs
+  // 3) Output the results.
   (A', R') = intermediates ! 0
   C = [A'] # R'
 
-// Unwrap `ciphertext` using `key` as the key encryption key.  `iv` is the
-// expected initial value.  This function implements the algorithm from Section
-// 2.2.2 using the index-based definition.  It also checks the key data
-// integrity using `iv` (Section 2.2.3).  This function returns a tuple where
-// the first element indicates  whether or not the integrity check passed
-// (`True` indicates the check passed), and the second element is the decrypted
-// plain text.  If the integrity check fails, the second element will be all
-// zeros.
-aesUnwrapKey : {n} (fin n, n >= 24, n % 8 == 0, width (n / 8) <= 64) =>
-               [AESKeySize] -> [8][8] -> [n][8] -> Option ([n-8][8])
-aesUnwrapKey key iv ciphertext =
-  if (join iv) == A'
-  then Some (split (join R'))
-  else None
-  where
-    (A', R') = aesUnwrapKeyUnchecked key ciphertext
+/**
+ * Key Unwrap.
+ *
+ * This differs from the algorithm in [RFC-3394] in that we include an explicit
+ * IV argument. We use this variable IV in AES Key Unwrap with Padding.
+ *
+ *   Inputs:  Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}, and
+ *            Key, K (the KEK).
+ *   Outputs: Plaintext, n 64-bit values {P0, P1, K, Pn}.
+ *
+ *   1) Initialize variables.
+ *
+ *       Set A = C[0]
+ *       For i = 1 to n
+ *           R[i] = C[i]
+ *
+ *   2) Compute intermediate values.
+ *
+ *       For j = 5 to 0
+ *           For i = n to 1
+ *               B = AES-1(K, (A ^ t) | R[i]) where t = n*j+i
+ *               A = MSB(64, B)
+ *               R[i] = LSB(64, B)
+ *
+ *   3) Output results.
+ *
+ *   If A is an appropriate initial value (see 2.2.3),
+ *   Then
+ *       For i = 1 to n
+ *           P[i] = R[i]
+ *   Else
+ *       Return an error
+ *
+ * [RFC-3394] Section 2.2.2.
+ */
+keyUnwrap : {n} (ValidInputSize n)
+  => [n + 1][64] -> [C::KeySize] -> [64] -> Option ([n][64])
+keyUnwrap ciphertext key iv = plaintext where
+  // The following steps are done as part of `keyUnwrapUnchecked`.
+  // 1) Initialize variables.
+  // 2) Compute intermediate values.
+  (A', R') = keyUnwrapUnchecked ciphertext key
+  // 3) Output results.
+  plaintext = if A' == iv then Some R' else None
 
-// This function performs steps 1 and 2 of the unwrap key algorithm from
-// Section 2.2.2 using the index-based definition.
-aesUnwrapKeyUnchecked : {n} (fin n, n >= 24, n % 8 == 0, width (n / 8) <= 64) =>
-                        [AESKeySize] -> [n][8] -> ([64], [n/8 - 1][64])
-aesUnwrapKeyUnchecked key ciphertext = intermediates ! 0 where
-  // Step 1: Initialize variables
-  A = join (take`{8} ciphertext)
-  R = split`{parts=(n-8)/8, each=64} (join (drop`{8} ciphertext))
-  // Step 2: Compute intermediate values
+/**
+ * Key Unwrap without checking the validity of the IV.
+ *
+ * This algorithm is not explicitly defined in [RFC-3394], however it is used
+ * to implement AES Key Unwrap with Padding as defined in [RFC-5649].
+ *
+ * ⚠️ WARNING ⚠️: This algorithm _does not validate the IV_. Do not use it
+ * unless you have a verify specific requirement where you do not need to check
+ * the IV!
+ *
+ * [RFC-3394] Section 2.2.2.
+ */
+keyUnwrapUnchecked : {n} (fin n, n >= 1, width n <= 64) =>
+                     [n + 1][64] -> [C::KeySize] -> ([64], [n][64])
+keyUnwrapUnchecked ciphertext key = (A', R') where
+  // 1) Initialize variables.
+  A = join (take`{1} ciphertext)
+  R = drop`{1} ciphertext
+  // 2) Compute intermediate values.
   intermediates = [(A, R)] # [unwrapRound key s j | s <- intermediates
                                                   | j <- [5, 4 .. 0]]
+  (A', R') = intermediates ! 0
 
 private
-  /////////////////////////////////////////////////////////////////////////////
-  //// Helper functions
-  /////////////////////////////////////////////////////////////////////////////
-
-  /*
-   * This section contains helper functions for wrapping and unwrapping keys.
-   * These functions make use of the notation defined in Section 2.1 of
-   * RFC 3394.
+  /**
+   * The body of the inner loop of Step 2 of the Key Wrap algorithm.
+   *
+   *     B = AES(K, A | R[i])
+   *     A = MSB(64, B) ^ t where t = (n*j)+i
+   *     R[i] = LSB(64, B)
+   *
+   * [RFC-3394] Section 2.2.1, Step 2.
    */
-
-  // Body of inner loop of step 2 of key wrap algorithm (Section 2.2.1)
-  wrapBlock : {n} (fin n, width n <= 64) =>
-              [AESKeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
-  wrapBlock key (A, R) j i = (A', R') where
-    B  = AES::encrypt key (A # (R @ (i-1)))
+  wrapBlock : {n} (fin n, n >= 1, width n <= 64) =>
+              [C::KeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
+  wrapBlock key (A, R) j i =
+    if i == 0 then error "`i` must be greater than 0"
+              else (A', R') where
+    // `i ∈ [1..n]` but `R` is 0-index, so we use `i - 1` here.
+    B  = C::encrypt key (A # (R @ (i-1)))
     A' = (take`{64} B) ^ (((`n : [64]) * j) + i)
+    // See above comment for use of `i - 1`.
     R' = update R (i-1) (drop`{64} B)
 
-  // Body of inner loop of step 2 of key unwrap algorithm (Section 2.2.2)
-  unwrapBlock : {n} (fin n, width n <= 64) =>
-                [AESKeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
-  unwrapBlock key (A, R) j i = (A', R') where
-    B  = AES::decrypt key ((A ^ (((`n : [64]) * j) + i)) # (R @ (i-1)))
-    A' = take`{64} B
-    R' = update R (i-1) (drop`{64} B)
-
-  // A single round of the key wrap algorithm (Section 2.2.1, step 2)
+  /**
+   * A single round of the inner loop of Step 2 of the Key Wrap algorithm.
+   *
+   *     For i=1 to n
+   *         B = AES(K, A | R[i])
+   *         A = MSB(64, B) ^ t where t = (n*j)+i
+   *         R[i] = LSB(64, B)
+   *
+   * [RFC-3394] Section 2.2.1 Step 2.
+   */
   wrapRound : {n} (fin n, n >= 1, width n <= 64) =>
-              [AESKeySize] -> ([64], [n][64]) -> [64] -> ([64], [n][64])
+              [C::KeySize] -> ([64], [n][64]) -> [64] -> ([64], [n][64])
   wrapRound key (A, R) j = wrappedBlocks ! 0 where
     wrappedBlocks = [(A, R)] # [wrapBlock key s j i | s <- wrappedBlocks
                                                     | i <- [1..n]]
+  
+  /**
+   * The body of the inner loop of Step 2 of the Key Unwrap algorithm.
+   *
+   *     B = AES-1(K, (A ^ t) | R[i]) where t = n*j+i
+   *     A = MSB(64, B)
+   *     R[i] = LSB(64, B)
+   *
+   * [RFC-3394] Section 2.2.2, Step 2.
+   */
+  unwrapBlock : {n} (fin n, width n <= 64) =>
+                [C::KeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
+  unwrapBlock K (A, R) j i = (A', R') where
+    B  = C::decrypt K ((A ^ (((`n : [64]) * j) + i)) # (R @ (i-1)))
+    A' = take`{64} B
+    R' = update R (i-1) (drop`{64} B)
 
-  // A single round of the key unwrap algorithm (Section 2.2.2, step 2)
+  /**
+   * A single round of the inner loop of Step 2 of the Key Unwrap algorithm.
+   *
+   *     For i = n to 1
+   *         B = AES-1(K, (A ^ t) | R[i]) where t = n*j+i
+   *         A = MSB(64, B)
+   *         R[i] = LSB(64, B)
+   *
+   * [RFC-3394] Section 2.2.2, Step 2.
+   */
   unwrapRound : {n} (fin n, n >= 1, width n <= 64) =>
-                [AESKeySize] -> ([64], [n][64]) -> [64] -> ([64], [n][64])
+                [C::KeySize] -> ([64], [n][64]) -> [64] -> ([64], [n][64])
   unwrapRound key (A, R) j = unwrappedBlocks ! 0 where
     unwrappedBlocks = [(A, R)] # [unwrapBlock key s j i | s <- unwrappedBlocks
                                                         | i <- [n, n-1 .. 1]]
+
+import Common::OptionUtils(optTest)
+
+/**
+ * Key unwrap must be the inverse of key wrap.
+ * ```repl
+ * :check keyWrapInverts`{n=5}
+ * ```
+ */
+keyWrapInverts : {n} (ValidInputSize n)
+  => [n][64] -> [C::KeySize] -> Bool
+property keyWrapInverts plaintext key =
+  optTest (\result -> result == plaintext) (keyUnwrap (keyWrap plaintext key DefaultIV) key DefaultIV)
