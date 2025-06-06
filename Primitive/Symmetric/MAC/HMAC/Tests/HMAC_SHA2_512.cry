@@ -1,6 +1,5 @@
 /**
- * Test vectors for HMAC-SHA-256, HMAC-SHA-384, and HMAC-SHA-512, found in
- * [RFC-4868], Section 2.7.
+ * Test vectors for HMAC-SHA-512 found in [RFC-4868], Section 2.7.
  *
  * @copyright Galois, Inc
  * @author Eric Mertens <emertens@galois.com>
