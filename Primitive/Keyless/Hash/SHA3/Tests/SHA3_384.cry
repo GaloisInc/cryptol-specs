@@ -26,8 +26,6 @@
  */
 module Primitive::Keyless::Hash::SHA3::Tests::SHA3 where
 
-import Primitive::Keyless::Hash::SHA3::KeccakBitOrdering as KBO
-
 import Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_384 as SHA3_384
 
 /**
