@@ -1,12 +1,13 @@
-/* This module validates RSADP by testing on NIST's test vectors available at
-https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/component-testing
-
-Copyright (c) 2018, Galois Inc.
-www.cryptol.net
-
-Author: Ajay Kumar Eeralla
-*/
-
+/**
+ * This module validates RSADP by testing on NIST's test vectors available at
+ * https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/component-testing
+ *
+ * Copyright (c) 2018, Galois Inc.
+ * www.cryptol.net
+ *
+ * Author: Ajay Kumar Eeralla
+ *
+ */
 
 module Primitive::Asymmetric::Cipher::testRSADP where
 import Primitive::Asymmetric::Cipher::RSA
