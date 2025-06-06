@@ -1,17 +1,17 @@
 /**
  * This module implements a subset of the RSA encryption, decryption, signature,
- * and signature verification primitives per their definitions in RFC 3447 (PKCS #1).
+ * and signature verification primitives per their definitions in RFC 8017 (PKCS #1).
  * These primitives are all modular exponentiations over a specially constructed modulus.
  *
  * The security of the RSA cryptographic primitives are subtle. A user of this module
- * should note that conformance to RFC 3447 does not imply conformance to NIST or FIPS
+ * should note that conformance to RFC 8017 does not imply conformance to NIST or FIPS
  * standards concerning integer factorization cryptography. We will reference these
  * other standards when possible to illuminate the points of difference between them.
  * We will also note future intent to implement the RSA primitives tailored to these
  * standards in other modules.
  *
- * This module is less general than RFC 3447. The author's have made the pragmatic
- * decision to encode as many constraints specified by RFC 3447 in Cryptol's type system
+ * This module is less general than RFC 8017. The author's have made the pragmatic
+ * decision to encode as many constraints specified by RFC 8017 in Cryptol's type system
  * as possible. As a result, we allow RSA moduli with only two prime factors; the RFC
  * allows any number of factors greater than or equal to two. The authors of this specification
  * have made this decision based on the fact that NIST and FIPS standards allow only "bi-prime"
@@ -23,13 +23,60 @@
  * such a situation arises, an explanation will be provided in the doc comment above the function.
  *
  * References:
- *    [RFC 3447]
+ *    [RFC 8017]
  *    Public-Key Cryptography Standards (PKCS) #1: RSA Cryptography Specifications Version 2.1
  *    J. Jonson, B. Kaliski, RSA Laboratories; February 2003.
- *    @see https://datatracker.ietf.org/doc/html/rfc3447#page-70
+ *    @see https://datatracker.ietf.org/doc/html/rfc8017#page-70
+ *
+ *    [FIPS 186-5]
+ *    Digital Signature Standard (DSS)
+ *    Information Technology Laboratory, National Institute of Standards and Technology.
+ *    February 3, 2023.
+ *    @see https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-5.pdf
+ *
+ *    [SP 800-56B]
+ *    Recommendation for Pair-Wise Key-Establishment Using Integer Factorization Cryptography (Rev 2)
+ *    E. Barker, L. Chen, A. Roginski, A. Vassilev, R. Davis, S. Simon.
+ *    National Institute of Standards and Technology
+ *    March 2019.
+ *    @see https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Br2.pdf
+ *
+ *    [SP 800-175B]
+ *    Guideline for Using Cryptographic Standards in the Federal Government
+ *    E. Barker
+ *    National Institute of Standards and Technology
+ *    March 2020
+ *    @see https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-175Br1.pdf
+ *
+ *
  *
  * @author John Christensen <jchristensen@galois.com>
  * @copyright Galois, Inc.
  *
  */
 module Primitive::Asymmetric::Cipher::RSA where
+
+/*
+ * There are two key types for the primitives defined in this module.
+ * "Public keys" are an RSA modulus `n` paired with an encryption exponent `e`
+ * subject to particular constraints. Likewise, "private keys" are a pair
+ * of the RSA modulus `n` and a decryption exponent `d` related to `e`.
+ * `n` in both cases is a product of two distinct odd primes.
+ *
+ * Deviations from RFC 8017:
+ * 1. RFC 8017 allows multiple representations of the RSA private key.
+ *    We ignore the alternative representation.
+ * 2. RFC 8017 allows "multi-prime" RSA where `n` has more than two
+ *    prime factors. We ignore this case.
+ *
+ * Non-conformance with NIST/FIPS:
+ * 1. The bit length of the modulus `n` must be at least 2048 according
+ *    to [FIPS 186-5] Appendix A.1.2, for instance. Each particular
+ *    standard should be referenced carefully to determine conformance.
+ * 2. Restrictions on the encryption exponent `e` in [FIPS 186-5] Section 5.4
+ *    are different than the ones that appear in RFC 8017.
+ * 3. The decryption exponent `d` is restricted to a particualr range in
+ *    Appendix A.1.2 of [FIPS 186-5].
+ * 4. This specification does not address key generation. Keys must be generated
+ *    in a particular way to conform to the standard.
+ */
