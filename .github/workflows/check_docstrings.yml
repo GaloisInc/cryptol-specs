@@ -5,13 +5,17 @@
 # @author John Christensen <jchristensen@galois.com>
 #
 
-# This job only runs on pull requests to the master branch.
-# We may expand this to other situations in the future.
 name: Check docstrings
+
 on:
+  # Run on a PR to master
   pull_request:
-    branches:
-      - master
+    branches: [master]
+  # Run on pushing to master
+  push:
+    branches: [master]
+  # Run on master on Sundays
+  schedule: [ cron: '0 17 * * 0' ]
 
 jobs:
   check-docstrings:
