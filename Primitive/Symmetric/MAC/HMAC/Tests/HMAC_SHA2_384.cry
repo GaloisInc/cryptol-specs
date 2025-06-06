@@ -1,0 +1,192 @@
+/**
+ * Test vectors for HMAC-SHA-384 found in [RFC-4868], Section 2.7.
+ *
+ * @copyright Galois, Inc
+ * @author Eric Mertens <emertens@galois.com>
+ *
+ * Sources:
+ *
+ * [RFC-4868] S. Kelly, S. Frankel. Using HMAC-SHA-256, HMAC-SHA-384, and
+ *     HMAC-SHA-512 with IPsec. Request for Comments: 4868. May 2007.
+ *     @see https://datatracker.ietf.org/doc/html/rfc4868
+ */
+module Primitive::Symmetric::MAC::HMAC::Tests::HMAC_SHA2_384 where
+
+import Primitive::Symmetric::MAC::HMAC::Instantiations::HMAC_SHA384 as H384
+
+type PrfParams K D =
+  { Key : [K][8]
+  , Data: [D][8]
+  , PRF_HMAC_SHA_384 : [384]
+  }
+
+prf_test : {K, D} (K < 256, D < 256) => PrfParams K D -> Bit
+prf_test params =
+  H384::hmac params.Key params.Data == split params.PRF_HMAC_SHA_384
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_1
+ * ```
+ */
+property rfc_4868_2_7_1_1 = prf_test
+  { Key = repeat`{20} 0x0b
+  , Data = "Hi There"
+  , PRF_HMAC_SHA_384 =
+      0xafd03944d84895626b0825f4ab46907f #
+      0x15f9dadbe4101ec682aa034c7cebc59c #
+      0xfaea9ea9076ede7f4af152e8b2fa9cb6
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_2
+ * ```
+ */
+property rfc_4868_2_7_1_2 = prf_test
+  { Key = "Jefe"
+  , Data = "what do ya want for nothing?"
+  , PRF_HMAC_SHA_384 =
+      0xaf45d2e376484031617f78d2b58a6b1b #
+      0x9c7ef464f5a01b47e42ec3736322445e #
+      0x8e2240ca5e69e2c78b3239ecfab21649
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_3
+ * ```
+ */
+property rfc_4868_2_7_1_3 = prf_test
+  { Key = repeat`{20} 0xaa
+  , Data = repeat`{50} 0xdd
+  , PRF_HMAC_SHA_384 =
+      0x88062608d3e6ad8a0aa2ace014c8a86f #
+      0x0aa635d947ac9febe83ef4e55966144b #
+      0x2a5ab39dc13814b94e3ab6e101a34f27
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_4
+ * ```
+ */
+property rfc_4868_2_7_1_4 = prf_test
+  { Key = split 0x0102030405060708090a0b0c0d0e0f10111213141516171819
+  , Data = repeat`{50} 0xcd
+  , PRF_HMAC_SHA_384 =
+      0x3e8a69b7783c25851933ab6290af6ca7 #
+      0x7a9981480850009cc5577c6e1f573b4e #
+      0x6801dd23c4a7d679ccf8a386c674cffb
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_5
+ * ```
+ */
+property rfc_4868_2_7_1_5 = prf_test
+  { Key = repeat`{131} 0xaa
+  , Data = "Test Using Larger Than Block-Size Key - Hash Key First"
+  , PRF_HMAC_SHA_384 =
+      0x4ece084485813e9088d2c63a041bc5b4 #
+      0x4f9ef1012a2b588f3cd11f05033ac4c6 #
+      0x0c2ef6ab4030fe8296248df163f44952
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_6
+ * ```
+ */
+property rfc_4868_2_7_1_6 = prf_test
+  { Key = repeat`{131} 0xaa
+  , Data = "This is a test using a larger than block-size key and a larger than block-size data. The key needs to be hashed before being used by the HMAC algorithm."
+  , PRF_HMAC_SHA_384 =
+      0x6617178e941f020d351e2f254e8fd32c #
+      0x602420feb0b8fb9adccebb82461e99c5 #
+      0xa678cc31e799176d3860e6110c46523e
+  }
+
+type AuthTest384 T =
+  { Key : [48][8]
+  , Data : [T][8]
+  , PRF_HMAC_SHA_384 : [384]
+  , HMAC_SHA_384_192 : [192]
+  }
+
+sha2_384_auth_test : {T} (T < 256) => AuthTest384 T -> Bit
+sha2_384_auth_test params =
+  H384::hmac params.Key params.Data == split params.PRF_HMAC_SHA_384 /\
+  H384::hmac_truncate params.Key params.Data == split params.HMAC_SHA_384_192
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_2_1
+ * ```
+ */
+property rfc_4868_2_7_2_2_1 = sha2_384_auth_test
+  { Key = repeat`{48} 0x0b
+  , Data = "Hi There"
+  , PRF_HMAC_SHA_384 =
+      0xb6a8d5636f5c6a7224f9977dcf7ee6c7 #
+      0xfb6d0c48cbdee9737a959796489bddbc #
+      0x4c5df61d5b3297b4fb68dab9f1b582c2
+  , HMAC_SHA_384_192 =
+      0xb6a8d5636f5c6a7224f9977dcf7ee6c7 #
+      0xfb6d0c48cbdee973
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_2_2
+ * ```
+ */
+property rfc_4868_2_7_2_2_2 = sha2_384_auth_test
+  { Key = "JefeJefeJefeJefeJefeJefeJefeJefeJefeJefeJefeJefe"
+  , Data = "what do ya want for nothing?"
+  , PRF_HMAC_SHA_384 =
+      0x2c7353974f1842fd66d53c452ca42122 #
+      0xb28c0b594cfb184da86a368e9b8e16f5 #
+      0x349524ca4e82400cbde0686d403371c9
+  , HMAC_SHA_384_192 =
+      0x2c7353974f1842fd66d53c452ca42122 #
+      0xb28c0b594cfb184d
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_2_3
+ * ```
+ */
+property rfc_4868_2_7_2_2_3 = sha2_384_auth_test
+  { Key = repeat`{48} 0xaa
+  , Data = repeat`{50} 0xdd
+  , PRF_HMAC_SHA_384 =
+      0x809f439be00274321d4a538652164b53 #
+      0x554a508184a0c3160353e3428597003d #
+      0x35914a18770f9443987054944b7c4b4a
+  , HMAC_SHA_384_192 =
+      0x809f439be00274321d4a538652164b53 #
+      0x554a508184a0c316
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_2_4
+ * ```
+ */
+property rfc_4868_2_7_2_2_4 = sha2_384_auth_test
+  { Key =
+      split 0x0102030405060708090a0b0c0d0e0f10 #
+      split 0x1112131415161718191a1b1c1d1e1f20 #
+      split 0x0a0b0c0d0e0f10111213141516171819
+  , Data = repeat`{50} 0xcd
+  , PRF_HMAC_SHA_384 =
+      0x5b540085c6e6358096532b2493609ed1 #
+      0xcb298f774f87bb5c2ebf182c83cc7428 #
+      0x707fb92eab2536a5812258228bc96687
+  , HMAC_SHA_384_192 =
+      0x5b540085c6e6358096532b2493609ed1 #
+      0xcb298f774f87bb5c
+  }
