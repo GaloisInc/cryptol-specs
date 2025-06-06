@@ -8,7 +8,7 @@ This directory includes executable specifications for several hash functions.
 | BLAKE (2b and 2s) | | No |
 | FNV | | No |
 | MD5 | | Yes |
-| SHA1 |  | No |
+| SHA1 | Yes | No |
 
 ## SHA2
 There are two versions of SHA2 here, as defined in [FIPS 180-4](https://doi.org/10.6028/NIST.FIPS.180-4). The [`SHA2`](/Primitive/Keyless/Hash/SHA2/) directory contains the spec-adherent version and should be used for the vast majority of applications. In addition, the directory contains an FFI implementation of SHA256. This can be used to test algorithms that require many invocations of SHA256 (such as WOTS+), and it has been checked equivalent (but not _proven_ equivalent) to the gold-standard [`SHA256`](/Primitive/Keyless/Hash/SHA2/Instantiations/SHA256.cry) spec.
@@ -20,7 +20,7 @@ These are used in the implementation of several other algorithms in this repo, l
 The SHA3 executable specification is based on [FIPS 202](https://doi.org/10.6028/NIST.FIPS.202).
 The implementation is divided into the main body of the implementation in [`SHA3/Specification.cry`](SHA3/Specification.cry) and a public API for the hash functions [SHA3](SHA3/SHA3.cry). The public APIs for the extendable-output functions (SHAKE) are directly in [the instantiations](SHA3/Instantiations/).
 
-One quirk of the Keccak algorithm underlying SHA3 is that it assumes an unusual bit ordering for the input. In practice, most applications do not want to rearrange inputs to match that bit ordering (indeed, the KATs provided by NIST are not provided with that ordering), so the default `hash` and `xof` functions for the `SHA3` and `SHAKE` algorithms take input and return output in big-endian, or most-significant-bit first, ordering. For applications that have unusual bit-ordering needs, the `sha3`, `shake128`, and `shake256` functions take input and return output in the Keccak bit ordering, and the[KeccakBitOrdering](KeccakBitOrdering.cry) module has helper functions to convert between various representations of bits.
+One quirk of the Keccak algorithm underlying SHA3 is that it assumes an unusual bit ordering for the input. In practice, most applications do not want to rearrange inputs to match that bit ordering (indeed, the KATs provided by NIST are not provided with that ordering), so the default `hash` and `xof` functions for the `SHA3` and `SHAKE` algorithms take input and return output in big-endian, or most-significant-bit first, ordering. For applications that have unusual bit-ordering needs, the `sha3`, `shake128`, and `shake256` functions take input and return output in the Keccak bit ordering, and the [KeccakBitOrdering](SHA3/KeccakBitOrdering.cry) module has helper functions to convert between various representations of bits.
 
 ## HashInterface
 Some applications require an arbitrary hash function. The `HashInterface` provided is instantiated by both the `SHA2` and `SHA3` hashes.
