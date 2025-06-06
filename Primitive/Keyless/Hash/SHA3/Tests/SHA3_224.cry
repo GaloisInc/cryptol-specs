@@ -1,5 +1,5 @@
 /**
- * Tests of the SHA3 hash functions.
+ * Tests of the SHA3_224 hash function.
  *
  * Test vectors drawn from the NIST Cryptographic Algorithm Validation Program.
  * This program includes test vectors that can be used to spot-check an
