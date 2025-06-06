@@ -240,3 +240,53 @@ RSASP1 m = RSADP `{n, d} m
  */
 RSAVP1 : {n, e} (fin e, fin n, n >= 1) => Z n -> Z n
 RSAVP1 s = RSAEP `{n, e} s
+
+private
+
+      /**
+       * Presuming that `e` and `d` are properly chosen,
+       * then `RSADP` inverts `RSAEP`.
+       *
+       * ```repl
+       * // check that this is not vacuously true
+       * :prove dExists `{5, 7, 35, 5}
+       * :prove dCorrect `{5, 7, 35, 5, 5}
+       * // check every member of Z 35 can be decrypted
+       * :exhaust rsaInvertible `{5, 7, 35, 5, 5}
+       * ```
+       */
+      rsaInvertible :
+            {p, q, n, e, d}
+            (RSAPubPartialValid p q n e, d >= 2, d < n)
+            => Z n -> Bit
+      property rsaInvertible m =
+                  preconditions ==>
+                  RSADP `{n, d} (RSAEP `{n, e} m) == m
+            where
+                  b1 = dExists `{p, q, n, e}
+                  b2 = dCorrect `{p, q, n, e, d}
+                  preconditions = b1 /\ b2
+
+      /**
+       * Presuming that `e` and `d` are properly chosen,
+       * then RSA signatures are verifiable.
+       *
+       * ```repl
+       * // check that this is not vacuously true
+       * :prove dExists `{5, 7, 35, 5}
+       * :prove dCorrect `{5, 7, 35, 5, 5}
+       * // check every member of Z 35 can be decrypted
+       * :exhaust rsaInvertible `{5, 7, 35, 5, 5}
+       * ```
+       */
+      rsaSignatureVerifiable :
+            {p, q, n, e, d}
+            (RSAPubPartialValid p q n e, d >= 2, d < n)
+            => Z n -> Bit
+      property rsaSignatureVerifiable m =
+                  preconditions ==>
+                  RSAVP1 `{n, e} (RSASP1 `{n, d} m) == m
+            where
+                  b1 = dExists `{p, q, n, e}
+                  b2 = dCorrect `{p, q, n, e, d}
+                  preconditions = b1 /\ b2
