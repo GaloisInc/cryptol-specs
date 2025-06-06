@@ -80,3 +80,32 @@ module Primitive::Asymmetric::Cipher::RSA where
  * 4. This specification does not address key generation. Keys must be generated
  *    in a particular way to conform to the standard.
  */
+
+/**
+ * Section 3.1 of [RFC 8017] specifies that the encryption exponent `e`
+ * is bounded by `3` and `n-1`.
+ */
+type constraint eValid n e = (e >= 3, e <= n - 1, fin n)
+
+/**
+ * Section 3.1 of [RFC 8017] specifies that `n` is the product of distinct
+ * odd primes.
+ *
+ * Deviation from RFC 8017:
+ * 1. This specification restricts the modulus to having two distinct factors.
+ * 2. `e` is required to satisfy a GCD condition that is tedious to express
+ *    in Cryptol's type system. Appeal to external validation will be required,
+ *    but is provided in this module.
+ *
+ * Non-conformance with NIST/FIPS:
+ * 1. FIPS 186-5, for instance, requires that the primes not only be distinct,
+ *    but also satisfy conditions on the absolute value of their difference.
+ *    These are propogated to the other standards, with some variations.
+ *    Consult each standard carefully for the particular requirements.
+ */
+type constraint nPartialValid p q n = (n == p * q, p != q, p >= 3, q >= 3, prime p, prime q)
+
+/**
+ * The conjunction of the previous constraints for syntactic convenience.
+ */
+type constraint RSAPubPartialValid p q n e = (nPartialValid p q n, eValid n e)
