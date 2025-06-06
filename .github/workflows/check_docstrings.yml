@@ -5,13 +5,17 @@
 # @author John Christensen <jchristensen@galois.com>
 #
 
-# This job only runs on pull requests to the master branch.
-# We may expand this to other situations in the future.
 name: Check docstrings
+
 on:
+  # Run on a PR to master
   pull_request:
-    branches:
-      - master
+    branches: [master]
+  # Run on pushing to master
+  push:
+    branches: [master]
+  # Run on master on Sundays
+  schedule: [ cron: '0 17 * * 0' ]
 
 jobs:
   check-docstrings:
@@ -25,12 +29,10 @@ jobs:
       CRYPTOL_PROJECT: .
       # This is the relative path to the Cryptol cache.
       CRYPTOL_CACHE: ${{ github.workspace }}/.cryproject/loadcache.toml
-      # This is the key for the cache.
-      # Note that GITHUB_HEAD_REF is only available on pull requests.
-      # If we want to expand the scope of caching beyond these
-      # circumstances, we'll need to rethink the keying strategy.
-      CRYPTOL_CACHE_KEY: ${{ github.head_ref || github.ref_name }}
-      CRYPTOL_DEFAULT_KEY: master
+
+      # There's one cache for the whole repo. It's associated with the `master` branch.
+      CRYPTOL_CACHE_KEY: cryptol-specs-cache
+
       # In order to use Github CLI in a workflow, we need
       # the token that is generated for this workflow.
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -47,45 +49,38 @@ jobs:
           wget https://github.com/cli/cli/releases/download/v2.69.0/gh_2.69.0_linux_amd64.tar.gz
           tar xzvf gh_2.69.0_linux_amd64.tar.gz
           mv gh_2.69.0_linux_amd64/bin/gh /usr/local/bin/
+
       # Check out the code.
       - id: checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # Check if this branch has a cache.
-      # We do not use the 'restore-keys' option to implicitly load
-      # a backup if this fails, instead preferring the explicit check.
+
+      # Pull the default cache
       - id: load-cache
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.CRYPTOL_CACHE }}
           key: ${{ env.CRYPTOL_CACHE_KEY }}
-      # If the cache has missed, attempt to load
-      # the cache from the master branch.
-      - id: load-cache-fallback
-        uses: actions/cache/restore@v4
-        if: steps.load-cache.outputs.cache-hit != 'true'
-        with:
-          path: ${{ env.CRYPTOL_CACHE }}
-          key: ${{ env.CRYPTOL_DEFAULT_KEY }}
+
       # Run the check-docstrings script, regardless of cache load.
-      # This also deletes the current cache key in preparation to upload a new cache.
       - name: "Run the check-docstrings script."
         run: |
           git config --global --add safe.directory '*'
           echo "Check which caches exist, for sanity."
           gh cache list
+
           bash scripts/check_docstrings.sh .
-          # if the cache doesn't exist for this branch, no sweat!
-          # we will just upload the one we create.
-          echo "Deleting cache key: ${{ env.CRYPTOL_CACHE_KEY }}"
-          gh cache delete ${{ env.CRYPTOL_CACHE_KEY }} || true
-      # Cache the .cryproject/* files.
-      # Cache is scoped to branch, commit, and cache version.
-      # Note that GITHUB_HEAD_REF only available on pull requests.
-      # If we want to expand the scope of caching beyond these
-      # circumstances, we'll need to rethink the keying strategy.
+
+      # Caches can only be uploaded once. If we're on master and the cache already exists,
+      # we need to delete it...
+      - name: "If we're on master, delete the cache"
+        if: github.ref == 'refs/heads/master' && steps.load-cache.outputs.cache-hit == 'true'
+        run: gh cache delete ${{ env.CRYPTOL_CACHE_KEY }}
+
+      # ...before we upload it. Do this regardless of whether it previously existed.
       - id: save-cache
+        if: github.ref == 'refs/heads/master'
         uses: actions/cache/save@v4
         with:
           path: ${{ env.CRYPTOL_CACHE }}
