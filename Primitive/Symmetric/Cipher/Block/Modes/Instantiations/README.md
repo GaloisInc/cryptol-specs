@@ -13,3 +13,4 @@ At this time, this directory does not contain all the instantiations included in
 | CTR           | [AES-128](./AES128_CTR.cry), [AES-192](./AES192_CTR.cry), [AES-256](./AES256_CTR.cry) |
 | KeyWrap       | [AES-256](./AES256_KeyWrap.cry)                                                       |
 | KeyWrapPadded | [AES-256](./AES256_KeyWrapPadded.cry)                                                 |
+| XTS           | [AES-128](./AES128_XTS.cry), [AES-256](./AES256_XTS.cry)
