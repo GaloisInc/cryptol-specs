@@ -184,3 +184,59 @@ dCorrect :
       (RSAPubPartialValid p q n e, d >= 2, d < n)
       => Bit
 dCorrect = (`e * `d) % lambda `{p, q} == 1
+
+/**
+ * The RSA encryption primitive is a modular exponentiation
+ * with a valid public key. In the spirit of mimicking this
+ * "external validation" of the public key, we provide the minimal
+ * set of constraints on `n` and `e` such that the Cryptol
+ * type-checker will accept our definition.
+ *
+ * RSAEP is defined in Section 5.1.1 of RFC 8017.
+ *
+ * Deviations from RFC 8017:
+ * 1. RSAEP, per the standard, considers the plaintext
+ *    message representative to be an integer. Cryptol
+ *    has a built-in modular arithmetic type, which we use
+ *    to avoid the check for `m` being in a valid range.
+ */
+RSAEP: {n, e} (fin e, fin n, n >= 1) => Z n -> Z n
+RSAEP m = m ^^ `e
+
+/**
+ * The RSA decryption primitive is a modular exponentiation
+ * with a valid private key. In the spirit of mimicking this
+ * "external validation" of the private key, we provide the minimal
+ * set of constraints on `n` and `d` such that the Cryptol
+ * type-checker will accept our definition.
+ *
+ * RSADP is defined in Section 5.1.2 of RFC 8017.
+ *
+ * Deviations from RFC 8017:
+ * 1. RSADP, per the standard, considers the ciphertext
+ *    message representative to be an integer. Cryptol
+ *    has a built-in modular arithmetic type, which we use
+ *    to avoid the check for `c` being in a valid range.
+ * 2. RFC 8017 allows for multiple representations of the private
+ *    key `K`. Although this could be modeled with an `enum`,
+ *    we instead just use the (`n`, `d`) formulation in this
+ *    implementation.
+ */
+RSADP: {n, d} (fin d, fin n, n >= 1) => Z n -> Z n
+RSADP c = c ^^ `d
+
+/**
+ * The RSA signature primitive is simply the decryption primitive.
+ * Only the names of the input and output arguments are changed.
+ * See Section 5.2.1 of RFC 8017.
+ */
+RSASP1 : {n, d} (fin d, fin n, n >= 1) => Z n -> Z n
+RSASP1 m = RSADP `{n, d} m
+
+/**
+ * The RSA signature verification primitive is simply the encryption primitive.
+ * Only the names of the input and output arguments are changed.
+ * See Section 5.2.2 of RFC 8017.
+ */
+RSAVP1 : {n, e} (fin e, fin n, n >= 1) => Z n -> Z n
+RSAVP1 s = RSAEP `{n, e} s
