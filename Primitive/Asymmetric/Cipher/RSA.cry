@@ -1,100 +1,35 @@
-/* This module implements the data conversion and
-   cryptographic RSA primitives described in sections 4 and 5 of
-
-   PKCS #1: RSA Cryptography Specifications Version 2.2
-
-   See also:
-   https://tools.ietf.org/html/rfc8017
-
-   Copyright (c) 2018, Galois Inc.
-   www.cryptol.net
-*/
-
-
+/**
+ * This module implements a subset of the RSA encryption, decryption, signature,
+ * and signature verification primitives per their definitions in RFC 3447 (PKCS #1).
+ * These primitives are all modular exponentiations over a specially constructed modulus.
+ *
+ * The security of the RSA cryptographic primitives are subtle. A user of this module
+ * should note that conformance to RFC 3447 does not imply conformance to NIST or FIPS
+ * standards concerning integer factorization cryptography. We will reference these
+ * other standards when possible to illuminate the points of difference between them.
+ * We will also note future intent to implement the RSA primitives tailored to these
+ * standards in other modules.
+ *
+ * This module is less general than RFC 3447. The author's have made the pragmatic
+ * decision to encode as many constraints specified by RFC 3447 in Cryptol's type system
+ * as possible. As a result, we allow RSA moduli with only two prime factors; the RFC
+ * allows any number of factors greater than or equal to two. The authors of this specification
+ * have made this decision based on the fact that NIST and FIPS standards allow only "bi-prime"
+ * RSA. Thus, the authors thought it a pragmatic middle ground between conformance to the RFC
+ * and ease of clear expression in Cryptol.
+ *
+ * Users of this module should further note that some of the type signatures of the functions
+ * in this module do not exactly correspond to the type signatures specified in the RFC. When
+ * such a situation arises, an explanation will be provided in the doc comment above the function.
+ *
+ * References:
+ *    [RFC 3447]
+ *    Public-Key Cryptography Standards (PKCS) #1: RSA Cryptography Specifications Version 2.1
+ *    J. Jonson, B. Kaliski, RSA Laboratories; February 2003.
+ *    @see https://datatracker.ietf.org/doc/html/rfc3447#page-70
+ *
+ * @author John Christensen <jchristensen@galois.com>
+ * @copyright Galois, Inc.
+ *
+ */
 module Primitive::Asymmetric::Cipher::RSA where
-
-import Common::mod_arith
-
-// Integer-to-Octet-String primitive
-I2OSP : {xLen,int} (fin int, fin xLen, int<=xLen*8, xLen>=1) =>
-      [int] -> [xLen][8]
-I2OSP x = split ((zero # x):[xLen*8]) : [xLen][8]
-
-// Octet-String-to-Integer primitive
-OS2IP : {xLen} (fin xLen) => [xLen][8] -> [xLen*8]
-OS2IP xs = join xs
-
-I2OSConversionCorrect : {xLen} (fin xLen, xLen>=1) => [xLen][8] -> Bit
-property I2OSConversionCorrect xs = I2OSP (OS2IP xs) == xs
-
-
-// RSA encryption primitive
-RSAEP : {K} (fin K, K >= 1) => (([K],[K]),[K]) -> [K]
-RSAEP ((n, e), m) = if (m < zero \/ m > (n-1)) then error "message representative out of range"
-                    else c
-      where c = mod_pow (n,m,e)
-
-// RSA decryption primitive
-RSADP : {K} (fin K, K >= 1) => (([K],[K]),[K]) -> [K]
-RSADP ((n, d), c) = if (c < 0 \/ c > (n-1)) then error "ciphertext representative out of range"
-                    else m
-      where m = mod_pow (n,c,d)
-
-
-RSACorrect : {K} (fin K, K >= 1) => [K] -> [K] -> [K] -> [K] -> Bit
-property RSACorrect e d n msg = ( msg >= zero /\ msg < n ) ==> RSADP ((n,d), RSAEP ((n,e), msg)) == msg
-
-rsaTest = {n = 0xbad47a84c1782e4dbdd913f2a261fc8b65838412c6e45a2068ed6d7f16e9cdf4462b39119563cafb74b9cbf25cfd544bdae23bff0ebe7f6441042b7e109b9a8afaa056821ef8efaab219d21d6763484785622d918d395a2a31f2ece8385a8131e5ff143314a82e21afd713bae817cc0ee3514d4839007ccb55d68409c97a18ab62fa6f9f89b3f94a2777c47d6136775a56a9a0127f682470bef831fbec4bcd7b5095a7823fd70745d37d1bf72b63c4b1b4a3d0581e74bf9ade93cc46148617553931a79d92e9e488ef47223ee6f6c061884b13c9065b591139de13c1ea2927491ed00fb793cd68f463f5f64baa53916b46c818ab99706557a1c2d50d232577d1 : [2048]
-           , d = 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010001 : [2048]
-           , e = 0x40d60f24b61d76783d3bb1dc00b55f96a2a686f59b3750fdb15c40251c370c65cada222673811bc6b305ed7c90ffcb3abdddc8336612ff13b42a75cb7c88fb936291b523d80acce5a0842c724ed85a1393faf3d470bda8083fa84dc5f31499844f0c7c1e93fb1f734a5a29fb31a35c8a0822455f1c850a49e8629714ec6a2657efe75ec1ca6e62f9a3756c9b20b4855bdc9a3ab58c43d8af85b837a7fd15aa1149c119cfe960c05a9d4cea69c9fb6a897145674882bf57241d77c054dc4c94e8349d376296137eb421686159cb878d15d171eda8692834afc871988f203fc822c5dcee7f6c48df663ea3dc755e7dc06aebd41d05f1ca2891e2679783244d068f : [2048]
-           , M = 0x70992c9d95a4908d2a94b3ab9fa1cd643f120e326f9d7808af50cac42c4b0b4eeb7f0d4df303a568fbfb82b0f58300d25357645721bb71861caf81b27a56082c80a146499fb4eab5bde4493f5d00f1a437bbc360dfcd8056fe6be10e608adb30b6c2f7652428b8d32d362945982a46585d2102ef7995a8ba6e8ad8fd16bd7ae8f53c3d7fcfba290b57ce7f8f09c828d6f2d3ce56f131bd9461e5667e5b73edac77f504dac4f202a9570eb4515b2bf516407db831518db8a2083ec701e8fd387c430bb1a72deca5b49d429cf9deb09cc4518dc5f57c089aa2d3420e567e732102c2c92b88a07c69d70917140ab3823c63f312d3f11fa87ba29da3c7224b4fb4bc : [2048]
-           , C = 0x7e65b998a05f626b028c75dc3fbf98963dce66d0f4c3ae4237cff304d84d8836cb6bad9ac86f9d1b8a28dd70404788b869d2429f1ec0663e51b753f7451c6b4645d99126e457c1dac49551d86a8a974a3131e9b371d5c214cc9ff240c299bd0e62dbc7a9a2dad9fa5404adb00632d36332d5be6106e9e6ec81cac45cd339cc87abbe7f89430800e16e032a66210b25e926eda243d9f09955496ddbc77ef74f17fee41c4435e78b46965b713d72ce8a31af641538add387fedfd88bb22a42eb3bda40f72ecad941dbffdd47b3e77737da741553a45b630d070bcc5205804bf80ee2d51612875dbc4796960052f1687e0074007e6a33ab8b2085c033f9892b6f74 : [2048] }
-
-property testsPass = rsaTest.M == RSADP ((rsaTest.n, rsaTest.d), rsaTest.C)
-
-//Integer-based implementation
-
-genRSAKeys : (Integer,Integer) -> (Integer,Integer,Integer) // (n,e,d)
-genRSAKeys (p,q) = (p*q,e,d)
-           where nTotient = lcm (p-1) (q-1)
-                 e        = 65537 // 2^16+1, commonly used public key exponent
-                 d        = inv e nTotient
-
-private
-    gcd : Integer -> Integer -> Integer
-    gcd x y =  gcd' x y
-        where gcd' a b = if b == zero then a else gcd' b (a%b)
-
-
-    lcm : Integer -> Integer -> Integer
-    lcm x y =  if (x == zero \/ y == zero) then zero else (x / (gcd x y)) * y
-
-
-    inv : Integer -> Integer -> Integer // Note, k and m MUST be coprime
-    inv k m = (inv' m k).1 % m
-      where
-        inv' n x = if x==1 then (zero, 1) else (r', q' - r' * q)
-          where
-            (q,  r)  = (n/x, n%x)
-            (q', r') = inv' x r
-
-
-rsaEncrypt : (Integer,Integer,Integer) -> Integer
-rsaEncrypt (msg,e,n) = (msg^^e)%n
-
-rsaDecrypt : (Integer,Integer,Integer) -> Integer
-rsaDecrypt (ct,d,n) = (ct^^d)%n
-
-// :prove IntegerRSACorrectKeyGen 49979693 67867967
-// :check IntegerRSACorrectKeyGen 49979693 67867967
-IntegerRSACorrectKeyGen : Integer -> Integer -> Integer -> Bit
-property IntegerRSACorrectKeyGen p q msg = ( msg >= zero /\ msg < n ) ==>
-         rsaDecrypt (rsaEncrypt (msg,e,n),d,n) == msg
-         where (n,e,d) = genRSAKeys (p,q)
-
-// :prove IntegerRSACorrect 7 103 143
-// :check IntegerRSACorrect 7 103 143
-// :check IntegerRSACorrect (toInteger e) (toInteger d) (toInteger n)
-IntegerRSACorrect : Integer -> Integer -> Integer -> Integer -> Bit
-property IntegerRSACorrect e d n msg = ( msg >= zero /\ msg < n ) ==>
-         rsaDecrypt (rsaEncrypt (msg,e,n),d,n) == msg
