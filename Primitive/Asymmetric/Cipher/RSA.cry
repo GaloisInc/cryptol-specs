@@ -109,3 +109,78 @@ type constraint nPartialValid p q n = (n == p * q, p != q, p >= 3, q >= 3, prime
  * The conjunction of the previous constraints for syntactic convenience.
  */
 type constraint RSAPubPartialValid p q n e = (nPartialValid p q n, eValid n e)
+
+private
+
+      /**
+       * The greatest common divisor of two positive integers
+       * is the largest positive integer that divides both of them.
+       *
+       * This implementation is a recursive version of the famous
+       * Euclidean algorithm.
+       *
+       * ```repl
+       * :prove GCD 14 6 == 2
+       * :prove GCD 25 24 == 1
+       * ```
+       */
+      GCD : Integer -> Integer -> Integer
+      GCD a b = if b == 0 then a else GCD b (a % b)
+
+      /**
+       * The least common multiple of two positive integers
+       * is the smallest positive integer that is divisible by
+       * both of them.
+       *
+       * It can be computed from the GCD.
+       *
+       * ```repl
+       * :prove LCM 2 5 == 10
+       * :prove LCM 6 9 == 18
+       * ```
+       */
+      LCM : Integer -> Integer -> Integer
+      LCM a b = (a * b) / (GCD a b)
+
+      /**
+       * RFC 8017 defines `lambda(n)` to be the LCM
+       * of all of the prime factors of `n`. Our notation
+       * is slightly different, but we define the same function
+       * (in particular, we ignore `n`).
+       */
+      lambda : {p, q} (p >=3, q >=3, fin p, fin q) => Integer
+      lambda = LCM (`p - 1) (`q - 1)
+/**
+ * For bi-prime RSA, where `n = p * q`,
+ * it is a functional requirement that the
+ * `GCD (e, LCM(p - 1, q - 1)) = 1`. This ensures the
+ * existence of `d`. This requirement
+ * is specified in Section 3.1 of RFC 8017.
+ *
+ * ```repl
+ * // "lambda n" == 12
+ * // GCD 5 12 == 1
+ * :prove dExists `{5, 7, 35, 5}
+ * ```
+ */
+dExists : {p, q, n, e} (RSAPubPartialValid p q n e) => Bit
+dExists = GCD `e (lambda `{p, q}) == 1
+
+/**
+ * `d` must be specially chosen such that it is the
+ * multiplicative inverse of `e` modulo `lambda n`.
+ * This is specified in Section 3.2 of RFC 8017.
+ *
+ * `d` can be computed the extended Euclidean algorithm.
+ * We do specify the generation of `d` in this module.
+ *
+ * ```repl
+ * // 5 is its own inverse mod 12
+ * :prove dCorrect `{5, 7, 35, 5, 5}
+ * ```
+ */
+dCorrect :
+      {p, q, n, e, d}
+      (RSAPubPartialValid p q n e, d >= 2, d < n)
+      => Bit
+dCorrect = (`e * `d) % lambda `{p, q} == 1
