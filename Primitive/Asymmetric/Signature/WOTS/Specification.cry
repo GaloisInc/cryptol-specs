@@ -132,6 +132,15 @@ toByte : {y, m} (fin y, fin m) => [m] -> [y]Byte
 toByte x = split (drop (zext`{max m (y * 8)} x))
 
 /**
+ * Ensure that `toByte`{32} 0 == zero`.
+ * ```repl
+ * :check toByteZeroIsZero`{32}
+ * ```
+ */
+toByteZeroIsZero : {m} fin m => Bit
+toByteZeroIsZero = zero == toByte`{32, m} 0
+
+/**
  * An n-byte value used as the key to a PRF.
  *
  * This type is not formally defined in the spec but is defined here for
