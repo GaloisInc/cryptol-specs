@@ -1,3 +1,5 @@
+DO NOT MERGE -- This PR is a test to see whether caching in the CI worked.
+
 This repository contains a wide range of cryptographic algorithms
 specified in the Cryptol language. Our long-term goal is for these
 specifications to be literate files that share as much common code as
