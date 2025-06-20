@@ -131,6 +131,16 @@ private
     getTreeIndex address = join (take`{1 * 4} (drop`{6 * 4} address))
 
     /**
+     * Test `setTreeIndex` and `getTreeIndex`.
+     * ```repl
+     * :prove test_tree_index_getter_setter
+     * ```
+     */
+    property test_tree_index_getter_setter ADRS i = i' == i where
+        ADRS' = setTreeIndex ADRS i
+        i' = getTreeIndex ADRS'
+
+    /**
     * Set the `keyAndMask` word (the 8th position) in an `LTreeAddress`.
     * This setter is defined implicitly in the spec.
     *
@@ -197,8 +207,6 @@ private
      */
     getWOTS_SK : PrivateKey -> Word -> WOTS::PrivateKey
     getWOTS_SK SK i = SK.wots_sks @ i
-
-
 
 /**
  * An XMSS public key.
@@ -347,7 +355,7 @@ private
         /*
          * The base case. Return the only value in `pk`.
          */
-        | len' <= 1 => pk @ 0
+        | len' == 1 => pk @ 0
         /*
          * The `while`-loop condition for when `len' % 2 == 0`.
          *
@@ -356,9 +364,8 @@ private
          */
         | (len' > 1, len' % 2 == 0) => result where
             pk' = ltree_pk pk SEED ADRS
-            ADRS' = setTreeIndex ADRS (`half_floor - 1)
-            ADRS'' = setTreeHeight ADRS' ((getTreeHeight ADRS') + 1)
-            result = ltree'`{half_ceil} pk' SEED ADRS''
+            ADRS' = setTreeHeight ADRS ((getTreeHeight ADRS) + 1)
+            result = ltree'`{half_ceil} pk' SEED ADRS'
         /*
          * The `while`-loop condition for when `len' % 2 == 1`.
          *
@@ -366,9 +373,8 @@ private
          */
         | (len' > 1, len' % 2 == 1) => result where
             pk' = (ltree_pk pk SEED ADRS) # split (pk ! 0)
-            ADRS' = setTreeIndex ADRS (`half_floor - 1)
-            ADRS'' = setTreeHeight ADRS' ((getTreeHeight ADRS') + 1)
-            result = ltree'`{half_ceil} pk' SEED ADRS''
+            ADRS' = setTreeHeight ADRS ((getTreeHeight ADRS) + 1)
+            result = ltree'`{half_ceil} pk' SEED ADRS'
 
     /**
      * `ltree` - unbalanced binary hash tree.
@@ -428,24 +434,24 @@ private
             // XMSS tree itself.
             t <= h
         ) => PrivateKey -> Word -> Address -> [2^^t]([n]Byte, Address)
-    treeHash_base SK s ADRS = if s % (2^^`t) != 0 then
-        error "Invalid `s`: `s % (1 << t) != 0` must hold" else
-        base where
+    treeHash_base SK s ADRS = if s % (2^^`t) != 0
+        then error "Invalid `s`: `s % (1 << t) == 0` must hold"
+        else base where
+            SEED = SK.seed
             base = [ (node, ADRS''') where
-                    SEED = SK.seed
-                    ADRS' = setOTSAddress (setType ADRS 0) (s + i)
-                    pk = WOTS::genPK (getWOTS_SK SK (s + i)) SEED ADRS'
-                    ADRS'' = setLTreeAddress (setType ADRS' 1) (s + i)
-                    node = ltree pk SEED ADRS''
-                    ADRS''' = setTreeIndex (setTreeHeight (setType ADRS'' 2) 0) (i + s)
-                | i <- [0..2^^t - 1]
-                ]
+                     ADRS' = setOTSAddress (setType ADRS 0) (s + i)
+                     pk = WOTS::genPK (getWOTS_SK SK (s + i)) SEED ADRS'
+                     ADRS'' = setLTreeAddress (setType ADRS' 1) (s + i)
+                     node = ltree pk SEED ADRS''
+                     ADRS''' = setTreeIndex (setTreeHeight (setType ADRS'' 2) 0) (i + s)
+                   | i <- [0..2^^t - 1]
+                   ]
 
     /**
      * The "induction step" for `treeHash`.
      *
-     * This takes a list of `2^^t` elements and combines them to produce a list
-     * of `2^^(t-1)` elements by pairwise hashing elements using `RAND_HASH`.
+     * This takes a list of `2^^t` elements and combines them to produce a
+     * single element by pairwise hashing elements using `RAND_HASH`.
      *
      * This roughly corresponds to the `while`-loop in `treeHash`.
      *
@@ -457,10 +463,10 @@ private
     treeHash_combine list SEED
         | t == 0 => list @ 0
         | t >= 1 => treeHash_combine list' SEED where
-            list' = [ (node, ADRS'') where
-                      ADRS' = setTreeIndex a.1 (((getTreeIndex a.1) - 1) / 2)
-                      node = RAND_HASH a.0 b.0 SEED ADRS'
-                      ADRS'' = setTreeHeight ADRS' (getTreeHeight ADRS' + 1)
+            list' = [ (node, ADRS') where
+                      ADRS = setTreeIndex a.1 ((getTreeIndex b.1 - 1) / 2)
+                      node = RAND_HASH a.0 b.0 SEED ADRS
+                      ADRS' = setTreeHeight ADRS (getTreeHeight ADRS + 1)
                     | [a, b] <- groupBy`{2} list
                     ]
 
@@ -520,11 +526,11 @@ private
             // XMSS tree itself.
             t <= h
         ) => PrivateKey -> Word -> Address -> [n]Byte
-    treeHash SK s ADRS = if s % (2^^`t) != 0 then
-        error "Invalid `s`: `s % (1 << t) != 0` must hold" else
-        node.0 where
+    treeHash SK s ADRS = if s % (2^^`t) != 0
+        then error "Invalid `s`: `s % (1 << t) == 0` must hold"
+        else node.0 where
             list = treeHash_base`{t} SK s ADRS
-            node = treeHash_combine`{t} list SK.seed
+            node = treeHash_combine list SK.seed
 
 /**
  * `keyGen` - Generate an XMSS key pair.
@@ -572,7 +578,7 @@ keyGen wots_sks SK_PRF SEED = (SK, PK) where
     SK_no_root = { oid = oid, idx = 0 : Word, wots_sks = wots_sks, SK_PRF = SK_PRF, root = zero : [n]Byte, seed = SEED }
     ADRS = zero // Equivalent to `WOTS::toByte`{32} 0`.
     root = treeHash`{h} SK_no_root 0 ADRS
-    SK = { oid = oid, idx = 0 : Word, wots_sks = wots_sks, SK_PRF = SK_PRF, root = root, seed = SEED }
+    SK = { SK_no_root | root = root }
     PK = { oid = oid, root = root, seed = SEED }
 
 private
@@ -735,13 +741,17 @@ rootFromSig idx_sig sig_ots auth M' SEED ADRS = node_0' where
     ADRS'' = setLTreeAddress (setType ADRS' 1) idx_sig
     node_0_initial = ltree pk_ots SEED ADRS''
     ADRS''' = setTreeIndex (setType ADRS'' 2) idx_sig
-    node_0' = foldl updateNode node_0_initial [0..h-1] where
-        updateNode node_0 k = node_1 where
-            ADRS_ = setTreeHeight ADRS''' k
-            treeindex = getTreeIndex ADRS_
+    (node_0', _) = foldl updateNode (node_0_initial, ADRS''') [0..h-1] where
+        updateNode (node_0, adrs) k = (node_1, adrs'') where
+            adrs' = setTreeHeight adrs k
+            treeindex = getTreeIndex adrs'
+            treeindex' = if (idx_sig / 2^^k) % 2 == 0
+                then treeindex / 2
+                else (treeindex - 1) / 2
+            adrs'' = setTreeIndex adrs' treeindex'
             node_1 = if (idx_sig / 2^^k) % 2 == 0
-                then RAND_HASH node_0 (auth @ k) SEED (setTreeIndex ADRS (treeindex / 2))
-                else RAND_HASH (auth @ k) node_0 SEED (setTreeIndex ADRS ((treeindex - 1) / 2))
+                then RAND_HASH node_0 (auth @ k) SEED adrs''
+                else RAND_HASH (auth @ k) node_0 SEED adrs''
 
 /**
  * `verify` - Verify an XMSS signature using the corresponding XMSS public key
@@ -771,17 +781,17 @@ rootFromSig idx_sig sig_ots auth M' SEED ADRS = node_0' where
  */
 verify : {m} (fin m, width (PaddingWidth + 8 * m) < MessageUpperBound)
     => Signature -> [m]Byte -> PublicKey -> Bit
-verify Sig M PK = result where
+verify Sig M PK = node == PK.root where
     ADRS = zero // Equivalent to `WOTS::toByte`{32} 0`.
     M' = H_msg (Sig.r # PK.root # WOTS::toByte`{n} Sig.idx_sig) M
     node = rootFromSig Sig.idx_sig Sig.sig_ots Sig.auth M' PK.seed ADRS
-    result = if node == PK.root then True else False
 
 /**
  * ```repl
- * :check XMSSisCorrect
+ * :set tests = 2
+ * :check XMSSInverts
  * ```
  */
-property XMSSisCorrect M wots_sks SK_PRF SEED = verify sig M pk where
+property XMSSInverts M wots_sks SK_PRF SEED = verify sig M pk where
     (sk, pk) = keyGen wots_sks SK_PRF SEED
     (sk', sig) = sign M sk
