@@ -1,0 +1,66 @@
+/* This is the shared portion of the verification script for each instantiation.
+ * The structure of each proof is the same for each instantiation after the
+ * initial unfolding of the definition of cipher and invCipher. */
+
+print "Verifying that SBox unfolds";
+/* This performance trick is necessary because SAW doesn't memoize sboxTable */
+unfold_SBox <- prove_print (unint_z3 ["inverse", "add", "rotateR"])
+  {{ \i -> (SBox i == GF28::add [b, b >>> 4, b >>> 5, b >>> 6, b >>> 7, 0x63] where b = GF28::inverse i) }};
+
+print "Verifying that InvSBox unfolds";
+/* This performance trick is necessary because SAW doesn't memoize sboxInvTable */
+unfold_SBoxInv <- prove_print (unint_z3 ["inverse", "add", "rotateR"])
+  {{ \i -> SBoxInv i == GF28::inverse (GF28::add [i >>> 2, i >>> 5, i >>> 7, 0x05]) }};
+
+print "Verifying that SBoxInv inverts SBox";
+invert_SBox <- prove_print
+    do {
+        simplify (addsimps [unfold_SBox, unfold_SBoxInv] ss0);
+        rme;
+    }
+    {{ \s -> SBoxInv (SBox s) == s }};
+
+print "Verifying that InvSubBytes inverts SubBytes";
+invert_SubBytes <- prove_print
+    do {
+        unfolding ["InvSubBytes", "SubBytes"];
+        simplify (add_prelude_eqs ["map_map"] (addsimps [invert_SBox] ss0));
+        rme;
+    }
+    {{ \s -> InvSubBytes (SubBytes s) == s }};
+
+print "Verifying that InvShiftRows inverts ShiftRows";
+invert_ShiftRows <- prove_print rme
+    {{ \s -> InvShiftRows (ShiftRows s) == s }};
+
+print "Verifying that InvMixColumns inverts MixColumns";
+invert_MixColumns <- prove_print rme
+    {{ \s -> InvMixColumns (MixColumns s) == s }};
+
+print "Verifying that msgToState inverts stateToMsg";
+invert_stateToMsg <- prove_print rme {{\s -> msgToState (stateToMsg s) == s}};
+
+print "Verifying that stateToMsg inverts msgToState";
+invert_msgToState <- prove_print rme {{\s -> stateToMsg (msgToState s) == s}};
+
+print "Verifying that AddRoundKey is involutive";
+invert_AddRoundKey <- prove_print rme
+    {{ \x y -> AddRoundKey x (AddRoundKey x y) == y }};
+
+print "Verifying that invCipher inverts cipher";
+invert_cipher <- prove_print do {
+    simplify (addsimps
+        [unroll_cipher, unroll_invCipher, invert_ShiftRows,
+         invert_MixColumns, invert_SubBytes, invert_msgToState,
+         invert_stateToMsg, invert_msgToState, invert_AddRoundKey] ss0);
+    rme;
+   }
+   {{ \w pt -> invCipher w (cipher w pt) == pt }};
+
+print "Verifying that decrypt inverts encrypt";
+prove_print do {
+    unfolding ["aesIsCorrect", "encrypt", "decrypt"];
+    simplify (addsimps [invert_cipher] ss0);
+    rme;
+   }
+   {{ aesIsCorrect }};

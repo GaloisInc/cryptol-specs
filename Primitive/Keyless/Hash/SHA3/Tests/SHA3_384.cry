@@ -1,0 +1,68 @@
+/**
+ * Tests of the SHA3_384 hash function.
+ *
+ * Test vectors drawn from the NIST Cryptographic Algorithm Validation Program.
+ * This program includes test vectors that can be used to spot-check an
+ * implementation. It includes tests for bitwise inputs (where the input length
+ * is any nonnegative integer) and for bytewise inputs (where the input length
+ * is a multiple of 8).
+ * @see CAVP. https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing#sha3vsha3vss
+ * @see SHA3 bitwise test vectors. https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/sha-3bittestvectors.zip
+ * @see SHA3 bytewise test vectors. https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/sha-3bytetestvectors.zip
+ *
+ * Some of the bitwise tests in this file use the `KOP::truncate` function. The
+ * CAVP vectors use the format described in [FIPS-202] Appendix B, where inputs
+ * to SHA3 are provided as hex strings with an even number of digits and a
+ * length parameter. The `h2b` function for processing such inputs has an
+ * implicit truncation step. We've written the SHA3 spec to take arbitrary bit
+ * vectors, but this assumes that the length of the input is its actual length.
+ * The `truncate` function is written to support the even-hex-digit format and
+ * must be called on an input before passing it to SHA3.
+ *
+ * @copyright Galois Inc.
+ * @author Ajay Kumar Eeralla
+ * @editor Iavor Diatchki <diatchki@galois.com>
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Keyless::Hash::SHA3::Tests::SHA3 where
+
+import Primitive::Keyless::Hash::SHA3::Instantiations::SHA3_384 as SHA3_384
+
+/**
+ * This is from the bitwise tests.
+ * ```repl
+ * :prove t1
+ * ```
+ */
+property t1 = SHA3_384::hash [] == output where
+    output = join [
+        0x0c63a75b845e4f7d01107d852e4c2485c51a50aaaa94fc61,
+        0x995e71bbee983a2ac3713831264adb47fb6bd1e058d5f004
+    ]
+
+/**
+ * This is from the bitwise tests.
+ * ```repl
+ * :prove t64
+ * ```
+ */
+property t64 = SHA3_384::hash 0x72189b5f18121fb7 == output where
+    output = join [
+        0xb5be454e64fb00d8ebf23cece42fdcf20e88bb5067ab17c2,
+        0x19068b1533eb485341a84a933f837d9abd65b62604936469
+    ]
+
+/**
+ * This is from the bytewise tests.
+ * ```repl
+ * :prove t72
+ * ```
+ */
+property t72 = hashWorks && hashBytesWorks where
+    hashWorks = SHA3_384::hash input == output
+    hashBytesWorks = SHA3_384::hashBytes (split input) == split output
+    input = 0xa36e5a59043b6333d7
+    output = join [
+        0xbd045661663436d07720ff3c8b6f922066dfe244456a56ca,
+        0x46dfb3f7e271116d932107c7b04cc7c60173e08d0c2e107c
+    ]

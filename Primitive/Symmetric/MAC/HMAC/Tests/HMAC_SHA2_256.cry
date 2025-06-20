@@ -1,0 +1,183 @@
+/**
+ * Test vectors for HMAC-SHA-256 found in [RFC-4868], Section 2.7.
+ *
+ * @copyright Galois, Inc
+ * @author Eric Mertens <emertens@galois.com>
+ *
+ * Sources:
+ *
+ * [RFC-4868] S. Kelly, S. Frankel. Using HMAC-SHA-256, HMAC-SHA-384, and
+ *     HMAC-SHA-512 with IPsec. Request for Comments: 4868. May 2007.
+ *     @see https://datatracker.ietf.org/doc/html/rfc4868
+ */
+module Primitive::Symmetric::MAC::HMAC::Tests::HMAC_SHA2_256 where
+
+import Primitive::Symmetric::MAC::HMAC::Instantiations::HMAC_SHA256 as H256
+
+type PrfParams K D =
+  { Key : [K][8]
+  , Data: [D][8]
+  , PRF_HMAC_SHA_256 : [256]
+  }
+
+prf_test : {K, D} (K < 256, D < 256) => PrfParams K D -> Bit
+prf_test params =
+  H256::hmac params.Key params.Data == split params.PRF_HMAC_SHA_256
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_1
+ * ```
+ */
+property rfc_4868_2_7_1_1 = prf_test
+  { Key = repeat`{20} 0x0b
+  , Data = "Hi There"
+  , PRF_HMAC_SHA_256 =
+      0xb0344c61d8db38535ca8afceaf0bf12b #
+      0x881dc200c9833da726e9376c2e32cff7
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_2
+ * ```
+ */
+property rfc_4868_2_7_1_2 = prf_test
+  { Key = "Jefe"
+  , Data = "what do ya want for nothing?"
+  , PRF_HMAC_SHA_256 =
+      0x5bdcc146bf60754e6a042426089575c7 #
+      0x5a003f089d2739839dec58b964ec3843
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_3
+ * ```
+ */
+property rfc_4868_2_7_1_3 = prf_test
+  { Key = repeat`{20} 0xaa
+  , Data = repeat`{50} 0xdd
+  , PRF_HMAC_SHA_256 =
+      0x773ea91e36800e46854db8ebd09181a7 #
+      0x2959098b3ef8c122d9635514ced565fe
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_4
+ * ```
+ */
+property rfc_4868_2_7_1_4 = prf_test
+  { Key = split 0x0102030405060708090a0b0c0d0e0f10111213141516171819
+  , Data = repeat`{50} 0xcd
+  , PRF_HMAC_SHA_256 =
+      0x82558a389a443c0ea4cc819899f2083a #
+      0x85f0faa3e578f8077a2e3ff46729665b
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_5
+ * ```
+ */
+property rfc_4868_2_7_1_5 = prf_test
+  { Key = repeat`{131} 0xaa
+  , Data = "Test Using Larger Than Block-Size Key - Hash Key First"
+  , PRF_HMAC_SHA_256 =
+      0x60e431591ee0b67f0d8a26aacbf5b77f #
+      0x8e0bc6213728c5140546040f0ee37f54
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_1_6
+ * ```
+ */
+property rfc_4868_2_7_1_6 = prf_test
+  { Key = repeat`{131} 0xaa
+  , Data = "This is a test using a larger than block-size key and a larger than block-size data. The key needs to be hashed before being used by the HMAC algorithm."
+  , PRF_HMAC_SHA_256 =
+      0x9b09ffa71b942fcb27635fbcd5b0e944 #
+      0xbfdc63644f0713938a7f51535c3a35e2
+  }
+
+type AuthTest256 T =
+  { Key : [32][8]
+  , Data : [T][8]
+  , PRF_HMAC_SHA_256 : [256]
+  , HMAC_SHA_256_128 : [128]
+  }
+
+sha2_256_auth_test : {T} (T < 256) => AuthTest256 T -> Bit
+sha2_256_auth_test params =
+  H256::hmac params.Key params.Data == split params.PRF_HMAC_SHA_256 /\
+  H256::hmac_truncate params.Key params.Data == split params.HMAC_SHA_256_128
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_1_1
+ * ```
+ */
+property rfc_4868_2_7_2_1_1 = sha2_256_auth_test
+  { Key = repeat`{32} 0x0b
+  , Data = "Hi There"
+  , PRF_HMAC_SHA_256 =
+      0x198a607eb44bfbc69903a0f1cf2bbdc5 #
+      0xba0aa3f3d9ae3c1c7a3b1696a0b68cf7
+  , HMAC_SHA_256_128 =
+      0x198a607eb44bfbc69903a0f1cf2bbdc5
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_1_2
+ * ```
+ */
+property rfc_4868_2_7_2_1_2 = sha2_256_auth_test
+  { Key = "JefeJefeJefeJefeJefeJefeJefeJefe"
+  , Data = "what do ya want for nothing?"
+  , PRF_HMAC_SHA_256 =
+      0x167f928588c5cc2eef8e3093caa0e87c #
+      0x9ff566a14794aa61648d81621a2a40c6
+  , HMAC_SHA_256_128 =
+      0x167f928588c5cc2eef8e3093caa0e87c
+  }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_1_3
+ * ```
+ */
+property rfc_4868_2_7_2_1_3 = sha2_256_auth_test
+   { Key = repeat`{32} 0xaa
+   , Data = repeat`{50} 0xdd
+   , PRF_HMAC_SHA_256 =
+      0xcdcb1220d1ecccea91e53aba3092f962 #
+      0xe549fe6ce9ed7fdc43191fbde45c30b0
+   , HMAC_SHA_256_128 =
+      0xcdcb1220d1ecccea91e53aba3092f962
+   }
+
+/**
+ * ```repl
+ * :check rfc_4868_2_7_2_1_4
+ * ```
+ */
+property rfc_4868_2_7_2_1_4 = sha2_256_auth_test
+  { Key = split 0x0102030405060708090a0b0c0d0e0f10 #
+          split 0x1112131415161718191a1b1c1d1e1f20
+  , Data = repeat`{50} 0xcd
+  , PRF_HMAC_SHA_256 =
+      0x372efcf9b40b35c2115b1346903d2ef4 #
+      0x2fced46f0846e7257bb156d3d7b30d3f
+  , HMAC_SHA_256_128 =
+      0x372efcf9b40b35c2115b1346903d2ef4
+  }
+
+type AuthTest384 T =
+  { Key : [48][8]
+  , Data : [T][8]
+  , PRF_HMAC_SHA_384 : [384]
+  , HMAC_SHA_384_192 : [192]
+  }

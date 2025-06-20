@@ -1,0 +1,499 @@
+/**
+ * Curve 25519 is an elliptic curve commonly used
+ * in ECDH, originally created as an alternative
+ * to NIST curves. Now, NIST standardizes these curves
+ * in NIST SP 800-186.
+ *
+ * This implementation is based upon RFC 7748.
+ *
+ * The RFC notes many situations in which side-channels
+ * can be exploited in EC cryptography. This executable
+ * specification does NOT model all of the constant-time
+ * recommendations that the RFC does.
+ *
+ * The RFC defines a function X448 over Curve448
+ * in addition to X25519 and Curve25519. This
+ * executable specification includes neither
+ * X448 nor Curve448.
+ *
+ * References:
+ *  [rfc 7748]
+ *  Elliptic Curves for Security (IRTF RFC 7748)
+ *  A. Langley, Google; M. Hamburg, Rambus;
+ *  S. Turner, sn3rd.
+ *  January 2016
+ *  @see https://datatracker.ietf.org/doc/html/rfc7748
+ *
+ *  [SP 800-186]
+ *  Recommendations for Discrete Logarithm-based Cryptography:
+ *  Elliptic Curve Domain Parameters.
+ *  L. Chen, D. Moody, K. Randall, A. Regenscheid, A. Robinson.
+ *  February 2023
+ *  @see https://doi.org/10.6028/NIST.SP.800-186
+ *
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ */
+
+module Common::EC::Curve25519 where
+
+import Common::utils(ZtoBV, BVtoZ)
+
+/*
+ * Curve 25519 is a Montgomery curve of the form
+ * `v^2 = u^3 + A * u^2 + u` over a prime `p`.
+ *
+ * Reference:
+ * [rfc7748] Section 4.1
+ */
+
+/**
+ * The prime defining the field
+ */
+type p = 2^^255 - 19
+
+/**
+ * The coefficient `A`.
+ * The multiplication formula in the RFC
+ * avoids the direct use of `A`, but it is included
+ * for completion.
+ */
+type A = 486662
+
+/**
+ * The order of the curve.
+ * The multiplication formula in the RFC does not
+ * directly use the order of the curve, but it is
+ * included for completion.
+ */
+type order = 2^^252 + 27742317777372353535851937790883648493
+
+/**
+ * The specification uses hexadecimal notation to define the curve order.
+ *
+ * ```repl
+ * :prove orderOk
+ * ```
+ */
+property orderOk = `order == order'
+    where
+        i = toInteger 0x14def9dea2f79cd65812631a5cf5d3ed
+        order' = 2^^252 + i
+
+/**
+ * The `u`-coordinate of the base point `(Gu, Gv)`.
+ */
+type Gu = 9
+
+/**
+ * The `v`-coordinate of the base point `(Gu, Gv)`.
+ * The multiplication formula in the RFC uses a "point compressed"
+ * view of elliptic curve points that avoids directly specifying
+ * the `v` coordinates. This is included for completion.
+ */
+type Gv = 14781619447589544791020593568409986887264606134616475288964881837755586237401
+
+/**
+ * Shorthand for the bytes array of minimum length
+ * that can fit some number of bits `b`.
+ */
+type Bytes b = [b /^ 8][8]
+
+/**
+ * Constraint that some number of bits `b` can
+ * fit in a byte array of length `n` of finite length.
+ */
+type constraint Fit b n = (b /^ 8 <= n, fin b, fin n)
+
+/**
+ * Take an array of bytes and decode as a little endian number.
+ * Follow the specification. Assume that the array is "already"
+ * little endian.
+ *
+ * For Curve25519, `bits` is always fixed to be `255`.
+ * RFC7748 defines other curves with different bit parameters.
+ * To faciliate eventual refactoring, we make this function
+ * polymorphic in the parameter `bits`.
+ *
+ * RFC7748 specifies that the operations work internally
+ * with integers, with all operations done `% p`. We use
+ * a modular integer type directly, to more closely match
+ * the notation in the multiplication formula later.
+ *
+ * Reference:
+ * [rfc7748] Section 5.
+ */
+decodeLittleEndian : {bits, n} (Fit bits n) => [n][8] -> Z p
+decodeLittleEndian x = fromInteger (sum iterates)
+    where
+        lshft y i = y * 256 ^^ i // left shift on integers
+        iterates = [lshft (toInteger b) i | b <- x | i <- [0..bits /^ 8]]
+
+/**
+ * Test vector for encoding derived
+ * from running the Python code provided
+ * in Section 5 of [rfc7748].
+ *
+ * ```repl
+ * :prove decodeTest
+ * ```
+ */
+property decodeTest = decodeLittleEndian `{88} "hello world" == x
+    where
+        x = 121404708502361365413651816
+
+/**
+ * Decode the `u` coordinate.
+ * Assume the array is already "little endian".
+ *
+ * Reference:
+ * [rfc7748] Section 5.
+ */
+decodeUCoordinate : {bits, n} (Fit bits n, bits >= 1) => [n][8] -> Z p
+decodeUCoordinate u_list = decodeLittleEndian `{bits} u_list''
+    where
+        mask = (1 << (`bits % 8)) - 1 : [8]
+        type m = bits /^ 8
+        u_list' = take `{m} u_list
+        l = `m - 1
+        u_list'' = if `bits % 8 != 0
+                then update u_list' l (last u_list' && mask)
+                else u_list'
+
+/**
+ * Encode the `u` coordinate from `Z p` as a little endian byte array.
+ * Since we use a modular arithmetic type directly, we do not need
+ * to reduce the coordinate modulo `p`.
+ *
+ * We also use Cryptol intrinsics rather than following the specification.
+ */
+encodeUCoordinate : {bits, n} (Fit bits n, bits >= 1) => Z p -> [n][8]
+encodeUCoordinate u = reverse (split (ZtoBV u))
+
+/**
+ * `encodeUCoordinate` inverts `decodeUCoordinate` if the
+ * type parameters are coherent for Curve25519 and the
+ * little endian value fits in `255` bits.
+ *
+ * The final bit affects the correctness of this property
+ * because the decoding procedure masks it.
+ *
+ * ```repl
+ * :check encodePartiallyInvertsDecode
+ * ```
+ */
+encodePartiallyInvertsDecode : [32][8] -> Bit
+property encodePartiallyInvertsDecode x = ~((x ! 0) @ 0) ==>
+    encodeUCoordinate `{255} (decodeUCoordinate `{255} x) == x
+
+/**
+ * `decodeUCoordinate` inverts `encodeUCoordinate`.
+ * Since the `u` coordinates are represented as members of `Z p`,
+ * there is no restriction on this property.
+ *
+ * ```repl
+ * :check decodeInvertsEncode
+ * ```
+ */
+decodeInvertsEncode : Z p -> Bit
+property decodeInvertsEncode x =
+    decodeUCoordinate `{255} (encodeUCoordinate `{255, 32} x) == x
+
+/**
+ * Test vector derived from running the Python code
+ * in Section 5 of [rfc7748].
+ *
+ * ```repl
+ * :prove decodeUCoordinateTest
+ * ```
+ */
+property decodeUCoordinateTest = decodeUCoordinate `{6} "hello world" == x
+    where
+        x = 40
+
+/**
+ * Scalars are assumed to be randomly generated bytes.
+ * For curve 25519, we need 32 bytes, and we mask
+ * the final bit (i.e., assume that it is zero).
+ *
+ * Assume the array is already little endian.
+ *
+ * Reference:
+ * [rfc7748] Section 5.
+ */
+decodeScalar25519 : [32][8] -> Z p
+decodeScalar25519 k0 = decodeLittleEndian `{255} k3
+    where
+        k1 = update k0 0 ((k0@0) && 248)
+        k2 = update k1 31 ((k1@31) && 127)
+        k3 = update k2 31 ((k2@31) || 64)
+
+/**
+ * Test the scalar decode using a value derived from
+ * the Python code in section 5.
+ *
+ * ```repl
+ * :prove decodeScalarOk
+ * ```
+ *
+ * Reference:
+ * [rfc7748] Section 5.
+ */
+property decodeScalarOk = decodeScalar25519 (repeat 0x61) == x
+    where
+        x = 44046402572626160612103472728795008085361523578694645928734845681441465000288
+
+/**
+ * The function `X25519(k, u)`, described in Section 5.
+ * Assume that the input arrays are already little endian.
+ *
+ * Reference:
+ * [rfc7748] Section 5.
+ */
+X25519 : [32][8] -> [32][8] -> [32][8]
+X25519 kb ub = result
+    where
+        // constant `a24`
+        a24 = 121665
+        // decode the byte array `ub` as a `Z p` element.
+        // decode scalar `kb` as a 255-bit bitvector.
+        k = ZtoBV (decodeScalar25519 kb)
+        u = decodeUCoordinate `{255} ub
+        // define the loop
+        loop (x1, x2, z2, x3, z3, swap) t = (x1', x2', z2', x3', z3', swap')
+            where
+                k_t = (k >> t) && 1
+                swapt = swap ^ k_t
+                (x2s, x3s) = cswap' swapt (x2, x3)
+                (z2s, z3s) = cswap' swapt (z2, z3)
+                swap' = zext [k_t ! 0]
+
+                A = x2s + z2s
+                AA = A^^2
+                B = x2s - z2s
+                BB = B^^2
+                E = AA - BB
+                C = x3s + z3s
+                D = x3s - z3s
+                DA = D * A
+                CB = C * B
+                x1' = x1
+                x3' = (DA + CB) ^^ 2
+                z3' = x1 * (DA - CB) ^^ 2
+                x2' = AA * BB
+                z2' = E * (AA + a24 * E)
+
+        // execute the loop
+        (x1l, x2l, z2l, x3l, z3l, swapl) = foldl loop (u, 1 : Z p, 0 : Z p, u, 1 : Z p, 0 : [255]) (reverse [0..255-1])
+
+        // final swaps
+        (x2ls, x3ls) = cswap' swapl (x2l, x3l)
+        (z2ls, z3ls) = cswap' swapl (z2l, z3l)
+
+        // result in `Z p`
+        rzp = x2ls * (z2ls ^^ `(p - 2))
+
+        // result as byte array
+        result = encodeUCoordinate `{255, 32} rzp
+
+/**
+ * "Conditional swap".
+ * This function must be constant time in a production implementation.
+ * Cryptol cannot enforce this.
+ */
+cswap : [255] -> (Z p, Z p) -> (Z p, Z p)
+cswap swap (x, y) = (BVtoZ `{p} (dummy ^ x_2), BVtoZ `{p} (dummy ^ x_3))
+    where
+        mask : [255] -> [255]
+        mask z = 0 - z
+
+        (x_2, x_3) = (ZtoBV x, ZtoBV y)
+        dummy = mask swap && (x_2 ^ x_3)
+
+/**
+ * Faster conditional swap that will definitely not
+ * be constant time (branches on the bits of the scalar)
+ * but faciliates slightly faster test execution.
+ *
+ * Performance can be improved further by using `Bit` instead `[255]`,
+ * but the same constant time issue remains.
+ */
+cswap' : [255] -> (Z p, Z p) -> (Z p, Z p)
+cswap' swap (x, y) = if swap == 0 then (x, y) else (y, x)
+
+/**
+ * The swap implementations are equivalent.
+ * ```
+ * :check cswapEq
+ * ```
+ */
+cswapEq s x = elem s [0, 1] ==> cswap s x == cswap' s x
+
+/**
+ * `cswap False` is the identity.
+ *
+ * ```repl
+ * :check cswapFalse
+ * ```
+ */
+property cswapFalse x = cswap 0 x == x
+
+/**
+ * `cswap True` is an involution.
+ *
+ * ```repl
+ * :check cswapTrue
+ * ```
+ */
+property cswapTrue y x = y > 0 ==> cswap y (cswap y x) == x
+
+/**
+ * Test vector from section 5.2.
+ *
+ * ```repl
+ * :prove testVector1
+ * ```
+ *
+ * Reference:
+ * [rfc7748] Section 5.2.
+ */
+property testVector1 = X25519 k u == u'
+    where
+        k = split 0xa546e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449ac4
+        u = split 0xe6db6867583030db3594c1a424b15f7c726624ec26b3353b10a903a6d0ab1c4c
+        u' = split 0xc3da55379de9c6908e94ea4df28d084f32eccf03491c71f754b4075577a28552
+
+/**
+ * Test vector from Section 5.2.
+ *
+ * ```repl
+ * :prove testVector2
+ * ```
+ *
+ * Reference:
+ * [rfc7748] Section 5.2.
+ */
+property testVector2 = X25519 k u == u'
+    where
+        k = split 0x4b66e9d4d1b4673c5ad22691957d6af5c11b6421e0ea01d42ca4169e7918ba0d
+        u = split 0xe5210f12786811d3f4b7959d0538ae2c31dbe7106fc03c3efc4cd549c715a493
+        u' = split 0x95cbde9476e8907d7aade45cb4b873f88b595a68799fa152e6f8f7647aac7957
+
+/**
+ * Iterative testing.
+ */
+iterTest : {n} (fin n) => [32][8] -> [32][8] -> [32][8]
+iterTest k u
+    | n == 0 => k
+    | n >= 1 => iterTest `{n-1} (X25519 k u) k
+
+/**
+ * An "iterative" test vector.
+ *
+ * ```repl
+ * :prove mcTv1
+ * ```
+ */
+property mcTv1 = iterTest `{1} k u == r
+    where
+        k = split 0x0900000000000000000000000000000000000000000000000000000000000000
+        u = k
+        r = split 0x422c8e7a6227d7bca1350b3e2bb7279f7897b87bb6854b783c60e80311ae3079
+
+/**
+ * An "iterative" test vector.
+ *
+ * ```repl
+ * :prove mcTv2
+ * ```
+ */
+property mcTv2 = iterTest `{1000} k u == r
+    where
+        k = split 0x0900000000000000000000000000000000000000000000000000000000000000
+        u = k
+        r = split 0x684cf59ba83309552800ef566f2f4d3c1c3887c49360e3875f2eb94d99532c51
+
+/*
+ * Cryptol is too slow to efficiently
+ * execute the "iterative" test vector
+ * for a million iterations.
+ *
+ * We include the test vector for
+ * documentary purposes, and omit the
+ * property keyword so it is not executed
+ * by `check`, `prove`, etc...
+ */
+mcTv3 = iterTest `{1000} k u == r
+    where
+        k = split 0x0900000000000000000000000000000000000000000000000000000000000000
+        u = k
+        r = split 0x7c3911e0ab2586fd864497297e575e6f3bc601c0883c30df5f4dd2d24f665424
+/**
+ * Cryptol uses a big-endian convention when
+ * using intrinsics such as `toInteger`.
+ * This version of X25519 assumes that the byte-arrays
+ * are big-endian, and converts the arguments
+ * to little endian.
+ */
+X25519' k u = reverse (X25519 k' u')
+    where
+        k' = reverse k
+        u' = reverse u
+
+/**
+ * Check that the conversion is okay.
+ *
+ * ```repl
+ * :check bigOk
+ * ```
+ */
+property bigOk k u = reverse (X25519 (reverse k) (reverse u)) == X25519' k u
+
+/**
+ * Generate the public key `X25519(a, 9)` where
+ * `9` is the `u` coordinate of the base point
+ * and `a` is the secret value.
+ *
+ * Reference:
+ * [rfc7748] Section 6.1.
+ *
+ * ```repl
+ * let a = split `{32} 0x77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a
+ * let b = split `{32} 0x5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb
+ * let Ga = split `{32} 0x8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a
+ * let Gb = split `{32} 0xde9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f
+ * let K = split `{32} 0x4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742
+ * :prove DH_sender a == Ga
+ * :prove DH_sender b == Gb
+ * :prove X25519 a Gb == K
+ * :prove X25519 b Ga == K
+ * ```
+ */
+DH_sender : [32][8] -> [32][8]
+DH_sender a = X25519 a (reverse (split Gu'))
+    where
+        // must be little-endian.
+        // Cryptol `fromInteger` semantics will
+        // make a big-endian bitvector.
+        Gu' = (fromInteger `Gu) : [32 * 8]
+
+/**
+ * Generate the shared value `K` given the received value `Gr`
+ * and the secret `a`.
+ */
+DH_receiver : [32][8] -> [32][8] -> [32][8]
+DH_receiver a Gr = X25519 a Gr
+
+
+/**
+ * Diffie-Hellman produces a shared secret.
+ *
+ * ```repl
+ * :check DHSharedSecret
+ * ```
+ */
+property DHSharedSecret a b = DH_receiver a Gb == DH_receiver b Ga
+    where
+        Ga = DH_sender a
+        Gb = DH_sender b
