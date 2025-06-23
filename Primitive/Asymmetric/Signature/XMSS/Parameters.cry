@@ -18,6 +18,10 @@ type constraint (fin h)
  * See `treeHash` for more details.
  */
 type constraint (h <= 32)
+/**
+ * The height of the XMSS tree must be at least 1.
+ */
+type constraint (h >= 1)
 
 /**
  * The length (in bytes) of the message digest, as well as each node.
@@ -40,7 +44,7 @@ H : [n][8] -> [2 * n][8] -> [n][8]
  * functions used to instantiate it may limit their input to some maximum
  * width.
  */
-type MessageUpperBound: #
+type MessageUpperBound : #
 
 /**
  * Width of the non-message bits passed to the hash function in `H_msg`.
@@ -52,6 +56,16 @@ type MessageUpperBound: #
 type PaddingWidth : #
 
 /**
+ * The Object Identifier (OID) for the XMSS public key.
+ *
+ * See [RFC-8391] Section 8 for the specific values to set this to for a given
+ * instantiation.
+ *
+ * [RFC-8391] Section 4.1.7.
+ */
+oid : [32]
+
+/**
  * A cryptographic hash function that takes a key and an arbitrary-length
  * message.
  * [RFC-8391] Section 4.1.2.
@@ -60,5 +74,5 @@ type PaddingWidth : #
  * have a maximum width for messages. The type constraint enforces this by
  * limiting the length of the hashed message to the maximum width.
  */
-H_msg : {m} (fin m, (PaddingWidth + width (8 * m)) < MessageUpperBound)
+H_msg : {m} (fin m, width (PaddingWidth + 8 * m) < MessageUpperBound)
     => [3 * n][8] -> [m][8] -> [n][8]
