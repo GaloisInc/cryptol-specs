@@ -27,6 +27,11 @@
 module Primitive::Keyless::Hash::SHA2::Instantiations::SHA256_FFI where
     import Primitive::Keyless::Hash::SHA2::Instantiations::SHA256 as SHA256
 
+    /**
+     * Re-export of `SHA256::MessageUpperBound`.
+     */
+    type MessageUpperBound = SHA256::MessageUpperBound
+
     // Cryptol FFI does not support bit respresentation types, and hence
     // the below `hash` function is not supported in FFI.
     //

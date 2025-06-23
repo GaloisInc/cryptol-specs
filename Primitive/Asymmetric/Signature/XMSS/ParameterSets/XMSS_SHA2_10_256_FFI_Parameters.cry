@@ -1,0 +1,29 @@
+/**
+ * Definition of the approved parameter set used to instantiate
+ * `XMSS_SHA2_10_256_FFI`.
+ * [RFC-8391] Section 5.1.
+ *
+ * @copyright Galois, Inc
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Asymmetric::Signature::XMSS::ParameterSets::XMSS_SHA2_10_256_FFI_Parameters
+where
+    // Use the FFI version of SHA256.
+    import Primitive::Keyless::Hash::SHA2::Instantiations::SHA256_FFI as SHA256
+
+    type n = 32
+    type h = 10
+
+    H KEY M = SHA256::hashBytes (split (1 : [32 * 8]) # KEY # M)
+
+    // The maximum message width is defined by SHA256.
+    type MessageUpperBound = SHA256::MessageUpperBound
+
+    // The padding in this instantiation includes the domain separator (32
+    // bytes) and the key (3n bytes).
+    type PaddingWidth = (32 * 8) + (3 * n * 8)
+
+    // The OID as specified in [RFC-8391] Section 8.
+    oid = 0x00000001
+
+    H_msg KEY M = SHA256::hashBytes (split (2 : [32 * 8]) # KEY # M)
