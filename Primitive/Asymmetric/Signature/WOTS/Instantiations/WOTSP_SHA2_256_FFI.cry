@@ -1,0 +1,32 @@
+/**
+ * An instantiation of the WOTS+ one-time signature scheme using an FFI
+ * implementation of SHA256.
+ *
+ * These parameters and naming are drawn from [SP-800-208], Section 5 (Table 9
+ * and Section 5.1). The same parameters are also defined in [RFC-8391]
+ * Section 5.1 (SHA2 with `n = 32`).
+ *
+ * References:
+ * [SP-800-208]: David A. Cooper, Daniel C. Apon, Quynh H. Dang, Michael S.
+ *     Davidson, Morris J. Dworkin, and Carl A. Miller. Recommendation for
+ *     Stateful Hash-Based Signature Schemes. (National Institute of Standards
+ *     and Technology, Gaithersburg, MD), NIST Special Publication (SP) NIST
+ *     SP 800-208. October 2020.
+ *     @see https://doi.org/10.6028/NIST.SP.800-208
+ * [RFC-8391]: Andreas Huelsing, Denis Butin, Stefan-Lukas Gazdag, Joost
+ *     Rijneveld, and Aziz Mohaisen. XMSS: eXtended Merkle Signature Scheme.
+ *     Internet Requests for Comments (RFC) 8391. May 2018.
+ *     @see https://datatracker.ietf.org/doc/rfc8391
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Asymmetric::Signature::WOTS::Instantiations::WOTSP_SHA2_256_FFI =
+    Primitive::Asymmetric::Signature::WOTS::Specification where
+        import Primitive::Keyless::Hash::SHA2::Instantiations::SHA256_FFI as SHA256
+
+        type n' = 32
+        type w' = 16
+
+        F' KEY M = SHA256::hashBytes ((zero : [32][8]) # KEY # M)
+        PRF' KEY M = SHA256::hashBytes ((zero : [31][8]) # [(3 : [8])] # KEY # M)
