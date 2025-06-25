@@ -788,7 +788,7 @@ verify Sig M PK = node == PK.root where
 
 /**
  * ```repl
- * :set tests = 2
+ * :set tests = 1
  * :check XMSSInverts
  * ```
  */

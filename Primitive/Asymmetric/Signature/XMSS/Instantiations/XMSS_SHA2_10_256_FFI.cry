@@ -1,0 +1,11 @@
+/**
+ * Instantiation of XMSS with the approved parameter set `XMSS_SHA2_10_256_FFI`.
+ *
+ * @copyright Galois, Inc
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Asymmetric::Signature::XMSS::Instantiations::XMSS_SHA2_10_256_FFI =
+    Primitive::Asymmetric::Signature::XMSS::Specification {
+        Parameters = Primitive::Asymmetric::Signature::XMSS::ParameterSets::XMSS_SHA2_10_256_FFI_Parameters,
+        WOTS = Primitive::Asymmetric::Signature::WOTS::Instantiations::WOTSP_SHA2_256_FFI
+    }
