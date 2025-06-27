@@ -13,11 +13,6 @@ jobs:
       image: ghcr.io/galoisinc/cryptol:nightly
       options: --user root
     steps:
-    - name: Installing dependencies..
-      run: |
-        apt update
-        apt install -y git
-
     - name: Checkout
       uses: actions/checkout@v4
 
