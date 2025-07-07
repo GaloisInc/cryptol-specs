@@ -7,7 +7,7 @@ starting point, however, we plan to collect as many specifications as
 we can find, as-is, and incrementally improve their presentation and
 inter-dependency.
 
-All Cryptol files in this repository are covered by [the BSDv3 license](LICENSE).
+All Cryptol files in this repository are covered by [the 3-clause BSD license](LICENSE).
 
 # Collections of Algorithms
 This repo has executable specifications for many cryptographic algorithms.
