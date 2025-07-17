@@ -24,11 +24,11 @@ modules = [
     "Primitive/Symmetric/Cipher/Block/AES/Instantiations/AES128.cry",
     "Primitive/Symmetric/Cipher/Block/AES/Instantiations/AES192.cry",
     "Primitive/Symmetric/Cipher/Block/AES/Instantiations/AES256.cry",
-    "Primitive/Symmetric/Cipher/Block/AES/Tests/TestAES.cry",
+    "Primitive/Symmetric/Cipher/Block/AES/Tests/*",
 
     # AES (counter mode)
     "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES*_CTR.cry",
-    "Primitive/Symmetric/Cipher/Block/Modes/Tests/TestAES_CTR.cry",
+    "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES*_CTR.cry",
 
     # AES (GCM mode)
     "Primitive/Symmetric/Cipher/Authenticated/GCM/Instantiations/*.cry",
