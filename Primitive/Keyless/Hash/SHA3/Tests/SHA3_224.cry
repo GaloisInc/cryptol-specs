@@ -24,7 +24,7 @@
  * @editor Iavor Diatchki <diatchki@galois.com>
  * @author Marcella Hastings <marcella@galois.com>
  */
-module Primitive::Keyless::Hash::SHA3::Tests::SHA3 where
+module Primitive::Keyless::Hash::SHA3::Tests::SHA3_224 where
 
 import Primitive::Keyless::Hash::SHA3::KeccakBitOrdering as KBO
 
