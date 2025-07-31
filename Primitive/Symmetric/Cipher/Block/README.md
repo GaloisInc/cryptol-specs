@@ -11,8 +11,8 @@ Symmetric ciphers that work on a block at a time.
 | PRESENT | | No |
 | PRINCE | | No |
 | SHACAL | | No |
-| Simon | | Yes |
-| Speck | | Yes |
+| Simon |Yes | No |
+| Speck | Yes | No |
 | TEA | | No |
 | Threefish | | No |
 | TripleDES | | No |
