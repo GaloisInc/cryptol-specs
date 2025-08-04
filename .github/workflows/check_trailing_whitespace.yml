@@ -1,0 +1,24 @@
+# Checks that every file tracked by git has consistent whitespace behavior:
+# - no trailing whitespace at the ends of lines; and
+# - a newline at the end of the file.
+#
+# @copyright Galois, Inc
+# @author Marcella Hastings <marcella@galois.com>
+#
+
+name: Whitespace check
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  whitespace-check:
+    runs-on: ubuntu-latest
+    steps:
+      - id: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: "Run whitespace script"
+        run: bash scripts/check_whitespace.sh
