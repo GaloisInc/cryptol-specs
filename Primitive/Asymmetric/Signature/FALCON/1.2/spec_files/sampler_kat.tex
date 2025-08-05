@@ -1,5 +1,17 @@
 % !TeX root = ../falcon.tex
 
+% @author Thomas Prest
+% @author Pierre-Alain Fouque
+% @author Jeffrey Hoffstein
+% @author Paul Kirchner
+% @author Vadim Lyubashevsky
+% @author Thomas Pornin
+% @author Thomas Ricosset
+% @author Gregor Seiler
+% @author William Whyte
+% @author Zhenfei Zhang
+% @copyright The authors
+
 \newcommand{\randombytes}{\texttt{randombytes}\xspace}
 
 \paragraph{Known Answer Tests (KAT).} To help the proper implementation of \longsamplerz and its subroutines, \cref{tab:kat} provides test vectors. Let $\sigmin = \sigminvali$ (the value of $\sigmin$ for \falcon-512). Each line of \cref{tab:kat} provides a tuple $(\mu, \sigma', \randombytes, z)$ such that when replacing internal calls to $\uniform()$ with reading bytes from \randombytes (acting as a random bytestring):

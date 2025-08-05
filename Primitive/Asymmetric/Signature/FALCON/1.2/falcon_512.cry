@@ -1,3 +1,7 @@
+/**
+ * @copyright Galois, Inc
+ * @author Marios Georgiou <marios@galois.com>
+ */
 module falcon_512 where
 
 submodule falcon_inst = spec2
