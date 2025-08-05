@@ -1,14 +1,15 @@
 /*
-   This module implements the signature primitives described in section 5 of
-
-   PKCS #1: RSA Cryptography Specifications Version 2.2
-
-   See also:
-   https://tools.ietf.org/html/rfc8017
-
-   Copyright (c) 2018, Galois Inc.
-   www.cryptol.net
-*/
+ * This module implements the signature primitives described in section 5 of
+ *
+ * PKCS #1: RSA Cryptography Specifications Version 2.2
+ *
+ * See also:
+ * https://tools.ietf.org/html/rfc8017
+ *
+ * @copyright Galois Inc. 2018
+ * @author Nichole Schimanski <nls@galois.com>
+ * www.cryptol.net
+ */
 
 
 module Primitive::Asymmetric::Signature::RSA where
