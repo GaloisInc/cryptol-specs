@@ -1,31 +1,31 @@
 \section{Introduction}
 Hash-based signature schemes were developed as one-time signature schemes
-in the late 1970s by Lamport~\cite{Lam79} 
+in the late 1970s by Lamport~\cite{Lam79}
 and extended to many-times signatures by Merkle~\cite{Merkle1990}.
 The security of these schemes is easy to analyze and relies
 solely on the properties of the used hash function.
-% The required 
+% The required
 % properties -- preimage resistance, second preimage resistance, and
 % collision resistance -- are standard requirements for a cryptographic
-% hash function, commonly believed to be provided by hash functions in 
+% hash function, commonly believed to be provided by hash functions in
 % the SHA-2 and SHA-3 families.
 However,
 Merkle's tree-based signature scheme required fixing at key-generation
-time the number of signatures to be made, keeping this number small for 
-performance. Most importantly, the system required users to remember 
+time the number of signatures to be made, keeping this number small for
+performance. Most importantly, the system required users to remember
 a state: some information to remember how many signatures were already
-made with the key. 
+made with the key.
 
-In the 40 years since Lamport's scheme, many ideas improved the 
+In the 40 years since Lamport's scheme, many ideas improved the
 performance, practicality,
 and theoretical foundations
-of hash-based signatures, culminating in 
-XMSS~\cite{XMSS}, which is by now -- as the first post-quantum signature scheme -- 
+of hash-based signatures, culminating in
+XMSS~\cite{XMSS}, which is by now -- as the first post-quantum signature scheme --
 published as an RFC~\cite{rfc8391} by the CFRG. A strong point of
-these systems is that they need very few security assumptions -- 
+these systems is that they need very few security assumptions --
 the hash function even need not be collision resistant.
 The only downside of XMSS is that it
-is stateful, which makes it not fit the standard definition of 
+is stateful, which makes it not fit the standard definition of
 signature schemes as, e.g., stated in the NIST call for submissions.
 
 \spc ~\cite{Bernstein2015} was designed by Bernstein, Hopwood,
@@ -36,11 +36,11 @@ resist quantum cryptanalysis. \spc uses many components from XMSS
 but works with larger keys and signatures to eliminate the state.
 
 This document is about the \spx construction.
-At a high level, \spx works like \spc. The basic idea is to authenticate 
-a huge number of few-time signature (FTS) key pairs using a so-called hypertree. 
-FTS schemes are signature schemes that allow a key pair to produce a small 
-number of signatures, e.g., in the order of ten %\todo{confirm} 
-for our parameter 
+At a high level, \spx works like \spc. The basic idea is to authenticate
+a huge number of few-time signature (FTS) key pairs using a so-called hypertree.
+FTS schemes are signature schemes that allow a key pair to produce a small
+number of signatures, e.g., in the order of ten %\todo{confirm}
+for our parameter
 sets.
 
 \begin{code}
@@ -48,111 +48,111 @@ sets.
 \end{code}
 
 For each new message, a (pseudo)random FTS key pair is chosen to sign the message.
-The signature consists then of the FTS signature and the authentication 
-information for that FTS key pair. The authentication information is roughly a 
-hypertree signature, i.e.~a signature using a certification tree of Merkle tree 
-signatures. 
+The signature consists then of the FTS signature and the authentication
+information for that FTS key pair. The authentication information is roughly a
+hypertree signature, i.e.~a signature using a certification tree of Merkle tree
+signatures.
 
-More specifically, a hypertree is a tree of hash-based many-time signatures (MTS). 
-These many-time signatures allow a key pair to sign a fixed number $N$ of 
-messages -- for \spx $N$ is a power of 2, for example $256$. The MTS 
-key pairs themselves are organized in an $N$-ary tree with $d$ layers. On the 
+More specifically, a hypertree is a tree of hash-based many-time signatures (MTS).
+These many-time signatures allow a key pair to sign a fixed number $N$ of
+messages -- for \spx $N$ is a power of 2, for example $256$. The MTS
+key pairs themselves are organized in an $N$-ary tree with $d$ layers. On the
 top layer $d-1$ there is a single MTS key pair which is used to sign the public keys of
 $N$ MTS key pairs that form layer $d-2$. Each of these $N$ MTS key pairs is used
-to sign another $N$ MTS public keys forming layer $d-3$. This goes on down to the 
-$N^{d-1}$ key pairs on the bottom layer which are used to sign $N$ FTS public 
+to sign another $N$ MTS public keys forming layer $d-3$. This goes on down to the
+$N^{d-1}$ key pairs on the bottom layer which are used to sign $N$ FTS public
 keys, each, leading to a total number of $N^d$ authenticated FTS key pairs. The
-authentication information for an FTS key pair consists of the $d$ MTS 
+authentication information for an FTS key pair consists of the $d$ MTS
 signatures that build a path from the FTS key pair to the top MTS tree.
 
 An MTS signature is just a classical Merkle-tree signature in the case of \spx.
 It consists of a one-time signature (OTS) on the given message plus the authentication
-path in the binary hash-tree, authenticating the $N$ OTS key pairs of one MTS key 
-pair. 
+path in the binary hash-tree, authenticating the $N$ OTS key pairs of one MTS key
+pair.
 
 The public key of \spx is essentially the public key of the top level MTS which
-is just the root node of its binary hash tree and hence, a single hash value. 
-However, actual \spx public keys additionally contain a public seed value of the 
-same length as the root node. This is due to technical reasons explained in the 
+is just the root node of its binary hash tree and hence, a single hash value.
+However, actual \spx public keys additionally contain a public seed value of the
+same length as the root node. This is due to technical reasons explained in the
 detailed specification below.
 
-The \spx secret key is just a single secret seed value. From this, all the OTS 
+The \spx secret key is just a single secret seed value. From this, all the OTS
 and FTS secret keys are generated in a pseudorandom manner. The OTS and FTS
-secret keys together fully determine the whole virtual structure of an \spx 
-key pair. Again, actual \spx secret keys contain an additional secret value of 
-the same size as the secret seed as well as a copy of the public key. The 
-additional value is used to key a PRF 
+secret keys together fully determine the whole virtual structure of an \spx
+key pair. Again, actual \spx secret keys contain an additional secret value of
+the same size as the secret seed as well as a copy of the public key. The
+additional value is used to key a PRF
 used in randomized hashing as detailed in the comparison below.
 
-\subsection{\spx vs \spc} \spx builds on \spc by introducing several improvements: 
+\subsection{\spx vs \spc} \spx builds on \spc by introducing several improvements:
 \begin{itemize}
- \item Multi-target attack protection: We apply the mitigation techniques from 
- \cite{Huelsing2016} using keyed hash functions. Each hash function call is 
+ \item Multi-target attack protection: We apply the mitigation techniques from
+ \cite{Huelsing2016} using keyed hash functions. Each hash function call is
  keyed with a different key and applies different bitmasks. Keys and bitmasks are
  pseudorandomly generated from an address specifying the context of the call, and
- a public seed. For this we introduce the notion of tweakable hash functions 
+ a public seed. For this we introduce the notion of tweakable hash functions
  which in addition to the input value take a public seed and an address.
 
- \item Tree-less \wotsp public key compression: The last nodes of the \wotsp chains 
- are not compressed using an L-tree but using a single tweakable hash function 
+ \item Tree-less \wotsp public key compression: The last nodes of the \wotsp chains
+ are not compressed using an L-tree but using a single tweakable hash function
  call. This call again receives an address and a public seed to key this call and to
- generate a bitmask as long as the input. 
+ generate a bitmask as long as the input.
 
-% \item Secret-key - signature size trade-off: \todo{We agreed that this is not a great idea to include by default in the reference implementation, so removing. Confirmthat is OK.} 
+% \item Secret-key - signature size trade-off: \todo{We agreed that this is not a great idea to include by default in the reference implementation, so removing. Confirmthat is OK.}
  %We allow the top tree in the hypertree
- %to be $z$ times the height $h/d$ of the other trees while reducing the actual number 
- %of layers to $d-z+1$. That way, we merge the top $z$ layers into a single tree, 
- %omitting the connecting \wotsp signatures. To avoid a massive loss in speed, 
- %the nodes on the internal tree layers at heights 
- %$i \cdot h/d (0 < i < z \cdot h/d)$ 
- %are stored in the secret key. Hence, signing only needs to compute the $z$ subtrees 
- %of height $h/d$ of the top tree that contain the actual authentication path. 
+ %to be $z$ times the height $h/d$ of the other trees while reducing the actual number
+ %of layers to $d-z+1$. That way, we merge the top $z$ layers into a single tree,
+ %omitting the connecting \wotsp signatures. To avoid a massive loss in speed,
+ %the nodes on the internal tree layers at heights
+ %$i \cdot h/d (0 < i < z \cdot h/d)$
+ %are stored in the secret key. Hence, signing only needs to compute the $z$ subtrees
+ %of height $h/d$ of the top tree that contain the actual authentication path.
 
  \item \fors: A HORST key pair does not consist anymore of a single
  monolithic tree. Instead it consists of $k$ trees of height $a$ %$\log t - \log k$. % Previous text: $\log t$
- The leaves of these trees are the hashes of the $2^a$ secret key elements. %as for HORST. % Previous text: However, now we got $kt$ secret key elements. 
- The public key is the tweakable hash of the concatenation of all the root 
- nodes as for the \wotsp public key. 
- 
- A \fors key pair can be used to sign $k2^a$%$k(\log t - \log k)$ 
+ The leaves of these trees are the hashes of the $2^a$ secret key elements. %as for HORST. % Previous text: However, now we got $kt$ secret key elements.
+ The public key is the tweakable hash of the concatenation of all the root
+ nodes as for the \wotsp public key.
+
+ A \fors key pair can be used to sign $k2^a$%$k(\log t - \log k)$
  bit message digests. % Previous text: $k\log t$
  The digest is first split into $k$ strings $m_i$ of length $2^a$ bits each. %$\log t - \log k$ %Previous text: $\log t$
  Next, every $m_i$ is interpreted as an integer in $[0,2^a -1]$. % $[0, 2^{\log t - \log k}-1]$. The integer % Previous text: $[0, t-1]$
  Here $m_i$ selects the $m_i$-th secret key element of the
  $i$-th tree for the signature. The signature also contains the authentication
- paths for all the selected secret key elements, which means one path of length % $\log t - \log k$ 
+ paths for all the selected secret key elements, which means one path of length % $\log t - \log k$
  $a$ per tree. Verification uses the signature to reconstruct the root nodes % Previous text: $\log t$
  and compresses them using the tweakable hash.
 
  \item Verifiable index selection: The message digest is now computed as follows.
  First, we deterministically generate randomness
         $$\Random = \sphincsPRFmsg (\skprf, \texttt{OptRand}, \msg).$$
- Where $\texttt{OptRand}$ is a $n$-byte value, per default \pseed but can be filled 
- with random bits e.g. taken from a TRNG to avoid deterministic signing. Then we compute message 
+ Where $\texttt{OptRand}$ is a $n$-byte value, per default \pseed but can be filled
+ with random bits e.g. taken from a TRNG to avoid deterministic signing. Then we compute message
  digest and index as
         $$( \md || \idx ) = \sphincsHmsg ( \Random, \PK, \msg )$$
  where $\PK = (\pseed, \proot)$ contains the top root node and the public seed.
  Hence, we can omit the index in the SPHINCS signature as it would be redundant.
  This allows to tighten HORST security.
- 
- \item \spx-'robust' and \spx-'simple': The updated, Round 2 submission of \spx 
- adds new, more simple instantiations of the tweakable hash functions 
- similar to those in the LMS proposal for stateful hash-based 
+
+ \item \spx-'robust' and \spx-'simple': The updated, Round 2 submission of \spx
+ adds new, more simple instantiations of the tweakable hash functions
+ similar to those in the LMS proposal for stateful hash-based
  signatures~\cite{LMSdraft}. This splits the instantiations into the new 'simple'
  instantiations and the established 'robust' instantiations.
- The 'simple' instantiations have the advantage 
- of better speed and the drawback of a security argument which in its entirety 
+ The 'simple' instantiations have the advantage
+ of better speed and the drawback of a security argument which in its entirety
  only applies in the random oracle model. Consequently, the 'robust' instantiations have a more
  conservative security argument but are slower.
 \end{itemize}
 
 \subsection{Organization}
 In this document we give a formal specification of the \spx construction.
-We follow a bottom-up approach to specify \spx. We start with 
+We follow a bottom-up approach to specify \spx. We start with
 basic notation. Afterwards we define \wotsp, the OTS used in \spx. Next, we
-specify \xmss, the MTS used in \spx, and how it is used to do \hyper 
+specify \xmss, the MTS used in \spx, and how it is used to do \hyper
 signatures. Then, we define \fors, the FTS used, to finally specify
-\spx. Afterwards we discuss different instantiations and explain the design 
+\spx. Afterwards we discuss different instantiations and explain the design
 rationale. Then we present a security analysis, give performance values and
 conclude with a discussion of advantages and limitations.
 
@@ -165,7 +165,7 @@ in the specification.
 
 \subsection{Data Types}
 Bytes and byte strings are the fundamental data types.  A byte is a
-sequence of eight bits. The set of bytes is denoted as \byte. A single byte is 
+sequence of eight bits. The set of bytes is denoted as \byte. A single byte is
 denoted as a pair of
 hexadecimal digits with a leading "0x".  A byte string is an ordered
 sequence of zero or more bytes and is denoted as an ordered sequence
@@ -218,10 +218,10 @@ follows:
 
  \item $++$ : $a{++}$ denotes incrementing $a$ by $1$, i.e., $a = a + 1$.
 
- \item $<<$ : $a << b$ denotes a logical left shift of $a$ by $b$ positions, for $b$  being non-negative, 
+ \item $<<$ : $a << b$ denotes a logical left shift of $a$ by $b$ positions, for $b$  being non-negative,
  i.e., $a \cdot 2^b$.
 
- \item $>>$ : $a >> b$ denotes a logical right shift of $a$ by $b$ positions, for $b$ being non-negative, 
+ \item $>>$ : $a >> b$ denotes a logical right shift of $a$ by $b$ positions, for $b$ being non-negative,
  i.e. $\textrm{floor}(a / 2^b)$.
 \end{description}
 
@@ -355,11 +355,11 @@ base_w(X, w, out_len) {
          +-----------+-----------+
          |     1     |     2     |
          +-----------+-----------+
-             a[0]        a[1] 
+             a[0]        a[1]
 \end{verbatim}
 \label{example:basew}
 \end{figure}
-             
+
 \subsection{Member Functions (Functions \texttt{set}, \texttt{get})}\label{func:member}
 
    To simplify algorithm descriptions, we assume the existence of member
@@ -370,39 +370,39 @@ base_w(X, w, out_len) {
    be referred to as $Z$ in the function name, e.g.  \texttt{getZ}.
 
 \subsection{Cryptographic (Hash) Function Families}
-   \spx makes use of several different function families with cryptographic 
-   properties. Every \spx instantiation MUST describe how to implement each of 
-   the following functions. For the main instantiations given in this document, 
+   \spx makes use of several different function families with cryptographic
+   properties. Every \spx instantiation MUST describe how to implement each of
+   the following functions. For the main instantiations given in this document,
    this will be done using a single (hash) function, i.e., SHA2-256 or SHAKE-128.
    Specific instantiations are given in~\autoref{sec:instantiations}.
-   
-   \spx applies the multi-target mitigation technique from 
-   \cite{Huelsing2016}, independently keying and randomizing each hash function 
-   call in the original \spc. The implementation of this randomization and 
-   keying differs for different instantiations as different function families  
-   (e.g., SHA2 or SHAKE) have different properties. Hence, we introduce 
-   \emph{tweakable} hash functions as a layer of abstraction. All algorithms in 
+
+   \spx applies the multi-target mitigation technique from
+   \cite{Huelsing2016}, independently keying and randomizing each hash function
+   call in the original \spc. The implementation of this randomization and
+   keying differs for different instantiations as different function families
+   (e.g., SHA2 or SHAKE) have different properties. Hence, we introduce
+   \emph{tweakable} hash functions as a layer of abstraction. All algorithms in
    this specification use \emph{tweakable} hash functions in place of traditional
-   hash functions. Later, in~\autoref{sec:instantiations}, we describe how to 
+   hash functions. Later, in~\autoref{sec:instantiations}, we describe how to
    implement the tweakable hash functions.
-   
-   In addition to several tweakable hash functions, \spx makes use of two PRFs 
-   and a keyed hash function. Input and output length are given in terms of the 
-   security parameter $n$ and the message digest length $m$, both to be defined 
+
+   In addition to several tweakable hash functions, \spx makes use of two PRFs
+   and a keyed hash function. Input and output length are given in terms of the
+   security parameter $n$ and the message digest length $m$, both to be defined
    more precisely in the coming sections.
 
 \subsubsection{Tweakable Hash Functions (Functions \texttt{T\_l}, \texttt{F}, \texttt{H})}
-   A \emph{tweakable} hash function takes a public seed \pseed and context 
-   information in form of an address \adrs in addition to the message input. 
-   This allows to make the hash function calls for each 
-   key pair and position in the virtual tree structure of \spx independent from 
+   A \emph{tweakable} hash function takes a public seed \pseed and context
+   information in form of an address \adrs in addition to the message input.
+   This allows to make the hash function calls for each
+   key pair and position in the virtual tree structure of \spx independent from
    each other. The addressing scheme will be described in~\autoref{prelim:addresses}.
 
-   The schemes described in this specification build upon several instantiations 
-   of tweakable hash functions of the form 
+   The schemes described in this specification build upon several instantiations
+   of tweakable hash functions of the form
    \begin{align*}
      \sphincsT_\ell &: \byte^n \times \byte^{32} \times \byte^{\ell n} \to \byte^n, \\
-     \md &\exec \sphincsT_\ell(\pseed, \adrs, \msg) 
+     \md &\exec \sphincsT_\ell(\pseed, \adrs, \msg)
    \end{align*}
    mapping and $\ell n$-byte message \msg to an
    $n$-byte hash value \md using an $n$-byte seed \pseed and a $32$-byte address \adrs.
@@ -414,7 +414,7 @@ base_w(X, w, out_len) {
     T : {l} (fin l) => ([n]Byte, [32]Byte, [l*n]Byte) -> [n]Byte
 \end{code}
 
-   There are two special cases which we rename for consistency with previous 
+   There are two special cases which we rename for consistency with previous
    descriptions of hash-based signature schemes:
    \begin{align*}
      \sphincsF &: \byte^n \times \byte^{32} \times \byte^n \to \byte^n, \\
@@ -429,25 +429,25 @@ base_w(X, w, out_len) {
   H : ([n]Byte, [32]Byte, [2*n]Byte) -> [n]Byte
   H = T`{2}
 \end{code}
-   
-   
-\subsubsection{PRF and Message Digest (Functions \texttt{PRF}, \texttt{PRF\_msg}, \texttt{H\_msg})}   
+
+
+\subsubsection{PRF and Message Digest (Functions \texttt{PRF}, \texttt{PRF\_msg}, \texttt{H\_msg})}
    \spx makes use of a pseudorandom function \sphincsPRF for pseudorandom key
-   generation: 
+   generation:
    \begin{equation*}
       \sphincsPRF: \byte^n \times \byte^{32} \to \byte^n.
    \end{equation*}
-   In addition, \spx uses a pseudorandom function \sphincsPRFmsg to generate 
+   In addition, \spx uses a pseudorandom function \sphincsPRFmsg to generate
    randomness for the message compression:
    \begin{equation*}
       \sphincsPRFmsg: \byte^n \times \byte^n \times \byte^* \to \byte^n.
    \end{equation*}
-   
-   To compress the message to be signed, \spx uses an additional keyed 
+
+   To compress the message to be signed, \spx uses an additional keyed
    hash function \sphincsHmsg that can process arbitrary length messages:
    \begin{equation*}
      \sphincsHmsg: \byte^n\times\byte^n\times\byte^n \times \byte^{*} \to \byte^m.
-   \end{equation*}   
+   \end{equation*}
 %    \TODO{Verify required key and output length.}
 %    \TODO{$m$ is only defined in the FORS section. In practice this also includes a bit of rounding to bytes, as well, and we also want to pull the leaf index from this output. -Joost}
 
@@ -462,21 +462,21 @@ base_w(X, w, out_len) {
 \subsubsection{Hash Function Address Scheme (Structure of \adrs)}\label{prelim:addresses}
 
    An address $\adrs$ is a 32-byte value that follows a defined structure.
-   In addition, it comes with \texttt{set} methods to manipulate the address.  
+   In addition, it comes with \texttt{set} methods to manipulate the address.
 
 \begin{code}
   type Address = [32]Byte
 \end{code}
 
-   We explain the generation of addresses in the following sections where they 
-   are used. Essentially, all functions have to keep track of the current 
+   We explain the generation of addresses in the following sections where they
+   are used. Essentially, all functions have to keep track of the current
    context, updating the addresses after each hash call.
 
    There are five different types of addresses for the different use
    cases.  One type is used for the hashes in \wotsp schemes, one is used
    for compression of the \wotsp public key, the third is used for
-   hashes within the main Merkle tree construction, another is used for 
-   the hashes in the Merkle tree in \fors, and the last is used for the 
+   hashes within the main Merkle tree construction, another is used for
+   the hashes in the Merkle tree in \fors, and the last is used for the
    compression of the tree roots of \fors. These types largely share a
    common format. We describe them in more detail, below.
 
@@ -615,7 +615,7 @@ base_w(X, w, out_len) {
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-The final two types are used for secret key value generation in \wotsp and \fors. A \wotsp key generation address (Figure~\ref{fig:adrs:wots:kg}) is the same as a \wotsp hash address with two differences. First, the type word is set to 5. Second, the hash address word is constantly set to 0. When generating the secret key value for a given chain, the remaining words have to be set the same way as for the \wotsp hash addresses used for this chain.  
+The final two types are used for secret key value generation in \wotsp and \fors. A \wotsp key generation address (Figure~\ref{fig:adrs:wots:kg}) is the same as a \wotsp hash address with two differences. First, the type word is set to 5. Second, the hash address word is constantly set to 0. When generating the secret key value for a given chain, the remaining words have to be set the same way as for the \wotsp hash addresses used for this chain.
 \begin{figure}[h]
   \centering
   \begin{tikzpicture}
@@ -689,8 +689,8 @@ Similarly, the \fors key generation type (Figure~\ref{fig:adrs:forskg}) is the s
     fromBinary (take`{wordbytes}(drop`{5*wordbytes} address))
 
   setHashAddress : (Address, Integer) -> Address
-  setHashAddress (address, hash) = take address # toBinary hash 
-   
+  setHashAddress (address, hash) = take address # toBinary hash
+
   setTreeIndex : (Address, Integer) -> Address
   setTreeIndex(address, index) = take address # toBinary index
 
@@ -715,31 +715,31 @@ Similarly, the \fors key generation type (Figure~\ref{fig:adrs:forskg}) is the s
   WOTS_PRF   = 5
   FORS_PRF   = 6
 \end{code}
-   
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  WOTS+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
-   
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  WOTS+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \section{\wotsp One-Time Signatures}\label{sec:wots}
 This section describes the \wotsp scheme, in a version similar
 to~\cite{Hulsing2013}. \wotsp is a OTS scheme; while a private key can be used
 to sign any message, each private key MUST NOT be used to sign more than a single
 message. In particular, if a private key is used to sign two different messages,
-the scheme becomes insecure. 
+the scheme becomes insecure.
 
 The description given here is tailored to the use inside of \spx. It assumes that
 the scheme is used as a subroutine inside a higher order scheme and is not sufficient
-for a standalone implementation of \wotsp. The section starts with an explanation 
+for a standalone implementation of \wotsp. The section starts with an explanation
 of parameters. Afterwards, the so-called
 chaining function, which forms the main building block of the \wotsp scheme, is
-explained. A description of the algorithms for key generation and signing follows. 
-Finally, we give an algorithm to compute a \wotsp public key from a \wotsp 
+explained. A description of the algorithms for key generation and signing follows.
+Finally, we give an algorithm to compute a \wotsp public key from a \wotsp
 signature. This will be used as a subroutine in \spx signature verification.
 
 \subsection{\wotsp Parameters}\label{sec:wots:params}
 \wotsp uses the parameters $n$ and $w$; they both take positive integer values.
 These parameters are summarized as follows:
 \begin{itemize}
-  \item $n$: the security parameter; it is the message length as well as the 
-  length of a private key, public key, or signature element in bytes. 
+  \item $n$: the security parameter; it is the message length as well as the
+  length of a private key, public key, or signature element in bytes.
   \item $w$: the Winternitz parameter; it is an element of the set $\{4, 16, 256\}$.
 \end{itemize}
 
@@ -775,27 +775,27 @@ $\len_2$:
   type len2 = lg2(len1 * (w - 1)) / logw + 1
 \end{code}
 
-The security parameter $n$ is the same as the security parameter $n$ for \spx. 
-The value of $n$ determines the in- and output length of the tweakable hash 
-function used for \wotsp. The value of $n$ also determines 
-the length of messages that can be processed by the \wotsp signing algorithm. 
-The parameter $w$ can be chosen from the set $\{4, 16, 256\}$. 
+The security parameter $n$ is the same as the security parameter $n$ for \spx.
+The value of $n$ determines the in- and output length of the tweakable hash
+function used for \wotsp. The value of $n$ also determines
+the length of messages that can be processed by the \wotsp signing algorithm.
+The parameter $w$ can be chosen from the set $\{4, 16, 256\}$.
 A larger value of $w$ results in shorter signatures but slower
 operations; it has no effect on security.
-Choices of $w$ are limited to the values $4$, $16$, and $256$ since these values 
-yield optimal trade-offs and easy implementation. \wotsp parameters are 
+Choices of $w$ are limited to the values $4$, $16$, and $256$ since these values
+yield optimal trade-offs and easy implementation. \wotsp parameters are
 implicitly included in algorithm inputs as needed.
 
 \subsection{\wotsp Chaining Function (Function \texttt{chain})}
-The chaining function (\autoref{alg:chaining}) computes an iteration of 
-\sphincsF on an $n$-byte input using a \wotsp hash address \adrs and a 
+The chaining function (\autoref{alg:chaining}) computes an iteration of
+\sphincsF on an $n$-byte input using a \wotsp hash address \adrs and a
 public seed \pseed.
-The address \adrs MUST have the first seven $32$-bit words set to encode the 
+The address \adrs MUST have the first seven $32$-bit words set to encode the
 address of this chain.  In each iteration, the address is updated to encode
-the current position in the chain before \adrs is used to 
+the current position in the chain before \adrs is used to
 process the input by~\sphincsF.
 
-In the following, \adrs is a $32$-byte \wotsp hash address as specified 
+In the following, \adrs is a $32$-byte \wotsp hash address as specified
 in~\autoref{prelim:addresses} and
 \pseed is a $n$-byte string. The chaining function takes as input an
 $n$-byte string $X$;, a start index $i$, a number of steps $s$, as well as \adrs and
@@ -827,7 +827,7 @@ chain(X, i, s, PK.seed, ADRS) {
   chain(X, i, s, PKseed, ADRS) =
     if s == 0 then
       X
-    else if ((i + s) > (`w - 1)) then 
+    else if ((i + s) > (`w - 1)) then
       undefined
     else
       tmp
@@ -840,17 +840,17 @@ chain(X, i, s, PK.seed, ADRS) {
 \subsection{\wotsp Private Key (Function \texttt{wots\_SKgen})}
 The \wotsp private key, denoted by sk (s for secret), is a length \len array of
 $n$-byte strings. This private key MUST NOT be used to sign more than one
-message. This private key is only implicitly used. Therefore, the following is 
-just to support a better understanding of the following algorithms. 
-Each $n$-byte string in the \wotsp private key is derived from a secret 
-seed $\sseed$ which is part of the \spx secret key and 
-a \wotsp key generation address \skadrs using \sphincsPRF. The same secret seed is used to generate 
-all secret key values within \spx. 
-The address used to generate the $i$-th $n$-byte string of sk 
+message. This private key is only implicitly used. Therefore, the following is
+just to support a better understanding of the following algorithms.
+Each $n$-byte string in the \wotsp private key is derived from a secret
+seed $\sseed$ which is part of the \spx secret key and
+a \wotsp key generation address \skadrs using \sphincsPRF. The same secret seed is used to generate
+all secret key values within \spx.
+The address used to generate the $i$-th $n$-byte string of sk
 MUST encode the position of the $i$-th hash chain of this \wotsp instance
 within the \spx structure.
 
-The following pseudocode (\autoref{alg:wots_skgen}) describes an algorithm 
+The following pseudocode (\autoref{alg:wots_skgen}) describes an algorithm
 to generate a \wotsp private key.
 
 \begin{lstlisting}[label=alg:wots_skgen, language=pseudoc,
@@ -883,16 +883,16 @@ wots_SKgen(SK.seed, ADRS) {
 
 \subsection{\wotsp Public Key Generation (Function \texttt{wots\_PKgen})}
 A \wotsp key pair defines a virtual structure that consists of len hash chains of
-length $w$. 
+length $w$.
 Each of the len stings of $n$-bytes in the private key defines the start
-node for one hash chain. The public key is the tweakable hash of the end nodes 
-of these hash chains. 
+node for one hash chain. The public key is the tweakable hash of the end nodes
+of these hash chains.
 To compute the hash chains, the chaining function
 (\autoref{alg:chaining}) is used. A \wotsp hash address \adrs and a seed \pseed have
-to be provided by the calling algorithm as well as a secret seed \sseed. 
+to be provided by the calling algorithm as well as a secret seed \sseed.
 The address \adrs MUST encode the address of
 the \wotsp key pair within the \spx structure. Hence, a \wotsp algorithm MUST NOT
-manipulate any parts of \adrs other than the last three $32$-bit words. 
+manipulate any parts of \adrs other than the last three $32$-bit words.
 Note that the \pseed used here is public information also available to a verifier.
 The following pseudocode (\autoref{alg:wots_pkgen}) describes an algorithm for
 generating the public key pk.
@@ -919,8 +919,8 @@ wots_PKgen(SK.seed, PK.seed, ADRS) {
   wotspkADRS.setKeyPairAddress(ADRS.getKeyPairAddress());
   pk = T_len(PK.seed, wotspkADRS, tmp);
   return pk;
-} 
-\end{lstlisting} 
+}
+\end{lstlisting}
 
 \begin{code}
   wots_PKgen : ([n]Byte, [n]Byte, Address) -> [n]Byte
@@ -972,27 +972,27 @@ A \wotsp signature is a length \len array of $n$-byte strings.
 The \wotsp signature
 is generated by mapping a message $M$ to \len integers between $0$ and $w - 1$.  To
 this end, the message is transformed into $\len_1$ base-$w$ numbers using
-the $\basew$ function defined in \autoref{func:basew}. Next, a checksum 
-over $M$ is 
-computed and appended to the transformed message as $\len_2$ base-$w$ numbers 
+the $\basew$ function defined in \autoref{func:basew}. Next, a checksum
+over $M$ is
+computed and appended to the transformed message as $\len_2$ base-$w$ numbers
 using the \basew function. Note that the checksum may reach a maximum integer
 value of $\len_1 \cdot (w - 1)$ and therefore depends on the
-parameters $n$ and $w$. For the parameter sets given in 
+parameters $n$ and $w$. For the parameter sets given in
 \autoref{sec:instantiations}, a $32$-bit unsigned
-integer is sufficient to hold the checksum. If other parameter sets are used, the 
-size of the variable holding the integer value of the checksum MUST be 
-sufficiently large. Each of the base-$w$ integers is used to 
-select a node from a different hash chain. The signature is formed by 
+integer is sufficient to hold the checksum. If other parameter sets are used, the
+size of the variable holding the integer value of the checksum MUST be
+sufficiently large. Each of the base-$w$ integers is used to
+select a node from a different hash chain. The signature is formed by
 concatenating the selected
 nodes. A \wotsp hash address \adrs, a public seed \pseed,
-and a secret seed \sseed have to be provided by 
-the calling algorithm. The address will encode 
-the address of the \wotsp key pair within a greater structure. Hence, a \wotsp 
-algorithm MUST NOT manipulate any parts of \adrs other than the last three 
-32-bit words. Note that the \pseed used here is public information also 
-available to a verifier while the secret seed \sseed is private information. 
+and a secret seed \sseed have to be provided by
+the calling algorithm. The address will encode
+the address of the \wotsp key pair within a greater structure. Hence, a \wotsp
+algorithm MUST NOT manipulate any parts of \adrs other than the last three
+32-bit words. Note that the \pseed used here is public information also
+available to a verifier while the secret seed \sseed is private information.
 The pseudocode for generating a \wotsp
-signature  \wotssig is shown below 
+signature  \wotssig is shown below
 (\autoref{alg:wots_sign}).
 
 \begin{lstlisting}[label=alg:wots_sign, language=pseudoc,
@@ -1017,7 +1017,7 @@ wots_sign(M, SK.seed, PK.seed, ADRS) {
   }
   len_2_bytes = ceil( ( len_2 * lg(w) ) / 8 );
   msg = msg || base_w(toByte(csum, len_2_bytes), w, len_2);
-  
+
   skADRS = ADRS; // copy address to create key generation address
   skADRS.setType(WOTS_PRF);
   skADRS.setKeyPairAddress(ADRS.getKeyPairAddress());
@@ -1084,29 +1084,29 @@ The data format for a signature is given in \autoref{fig:wots_signature}.
 \end{figure}
 
 \subsection{\wotsp Compute Public Key from Signature (Function \texttt{wots\_pkFromSig})}
-\spx uses implicit signature verification for \wotsp. In order to verify a 
+\spx uses implicit signature verification for \wotsp. In order to verify a
 \wotsp signature \wotssig on a message M, the verifier
 computes a \wotsp public key value from the signature. This can be
 done by ``completing'' the chain computations starting from the
 signature values, using the base-$w$ values of the message hash and its
 checksum. This step, called $\wotspkfromsig$, is described below in
-\autoref{alg:wots_pkfromsig}. The result of $\wotspkfromsig$ 
-then has to be verified. In a standalone version, this would be done by simple 
-comparison. When used in \spx the output value is verified by using it to 
-compute a \spx public key. 
+\autoref{alg:wots_pkfromsig}. The result of $\wotspkfromsig$
+then has to be verified. In a standalone version, this would be done by simple
+comparison. When used in \spx the output value is verified by using it to
+compute a \spx public key.
 
-A \wotsp hash address \adrs and a public seed \pseed have to be provided by the 
+A \wotsp hash address \adrs and a public seed \pseed have to be provided by the
 calling algorithm. The address will encode the address of the \wotsp key
 pair within the \spx structure. Hence, a \wotsp algorithm MUST NOT
 manipulate any parts of \adrs other than the last three $32$-bit words.
-Note that the \pseed used here is public information also available to 
+Note that the \pseed used here is public information also available to
 a verifier.
 
 \begin{lstlisting}[label=alg:wots_pkfromsig, language=pseudoc,
                    caption=\texttt{wots\_pkFromSig} -- Computing a WOTS+ public key from a
                            message and its signature.]
 #Input: Message M, WOTS+ signature sig, address ADRS, public seed PK.seed
-#Output: WOTS+ public key pk_sig derived from sig 
+#Output: WOTS+ public key pk_sig derived from sig
 
 wots_pkFromSig(sig, M, PK.seed, ADRS) {
   csum = 0;
@@ -1156,7 +1156,7 @@ wots_pkFromSig(sig, M, PK.seed, ADRS) {
       msgi = toInteger(msg'@i)
       tmpi = chain(sig@i, msgi, `w - 1 - msgi, PKseed, ADRSi)
     tmp = parmap makeTmp [0 .. len-1]
-    
+
     wotspkADRS' = setType(wotspkADRS, WOTS_PK)
     wotspkADRS'' = setKeyPairAddress(wotspkADRS', getKeyPairAddress(ADRS))
     pk_sig = T`{len}(PKseed, wotspkADRS'', join tmp)
@@ -1180,12 +1180,12 @@ multi-tree \xmss (\xmssm).
    \xmss is a method for signing a potentially large but fixed number of
    messages.  It is based on the Merkle signature scheme. It authenticates
    $2^\sheight$ \wotsp public keys using a binary tree of height $\sheight$.
-   Hence, an \xmss key pair for height $\sheight$ can be used to sign 
+   Hence, an \xmss key pair for height $\sheight$ can be used to sign
    $2^\sheight$ different messages.
    Each node in the binary tree is an $n$-byte value which is the tweakable hash
    of the concatenation of its two child nodes. The leaves are the \wotsp public
-   keys. The \xmss public key is the root node of the tree. 
-   In \spx, the \xmss 
+   keys. The \xmss public key is the root node of the tree.
+   In \spx, the \xmss
    secret key is the single secret seed that is used to generate all \wotsp
    secret keys.
 
@@ -1194,8 +1194,8 @@ multi-tree \xmss (\xmssm).
    The latter is a vector of tree nodes that allow a verifier to compute
    a value for the root of the tree starting from a \wotsp signature.  A
    verifier computes the root value and verifies its correctness. A standalone
-   \xmss signature also contains the index of the used \wotsp key pair. In the 
-   context of \spx this is not necessary as the \spx signature allows to 
+   \xmss signature also contains the index of the used \wotsp key pair. In the
+   context of \spx this is not necessary as the \spx signature allows to
    compute the index for each \xmss signature contained.
 
 \subsubsection{\xmss Parameters}
@@ -1204,8 +1204,8 @@ multi-tree \xmss (\xmssm).
 \begin{description}
  \item  $\sheight$ : the height (number of levels - 1) of the tree.
  \item  $n$ : the length in bytes of messages as well as of each node.
- \item  $w$ : the Winternitz parameter as defined for \wotsp in the 
- previous Section. 
+ \item  $w$ : the Winternitz parameter as defined for \wotsp in the
+ previous Section.
 \end{description}
 
 \begin{code}
@@ -1213,36 +1213,36 @@ multi-tree \xmss (\xmssm).
 \end{code}
 
 There are $2^\sheight$ leaves in the tree.
-\xmss signatures are denoted by \xmsssig (\texttt{SIG\_XMSS} in pseudocode). 
+\xmss signatures are denoted by \xmsssig (\texttt{SIG\_XMSS} in pseudocode).
 \wotsp signatures are denoted by sig.
 
 \xmss parameters are implicitly included in algorithm
 inputs as needed.
 
 %\subsubsection{\xmss Hash Functions}
-% 
+%
 % \todo{Change to tweakable hash}
-% 
+%
 % Besides the cryptographic hash function F and the pseudorandom
 % function PRF required by \wotsp, \xmss uses two more functions:
-% 
+%
 % \begin{itemize}
 %  \item A cryptographic hash function H.  H accepts n-byte keys and byte
 %       strings of length 2n and returns an n-byte string.
 %  \item A cryptographic hash function \Hash.  \Hash accepts 3n-byte keys
 %       and byte strings of arbitrary length and returns an n-byte string.
 % \end{itemize}
-% 
+%
 %    More detail on specific instantiations can be found in Section 5.
 %    Security requirements on H and \Hash are discussed in Section 9.
 
 \subsubsection{\xmss Private Key}
 In the context of \spx, an \xmss private key is the single secret seed \sseed
-contained in the \spx secret key. It is used to generate the \wotsp secret keys 
+contained in the \spx secret key. It is used to generate the \wotsp secret keys
 within the structure of an \xmss key pair as described in \autoref{sec:wots}.
 
 
-% 
+%
 %    An \xmss private key SK contains $2^h$ \wotsp private keys, the leaf
 %    index idx of the next \wotsp private key that has not yet been used,
 %    \skprf, an n-byte key to generate pseudorandom values for randomized
@@ -1252,7 +1252,7 @@ within the structure of an \xmss key pair as described in \autoref{sec:wots}.
 %    would be considered only part of the public key, they are needed e.g.
 %    for signature generation and hence are also required for functions
 %    that do not take the public key as input.
-% 
+%
 %    The leaf index idx is initialized to zero when the \xmss private key
 %    is created.  The key \skprf MUST be sampled from a secure source of
 %    randomness that follows the uniform distribution.  The \wotsp private
@@ -1264,14 +1264,14 @@ within the structure of an \xmss key pair as described in \autoref{sec:wots}.
 %    source.  The root node is generated as described below in the section
 %    on key generation (Section 4.1.7).  That section also contains an
 %    example algorithm for combined private and public key generation.
-% 
+%
 %    For the following algorithm descriptions, the existence of a method
 %    getWOTS\_SK(SK, i) is assumed.  This method takes as inputs an \xmss
 %    private key SK and an integer i and outputs the i\textasciicircum th \wotsp private
 %    key of SK.
-% 
+%
 % \subsubsection{Randomized Tree Hashing}
-% 
+%
 %    \todo{Change to tweakable hash}
 %    To improve readability we introduce a function RAND\_HASH(LEFT, RIGHT,
 %    SEED, ADRS) that does the randomized hashing in the tree.  It takes
@@ -1281,25 +1281,25 @@ within the structure of an \xmss key pair as described in \autoref{sec:wots}.
 %    first uses PRF with SEED and ADRS to generate a key KEY and n-byte
 %    bitmasks BM\_0, BM\_1.  Then it returns the randomized hash H(KEY,
 %    (LEFT XOR BM\_0) || (RIGHT XOR BM\_1)).
-% 
+%
 %    \begin{lstlisting}[label=algo:randhash, language=pseudoc,
 %                    caption=The RAND\_HASH algorithm.]
-% 
+%
 % # Input: n-byte value LEFT, n-byte value RIGHT, seed SEED,
 %          address ADRS
 % # Output: n-byte randomized hash
-% 
+%
 %      ADRS.setKeyAndMask(0);
 %      KEY = PRF(SEED, ADRS);
 %      ADRS.setKeyAndMask(1);
 %      BM\_0 = PRF(SEED, ADRS);
 %      ADRS.setKeyAndMask(2);
 %      BM\_1 = PRF(SEED, ADRS);
-% 
+%
 %      return H(KEY, (LEFT XOR BM\_0) || (RIGHT XOR BM\_1));
-% 
+%
 % \end{lstlisting}
-	 
+
 
 \subsubsection{TreeHash (Function \texttt{treehash})}
    For the computation of the internal $n$-byte nodes of a Merkle tree,
@@ -1312,14 +1312,14 @@ within the structure of an \xmss key pair as described in \autoref{sec:wots}.
    the leftmost leaf being the \wotsp pk at index $s$. It is
    REQUIRED that $s\ \%\ 2^z = 0$, i.e. that the leaf at index $s$ is a
    leftmost leaf of a sub-tree of height $z$.  Otherwise the algorithm fails
-   as it would compute non-existent nodes.  
+   as it would compute non-existent nodes.
    The \treehash algorithm described here uses
    a stack holding up to $(z - 1)$ nodes, with the usual stack functions
    push() and pop().  We furthermore assume that the height of a node
    (an unsigned integer) is stored alongside a node's value (an $n$-byte
    string) on the stack.
 
-   
+
    \begin{lstlisting}[breaklines=true, label=algo:treehash, language=pseudoc,
                    caption=\texttt{treehash} -- The TreeHash algorithm.]
 
@@ -1368,12 +1368,12 @@ treehash(SK.seed, s, z, PK.seed, ADRS) {
 
 \subsubsection{\xmss Public Key Generation (Function \xmsspkgen)}
    The \xmss public key is computed as described in \xmsspkgen (Algorithm
-   10). In the context of \spx the \xmss public key PK is the root of 
-   the binary hash tree. The root is computed using \treehash.  
+   10). In the context of \spx the \xmss public key PK is the root of
+   the binary hash tree. The root is computed using \treehash.
    The public key generation takes a secret seed \sseed, a public seed \pseed,
    and an address \adrs. The latter encodes the position of this \xmss instance
    within the \spx structure.
-   
+
 \begin{lstlisting}[literate={'}{{'}}1, label=alg:xmss:pkgen, language=pseudoc,
                    caption=\xmsspkgen\ -- Generating an XMSS public key.]
 
@@ -1399,7 +1399,7 @@ xmss_PKgen(SK.seed, PK.seed, ADRS) {
    of
    \begin{itemize}
 	\item a \wotsp signature \wotssig taking $\len \cdot n$ bytes,
-	\item the authentication path \auth for the leaf associated 
+	\item the authentication path \auth for the leaf associated
 	      with the used \wotsp key pair taking $\sheight \cdot n$ bytes.
    \end{itemize}
 
@@ -1408,7 +1408,7 @@ xmss_PKgen(SK.seed, PK.seed, ADRS) {
 
   getWOTSSig : XMSSSig -> [len][n]Byte
   getWOTSSig(SIG_XMSS) = groupBy(take SIG_XMSS)
-  
+
   getXMSSAUTH : XMSSSig -> [h'][n]Byte
   getXMSSAUTH(SIG_XMSS) = groupBy(drop SIG_XMSS)
 \end{code}
@@ -1421,7 +1421,7 @@ xmss_PKgen(SK.seed, PK.seed, ADRS) {
    tree.  $\node(x, y)$ denotes the $y$th node on level $x$ with $y = 0$ being
    the leftmost node on a level.  The leaves are on level $0$, the root is
    on level $\sheight$.  An authentication path contains exactly one node on
-   every layer $0 \leq x \leq (\sheight - 1)$.  For the $i$th \wotsp key pair, 
+   every layer $0 \leq x \leq (\sheight - 1)$.  For the $i$th \wotsp key pair,
    counting from zero, the $j$th authentication path node is
 
       $$\auth[j] = \node\left(j, \floor{\frac{i}{2^j}} \oplus 1\right)$$
@@ -1441,11 +1441,11 @@ xmss_PKgen(SK.seed, PK.seed, ADRS) {
       \\[-0.5em] \auth[h-1] ($n$ bytes) \\[-0.5em] \\ \hline
     \end{tabular}
   \end{center}
-  \caption{\xmss Signature} 
+  \caption{\xmss Signature}
   \label{fig:xmss:sig}
 \end{figure}
 
-% Old version of the figure 
+% Old version of the figure
 %\begin{figure}[h]
 %  \centering
 %  \begin{tikzpicture}
@@ -1462,25 +1462,25 @@ xmss_PKgen(SK.seed, PK.seed, ADRS) {
 
 \subsubsection{\xmss Signature Generation (Function \xmsssign)}\label{sec:xmss:sign}
 
-   To compute the \xmss signature of a message \msg in the context of \spx, 
-   the secret seed \sseed, the public seed \pseed, the index $\idx$ of the 
-   \wotsp key 
+   To compute the \xmss signature of a message \msg in the context of \spx,
+   the secret seed \sseed, the public seed \pseed, the index $\idx$ of the
+   \wotsp key
    pair to be used, and the address \adrs of the \xmss instance are needed.
-   First, a \wotsp signature of the message digest is computed using the 
+   First, a \wotsp signature of the message digest is computed using the
    \wotsp instance at index \idx.  Next, the authentication path is computed.
-   
+
    The node values of the authentication path MAY be computed in any
-   way. The least memory-intensive method is to compute all nodes using the 
-   \treehash algorithm (\autoref{algo:treehash}). This is described here. 
-   Note that the details of how this step is implemented are not relevant to 
-   interoperability; it is not necessary to know any of these details in order 
+   way. The least memory-intensive method is to compute all nodes using the
+   \treehash algorithm (\autoref{algo:treehash}). This is described here.
+   Note that the details of how this step is implemented are not relevant to
+   interoperability; it is not necessary to know any of these details in order
    to perform the signature verification operation.
-% 
+%
 %    \begin{lstlisting}[label=alg:xmss:buildauth, language=pseudoc,
 %                    caption=(Example) buildAuth - Compute the authentication path for the i th WOTSP key pair.]
 %      Input: Secret seed SK.seed, index i, public seed PK.seed, address ADRS
 %      Output: Authentication path AUTH
-% 
+%
 %      for ( j = 0; j < h; j++ ) {
 %        k = floor(i / (2^j)) XOR 1;
 %        auth[j] = treehash(SK.seed, k * 2^j, j, PK.seed, ADRS);
@@ -1490,7 +1490,7 @@ xmss_PKgen(SK.seed, PK.seed, ADRS) {
 
 \begin{lstlisting}[literate={'}{{'}}1, breaklines=true, label=alg:xmss:sign, language=pseudoc,
                    caption=\xmsssign\ -- Generating an XMSS signature.]
-   
+
 # Input: n-byte message M, secret seed SK.seed, index idx, public seed PK.seed, address ADRS
 # Output: XMSS signature SIG_XMSS = (sig || AUTH)
 
@@ -1500,7 +1500,7 @@ xmss_sign(M, SK.seed, idx, PK.seed, ADRS)
        k = floor(idx / (2^j)) XOR 1;
        AUTH[j] = treehash(SK.seed, k * 2^j, j, PK.seed, ADRS);
      }
-     
+
      ADRS.setType(WOTS_HASH);
      ADRS.setKeyPairAddress(idx);
      sig = wots_sign(M, SK.seed, PK.seed, ADRS);
@@ -1509,7 +1509,7 @@ xmss_sign(M, SK.seed, idx, PK.seed, ADRS)
 }
 
 \end{lstlisting}
-     
+
 \begin{code}
   xmss_sign : ([n]Byte, [n]Byte, Integer, [n]Byte, Address) -> XMSSSig
   xmss_sign(M, SKseed, idx, PKseed, ADRS) = SIG_XMSS where
@@ -1530,14 +1530,14 @@ xmss_sign(M, SK.seed, idx, PK.seed, ADRS)
 %    takes as inputs a message M of arbitrary length, and an \xmss private
 %    key SK.  It returns the byte string containing the concatenation of
 %    the updated private key SK and the signature Sig.
-% 
+%
 % \begin{lstlisting}[label=alg:xmss:sig, mathescape, language=pseudoc,
 %                    caption=XMSS\_sign - Generate an XMSS signature and update the
 %    XMSS private key.]
-%    
+%
 % # Input: Message M, \xmss private key SK
 % # Output: Updated SK, \xmss signature Sig
-% 
+%
 % 	idx_sig = getIdx(SK);
 % 	setIdx(SK, idx_sig + 1);
 % 	ADRS = toByte(0, 32);
@@ -1545,45 +1545,45 @@ xmss_sign(M, SK.seed, idx, PK.seed, ADRS)
 % 	byte[n] M$^\prime$ = \Hash(r || getRoot(SK) || (toByte(idx\_sig, n)), M);
 % 	Sig = idx_sig || r || treeSig(M$^\prime$, SK, idx_sig, ADRS);
 % 	return (SK || Sig);
-%      
+%
 % \end{lstlisting}
 
 \subsubsection{\xmss Compute Public Key from Signature (Function \xmsspkfromsig)}
 
-   \spx makes use of implicit signature verification of \xmss signatures. 
-   An \xmss signature is used to compute a candidate \xmss public key, i.e., the 
-   root of the tree. This is used in further computations (signature of the tree above) 
-   and implicitly verified by the outcome of that computation. Hence, this 
-   specification does not contain an \texttt{xmss\_verify} method but the method 
-   \xmsspkfromsig. 
-   
-   The method \xmsspkfromsig takes an $n$-byte message \msg, 
-   an \xmss signature \xmsssig, a signature index \idx, a public seed \pseed, and 
-   an address \adrs. The latter encodes the position of the current \xmss 
-   instance within the virtual structure of the \spx key pair. First, 
+   \spx makes use of implicit signature verification of \xmss signatures.
+   An \xmss signature is used to compute a candidate \xmss public key, i.e., the
+   root of the tree. This is used in further computations (signature of the tree above)
+   and implicitly verified by the outcome of that computation. Hence, this
+   specification does not contain an \texttt{xmss\_verify} method but the method
+   \xmsspkfromsig.
+
+   The method \xmsspkfromsig takes an $n$-byte message \msg,
+   an \xmss signature \xmsssig, a signature index \idx, a public seed \pseed, and
+   an address \adrs. The latter encodes the position of the current \xmss
+   instance within the virtual structure of the \spx key pair. First,
    \wotspkfromsig is used to compute a candidate \wotsp public key. This in
    turn is used together with the authentication path to compute a root node
-   which is then returned. The algorithm \xmsspkfromsig is given 
+   which is then returned. The algorithm \xmsspkfromsig is given
    as \autoref{alg:xmss:rootFromSig}.
-   
-   
-   
+
+
+
 \begin{lstlisting}[literate={'}{{'}}1, breaklines=true, label=alg:xmss:rootFromSig, language=pseudoc,
-                   caption=\xmsspkfromsig\ -- 
+                   caption=\xmsspkfromsig\ --
                    Computing an \xmss public key from an \xmss signature.]
 
 # Input: index idx, XMSS signature SIG_XMSS = (sig || AUTH), n-byte message M, public seed PK.seed, address ADRS
 # Output: n-byte root value node[0]
 
 xmss_pkFromSig(idx, SIG_XMSS, M, PK.seed, ADRS){
-     
+
      // compute WOTS+ pk from WOTS+ sig
      ADRS.setType(WOTS_HASH);
      ADRS.setKeyPairAddress(idx);
      sig = SIG_XMSS.getWOTSSig();
      AUTH = SIG_XMSS.getXMSSAUTH();
      node[0] = wots_pkFromSig(sig, M, PK.seed, ADRS);
-     
+
      // compute root from WOTS+ pk and AUTH
      ADRS.setType(TREE);
      ADRS.setTreeIndex(idx);
@@ -1604,7 +1604,7 @@ xmss_pkFromSig(idx, SIG_XMSS, M, PK.seed, ADRS){
 
 \begin{code}
   xmss_pkFromSig : (Integer, XMSSSig, [n]Byte, [n]Byte, Address) -> [n]Byte
-  xmss_pkFromSig(idx, SIG_XMSS, M, PKseed, ADRS) = node where 
+  xmss_pkFromSig(idx, SIG_XMSS, M, PKseed, ADRS) = node where
 
     // compute WOTS+ p from WOTS+ sig
     ADRS0 = setType(ADRS, WOTS_HASH)
@@ -1632,11 +1632,11 @@ xmss_pkFromSig(idx, SIG_XMSS, M, PK.seed, ADRS){
 
 \subsection{\hyper: The Hypertee} \label{sec:hyper}
 
-   The \spx hypertree \hyper is a variant of \xmssm. It is essentially a 
+   The \spx hypertree \hyper is a variant of \xmssm. It is essentially a
    certification tree of \xmss instances. A \hyper is
    a tree of several layers of \xmss trees.  The
-   trees on top and intermediate layers are used to sign the public keys, i.e., 
-   the root nodes, of the \xmss trees on the respective next layer below. 
+   trees on top and intermediate layers are used to sign the public keys, i.e.,
+   the root nodes, of the \xmss trees on the respective next layer below.
    Trees on the lowest layer are used to sign the actual messages, which are
    \fors public keys in \spx. All \xmss trees in \hyper have
    equal height.
@@ -1648,7 +1648,7 @@ xmss_pkFromSig(idx, SIG_XMSS, M, PK.seed, ADRS){
 
 \subsubsection{\hyper Parameters}\label{sec:ht:params}
 
-   In addition to all \xmss parameters, a \hyper requires the hypertree height 
+   In addition to all \xmss parameters, a \hyper requires the hypertree height
    $h$ and the
    number of tree layers $d$, specified as an integer value that divides $h$
    without remainder.  The same tree height $\sheight = h / d$ and the same
@@ -1665,10 +1665,10 @@ xmss_pkFromSig(idx, SIG_XMSS, M, PK.seed, ADRS){
 
 \subsubsection{\hyper Key Generation (Function \htpkgen)}
 
-   The \hyper private key is the secret seed \sseed which is used to generate 
-   all the \wotsp private keys within the virtual structure spanned by the \hyper. 
+   The \hyper private key is the secret seed \sseed which is used to generate
+   all the \wotsp private keys within the virtual structure spanned by the \hyper.
 
-   The \hyper public key is the public key (root node) of the single \xmss tree on 
+   The \hyper public key is the public key (root node) of the single \xmss tree on
    the top layer. Its computation is explained below. The public key generation
    takes as input a private and a public seed.
 
@@ -1679,7 +1679,7 @@ xmss_pkFromSig(idx, SIG_XMSS, M, PK.seed, ADRS){
 # Input: Private seed SK.seed, public seed PK.seed
 # Output: HT public key PK_HT
 
-ht_PKgen(SK.seed, PK.seed){          
+ht_PKgen(SK.seed, PK.seed){
      ADRS = toByte(0, 32);
      ADRS.setLayerAddress(d-1);
      ADRS.setTreeAddress(0);
@@ -1699,7 +1699,7 @@ ht_PKgen(SK.seed, PK.seed){
 \end{code}
 
 %    The format of an \xmssm public key is given in Figure \ref{fig:xmssm:pk}
-% 
+%
 %   \begin{figure}[h]
 %   \centering
 %   \begin{tikzpicture}
@@ -1713,9 +1713,9 @@ ht_PKgen(SK.seed, PK.seed){
 
 \subsubsection{\hyper Signature}\label{sec:hyper:sign}
 
-   A \hyper signature \htsig is a byte string of length $(h + d * \len) * n$.  
+   A \hyper signature \htsig is a byte string of length $(h + d * \len) * n$.
    It consists of $d$ \xmss signatures (of $(h / d + \len) * n$ bytes each).
-   
+
    The data format for a signature is given in Figure ~\ref{fig:xmssmt:sig}
 
 \begin{code}
@@ -1736,19 +1736,19 @@ ht_PKgen(SK.seed, PK.seed){
       \\[-0.5em] \xmss signature \xmsssig (layer $d-1$) (($h/d + \len)\cdot n$ bytes) \\[-0.5em] \\ \hline
     \end{tabular}
   \end{center}
-  \caption{\hyper signature} 
+  \caption{\hyper signature}
   \label{fig:xmssmt:sig}
 \end{figure}
 
 
 \subsubsection{\hyper Signature Generation (Function \htsign)}
 
-   To compute a \hyper signature \htsig of a message M using, \htsign 
+   To compute a \hyper signature \htsig of a message M using, \htsign
    (\autoref{alg:ht:sign}) described below
-   uses \xmsssign as defined in \autoref{sec:xmss:sign}.  
-   The algorithm \htsign takes as input a message \msg, a private seed \sseed, 
+   uses \xmsssign as defined in \autoref{sec:xmss:sign}.
+   The algorithm \htsign takes as input a message \msg, a private seed \sseed,
    a public seed \pseed, and an index \idx. The index identifies the leaf
-   of the hypertree to be used to sign the message. The \hyper signature then 
+   of the hypertree to be used to sign the message. The \hyper signature then
    consists of a stack of \xmss signatures using the \xmss trees on the path
    from the leaf with index \idx  to the top tree. Note that \idx is passed as two
    separate arguments, split into an index to address the specific tree and the
@@ -1757,25 +1757,25 @@ ht_PKgen(SK.seed, PK.seed){
    conform to $h < 64 + h / d$. This matches the parameters in this specification
    If other parameter sets are used that allow greater $h$,
    the data type of tree\_idx MUST be adapted accordingly.
-   
-   Algorithm \htsign uses \xmsspkfromsig to compute the root node of an 
-   \xmss instance after that instance was used for signing. An alternative is 
-   to use \xmsspkgen. However, \xmsspkgen rebuilds the whole tree while 
-   \xmsspkfromsig only does one call to \wotspkfromsig and $(\sheight-1)$ calls 
-   to $\sphincsH$. The algorithm \htsign as described below is just one way 
-   to generate a \hyper signature. Other methods MAY be used as long as they 
+
+   Algorithm \htsign uses \xmsspkfromsig to compute the root node of an
+   \xmss instance after that instance was used for signing. An alternative is
+   to use \xmsspkgen. However, \xmsspkgen rebuilds the whole tree while
+   \xmsspkfromsig only does one call to \wotspkfromsig and $(\sheight-1)$ calls
+   to $\sphincsH$. The algorithm \htsign as described below is just one way
+   to generate a \hyper signature. Other methods MAY be used as long as they
    generate the same output.
 
 \begin{lstlisting}[label=alg:ht:sign, breaklines=true, mathescape, language=pseudoc,
                    caption=\htsign\ -- Generating an \hyper signature]
-   
+
 # Input: Message M, private seed SK.seed, public seed PK.seed, tree index idx_tree, leaf index idx_leaf
 # Output: HT signature SIG_HT
 
 ht_sign(M, SK.seed, PK.seed, idx_tree, idx_leaf) {
      // init
      ADRS = toByte(0, 32);
-     
+
      // sign
      ADRS.setLayerAddress(0);
      ADRS.setTreeAddress(idx_tree);
@@ -1824,21 +1824,21 @@ ht_sign(M, SK.seed, PK.seed, idx_tree, idx_leaf) {
       root_j =
         if (j < `d - 1) then
           xmss_pkFromSig(idx_leaf, SIG_TMP_j, root_j_1, PKseed, ADRSj')
-        else  
+        else
           undefined
 \end{code}
 
 \subsubsection{\hyper Signature Verification (Function \htverify)}
 
    \hyper signature verification (\autoref{alg:ht:ver}) can be summarized as $d$
-   calls to \xmsspkfromsig and one comparison with a given value. \hyper 
-   signature verification takes a message \msg, a signature \htsig, a public seed \pseed, an index 
+   calls to \xmsspkfromsig and one comparison with a given value. \hyper
+   signature verification takes a message \msg, a signature \htsig, a public seed \pseed, an index
    \idx (split into a tree index and a leaf index, as above), and a \hyper public key \htpk.
 
 \begin{lstlisting}[breaklines=true, label=alg:ht:ver, mathescape, language=pseudoc,
                    caption=\htverify\ -- Verifying a \hyper signature \htsig on a
    message \msg using a \hyper public key \htpk]
-   
+
 # Input: Message M, signature SIG_HT, public seed PK.seed, tree index idx_tree, leaf index idx_leaf, HT public key PK_HT.
 # Output: Boolean
 
@@ -1868,7 +1868,7 @@ ht_verify(M, SIG_HT, PK.seed, idx_tree, idx_leaf, PK_HT){
 \end{lstlisting}
 
 \begin{code}
-  ht_verify : ([n]Byte, SIGHT, [n]Byte, TreeAddress, Integer, [n]Byte) -> Bit 
+  ht_verify : ([n]Byte, SIGHT, [n]Byte, TreeAddress, Integer, [n]Byte) -> Bit
   ht_verify(M, SIG_HT, PKseed, idx_tree, idx_leaf, PK_HT) = ( node == PK_HT )
     where
     // init
@@ -1893,42 +1893,42 @@ ht_verify(M, SIG_HT, PK.seed, idx_tree, idx_leaf, PK_HT){
 
 \section{FORS: Forest Of Random Subsets}
 
-The \spx hypertree \hyper is not used to sign the actual messages but the 
-public keys of \fors instances which in turn are used to sign message digests. 
-\fors (pronounced [\textipa{fO:rs}]), short for forest of random subsets, is a few-time 
-signature scheme (FTS). \fors is an improvement of \horst~\cite{Bernstein2015} 
-which in turn is a variant of \hors~\cite{Reyzin2002}. 
+The \spx hypertree \hyper is not used to sign the actual messages but the
+public keys of \fors instances which in turn are used to sign message digests.
+\fors (pronounced [\textipa{fO:rs}]), short for forest of random subsets, is a few-time
+signature scheme (FTS). \fors is an improvement of \horst~\cite{Bernstein2015}
+which in turn is a variant of \hors~\cite{Reyzin2002}.
 For security it is essential that the input to \fors is the output of a
 hash function. In the following we describe \fors as acting on bit strings.
 
 
-\fors uses parameters $k$ and $t=2^a$ (example parameters are $t=2^{15}, k=10$). 
-\fors signs strings of length $ka$ bits. Here, we deviate from defining 
+\fors uses parameters $k$ and $t=2^a$ (example parameters are $t=2^{15}, k=10$).
+\fors signs strings of length $ka$ bits. Here, we deviate from defining
 sizes in bytes as the message length in bits might not be a multiple of eight.
-The private key consists of $kt$ 
+The private key consists of $kt$
 random $n$-byte strings grouped
 into $k$ sets, each containing $t$ $n$-byte strings. The private key values
 are pseudorandomly generated from the main private seed \sseed in the \spx private
-key. In \spx, the \fors private key values are only temporarily generated as an 
-intermediate result when computing the public key or a signature. 
+key. In \spx, the \fors private key values are only temporarily generated as an
+intermediate result when computing the public key or a signature.
 
-The \fors public key is a single $n$-byte hash value. It is computed as the 
-tweakable hash of the root nodes of $k$ binary hash trees. Each of these binary 
+The \fors public key is a single $n$-byte hash value. It is computed as the
+tweakable hash of the root nodes of $k$ binary hash trees. Each of these binary
 hash trees has height $a$ and is used to authenticate the $t$ private key
-values of one of the $k$ sets. Accordingly, the leaves of a tree are the 
+values of one of the $k$ sets. Accordingly, the leaves of a tree are the
 (tweakable) hashes of the values in its private key set.
 
-A signature on a string $M$ consists of $k$ private key values -- one per 
-set of private key elements -- and the 
-associated authentication paths. To compute the signature, \md is 
+A signature on a string $M$ consists of $k$ private key values -- one per
+set of private key elements -- and the
+associated authentication paths. To compute the signature, \md is
 split into $k$ $a$-bit strings. As \md is a sequence of bytes,
 we first convert to a bit-string by enumerating the bytes in \md,
 internally enumerating the bits within a byte from least to most significant.
-Next, each of these bit strings is 
+Next, each of these bit strings is
 interpreted as an integer between $0$ and $t-1$. Each of these integers is used to
 select one private key value from a set. I.e., if the first integer is $i$, the
 $i$th private key element of the first set gets selected and so on. The signature
-consists of the selected private key elements and the associated authentication 
+consists of the selected private key elements and the associated authentication
 paths.
 
 \begin{code}
@@ -1943,26 +1943,26 @@ paths.
 \end{code}
 
 \spx uses implicit verification for \fors, only using a method to compute
-a candidate public key from a signature. This is done by computing root nodes 
-of the $k$ trees using the indices computed from the input string as well as 
-the private key values and authentication paths form the signature. The 
+a candidate public key from a signature. This is done by computing root nodes
+of the $k$ trees using the indices computed from the input string as well as
+the private key values and authentication paths form the signature. The
 tweakable hash of these roots is then returned as candidate public key.
 
 %
 We now describe the parameters and algorithms for \fors.
 
 \subsection{\fors Parameters}\label{sec:fors:params}
-\fors uses the parameters $n$, $k$, and $t$; they all take positive integer 
+\fors uses the parameters $n$, $k$, and $t$; they all take positive integer
 values.
 These parameters are summarized as follows:
 \begin{itemize}
-  \item $n$: the security parameter; it is the length of a private key, public 
-  key, or signature element in bytes. 
-  \item $k$: the number of private key sets, trees and indices computed 
+  \item $n$: the security parameter; it is the length of a private key, public
+  key, or signature element in bytes.
+  \item $k$: the number of private key sets, trees and indices computed
   from the input string.
-  \item $t$: the number of elements per private key set, number of leaves per 
-  hash tree and upper bound on the index values. The parameter $t$ MUST 
-  be a power of $2$. If $t = 2^a$, then the trees have height $a$ and the 
+  \item $t$: the number of elements per private key set, number of leaves per
+  hash tree and upper bound on the index values. The parameter $t$ MUST
+  be a power of $2$. If $t = 2^a$, then the trees have height $a$ and the
   input string is split into bit strings of length $a$.
 \end{itemize}
 Inputs to \fors are bit strings of length $k\log t$.
@@ -1972,21 +1972,21 @@ Inputs to \fors are bit strings of length $k\log t$.
 \caption{FORS trees and PK}
 \end{figure}
 
-\subsection{\fors Private Key (Function \texttt{fors\_SKgen})} 
+\subsection{\fors Private Key (Function \texttt{fors\_SKgen})}
 In the context of \spx, a \fors private key is the single private seed \sseed
-contained in the \spx private key. It is used to generate the $kt$ $n$-byte 
-private key values using \sphincsPRF with a \fors key generation address. While these values are 
-logically grouped into a two-dimensional array, for implementations it makes sense to assume they 
-are in a one-dimensional array of length $kt$. 
-The $j$th element of the $i$th set is then stored at $\sk[it + j]$. 
+contained in the \spx private key. It is used to generate the $kt$ $n$-byte
+private key values using \sphincsPRF with a \fors key generation address. While these values are
+logically grouped into a two-dimensional array, for implementations it makes sense to assume they
+are in a one-dimensional array of length $kt$.
+The $j$th element of the $i$th set is then stored at $\sk[it + j]$.
 \begin{code}
   fors_SKgen' : ([n]Byte, Address) -> FORSPrKey
   fors_SKgen'(SKseed, ADRS) =
     [(fors_SKgen(SKseed, ADRS, i*`t+j)) | j <- [0 .. t-1], i <- [0 .. k-1]]
 \end{code}
-To generate one of these elements, a \fors key generation address \skadrs is used, that encodes the 
-position of the \fors key pair within \spx and has 
-tree height set to $0$ and leaf index set to $it+j$: 
+To generate one of these elements, a \fors key generation address \skadrs is used, that encodes the
+position of the \fors key pair within \spx and has
+tree height set to $0$ and leaf index set to $it+j$:
 
 \begin{lstlisting}[label=alg:fors_skgen, language=pseudoc,
                    caption=\texttt{fors\_SKgen} -- Computing a \fors private key value.]
@@ -1997,7 +1997,7 @@ fors_SKgen(SK.seed, ADRS, idx) {
   skADRS = ADRS; // copy address to create key generation address
   skADRS.setType(FORS_PRF);
   skADRS.setKeyPairAddress(ADRS.getKeyPairAddress());
-  
+
   skADRS.setTreeHeight(0);
   skADRS.setTreeIndex(idx);
   sk = PRF(SK.seed, skADRS);
@@ -2019,26 +2019,26 @@ fors_SKgen(SK.seed, ADRS, idx) {
 \end{code}
 
 \subsection{\fors TreeHash (Function \forstreehash)}
-   Before coming to the \fors public key, we have to discuss computation of the 
+   Before coming to the \fors public key, we have to discuss computation of the
    trees.
    For the computation of the $n$-byte nodes in the \fors hash trees,
    the subroutine \forstreehash is used. It is essentially the same algorithm
-   as \treehash (\autoref{algo:treehash}) in \autoref{sec:xmss}. The two 
+   as \treehash (\autoref{algo:treehash}) in \autoref{sec:xmss}. The two
    differences are how the leaf nodes are computed and how addresses are handled.
    However, as the addresses are similar, an implementation can implement both
    algorithms in the same routine easily.
-   
+
    Algorithm \forstreehash accepts a secret seed \sseed,
    a public seed \pseed, an unsigned integer $s$ (the start index), an
    unsigned integer $z$ (the target node height), and an address \adrs that
    encodes the address of the \fors key pair. As for \treehash, the
    \forstreehash algorithm returns the root node of a tree of height $z$ with
-   the leftmost leaf being the hash of the private key element at index $s$. 
+   the leftmost leaf being the hash of the private key element at index $s$.
    Here, $s$ is ranging over the whole $kt$ private key elements.
    It is REQUIRED that $s\ \%\ 2^z = 0$, i.e. that the leaf at index $s$ is a
    leftmost leaf of a sub-tree of height $z$.  Otherwise the algorithm fails
-   as it would compute non-existent nodes.  
-   
+   as it would compute non-existent nodes.
+
    \begin{lstlisting}[breaklines=true, label=algo:forstreehash, language=pseudoc,
                    caption=The \forstreehash algorithm.]
 
@@ -2048,7 +2048,7 @@ fors_SKgen(SK.seed, ADRS, idx) {
 fors_treehash(SK.seed, s, z, PK.seed, ADRS) {
      if( s % (1 << z) != 0 ) return -1;
      for ( i = 0; i < 2^z; i++ ) {
-       sk = fors_SKgen(SK.seed, ADRS, s+i) 
+       sk = fors_SKgen(SK.seed, ADRS, s+i)
        node = F(PK.seed, ADRS, sk);
        ADRS.setTreeHeight(1);
        ADRS.setTreeIndex(s + i);
@@ -2082,11 +2082,11 @@ fors_treehash(SK.seed, s, z, PK.seed, ADRS) {
 \end{code}
 
 \subsection{\fors Public Key (Function \forspkgen)}
-In the context of \spx, the \fors public key is never generated alone. It is 
+In the context of \spx, the \fors public key is never generated alone. It is
 only generated together with a signature. We include \forspkgen
-for completeness, a better understanding, and testing. Algorithm \forspkgen takes 
-a private seed \sseed, a public seed \pseed, and a \fors address \adrs. The 
-latter encodes the position of the \fors instance within \spx. It outputs a 
+for completeness, a better understanding, and testing. Algorithm \forspkgen takes
+a private seed \sseed, a public seed \pseed, and a \fors address \adrs. The
+latter encodes the position of the \fors instance within \spx. It outputs a
 \fors public key.
 
 \begin{lstlisting}[label=alg:fors:pkgen, language=pseudoc,
@@ -2121,7 +2121,7 @@ fors_PKgen(SK.seed, PK.seed, ADRS) {
 \end{code}
 
 \subsection{\fors Signature Generation (Function \forssign)}
-A \fors signature is a length $k(\log t + 1)$ array of $n$-byte strings. It contains 
+A \fors signature is a length $k(\log t + 1)$ array of $n$-byte strings. It contains
 $k$ private key values, $n$-bytes each, and their associated authentication
 paths, $\log t$ $n$-byte values each.
 
@@ -2131,8 +2131,8 @@ paths, $\log t$ $n$-byte values each.
   type FORSSig = [k*(logt+1)*n]Byte
 \end{code}
 
-The algorithm \forssign takes a $(k\log t)$-bit string $M$, a private seed \sseed, 
-a public seed \pseed, and an address \adrs. The latter encodes the position of 
+The algorithm \forssign takes a $(k\log t)$-bit string $M$, a private seed \sseed,
+a public seed \pseed, and an address \adrs. The latter encodes the position of
 the \fors instance within \spx. It outputs a \fors signature \forssig.
 
 \begin{lstlisting}[label=alg:fors_sign, language=pseudoc,
@@ -2140,20 +2140,20 @@ the \fors instance within \spx. It outputs a \fors signature \forssig.
 #Input: Bit string M, secret seed SK.seed, address ADRS, public seed PK.seed
 #Output: FORS signature SIG_FORS
 
-fors_sign(M, SK.seed, PK.seed, ADRS) {  
-  // compute signature elements 
+fors_sign(M, SK.seed, PK.seed, ADRS) {
+  // compute signature elements
   for(i = 0; i < k; i++){
     // get next index
     unsigned int idx = bits i*log(t) to (i+1)*log(t) - 1 of M;
-    
+
     // pick private key element
     SIG_FORS = SIG_FORS || fors_SKgen(SK.seed, ADRS, i*t + idx) ;
-    
+
     // compute auth path
     for ( j = 0; j < a; j++ ) {
       s = floor(idx / (2^j)) XOR 1;
       AUTH[j] = fors_treehash(SK.seed, i * t + s * 2^j, j, PK.seed, ADRS);
-    } 
+    }
     SIG_FORS = SIG_FORS || AUTH;
   }
   return SIG_FORS;
@@ -2199,28 +2199,28 @@ The data format for a signature is given in \autoref{fig:fors:sig}.
 
 \subsection{\fors Compute Public Key from Signature (Function \forspkfromsig)}
 
-   \spx makes use of implicit signature verification of \fors signatures. 
-   A \fors signature is used to compute a candidate \fors public key. This 
-   public key is used in further computations (message for the signature of 
-   the \xmss tree above) and implicitly verified by the outcome of that computation. Hence, this specification does 
-   not contain a \texttt{fors\_verify} method but the method 
-   \forspkfromsig. 
-   
-   The method \forspkfromsig takes a $k\log t$-bit string \msg, 
-   a \fors signature \forssig, a public seed \pseed, and 
-   an address \adrs. The latter encodes the position of the \fors 
-   instance within the virtual structure of the \spx key pair. 
-   First, the roots of the $k$ binary hash trees are computed using 
+   \spx makes use of implicit signature verification of \fors signatures.
+   A \fors signature is used to compute a candidate \fors public key. This
+   public key is used in further computations (message for the signature of
+   the \xmss tree above) and implicitly verified by the outcome of that computation. Hence, this specification does
+   not contain a \texttt{fors\_verify} method but the method
+   \forspkfromsig.
+
+   The method \forspkfromsig takes a $k\log t$-bit string \msg,
+   a \fors signature \forssig, a public seed \pseed, and
+   an address \adrs. The latter encodes the position of the \fors
+   instance within the virtual structure of the \spx key pair.
+   First, the roots of the $k$ binary hash trees are computed using
    \forstreehash. Afterwards the roots are hashed using the tweakable hash
    function $\sphincsT_k$.
 %    \TODO {Clarify that this step takes place by the signer. --Andy: No, it takes place at signer AND verifier. On the signer side it is kind of a misuse of this method.}
-   The algorithm \forspkfromsig is given 
-   as \autoref{alg:fors:rootFromSig}. The method \forspkfromsig makes use of 
-   functions $\forssig\texttt{.getSK(i)}$ and $\forssig\texttt{.getAUTH(i)}$. The 
-   former returns the $i$th secret key element stored in the 
+   The algorithm \forspkfromsig is given
+   as \autoref{alg:fors:rootFromSig}. The method \forspkfromsig makes use of
+   functions $\forssig\texttt{.getSK(i)}$ and $\forssig\texttt{.getAUTH(i)}$. The
+   former returns the $i$th secret key element stored in the
    signature, the latter returns the $i$th authentication path stored in
    the signature.
-%    \TODO{Looks like what is missing here is that you calculate the FORS PK and compare it to the 
+%    \TODO{Looks like what is missing here is that you calculate the FORS PK and compare it to the
 %    PK extracted with \forspkfromsig. --Andy: No, that's exactly what implicit signature verification is about. }
 
 \begin{code}
@@ -2230,28 +2230,28 @@ The data format for a signature is given in \autoref{fig:fors:sig}.
   getAUTH : (FORSSig, Integer) -> [logt][n]Byte
   getAUTH(SIG_FORS, i) = groupBy(drop`{n}((split`{k}SIG_FORS)@i))
 \end{code}
-   
-   
+
+
 \begin{lstlisting}[breaklines=true, label=alg:fors:rootFromSig, language=pseudoc,
-                   caption=\forspkfromsig\ -- 
+                   caption=\forspkfromsig\ --
                    Compute a \fors public key from a \fors signature.]
 
 # Input: FORS signature SIG_FORS, (k lg t)-bit string M, public seed PK.seed, address ADRS
 # Output: FORS public key
 
 fors_pkFromSig(SIG_FORS, M, PK.seed, ADRS){
-     
+
   // compute roots
   for(i = 0; i < k; i++){
     // get next index
     unsigned int idx = bits i*log(t) to (i+1)*log(t) - 1 of M;
-    
+
     // compute leaf
     sk = SIG_FORS.getSK(i);
     ADRS.setTreeHeight(0);
     ADRS.setTreeIndex(i*t + idx);
     node[0] = F(PK.seed, ADRS, sk);
-     
+
     // compute root from leaf and AUTH
     auth = SIG_FORS.getAUTH(i);
     ADRS.setTreeIndex(i*t + idx);
@@ -2300,7 +2300,7 @@ fors_pkFromSig(SIG_FORS, M, PK.seed, ADRS){
 
       rooti = foldl computeNode node0 [0 .. a-1]
 
-      computeNode prevnode j = nextnode where 
+      computeNode prevnode j = nextnode where
         ADRSj = setTreeHeight(ADRSi'', j+1)
         nextnode =
           if ( (floor(ratio idx 2^^j) % 2) == 0 ) then
@@ -2319,10 +2319,10 @@ fors_pkFromSig(SIG_FORS, M, PK.seed, ADRS){
 \section{\spx}
 %\section{The \spx Construction}
 \label{sec:spx}
-We now have all ingredients to describe our main construction \spx. 
-Essentially, \spx is an orchestration of the methods and schemes described 
+We now have all ingredients to describe our main construction \spx.
+Essentially, \spx is an orchestration of the methods and schemes described
 before. It only adds randomized message compression and verifiable index
-generation. 
+generation.
 
 \subsection{\spx Parameters}
 
@@ -2353,12 +2353,12 @@ generation.
     type constraint (fin a, a >= 1)
 \end{code}
 
-All the restrictions stated in the previous sections apply. Recall that 
+All the restrictions stated in the previous sections apply. Recall that
 we use $a = \log t$. Moreover, from these values the values $m$ and \len are
 computed as
 \begin{itemize}
-  \item $m$: the message digest length in bytes. 
-  It is computed as 
+  \item $m$: the message digest length in bytes.
+  It is computed as
   $$m=\floor{(k\log t +7)/ 8} + \floor{(h - h/d +7)/ 8} + \floor{(h / d +7)/ 8}.$$
 
 \begin{code}
@@ -2367,7 +2367,7 @@ computed as
     type constraint (m == (k*logt+7)/8 + (h-h/d+7)/8 + (h/d+7)/8)
 \end{code}
 
-  While only $h + k\log t$ bits would be needed, using the longer $m$ as defined 
+  While only $h + k\log t$ bits would be needed, using the longer $m$ as defined
   above simplifies implementations significantly.
   \item $\len$: the number of $n$-byte string elements in a \wotsp private
         key, public key, and signature. It is computed as $\len =
@@ -2386,25 +2386,25 @@ In the following, we assume that all algorithms have access to these parameters.
 
 \subsection{\spx Key Generation (Function \spxkgen)}
 
-   The \spx private key contains two elements. First, the $n$-byte secret seed 
-   \sseed which is used to generate all the \wotsp and \fors private key elements. 
-   Second, an $n$-byte PRF key \skprf which is used to deterministically 
-   generate a randomization value for the randomized message hash. 
+   The \spx private key contains two elements. First, the $n$-byte secret seed
+   \sseed which is used to generate all the \wotsp and \fors private key elements.
+   Second, an $n$-byte PRF key \skprf which is used to deterministically
+   generate a randomization value for the randomized message hash.
 
-   The \spx public key also contains two elements. First, the \hyper public key, 
+   The \spx public key also contains two elements. First, the \hyper public key,
    i.e. the root of the tree on the top layer. Second, an $n$-byte public seed
    value \pseed which is sampled uniformly at random.
-   
-   As \spxsign does not get the public key, but needs access to \pseed (and 
-   possibly to \proot for fault attack mitigation), the \spx secret key contains 
+
+   As \spxsign does not get the public key, but needs access to \pseed (and
+   possibly to \proot for fault attack mitigation), the \spx secret key contains
    a copy of the public key.
 
 \begin{code}
   type SK_SPHINCS = ([n]Byte, [n]Byte, [n]Byte, [n]Byte)
-  type PK_SPHINCS = ([n]Byte, [n]Byte) 
+  type PK_SPHINCS = ([n]Byte, [n]Byte)
 \end{code}
-   
-   The description of algorithm \spxkgen assumes the existence of a function 
+
+   The description of algorithm \spxkgen assumes the existence of a function
    \texttt{sec\_rand} which on input $i$ returns $i$-bytes of cryptographically strong
    randomness.
 
@@ -2414,7 +2414,7 @@ In the following, we assume that all algorithms have access to these parameters.
 # Input: (none)
 # Output: SPHINCS+ key pair (SK,PK)
 
-spx_keygen( ){          
+spx_keygen( ){
      SK.seed = sec_rand(n);
      SK.prf = sec_rand(n);
      PK.seed = sec_rand(n);
@@ -2428,7 +2428,7 @@ spx_keygen( ){
   spx_keygen : ([n]Byte, [n]Byte, [n]Byte) -> (SK_SPHINCS, PK_SPHINCS)
   spx_keygen(SKseed, SKprf, PKseed) =
     ( (SKseed, SKprf, PKseed, PKroot), (PKseed, PKroot) )
-    where 
+    where
       PKroot = ht_PKgen(SKseed, PKseed)
 \end{code}
 
@@ -2457,15 +2457,15 @@ spx_keygen( ){
         \end{center}
       \end{minipage}
   \end{center}
-  \caption{Left: \spx secret key. Right: \spx public key.} 
+  \caption{Left: \spx secret key. Right: \spx public key.}
   \label{fig:spx:keys}
 \end{figure}
 
 \subsection{\spx Signature}
 
-   A \spx signature \htsig is a byte string of length $(1 + k(a + 1) + h + d\len)n$.  
-   It consists of an $n$-byte randomization string $R$, a \fors signature 
-   \forssig consisting of $k(a+1)$ $n$-byte strings, and a \hyper signature \htsig 
+   A \spx signature \htsig is a byte string of length $(1 + k(a + 1) + h + d\len)n$.
+   It consists of an $n$-byte randomization string $R$, a \fors signature
+   \forssig consisting of $k(a+1)$ $n$-byte strings, and a \hyper signature \htsig
    of $(h + d\len)n$ bytes.
 
 \begin{code}
@@ -2484,45 +2484,45 @@ spx_keygen( ){
       \\[-0.5em] \hyper signature \htsig ($(h +d\len)n$ bytes) \\[-0.5em] \\ \hline
     \end{tabular}
   \end{center}
-  \caption{\spx signature} 
+  \caption{\spx signature}
   \label{fig:spx:sig}
 \end{figure}
 
 \subsection{\spx Signature Generation (Function \spxsign)}
-   Generating a \spx signature consists of four steps. First, a random value 
+   Generating a \spx signature consists of four steps. First, a random value
    \Random
-   is pseudorandomly generated. Next, this is used to compute a $m$ byte message 
+   is pseudorandomly generated. Next, this is used to compute a $m$ byte message
    digest which is split into a $\floor{(k\log t +7)/ 8}$-byte partial message
-   digest $\texttt{tmp\_md}$, a $\floor{(h - h/d +7)/ 8}$-byte tree index $\texttt{tmp\_idx\_tree}$, and 
-   a $\floor{(h / d +7)/ 8}$-byte 
+   digest $\texttt{tmp\_md}$, a $\floor{(h - h/d +7)/ 8}$-byte tree index $\texttt{tmp\_idx\_tree}$, and
+   a $\floor{(h / d +7)/ 8}$-byte
    leaf index $\texttt{tmp\_idx\_leaf}$. Next, the actual values \md,
-   $\texttt{idx\_tree}$, and $\texttt{idx\_leaf}$ are computed by extracting the 
+   $\texttt{idx\_tree}$, and $\texttt{idx\_leaf}$ are computed by extracting the
    necessary number of bits.
    The partial message digest
-   \md is then signed with the $\texttt{idx\_leaf}$-th 
-   \fors key pair of the $\texttt{idx\_tree}$-th \xmss tree on the lowest \hyper layer. 
-   The public key of the \fors key pair is then signed using 
+   \md is then signed with the $\texttt{idx\_leaf}$-th
+   \fors key pair of the $\texttt{idx\_tree}$-th \xmss tree on the lowest \hyper layer.
+   The public key of the \fors key pair is then signed using
    \hyper. As described in Section~\ref{sec:hyper:sign}, the index is never
    actually used as a whole, but immediately split into a tree index
    and a leaf index, for ease of implementation.
-   
-   When computing \Random, the PRF takes a $n$-byte string \texttt{opt} 
+
+   When computing \Random, the PRF takes a $n$-byte string \texttt{opt}
    which is initialized with \pseed but can be overwritten with randomness
    if the global variable RANDOMIZE is set. This option is given as otherwise
-   \spx signatures would be always deterministic. This might be problematic in 
-   some settings. See \autoref{sec:security} and \autoref{sec:discussion} for 
+   \spx signatures would be always deterministic. This might be problematic in
+   some settings. See \autoref{sec:security} and \autoref{sec:discussion} for
    more details.
 
 \begin{lstlisting}[label=alg:spx:sign, mathescape, language=pseudoc,
                    caption=\spxsign\ -- Generating a \spx signature]
-   
+
 # Input: Message M, private key SK = (SK.seed, SK.prf, PK.seed, PK.root)
 # Output: SPHINCS+ signature SIG
 
 spx_sign(M, SK){
      // init
      ADRS = toByte(0, 32);
-     
+
      // generate randomizer
      opt = PK.seed;
      if(RANDOMIZE){
@@ -2530,13 +2530,13 @@ spx_sign(M, SK){
      }
      R = PRF_msg(SK.prf, opt, M);
      SIG = SIG || R;
-     
+
      // compute message digest and index
      digest = H_msg(R, PK.seed, PK.root, M);
      tmp_md = first floor((ka +7)/ 8) bytes of digest;
      tmp_idx_tree = next floor((h - h/d +7)/ 8) bytes of digest;
      tmp_idx_leaf = next floor((h/d +7)/ 8) bytes of digest;
-     
+
      md = first ka bits of tmp_md;
      idx_tree = first h - h/d bits of tmp_idx_tree;
      idx_leaf = first h/d bits of tmp_idx_leaf;
@@ -2549,15 +2549,15 @@ spx_sign(M, SK){
 
      SIG_FORS = fors_sign(md, SK.seed, PK.seed, ADRS);
      SIG = SIG || SIG_FORS;
-     
+
      // get FORS public key
      PK_FORS = fors_pkFromSig(SIG_FORS, md, PK.seed, ADRS);
-     
+
      // sign FORS public key with HT
      ADRS.setType(TREE);
      SIG_HT = ht_sign(PK_FORS, SK.seed, PK.seed, idx_tree, idx_leaf);
      SIG = SIG || SIG_HT;
-     
+
      return SIG;
 }
 \end{lstlisting}
@@ -2571,7 +2571,7 @@ spx_sign(M, SK){
 
     // generate randomizer
     opt = PKseed
-    
+
     R = PRF_msg(SKprf, opt, M) : [n]Byte
 
     // compute message digest and index
@@ -2596,7 +2596,7 @@ spx_sign(M, SK){
 
     SIG_FORS = fors_sign(md, SKseed, PKseed, ADRS): FORSSig
 
-    // get FORS public key 
+    // get FORS public key
     PK_FORS = fors_pkFromSig(SIG_FORS, md, PKseed, ADRS)
 
     // sign FORS public key with HT
@@ -2608,11 +2608,11 @@ spx_sign(M, SK){
 
 \subsection{\spx Signature Verification (Function \spxverify)}
 
-   \spx signature verification (\autoref{alg:spx:ver}) can be summarized as 
+   \spx signature verification (\autoref{alg:spx:ver}) can be summarized as
    recomputing message digest and index, computing a candidate \fors public key,
    and verifying the \hyper signature on that public key. Note that the \hyper
    signature verification will fail if the \fors public key is not matching the
-   real one (with overwhelming probability). \spx signature verification takes 
+   real one (with overwhelming probability). \spx signature verification takes
    a message \msg, a signature \spxsig, and a \spx public key \PK.
 
 \begin{code}
@@ -2630,7 +2630,7 @@ spx_sign(M, SK){
 \begin{lstlisting}[breaklines=true, label=alg:spx:ver, mathescape, language=pseudoc,
                    caption=\spxverify\ -- Verify a \spx signature \spxsig on a
    message \msg using a \spx public key \PK]
-   
+
 # Input: Message M, signature SIG, public key PK
 # Output: Boolean
 
@@ -2641,13 +2641,13 @@ spx_verify(M, SIG, PK){
      SIG_FORS = SIG.getSIG_FORS();
      SIG_HT = SIG.getSIG_HT();
 
-     
+
      // compute message digest and index
      digest = H_msg(R, PK.seed, PK.root, M);
      tmp_md = first floor((ka +7)/ 8) bytes of digest;
      tmp_idx_tree = next floor((h - h/d +7)/ 8) bytes of digest;
      tmp_idx_leaf = next floor((h/d +7)/ 8) bytes of digest;
-     
+
      md = first ka bits of tmp_md;
      idx_tree = first h - h/d bits of tmp_idx_tree;
      idx_leaf = first h/d bits of tmp_idx_leaf;
@@ -2657,9 +2657,9 @@ spx_verify(M, SIG, PK){
      ADRS.setTreeAddress(idx_tree);
      ADRS.setType(FORS_TREE);
      ADRS.setKeyPairAddress(idx_leaf);
-     
+
      PK_FORS = fors_pkFromSig(SIG_FORS, md, PK.seed, ADRS);
-     
+
      // verify HT signature
      ADRS.setType(TREE);
      return ht_verify(PK_FORS, SIG_HT, PK.seed, idx_tree, idx_leaf, PK.root);
@@ -2668,10 +2668,10 @@ spx_verify(M, SIG, PK){
 
 \begin{code}
   spx_verify : {lmsg} (fin lmsg) =>
-    ([lmsg]Byte, SIG_SPHINCS, PK_SPHINCS) -> Bit 
+    ([lmsg]Byte, SIG_SPHINCS, PK_SPHINCS) -> Bit
   spx_verify(M, SIG, PK) =
     ht_verify(PK_FORS, SIG_HT, PKseed, idx_tree, idx_leaf, PKroot)
-    where 
+    where
       (PKseed, PKroot) = PK
 
       // init
@@ -2718,29 +2718,29 @@ spx_verify(M, SIG, PK){
 \section{Instantiations}
 \label{sec:instantiations}
 
-This section discusses instantiations for \spx. \spx can be 
-viewed as a signature template. It is a way to build a signature 
+This section discusses instantiations for \spx. \spx can be
+viewed as a signature template. It is a way to build a signature
 scheme by instantiating the cryptographic function families used. We consider
-different ways to implement the cryptographic function families as 
-different signature systems. Orthogonal to instantiating the cryptographic 
+different ways to implement the cryptographic function families as
+different signature systems. Orthogonal to instantiating the cryptographic
 function families are parameter sets. Parameter sets
-assign  specific values to the \spx parameters described in \autoref{sec:spx:params} below. 
+assign  specific values to the \spx parameters described in \autoref{sec:spx:params} below.
 
-In this section, we first define the requirements on parameters and discuss 
-existing trade-offs between 
-security, sizes, and speed controlled by the different parameters. Then we 
-propose 6 different parameter sets that match NIST security levels $I$, 
-$III$, and $V$ (2 parameter sets per security level). Afterwards we propose 
-three different instantiations for the cryptographic function families of \spx. 
-These instantiation are indeed three different signature schemes. We propose 
-\spx-\shathree, \spx-\shatwo, and \spx-\haraka. The 
-former two use the cryptographic hash functions defined in FIPS PUB 202, 
-respectively FIPS PUB 180, to instantiate the cryptographic function families. 
+In this section, we first define the requirements on parameters and discuss
+existing trade-offs between
+security, sizes, and speed controlled by the different parameters. Then we
+propose 6 different parameter sets that match NIST security levels $I$,
+$III$, and $V$ (2 parameter sets per security level). Afterwards we propose
+three different instantiations for the cryptographic function families of \spx.
+These instantiation are indeed three different signature schemes. We propose
+\spx-\shathree, \spx-\shatwo, and \spx-\haraka. The
+former two use the cryptographic hash functions defined in FIPS PUB 202,
+respectively FIPS PUB 180, to instantiate the cryptographic function families.
 The latter uses a new cryptographic (hash) function called \haraka, proposed in
-\cite{articleToSC563}. 
+\cite{articleToSC563}.
 
 \subsection{\spx Parameter Sets}\label{sec:spx:params}
-\spx is described by the following parameters already described in the previous 
+\spx is described by the following parameters already described in the previous
 sections. All parameters take positive integer values.
 \begin{description}
  \item  $n$ : the security parameter in bytes.
@@ -2751,11 +2751,11 @@ sections. All parameters take positive integer values.
  \item  $t$ : the number of leaves of a \fors tree.
 \end{description}
 
-Recall that 
+Recall that
 we use $a = \log t$. Moreover, from these values the values $m$ and \len are
 computed as
 \begin{itemize}
-  \item $m$: the message digest length in bytes. 
+  \item $m$: the message digest length in bytes.
   It is computed as $m = \floor{(k\log t +7)/ 8} + \floor{(h - h/d +7)/ 8} + \floor{(h / d +7)/ 8}$.
   \item $\len$: the number of $n$-byte string elements in a \wotsp private
         key, public key, and signature. It is computed as $\len =
@@ -2767,92 +2767,92 @@ computed as
 \end{itemize}
 
 We now repeat the roles of, requirements on, and properties of these parameters.
-Afterwards, we give several formulas that show their exact influence on 
+Afterwards, we give several formulas that show their exact influence on
 performance and security.
 
-The security parameter $n$ is also the output length of all cryptographic function 
-families besides \sphincsHmsg. Therefore, it largely determines which security 
-level a parameter set reaches. It is also the size of virtually any node 
-within the \spx structure and thereby also the size of all elements in a 
-signature, i.e., the signature size is a multiple of $n$. 
+The security parameter $n$ is also the output length of all cryptographic function
+families besides \sphincsHmsg. Therefore, it largely determines which security
+level a parameter set reaches. It is also the size of virtually any node
+within the \spx structure and thereby also the size of all elements in a
+signature, i.e., the signature size is a multiple of $n$.
 
-The Winternitz parameter $w$ determines the number and length of the hash chains per 
-\wotsp instance. A greater value for $w$ linearly increases the length of the 
-hash chains but logarithmically reduces their number. The number of hash 
-chains exactly corresponds to the number of $n$-byte values in a \wotsp 
-signature. Thereby it largely influences the size of a \spx signature. 
-The product of the number and the length of hash chains directly correlates with 
-signing speed as essentially all time in \hyper signature generation is spent 
-computing \wotsp public keys. Therefore, greater $w$ means shorter signatures 
-but slower signing. However, note the exponential gap. The bigger $w$ gets, 
-the more expensive is the signature size reduction. The Winternitz parameter 
+The Winternitz parameter $w$ determines the number and length of the hash chains per
+\wotsp instance. A greater value for $w$ linearly increases the length of the
+hash chains but logarithmically reduces their number. The number of hash
+chains exactly corresponds to the number of $n$-byte values in a \wotsp
+signature. Thereby it largely influences the size of a \spx signature.
+The product of the number and the length of hash chains directly correlates with
+signing speed as essentially all time in \hyper signature generation is spent
+computing \wotsp public keys. Therefore, greater $w$ means shorter signatures
+but slower signing. However, note the exponential gap. The bigger $w$ gets,
+the more expensive is the signature size reduction. The Winternitz parameter
 does not influence \spx security.
 
 The height of the hypertree $h$ determines the number of \fors instances. Hence,
-it determines the probability that a \fors key pair is used several times, 
-given the number of signatures made with a \spx key pair. Hence, the height has 
-a direct impact on security: A taller hypertree gives more security. On the 
+it determines the probability that a \fors key pair is used several times,
+given the number of signatures made with a \spx key pair. Hence, the height has
+a direct impact on security: A taller hypertree gives more security. On the
 other hand, a taller tree leads to larger signatures.
 
 The number of layers $d$ is a pure performance trade-off parameter and does not
-influence security. It determines the number of layers of \xmss trees in the 
-hypertree. Hence, $d$ must divide $h$ without remainder. The parameter $d$ 
+influence security. It determines the number of layers of \xmss trees in the
+hypertree. Hence, $d$ must divide $h$ without remainder. The parameter $d$
 thereby defines the height of the \xmss trees used. The greater $d$, the smaller
-the subtrees, the faster signing. However, $d$ also controls the number of 
-layers and thereby the number of \wotsp signatures within a \hyper and thereby 
-a \spx signature. 
+the subtrees, the faster signing. However, $d$ also controls the number of
+layers and thereby the number of \wotsp signatures within a \hyper and thereby
+a \spx signature.
 
-The parameters $k$ and $t$ determine the performance and security of \fors. The 
+The parameters $k$ and $t$ determine the performance and security of \fors. The
 number of leaves of a tree in \fors $t$ must be a power of two while $k$ can be
 chosen freely. A smaller $t$ generally leads to smaller and faster signatures.
 However, for a given security level a smaller $t$ requires a greater $k$
-which increases signature size and slows down signing. Hence, it is important 
+which increases signature size and slows down signing. Hence, it is important
 to balance these two parameters. This is best done using the formulas below.
 
-The message digest length $m$ is the output length of \sphincsHmsg in bytes. 
-It is $\floor{(k\log t +7)/ 8} + \floor{(h - h/d +7)/ 8} + \floor{(h / d +7)/ 8}$ 
-bytes. 
+The message digest length $m$ is the output length of \sphincsHmsg in bytes.
+It is $\floor{(k\log t +7)/ 8} + \floor{(h - h/d +7)/ 8} + \floor{(h / d +7)/ 8}$
+bytes.
 
 The number $\len$ of chains in a \wotsp key pair determines the \wotsp signature size.
 
 \subsubsection{Influence of Parameters on Security and Performance}
 \label{sec:generic-estimates}
-In the following we provide formulas to compute speed, size and security for 
+In the following we provide formulas to compute speed, size and security for
 a given \spx parameter set. This supports parameter selection. We also provide
 a SAGE script in \autoref{sec:evalscript}.
 
-\paragraph{Key Generation.} Generating the \spx private key and \pseed requires 
-three calls to a secure random number generator. Next we have to generate the 
-top tree. For the leaves we need to do $2^{h/d}$ \wotsp key generations ($\len$ 
-calls to \sphincsPRF for generating the \sk and $w \len$ calls to \sphincsF for the \pk) 
-and we have to compress the \wotsp public key (one call to $T_\len$). Computing 
+\paragraph{Key Generation.} Generating the \spx private key and \pseed requires
+three calls to a secure random number generator. Next we have to generate the
+top tree. For the leaves we need to do $2^{h/d}$ \wotsp key generations ($\len$
+calls to \sphincsPRF for generating the \sk and $w \len$ calls to \sphincsF for the \pk)
+and we have to compress the \wotsp public key (one call to $T_\len$). Computing
 the root of the top tree requires $(2^{h/d} - 1)$ calls to \sphincsH.
 
 \paragraph{Signing.} For randomization and message compression we need one call to
-%$\sphincsPRF$, 
-$\sphincsPRFmsg$, and one to $\sphincsHmsg$. The \fors signature requires 
-$kt$ calls to \sphincsPRF and \sphincsF. Further, we have to compute the root of 
-$k$ binary trees of height $\log t$ which adds $k(t - 1)$ calls to \sphincsH. 
-Finally, we need one call to $T_k$. Next, we compute one HT signature which 
-consists of $d$ trees similar to the key generation. Hence, we have to do 
+%$\sphincsPRF$,
+$\sphincsPRFmsg$, and one to $\sphincsHmsg$. The \fors signature requires
+$kt$ calls to \sphincsPRF and \sphincsF. Further, we have to compute the root of
+$k$ binary trees of height $\log t$ which adds $k(t - 1)$ calls to \sphincsH.
+Finally, we need one call to $T_k$. Next, we compute one HT signature which
+consists of $d$ trees similar to the key generation. Hence, we have to do
 $d(2^{h/d})$ times $\len$ calls to \sphincsPRF and $w\len$ calls to \sphincsF
-as well as $d(2^{h/d})$ calls to $\sphincsT_\len$. For computing 
+as well as $d(2^{h/d})$ calls to $\sphincsT_\len$. For computing
 the root of each tree we get additionally $d(2^{h/d} - 1)$ calls to \sphincsH.
 
-\paragraph{Verification.} First we need to compute the message hash using 
+\paragraph{Verification.} First we need to compute the message hash using
 $\sphincsHmsg$. We need to do one \fors verification which requires
-$k$ calls to %\sphincsPRF and 
+$k$ calls to %\sphincsPRF and
 \sphincsF (to compute the leaf nodes from the signature elements), $k\log t$ calls to \sphincsH (to compute the root nodes using the leaf nodes and the authentication paths), and one call
-to $T_k$ for hashing the roots. Next, we have to verify $d$ \xmss signatures 
+to $T_k$ for hashing the roots. Next, we have to verify $d$ \xmss signatures
 which takes $<w\len$ calls to \sphincsF and one call to $T_\len$ each for \wotsp
-signature verification\footnote{It should be noted that the $w\len$ bound for calls to \sphincsF is a worst-case bound. This is a bound on the cost for \wots signature verification. Given that the messages are hash values which can assumed to be close to uniformly distributed, this value will be closer to the average-case bound $(w/2) \cdot \len$ in actual measurements.}. It also needs $dh/d$ calls to \sphincsH for the $d$ 
+signature verification\footnote{It should be noted that the $w\len$ bound for calls to \sphincsF is a worst-case bound. This is a bound on the cost for \wots signature verification. Given that the messages are hash values which can assumed to be close to uniformly distributed, this value will be closer to the average-case bound $(w/2) \cdot \len$ in actual measurements.}. It also needs $dh/d$ calls to \sphincsH for the $d$
 root computations.
 
 \begin{table}
    \centering
-   \caption{Overview of the number of function calls we require for each 
-            operation. We omit the single calls to $\sphincsHmsg, \sphincsPRFmsg$, 
-            and $\sphincsT_k$ for signing and single calls to $\sphincsHmsg$ 
+   \caption{Overview of the number of function calls we require for each
+            operation. We omit the single calls to $\sphincsHmsg, \sphincsPRFmsg$,
+            and $\sphincsT_k$ for signing and single calls to $\sphincsHmsg$
             and $\sphincsT_k$ for verification as they are negligible when
             estimating speed.}
    \label{tab:perfcalls}
@@ -2860,22 +2860,22 @@ root computations.
       \toprule
                & \sphincsF & \sphincsH & \sphincsPRF & $T_\len$\\
       \midrule
-      Key Generation & $2^{h/d}w\len $ 
-                     & $2^{h/d} - 1$ 
-                     & $2^{h/d}\len$ 
+      Key Generation & $2^{h/d}w\len $
+                     & $2^{h/d} - 1$
+                     & $2^{h/d}\len$
                      & $2^{h/d}$\\
-      Signing        & $kt + d(2^{h/d})w\len$ 
-                     & $k(t - 1) + d(2^{h/d} - 1)$ 
-                     & $kt + d(2^{h/d})\len$ % + 1$ 
+      Signing        & $kt + d(2^{h/d})w\len$
+                     & $k(t - 1) + d(2^{h/d} - 1)$
+                     & $kt + d(2^{h/d})\len$ % + 1$
                      & $d2^{h/d}$\\
-      Verification   & $k + dw\len$ 
+      Verification   & $k + dw\len$
                      & $k\log t + h$
                      & -- %$kt$
                      & $d$ \\
       \bottomrule
    \end{tabular}
-\end{table} 
-~\\ 
+\end{table}
+~\\
 The size of the \spx private and public keys along with the signature can be deduced from \autoref{sec:spx}
 and is shown in Table~\ref{tab:sizes}.
 
@@ -2887,8 +2887,8 @@ and is shown in Table~\ref{tab:sizes}.
       \toprule
                & SK & PK & Sig \\
       \midrule
-      Size & $4n$ 
-           & $2n$ 
+      Size & $4n$
+           & $2n$
            & $(h+k(\log t+1) +d\cdot len+1)n$ \\
       \bottomrule
    \end{tabular}
@@ -2912,7 +2912,7 @@ $$b = - \frac{1}{2} \log\left(
   \left(1-{1\over 2^h}\right)^{q-\gamma}
   {1\over 2^{h\gamma}}\right).
   $$
-Here, we are neglecting the small constant factors inside the logarithm. For details see \autoref{sec:security}.  
+Here, we are neglecting the small constant factors inside the logarithm. For details see \autoref{sec:security}.
 
 
 \subsubsection{Proposed Parameter Sets and Security Levels}
@@ -2926,18 +2926,18 @@ optimizing for signature size and concrete parameter sets optimizing for speed.
 Specifically, we propose parameter sets achieving security levels 1, 3, and 5;
 for each of these security levels propose one size-optimized (ending on `s'
 for ``small'') and one speed-optimized (ending on `f' for ``fast'') parameter
-set. The parameter sets were obtained with the help of a Sage script that 
+set. The parameter sets were obtained with the help of a Sage script that
 we list in \autoref{sec:evalscript}. In the first line of that script,
 set the ``target bit security'' to a desired value (in our case, close to
 $128$ for security level 1, close to $192$ for security level 3, and close to $256$
 for security level 5). The output of the script will be a long list of possible
 parameters achieving this security level together with the signature size and
-an estimate of the performance, using the formulas from 
+an estimate of the performance, using the formulas from
 \autoref{sec:generic-estimates} above.
 
 Note that we did \emph{not} obtain our proposed parameter sets simply by searching
 this output for the smallest or the fastest option. The reason is that, for example,
-optimizing for size without caring about speed at all results in signatures of 
+optimizing for size without caring about speed at all results in signatures of
 a size of $\approx15$\,KB for a bit security of $256$, but computing one signature
 takes more than 20 minutes on our benchmark platform. Such a tradeoff might be
 interesting for very few select applications, but we cannot think of many applications
@@ -2948,15 +2948,15 @@ a few seconds in our non-optimized implementation.
 The choice of these parameters is orthogonal to the choice of hash function.
 In~\autoref{subsec:instanthash} we describe three different instantiations
 of the underlying hash function, each with a simple and a robust variant.
-Together with the six parameter sets listed in 
+Together with the six parameter sets listed in
 Table~\ref{tab:params} we obtain 36 different instantiations of \spx.
 
 \input{paramtable}
 
 \subsection{Instantiations of Hash Functions}
 \label{subsec:instanthash}
-In this section we define different signature schemes, which are obtained 
-by instantiating the cryptographic function families of \spx with \shatwo, 
+In this section we define different signature schemes, which are obtained
+by instantiating the cryptographic function families of \spx with \shatwo,
 \shathree, and \haraka. To instantiate the tweakable hash functions,
 we present two different constructions. Leading to a total of six instantiations.
 For the `robust' instances,
@@ -2964,10 +2964,10 @@ we first generate pseudorandom \emph{bitmasks}
 which are then XORed with the input message. The masked messages are denoted
 as $M^{\oplus}$.
 For the `simple' instances, we take an approach inspired by the LMS proposal for stateful hash-based signatures~\cite{LMSdraft}, and omit the bitmasks.
-We make this difference explicit in the instances defined below. The 'simple' instances 
-are faster as they omit the calls to the underlying hash function to generate bitmasks. When combined with compressed addresses in the \shatwo case this can lead to an estimated reduction of the number of 
-compression function calls by a factor of almost 4. In return, this comes at the cost of a 
-security argument that entirely relies on the random oracle model. 
+We make this difference explicit in the instances defined below. The 'simple' instances
+are faster as they omit the calls to the underlying hash function to generate bitmasks. When combined with compressed addresses in the \shatwo case this can lead to an estimated reduction of the number of
+compression function calls by a factor of almost 4. In return, this comes at the cost of a
+security argument that entirely relies on the random oracle model.
 
 Recall that $n$ and $m$ are the security parameter and the message digest length, in bytes.
 
@@ -3003,8 +3003,8 @@ Recall that $n$ and $m$ are the security parameter and the message digest length
       \end{aligned}
     \end{equation}
 
-   \paragraph{Generating the Masks.} \shathree can be used as an XOF which 
-   allows us to generate the bitmasks for arbitrary length messages directly. 
+   \paragraph{Generating the Masks.} \shathree can be used as an XOF which
+   allows us to generate the bitmasks for arbitrary length messages directly.
    For a message $M$ with $l$ bits we compute
    \begin{equation*}
       M^{\oplus} = M \oplus \shaketfs(\pseed || \adrs, l).
@@ -3039,10 +3039,10 @@ Recall that $n$ and $m$ are the security parameter and the message digest length
    \end{aligned}
    \end{equation}
 
-   Here, we use MGF1 as defined in RFC 2437 and HMAC as defined in FIPS-198-1. 
+   Here, we use MGF1 as defined in RFC 2437 and HMAC as defined in FIPS-198-1.
    Note that MGF1 takes as the last input the output length in bytes.
    \paragraph{Generating the Masks.} \shatwo can be turned into a XOF using MGF1
-   which allows us to generate the bitmasks for arbitrary length messages directly. The function MGF1 is used with depends on the function in which the result is used. For \sphincsF we use 
+   which allows us to generate the bitmasks for arbitrary length messages directly. The function MGF1 is used with depends on the function in which the result is used. For \sphincsF we use
    \begin{equation*}
       M^{\oplus} = M \oplus \text{MGF1-}\shatwofs(\pseed || \adrs^{c}, n).
    \end{equation*}
@@ -3058,33 +3058,33 @@ Recall that $n$ and $m$ are the security parameter and the message digest length
       \zeropad(\pseed) = \pseed || \text{toByte}(0, bl - n).
    \end{equation*}
    where $bl= 64$ for \shatwofs and $bl = 128$ for \shatwofivetwelve.
-   Because of the Merkle-Damg\aa{}rd construction that underlies \shatwo, this allows for reuse of the intermediate \shatwo state after the initial call to the compression function 
+   Because of the Merkle-Damg\aa{}rd construction that underlies \shatwo, this allows for reuse of the intermediate \shatwo state after the initial call to the compression function
    which improves performance.
 
    \paragraph{Compressing \adrs.} To ensure that we require the minimal number of calls to the \shatwo compression function, we use a compressed \adrs for each of these instances. Where possible, this allows for the SHA2 padding to fit within the last input block. Rather than storing the layer address and type field in a full 4-byte word each, we only include the least-significant byte of each. Similarly, we only include the least-significant 8 bytes of the 12-byte tree address. This reduces the address from 32 to 22 bytes. We denote such compressed addresses as $\adrs^{c}$.
 
-   \paragraph{Shorter Outputs.} If a parameter set requires an 
-   output length $n < 32$-bytes for \sphincsF, \sphincsH, \sphincsPRF, and 
-   \sphincsPRFmsg we take the first $n$ bytes of the output and discard the 
+   \paragraph{Shorter Outputs.} If a parameter set requires an
+   output length $n < 32$-bytes for \sphincsF, \sphincsH, \sphincsPRF, and
+   \sphincsPRFmsg we take the first $n$ bytes of the output and discard the
    remaining.
 
 \subsubsection{\spx-\haraka}
-   Our third instantiation is based on the \haraka short-input hash function. 
+   Our third instantiation is based on the \haraka short-input hash function.
    \haraka is not a NIST-approved hash function,
    and since it is new it needs further analysis.
    We specify \spx-\haraka as
-   third signature scheme to demonstrate the possible speed-up by using a 
+   third signature scheme to demonstrate the possible speed-up by using a
    dedicated short-input hash function.
-   
+
    As
    the \haraka family only supports input sizes of 256 and 512 bits we extend it
-   with a sponge-based construction based on the 512-bit permutation $\pi$. The 
-   sponge has a rate of 256-bit respectively a capacity of 256-bit and the 
-   number of rounds used in $\pi$ is $5$. The padding scheme is the same as 
+   with a sponge-based construction based on the 512-bit permutation $\pi$. The
+   sponge has a rate of 256-bit respectively a capacity of 256-bit and the
+   number of rounds used in $\pi$ is $5$. The padding scheme is the same as
    defined in FIPS PUB 202 for \shathree.
 
    We denote this sponge as $\harakasponge(M, d)$, where $M$ is the padded
-   message and $d$ is the length of the message digest in bits. A 256-bit 
+   message and $d$ is the length of the message digest in bits. A 256-bit
    message block $M_i$ is absorbed into the state $S$ by
    \begin{equation}
       \begin{aligned}
@@ -3098,20 +3098,20 @@ Recall that $n$ and $m$ are the security parameter and the message digest length
                          S = \pi(S).
       \end{aligned}
    \end{equation}
-   
-   For a more efficient construction we generate the round constants of 
-   \haraka using \pseed.\footnote{This is similar to the ideas used for the 
-   MDx-MAC construction~\cite{DBLP:conf/crypto/PrenelO95}.} As \pseed is the 
-   same for all hash function calls for a given key pair we expand \pseed 
-   using \harakasponge and use the result for the round constants in all 
+
+   For a more efficient construction we generate the round constants of
+   \haraka using \pseed.\footnote{This is similar to the ideas used for the
+   MDx-MAC construction~\cite{DBLP:conf/crypto/PrenelO95}.} As \pseed is the
+   same for all hash function calls for a given key pair we expand \pseed
+   using \harakasponge and use the result for the round constants in all
    instantiations of \haraka used in \spx. In total there are $40$ $128$-bit
    round constants defined by
    \begin{equation}
       RC_0,\ldots,RC_{39} = \harakasponge(\pseed, 5120).
    \end{equation}
-   This only has to be done once for each key pair for all subsequent calls 
-   to \haraka hence the costs for this are amortized. We denote \haraka with 
-   the round constants derived from \pseed as $\haraka_{\pseed}$. We can now define 
+   This only has to be done once for each key pair for all subsequent calls
+   to \haraka hence the costs for this are amortized. We denote \haraka with
+   the round constants derived from \pseed as $\haraka_{\pseed}$. We can now define
    all functions we need for \spx-\haraka as
    \begin{equation}
    \begin{aligned}
@@ -3125,7 +3125,7 @@ Recall that $n$ and $m$ are the security parameter and the message digest length
    \begin{equation}
    \begin{aligned}
       \sphincsF(\pseed, \adrs, M_1) &= \haraka512_{\pseed}(\adrs || M_1^{\oplus}),\\
-      \sphincsH(\pseed, \adrs, M_1 || M_2) &=  \harakasponge_{\pseed}(\adrs || 
+      \sphincsH(\pseed, \adrs, M_1 || M_2) &=  \harakasponge_{\pseed}(\adrs ||
                                            M_1^{\oplus} || M_2^{\oplus}, 8n),\\
       \sphincsT_\ell(\pseed, \adrs, M) &=  \harakasponge_{\pseed}(\adrs || M^{\oplus}, 8n),\\
    \end{aligned}
@@ -3135,39 +3135,39 @@ Recall that $n$ and $m$ are the security parameter and the message digest length
    \begin{equation}
    \begin{aligned}
       \sphincsF(\pseed, \adrs, M_1) &= \haraka512_{\pseed}(\adrs || M_1),\\
-      \sphincsH(\pseed, \adrs, M_1 || M_2) &=  \harakasponge_{\pseed}(\adrs || 
+      \sphincsH(\pseed, \adrs, M_1 || M_2) &=  \harakasponge_{\pseed}(\adrs ||
                                            M_1 || M_2, 8n),\\
       \sphincsT_\ell(\pseed, \adrs, M) &=  \harakasponge_{\pseed}(\adrs || M, 8n),\\
    \end{aligned}
    \end{equation}
 
    For \sphincsF we pad $M_1$ and $M_1^{\oplus}$ with zero if $n < 32$.
-   Note that \sphincsH 
-   and \sphincsHmsg will always have a different \adrs and we therefore do not 
+   Note that \sphincsH
+   and \sphincsHmsg will always have a different \adrs and we therefore do not
    need any further domain separation.
 
-   \paragraph{Generating the Masks.} The mask for the message used in \sphincsF 
+   \paragraph{Generating the Masks.} The mask for the message used in \sphincsF
    is generated by computing
    \begin{equation}
       M_1^{\oplus} = M_1 \oplus \haraka256_{\pseed}(\adrs)
    \end{equation}
 
-   For all other purposes the masks are generated using \harakasponge. For a 
+   For all other purposes the masks are generated using \harakasponge. For a
    message $M$ with $l$ bytes we compute
    \begin{equation*}
       M^{\oplus} = M \oplus \harakasponge_{\pseed}(\adrs, l).
    \end{equation*}
 
-   \paragraph{Shorter Outputs.} If a parameter set requires an 
+   \paragraph{Shorter Outputs.} If a parameter set requires an
    output length $n < 32$-bytes for \sphincsF and \sphincsPRF,
    we take the first $n$ bytes of the output and discard the remaining.
 
-   \paragraph{Security Restrictions.} Note that our instantiation using \haraka 
-   employs the sponge construction with a capacity of 256-bits. Hence, in 
-   contrast to \spx-\shatwo and \spx-\shathree, \spx-\haraka reaches 
-   security level 2 for 32- and 24-byte outputs and security level 1 for 
+   \paragraph{Security Restrictions.} Note that our instantiation using \haraka
+   employs the sponge construction with a capacity of 256-bits. Hence, in
+   contrast to \spx-\shatwo and \spx-\shathree, \spx-\haraka reaches
+   security level 2 for 32- and 24-byte outputs and security level 1 for
    16-byte outputs.
-   
-   
+
+
 % \subsubsection{Summary of Instantiations}
 % \TODO{Table of all instantiations (for all parameters)}

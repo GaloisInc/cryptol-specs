@@ -12,7 +12,7 @@ pairs:
 \item A signature bytelength \sigbytelen.
 \end{enumerate}
 %  Many of our algorithms are different whether we take $\phi = x^n+1$ or $\phi = x^n - x^{n/2} + 1$. Since $x^n+1$ is a binary polynomial and its working with it implies manipulating binary trees, we will often refer to situations involving it as \emph{binary cases}; similarly, since $x^n - x^{n/2} + 1$ is a ternary polynomial and implies ternary trees, situations involving it will be called \emph{ternary cases}. In \falcon, we do not consider values of $n$ higher than $1024$.
- 
+
 For clarity, public parameters may be omitted (\eg in algorithms' headers) when clear from context.
 
 % The definition can be extended to larger primes $q$, and degrees $n$
@@ -69,7 +69,7 @@ and $\hat \matB$, when stored, requires $2n$ complex numbers.
  \end{itemize}
 \end{itemize}
  The values of internal nodes -- which are real polynomials -- are stored in \fft representation (\ie as complex numbers, see \cref{sec:spec:fftntt} for a formal definition). Hence all the nodes of a \falcon tree contain polynomials in \fft representation, except the leaves which contain real values $>0$.
- 
+
  A \falcon tree of height $3$ is represented in \cref{fig:falcontree}. As illustrated by the figure, a \falcon tree can be easily represented by an array of $2^\kappa (1 + \kappa)$ complex numbers (or exactly half as many, if the redundancy of FFT representation is leveraged, as explained above), and access to the left and right children can be performed efficiently using simple pointer arithmetic.
 \begin{figure}%[H]
 \centering

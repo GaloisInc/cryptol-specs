@@ -1,19 +1,19 @@
 \section{Security Evaluation (including estimated security strength and known attacks)}
 \label{sec:security}
-The security of \spx is based on standard model properties of the used function 
+The security of \spx is based on standard model properties of the used function
 families / tweakable hash functions. These in turn can be derived from the properties of the hash functions
-used to instantiate those function families. For the robust instantiations, these 
-properties can be derived from standard model properties of the used hash 
-function and for some the assumption that the PRF used within the instantiations of the 
-tweakable hash functions (to generate the bitmasks) can be modeled as a random 
-oracle. We want to emphasize once more that this assumption about the random oracle 
-is limited to the pseudorandom generation of bitmasks. 
-For the simple instantiations, these properties can be derived from the 
-assumption that the used hash function behaves like a random oracle even 
-in the presence of quantum adversaries which are given quantum oracle access 
-to the function. 
+used to instantiate those function families. For the robust instantiations, these
+properties can be derived from standard model properties of the used hash
+function and for some the assumption that the PRF used within the instantiations of the
+tweakable hash functions (to generate the bitmasks) can be modeled as a random
+oracle. We want to emphasize once more that this assumption about the random oracle
+is limited to the pseudorandom generation of bitmasks.
+For the simple instantiations, these properties can be derived from the
+assumption that the used hash function behaves like a random oracle even
+in the presence of quantum adversaries which are given quantum oracle access
+to the function.
 
-In~\cite{NewProof}, the security of \spx is tightly related to 
+In~\cite{NewProof}, the security of \spx is tightly related to
 \begin{itemize}
  \item the PRF-security of \sphincsPRF and \sphincsPRFmsg,
  \item the interleaved-target-subset-resilience (ITSR) of \sphincsHmsg,
@@ -21,132 +21,132 @@ In~\cite{NewProof}, the security of \spx is tightly related to
  \item the SM-TCR security of \sphincsH and $\sphincsT_\ell$.
 \end{itemize}
 
-%%%% TODO outline: 
+%%%% TODO outline:
 %               actual result
 %               bounds for the THF and KHF props
 %               construction
 %               final bound
-%               
+%
 
 
-There were several attempts at proving tight security for \spx which were shown to be flawed after publication. The challenging part is proving tight security for the used \wots scheme in a multi-instance setting. On November 2, 2021, we announced a new tight security proof for \spx as official comment. This security analysis can be found in~\cite{NewProof}. While this new proof clearly has to be vetted, we want to highlight that at no point the actual security of \spx was challenged. 
+There were several attempts at proving tight security for \spx which were shown to be flawed after publication. The challenging part is proving tight security for the used \wots scheme in a multi-instance setting. On November 2, 2021, we announced a new tight security proof for \spx as official comment. This security analysis can be found in~\cite{NewProof}. While this new proof clearly has to be vetted, we want to highlight that at no point the actual security of \spx was challenged.
 
 
 % XXX: Put back in IF statement is written
-% We will comment on a 
-% possible way to remove this random oracle assumption below. 
+% We will comment on a
+% possible way to remove this random oracle assumption below.
 
 
-\subheading{Disclaimer:} 
-The following two subsections present an attempt for a tight security reduction 
-for \spx that turned out to be flawed; we keep them here for reference. The flaw is 
-an artifact of the attempt to prove a tight security reduction for the variant 
-of the Winternitz one-time signature scheme used by \spx taken 
-from~\cite{Huelsing2016}. It should be noted that the non-tight proof for 
-\wotsp from~\cite{Hulsing2013} still applies. Also, the flaw does not translate 
-into an attack but just demonstrates that the proof made false assumptions. 
-Indeed, at the time of writing we are positive that the problem can be 
-circumvented. Hence, this does not influence our security estimates at all. In 
-the following we briefly outline the flaw and a previous issue with the 
+\subheading{Disclaimer:}
+The following two subsections present an attempt for a tight security reduction
+for \spx that turned out to be flawed; we keep them here for reference. The flaw is
+an artifact of the attempt to prove a tight security reduction for the variant
+of the Winternitz one-time signature scheme used by \spx taken
+from~\cite{Huelsing2016}. It should be noted that the non-tight proof for
+\wotsp from~\cite{Hulsing2013} still applies. Also, the flaw does not translate
+into an attack but just demonstrates that the proof made false assumptions.
+Indeed, at the time of writing we are positive that the problem can be
+circumvented. Hence, this does not influence our security estimates at all. In
+the following we briefly outline the flaw and a previous issue with the
 security reduction and discuss the solution.
 
-A first issue was fixed since version 2 of this specification and appeared in 
-the scientific publication on \spx~\cite{SPXCCS}. That work also discusses the 
-security of the simple instantiations, not discussed below. The issue was as 
+A first issue was fixed since version 2 of this specification and appeared in
+the scientific publication on \spx~\cite{SPXCCS}. That work also discusses the
+security of the simple instantiations, not discussed below. The issue was as
 follows.
-The security reduction makes a statistical 
-assumption about the used 
-hash 
-function which does not hold for a random function and, consequently, should 
-not 
-hold for a good cryptographic hash function. This assumption essentially states 
-that every possible input to \sphincsF has at least one colliding value under 
-\sphincsF (which we call sibling). 
-It is trivial to construct a hash function for which it is reasonable 
-to conjecture this property. Just take for example \shatwofs, apply it once, 
-truncate the result to 248 bits and apply \shatwofs again. However, this would 
-have to be paid for by a factor 2 penalty in speed. 
+The security reduction makes a statistical
+assumption about the used
+hash
+function which does not hold for a random function and, consequently, should
+not
+hold for a good cryptographic hash function. This assumption essentially states
+that every possible input to \sphincsF has at least one colliding value under
+\sphincsF (which we call sibling).
+It is trivial to construct a hash function for which it is reasonable
+to conjecture this property. Just take for example \shatwofs, apply it once,
+truncate the result to 248 bits and apply \shatwofs again. However, this would
+have to be paid for by a factor 2 penalty in speed.
 
-The flaw which persisted also in~\cite{SPXCCS} is related to the 
-same part of the proof. It is concerned with arguing about the hardness of 
-finding $x$ given $y = \sphincsF(x)$. The above assumption was used to argue 
-that if $y$ has at least two preimages $x,x'$, it is information 
-theoretically hidden from an adversary which preimage was used to compute $y$. 
-This argument applies if $x$ is chosen uniformly at random 
-from the whole domain, and if no side-information about $x$ exists. It 
-does not necessarily apply if the input is known to be an output of another 
-function (in our case \sphincsF). Intuitively what is required under this 
-condition is that this side-information does still not allow an adversary to 
-determine which preimage was used to compute $y$. This can be shown using the 
-additional assumption that \sphincsF is undetectable, as used in previous 
-works (e.g., \cite{Hulsing2013}). Undetectability says that an image of a 
-function on a random input is indistinguishable from a random element in its 
+The flaw which persisted also in~\cite{SPXCCS} is related to the
+same part of the proof. It is concerned with arguing about the hardness of
+finding $x$ given $y = \sphincsF(x)$. The above assumption was used to argue
+that if $y$ has at least two preimages $x,x'$, it is information
+theoretically hidden from an adversary which preimage was used to compute $y$.
+This argument applies if $x$ is chosen uniformly at random
+from the whole domain, and if no side-information about $x$ exists. It
+does not necessarily apply if the input is known to be an output of another
+function (in our case \sphincsF). Intuitively what is required under this
+condition is that this side-information does still not allow an adversary to
+determine which preimage was used to compute $y$. This can be shown using the
+additional assumption that \sphincsF is undetectable, as used in previous
+works (e.g., \cite{Hulsing2013}). Undetectability says that an image of a
+function on a random input is indistinguishable from a random element in its
 codomain.
 
-%The revised proof will be made available via the NIST pqc-forum 
-%mailing list, as well as via the \spx website 
+%The revised proof will be made available via the NIST pqc-forum
+%mailing list, as well as via the \spx website
 %\url{https://sphincs.org}, upon publication.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%  OLD DISCLAIMER  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% \subheading{Disclaimer:} 
-% The following two subsections present a security reduction for \spx. 
-% This security reduction makes a statistical assumption about the used hash 
-% function which does not hold for a random function and, consequently, should not 
-% hold for a good cryptographic hash function. This assumption essentially states 
-% that every possible input to \sphincsF has at least one colliding value under 
-% \sphincsF (which we call sibling). 
-% It is trivial to construct a hash function for which it is reasonable 
-% to conjecture this property. Just take for example \shatwo, apply it once, 
-% truncate the result to 248 bits and apply \shatwo again. However, this would 
-% have to be paid for by a factor 2 penalty in speed. 
-% 
-% At the time of writing, we believe to have found an alternative approach to 
-% extend the below proof to other functions, especially to functions that behave 
-% like random functions. This work will be made available via the NIST pqc-forum 
-% mailing list, as well as via the \spx website 
-% \url{https://sphincs.org}, upon publication. The proof below is limited to the 
-% robust instantiations and does not cover 
-% the simple instantiations. We will also publish an extended proof covering the 
+% \subheading{Disclaimer:}
+% The following two subsections present a security reduction for \spx.
+% This security reduction makes a statistical assumption about the used hash
+% function which does not hold for a random function and, consequently, should not
+% hold for a good cryptographic hash function. This assumption essentially states
+% that every possible input to \sphincsF has at least one colliding value under
+% \sphincsF (which we call sibling).
+% It is trivial to construct a hash function for which it is reasonable
+% to conjecture this property. Just take for example \shatwo, apply it once,
+% truncate the result to 248 bits and apply \shatwo again. However, this would
+% have to be paid for by a factor 2 penalty in speed.
+%
+% At the time of writing, we believe to have found an alternative approach to
+% extend the below proof to other functions, especially to functions that behave
+% like random functions. This work will be made available via the NIST pqc-forum
+% mailing list, as well as via the \spx website
+% \url{https://sphincs.org}, upon publication. The proof below is limited to the
+% robust instantiations and does not cover
+% the simple instantiations. We will also publish an extended proof covering the
 % simple instantiations and make it available via the above channels.
-% 
-% Finally, note that we stick to our estimated security strengths. 
+%
+% Finally, note that we stick to our estimated security strengths.
 % These remain untouched.
 
 \subheading{Reductionist proof.}
-In this section we give a security reduction for \spx underpinning the above 
-claim. The security reduction essentially combines the original \spc security 
-reduction from~\cite{Bernstein2015}, the XMSS-T security reduction 
+In this section we give a security reduction for \spx underpinning the above
+claim. The security reduction essentially combines the original \spc security
+reduction from~\cite{Bernstein2015}, the XMSS-T security reduction
 from~\cite{Huelsing2016}, and a new security analysis for multi-instance \fors.
 
-In our technical specification of \spx we used the abstraction of tweakable 
-hash functions to allow for different ways of keying a function and 
+In our technical specification of \spx we used the abstraction of tweakable
+hash functions to allow for different ways of keying a function and
 generating bitmasks. In the security reduction we will remove this abstraction
-and assume that each call to the hash function used to instantiate the 
-tweakable hash is keyed with a different value and inputs are XORed with a 
-bitmask before being processed. Moreover, we assume that the bitmasks are 
-generated using a third PRF called \prfbm. The PRF \prfbm is the single function 
-assumed to behave like a random oracle. Finally, we make a statistical 
-assumption on the hash function \f. Informally we require that every element 
+and assume that each call to the hash function used to instantiate the
+tweakable hash is keyed with a different value and inputs are XORed with a
+bitmask before being processed. Moreover, we assume that the bitmasks are
+generated using a third PRF called \prfbm. The PRF \prfbm is the single function
+assumed to behave like a random oracle. Finally, we make a statistical
+assumption on the hash function \f. Informally we require that every element
 in the image of $\f$ has at least two preimages, i.e.,
 \begin{equation}\label{req:f}
  (\forall k \in \bin^n)(\forall y \in \mathrm{IMG}(\f_k)) (\exists x, x' \in \bin^n): x \neq x' \wedge \f_k(x) = f_k(x').
 \end{equation}
 
-Informally, we will prove the following Theorem where \f, \h, and \tfunc are the 
+Informally, we will prove the following Theorem where \f, \h, and \tfunc are the
 cryptographic hash functions used to instantiate \sphincsF and \sphincsH, \sphincsT respectively.
 
 \begin{theorem}\label{thm:spx}
-For security parameter $n \in \NN$, parameters $w, h, d, m, t, k$ as described 
-above, \spx is existentially unforgeable under post-quantum adaptive chosen 
+For security parameter $n \in \NN$, parameters $w, h, d, m, t, k$ as described
+above, \spx is existentially unforgeable under post-quantum adaptive chosen
 message attacks if
 \begin{itemize}
 	\item \f, \h, and \tfunc are post-quantum distinct-function multi-target second-preimage resistant function families,
-	\item \f fulfills the requirement of Eqn.~\ref{req:f}, 
-	\item $\sphincsPRF, \sphincsPRFmsg$ are post-quantum pseudorandom function families, 
+	\item \f fulfills the requirement of Eqn.~\ref{req:f},
+	\item $\sphincsPRF, \sphincsPRFmsg$ are post-quantum pseudorandom function families,
 	\item $\prfbm$ is modeled as a quantum-accessible random oracle, and
 	\item $\sphincsHmsg$ is a post-quantum interleaved target subset resilient hash function family.
-\end{itemize} 
+\end{itemize}
 More specifically, the insecurity function
 $\insec{\pqeucma}{\spx}{\xi,2^h}$ describing the maximum success
 probability over all adversaries running in time $\leq
@@ -158,35 +158,35 @@ probability over all adversaries running in time $\leq
 \end{theorem}
 
 \subsection{Preliminaries}
-Before we start with the proof, we have to provide two definitions. In general, 
-we refer the reader to~\cite{Huelsing2016} for formal definitions of the above 
-properties with two exceptions. First, we use a variant of 
+Before we start with the proof, we have to provide two definitions. In general,
+we refer the reader to~\cite{Huelsing2016} for formal definitions of the above
+properties with two exceptions. First, we use a variant of
 post-quantum multi-function multi-target second-preimage resistance called
 post-quantum \emph{distinct}-function multi-target second-preimage resistance.
-The distinction here is that the targets are given for distinct but 
-predefined functions from the family while for the multi-function notion, 
+The distinction here is that the targets are given for distinct but
+predefined functions from the family while for the multi-function notion,
 the functions are sampled together with the target, uniformly at random.
 
-Second, we define a variant of subset-resilience which captures the use 
+Second, we define a variant of subset-resilience which captures the use
 of \fors in \spx which we call (post-quantum)  interleaved target subset resilience.
-The idea is that from a theoretical point of view, one can think of the 
+The idea is that from a theoretical point of view, one can think of the
 $2^h$ \fors instances as a single huge \hors-style signature scheme.
-The secret key consists of $2^h$ key-sets which in turn consist of $k$ 
-key-subsets of $t$ secret $n$-byte values, each. The message digest function 
-\sphincsHmsg maps a message to a key-set (by outputting the index) and a set 
-of indexes such that each index is used to select one secret value per 
-key-subset of the selected key-set. 
+The secret key consists of $2^h$ key-sets which in turn consist of $k$
+key-subsets of $t$ secret $n$-byte values, each. The message digest function
+\sphincsHmsg maps a message to a key-set (by outputting the index) and a set
+of indexes such that each index is used to select one secret value per
+key-subset of the selected key-set.
 
-Formally, the security of this multi-instance \fors boils down to the inability 
-of an adversary 
+Formally, the security of this multi-instance \fors boils down to the inability
+of an adversary
 \begin{itemize}
-\item to learn actual secret values which were not disclosed before, 
-\item to replace secret values by values of its choosing, and 
-\item to find a message which is mapped to a key-set and a set of indexes such that 
-the adversary has already seen the secret values indicated by the indexes for 
+\item to learn actual secret values which were not disclosed before,
+\item to replace secret values by values of its choosing, and
+\item to find a message which is mapped to a key-set and a set of indexes such that
+the adversary has already seen the secret values indicated by the indexes for
 that key-set.
 \end{itemize}
-The former two points will be shown to follow from the properties of \f, \h, and 
+The former two points will be shown to follow from the properties of \f, \h, and
 \tfunc as well as those of \sphincsPRF. The latter point is exactly what
 (post-quantum) interleaved target subset resilience captures.
 
@@ -196,12 +196,12 @@ We define those properties in the following.
 In the following
 let $\lambda\in\NN$ be the security parameter, $\alpha=\poly(\lambda),\kappa =\poly(\lambda)$, and
 $\hf_\lambda = \{\h_K: \bin^{\alpha} \rightarrow \bin^\lambda\}_{K \in \bin^\kappa}$ be a
-family of functions. 
-We define the success probability of any (quantum) adversary \A against \pqmmspr. 
-This definition is parameterized by the number of targets 
+family of functions.
+We define the success probability of any (quantum) adversary \A against \pqmmspr.
+This definition is parameterized by the number of targets
 
 \begin{align} \label{eqn_pqdmspr}
-\succf{\pqdmspr}{\hf_\lambda, p}{\A} = \pr\left[\right. 
+\succf{\pqdmspr}{\hf_\lambda, p}{\A} = \pr\left[\right.
   & (\forall \vecify{1}{q}{K_i} \subset (\bin^\kappa)^q), M_i \rand \bin^{\alpha}, 0 < i \leq p;\nonumber\\
  & (j,M') \rand \A((K_1,M_1), \ldots, (K_p,M_p)):\nonumber\\
  &\left.M'\neq M_j \wedge \h_{K_j}(M_j) = \h_{K_j}(M') \right]\,.
@@ -211,141 +211,141 @@ This definition is parameterized by the number of targets
 In the following
 let $\lambda\in\NN$ be the security parameter, $\alpha=\poly(\lambda),\kappa =\poly(\lambda)$, and
 $\hf_\lambda = \{\h_K: \bin^{\alpha} \rightarrow \bin^{\lambda}\}_{K \in \bin^\kappa}$ be a
-family of functions. 
+family of functions.
 Further consider the mapping function $\fmap_{h,k,t}: \bin^{\lambda} \rightarrow \bin^h \times [0,t-1]^k$
 which for parameters $h,k,t$ maps an $\lambda$-bit string
 to a set of $k$ indexes $((I,1,J_1),\ldots,(I,k,J_k))$
-where $I$ is chosen from $[0,2^h-1]$ and each $J_i$ is chosen from $[0,t-1]$. 
-Note that the same $I$ is used for all tuples $(I, i,J_i)$. 
+where $I$ is chosen from $[0,2^h-1]$ and each $J_i$ is chosen from $[0,t-1]$.
+Note that the same $I$ is used for all tuples $(I, i,J_i)$.
 
 We define the success probability of any (quantum) adversary \A against \pqmmspr
 of $\hf_\lambda$. Let $\g =  \fmap_{h,k,t} \circ \hf_\lambda$.
-This definition uses an oracle $\oracle(\cdot)$ which upon input of a 
+This definition uses an oracle $\oracle(\cdot)$ which upon input of a
 $\alpha$-bit message $M_i$ samples a key $K_i \rand\bin^\kappa$
-and returns $K_i$ and $\g(K_i,M_i)$. The 
+and returns $K_i$ and $\g(K_i,M_i)$. The
 adversary may query this oracle with messages of its choosing.
 The adversary would like to find another $\g$ input
 whose output is covered by the $\g$ outputs produced by the oracle,
 without the input being one of the inputs used by the oracle.
-Note that the adversary knows the 
-description of $\g$ and can evaluate it on randomizer-message pairs of its 
-choosing. However, these queries do not count into the set of values which need 
+Note that the adversary knows the
+description of $\g$ and can evaluate it on randomizer-message pairs of its
+choosing. However, these queries do not count into the set of values which need
 to cover the adversary's output.
 \begin{multline*}
-  \succf{\text{pq-itsr}}{\hf, q}{\adver} = \pr\Big[(K,M)\exec\A^{\oracle(\cdot)}(1^\lambda) 
+  \succf{\text{pq-itsr}}{\hf, q}{\adver} = \pr\Big[(K,M)\exec\A^{\oracle(\cdot)}(1^\lambda)
   \quad\text{s.t.}\quad
   \g(K,M)\subseteq\bigcup_{j=1}^{q} \g(K_j,M_{j}) \\
   \wedge (K,M) \not\in \vecify{1}{q}{(K_j,M_{j})}\Big]
 \end{multline*}
-where $q$ denotes the number of oracle queries of \A and the pairs 
-$\vecify{1}{q}{(K_j,M_{j})}$ represent the responses of oracle \oracle. 
+where $q$ denotes the number of oracle queries of \A and the pairs
+$\vecify{1}{q}{(K_j,M_{j})}$ represent the responses of oracle \oracle.
 
-Note that this is actually a strengthening of (post-quantum) target subset resilience 
-in the multi-target setting. In the multi-target version of target subset 
-resilience, \A was able to freely choose the common index $I$ for its output. 
-In interleaved target subset resilience, $I$ is determined by \g and input $M$. 
+Note that this is actually a strengthening of (post-quantum) target subset resilience
+in the multi-target setting. In the multi-target version of target subset
+resilience, \A was able to freely choose the common index $I$ for its output.
+In interleaved target subset resilience, $I$ is determined by \g and input $M$.
 
 \subsection{Security Reduction}
-The security reduction is essentially an application of techniques used 
+The security reduction is essentially an application of techniques used
 especially in~\cite{Huelsing2016}. Hence, we will only roughly sketch it here.
 
-We want to bound the success probability of an adversary \A against the 
+We want to bound the success probability of an adversary \A against the
 \pqeucma security of \spx.
-We start with \game.0 which is the original \pqeucma game. Now consider a second 
-game \game.1 where all outputs of \sphincsPRF are replaced by truly random 
-values. The difference in success probability of any forger \A must be bound by 
-$\insec{\pqpsr}{\sphincsPRF}{\xi}$ otherwise we could use \A to break the 
-pseudorandomness of \sphincsPRF with a success probability greater 
-$\insec{\pqpsr}{\sphincsPRF}{\xi}$ which would contradict the definition of 
-$\insec{\pqpsr}{\sphincsPRF}{\xi}$. 
+We start with \game.0 which is the original \pqeucma game. Now consider a second
+game \game.1 where all outputs of \sphincsPRF are replaced by truly random
+values. The difference in success probability of any forger \A must be bound by
+$\insec{\pqpsr}{\sphincsPRF}{\xi}$ otherwise we could use \A to break the
+pseudorandomness of \sphincsPRF with a success probability greater
+$\insec{\pqpsr}{\sphincsPRF}{\xi}$ which would contradict the definition of
+$\insec{\pqpsr}{\sphincsPRF}{\xi}$.
 
-Next, consider a game \game.2 which is 
-the same as \game.1 but all outputs of \sphincsPRFmsg are replaced by truly 
-random values. Following the same reasoning as above, the difference in 
-success probability of any adversary \A playing in the two games must be bounded 
+Next, consider a game \game.2 which is
+the same as \game.1 but all outputs of \sphincsPRFmsg are replaced by truly
+random values. Following the same reasoning as above, the difference in
+success probability of any adversary \A playing in the two games must be bounded
 by $\insec{\pqpsr}{\sphincsPRFmsg}{\xi}$.
 
-Next, we consider \game.3 where we consider the game lost if \A outputs a valid 
-forgery $(M,\spxsig)$ where the \fors signature part of \spxsig differs from the 
-signature which would be obtained by signing $M$ with the secret key of the 
-challenger. The difference of any \A in winning the two games must be bounded 
+Next, we consider \game.3 where we consider the game lost if \A outputs a valid
+forgery $(M,\spxsig)$ where the \fors signature part of \spxsig differs from the
+signature which would be obtained by signing $M$ with the secret key of the
+challenger. The difference of any \A in winning the two games must be bounded
 by $\insec{\pqdmspr}{\f}{\xi}+ \insec{\pqdmspr}{\h}{\xi}+ \insec{\pqdmspr}{\tfunc}{\xi}$.
-Otherwise, we could use \A to break the post-quantum distinct-function, 
+Otherwise, we could use \A to break the post-quantum distinct-function,
 multi-target second-preimage resistance of \f, \h, or \tfunc. A detailed proof
-of this follows exactly along the lines of the security reduction for XMSS-T 
-in~\cite{Huelsing2016}. Given distinct challenges for each call to \f, \h or 
-\tfunc for the key-set defined by \pseed and the address space, we program 
-\prfbm to output bitmasks which are the XOR of the input to the according 
-tweakable hash function and the given challenge. That way we program the actual 
+of this follows exactly along the lines of the security reduction for XMSS-T
+in~\cite{Huelsing2016}. Given distinct challenges for each call to \f, \h or
+\tfunc for the key-set defined by \pseed and the address space, we program
+\prfbm to output bitmasks which are the XOR of the input to the according
+tweakable hash function and the given challenge. That way we program the actual
 input to the hash function to be the challenge value. This allows us to extract
-a second preimage if a collision happens between the forgery and the honestly 
-generated signature. A pigeon hole argument can be used to show that such a 
+a second preimage if a collision happens between the forgery and the honestly
+generated signature. A pigeon hole argument can be used to show that such a
 collision must exist in this case.
 
-Next, we consider \game.4 which differs from \game.3 in that we are considering 
-the game lost if an adversary outputs a valid 
-forgery $(M,\spxsig)$ where the \fors signature part of \spxsig contains a 
+Next, we consider \game.4 which differs from \game.3 in that we are considering
+the game lost if an adversary outputs a valid
+forgery $(M,\spxsig)$ where the \fors signature part of \spxsig contains a
 secret value which is the same as that of an honestly generated signature of $M$
-but was not contained in any of the signatures obtained by \A via the singing 
-oracle. The difference of any (unbounded) \A in the two games is bounded by 
-$1/2$ times the success probability of \A in \game.3. The reason is that 
-the secret values which were not disclosed to \A before still contain 1 bit of 
+but was not contained in any of the signatures obtained by \A via the singing
+oracle. The difference of any (unbounded) \A in the two games is bounded by
+$1/2$ times the success probability of \A in \game.3. The reason is that
+the secret values which were not disclosed to \A before still contain 1 bit of
 entropy, even for an unbounded \A.
 
 Finally, we have to bound the success probability of \A in \game.4. But \game.4
-can be viewed as the (post-quantum) interleaved target subset resilience game. 
-Because, if \A returns a valid signature and succeeds in the \game, the \fors 
-signature must be valid and consist only of values that have been observed by 
-\A in previous signatures. Hence, the success probability of \A in \game.4 is 
+can be viewed as the (post-quantum) interleaved target subset resilience game.
+Because, if \A returns a valid signature and succeeds in the \game, the \fors
+signature must be valid and consist only of values that have been observed by
+\A in previous signatures. Hence, the success probability of \A in \game.4 is
 bounded by $\insec{\text{pq-itsr}}{\sphincsHmsg}{\xi}$ per definition.
 
 Putting things together we obtain the claimed bound. \qed
 
 \subsection{Security Level / Security Against Generic Attacks}
-As shown in \autoref{thm:spx}, the security of \spx relies on the 
-properties of the functions used to instantiate all the cryptographic function 
-families (and the way they are used to instantiate the function families). 
-In the following we assume that there do not exist any structural attacks 
+As shown in \autoref{thm:spx}, the security of \spx relies on the
+properties of the functions used to instantiate all the cryptographic function
+families (and the way they are used to instantiate the function families).
+In the following we assume that there do not exist any structural attacks
 against the used functions \shatwo, \shathree, and \haraka. In later sections
 we justify this assumption for each of the function familes.
 
-For now, we only consider generic attacks. We now consider generic 
+For now, we only consider generic attacks. We now consider generic
 classical and quantum attacks against
-distinct-function multi-target second-preimage resistance, pseudorandomness (of 
-function families), and interleaved target subset resilience. Runtime of 
+distinct-function multi-target second-preimage resistance, pseudorandomness (of
+function families), and interleaved target subset resilience. Runtime of
 adversaries is counted in terms of calls to the cryptographic function families.
 
 \subsubsection{Distinct-Function Multi-Target Second-Preimage Resistance}
 To evaluate the complexity of generic attacks against hash function properties
-the hash functions are commonly modeled as (family of) random functions. Note, 
-that for random functions there is no difference between distinct-function 
-multi-target second-preimage resistance and multi-function multi-target 
-second-preimage resistance. Every key just selects a new random function, 
+the hash functions are commonly modeled as (family of) random functions. Note,
+that for random functions there is no difference between distinct-function
+multi-target second-preimage resistance and multi-function multi-target
+second-preimage resistance. Every key just selects a new random function,
 independent of the key being random or not.
-In \cite{Huelsing2016} it was shown that the success probability of any 
-classical $q_{\text{hash}}$-query adversary against multi-function multi-target 
-second-preimage resistance of a random function with range 
-$\bin^{8n}$ (and hence also against distinct-function 
+In \cite{Huelsing2016} it was shown that the success probability of any
+classical $q_{\text{hash}}$-query adversary against multi-function multi-target
+second-preimage resistance of a random function with range
+$\bin^{8n}$ (and hence also against distinct-function
 multi-target second-preimage resistance) is exactly $\frac{q_{\text{hash}}+1}{2^{8n}}$.
-For $q_{\text{hash}}$-query quantum adversaries the success probability is 
-$\Theta(\frac{(q_{\text{hash}}+1)^2}{2^{8n}})$. Note that these bounds are independent 
+For $q_{\text{hash}}$-query quantum adversaries the success probability is
+$\Theta(\frac{(q_{\text{hash}}+1)^2}{2^{8n}})$. Note that these bounds are independent
 of the number of targets.
 
 \subsubsection{Pseudorandomness of Function Families}
-The best generic attack against the pseudorandomness of a function 
-family is commonly believed to be exhaustive key search. Hence, for a 
-function family with key space $\bin^{8n}$ the success probability of 
+The best generic attack against the pseudorandomness of a function
+family is commonly believed to be exhaustive key search. Hence, for a
+function family with key space $\bin^{8n}$ the success probability of
 a classical adversary that evaluates the function family on $q_{\text{key}}$ keys
-is again bounded by $\frac{q_{\text{key}}+1}{2^{8n}}$. For $q_{\text{key}}$-query quantum adversaries the 
-success probability of exhaustive search in an unstructured space with 
-$\bin^{8n}$ elements is $\Theta(\frac{(q_{\text{key}}+1)^2}{2^{8n}})$ as implicitly shown 
-in~\cite{Huelsing2016} (just consider this as preimage search of a random 
+is again bounded by $\frac{q_{\text{key}}+1}{2^{8n}}$. For $q_{\text{key}}$-query quantum adversaries the
+success probability of exhaustive search in an unstructured space with
+$\bin^{8n}$ elements is $\Theta(\frac{(q_{\text{key}}+1)^2}{2^{8n}})$ as implicitly shown
+in~\cite{Huelsing2016} (just consider this as preimage search of a random
 function).
 
 \subsubsection{Interleaved Target Subset Resilience}
-To evaluate the attack complexity of generic attacks against interleaved target 
-subset resilience we again assume that the used hash function family is a 
-family of random functions. 
+To evaluate the attack complexity of generic attacks against interleaved target
+subset resilience we again assume that the used hash function family is a
+family of random functions.
 
 Recall that there are parameters $h,k,t$ where $t=2^a$.
 These parameters define the following process of choosing sets:
@@ -447,8 +447,8 @@ of being covered by $2^{64}$ sets $S_1,\dots,S_q$.
 a message digest chosen by the attacker has probability $2^{-256.01}$
 of selecting positions covered by $2^{64}$ previous signatures.)
 
-Hence, for any classical adversary which makes $q_{\text{hash}}$ queries to 
-function family $\hf_n$ the success probability is 
+Hence, for any classical adversary which makes $q_{\text{hash}}$ queries to
+function family $\hf_n$ the success probability is
 $$
 (q_{\text{hash}}+1) \sum_\gamma
   \left(1-\left(1-{1\over t}\right)^\gamma\right)^k
@@ -456,8 +456,8 @@ $$
   \left(1-{1\over 2^h}\right)^{q-\gamma}
   {1\over 2^{h\gamma}}
   .$$
-As this for random $\hf_n$ is search in unstructured data, the best a quantum 
-adversary can do is Grover search. This leads to a success probability of 
+As this for random $\hf_n$ is search in unstructured data, the best a quantum
+adversary can do is Grover search. This leads to a success probability of
 $$
 \cO\left((q_{\text{hash}}+1)^2 \sum_\gamma
   \left(1-\left(1-{1\over t}\right)^\gamma\right)^k
@@ -469,13 +469,13 @@ For computations, note that the $\cO$ is small,
 and that $(1-1/t)^\gamma$ is well approximated by $1-\gamma/t$.
 
 \subsubsection{Security Level of a Given Parameter Set}
-If we take the above success probabilities for generic attacks and plug them 
-into \autoref{thm:spx} we get a bound on the success probability of \spx 
+If we take the above success probabilities for generic attacks and plug them
+into \autoref{thm:spx} we get a bound on the success probability of \spx
 against generic attacks of classical and quantum adversaries. Let $q$ denote
 the number of adversarial signature queries.
-For classical 
-adversaries that make no more than $q_{\text{hash}}$ queries to the 
-cryptographic hash function used, this leads to 
+For classical
+adversaries that make no more than $q_{\text{hash}}$ queries to the
+cryptographic hash function used, this leads to
 
 \begin{multline}\label{eqn:classical-sec-level}
  \insec{\eucmas}{\spx}{q_{\text{hash}}} \leq 2(\frac{q_{\text{hash}}+1}{2^{8n}}+\frac{q_{\text{hash}}+1}{2^{8n}} \\
@@ -489,12 +489,12 @@ cryptographic hash function used, this leads to
   \left(1-\left(1-{1\over t}\right)^\gamma\right)^k
   {q\choose \gamma}
   \left(1-{1\over 2^h}\right)^{q-\gamma}
-  {1\over 2^{h\gamma}}\right) 
+  {1\over 2^{h\gamma}}\right)
   .
  \end{multline}
 
-Similarly, for quantum adversaries that make no more than $q_{\text{hash}}$ queries to the 
-cryptographic hash function used, this leads to  
+Similarly, for quantum adversaries that make no more than $q_{\text{hash}}$ queries to the
+cryptographic hash function used, this leads to
 \begin{multline}\label{eqn:quantum-sec-level}
  \insec{\pqeucmas}{\spx}{q_{\text{hash}}} \leq 2(\frac{(q_{\text{hash}}+1)^2}{2^{8n}}+\frac{(q_{\text{hash}}+1)^2}{2^{8n}} \\
  + \insec{\text{pq-itsr}}{\sphincsHmsg}{q_{\text{hash}}}+ \frac{(q_{\text{hash}}+1)^2}{2^{8n}}+\frac{(q_{\text{hash}}+1)^2}{2^{8n}}+\frac{(q_{\text{hash}}+1)^2}{2^{8n}})\\
@@ -511,7 +511,7 @@ cryptographic hash function used, this leads to
 \end{multline}
 
 To compute the security level also known as bit security one sets this bound on
-the success probability to 
+the success probability to
 equal $1$ and solves for $q_{\text{hash}}$.
 
 % \TODO{Obviously attacker can try not just signature queries giving $S_1,\dots,S_q$,
@@ -519,39 +519,39 @@ equal $1$ and solves for $q_{\text{hash}}$.
 % The quantum-search bound should look like $\epsilon r^2$ after $r$ hash queries.
 % The itsr definition doesn't look aligned with this:
 % it's taking just one choice of $S_0$, while surely the \spx proof needs to allow more.}
-% Andy: I removed this because it did not cover the verifiable index which is 
+% Andy: I removed this because it did not cover the verifiable index which is
 %       a key point in our security argument.
 %
 %
 %
 % \subsection{\fors Security}
-% 	
-% For \fors, the probability of a leaf key of a subtree to have been revealed after $\gamma$ valid signatures 
-% is $\gamma/2^a$. The probability of a forgery (leaves of all $k$ subtrees have been revealed) after 
-% $\gamma$ signatures is $(\gamma/2^a)^k$. So, the expected cost of a forgery for \fors is $(2^a/\gamma)^k$ and 
-% $(2^a/\gamma)^{k/2}$ in the pre-quantum and post-quantum scenario respectively. The respective security levels 
-% are $k(a-\log \gamma)$ and $k(a-\log \gamma)/2$. % For the prequantum scenario we are being very conservative. 
-% 
-% In order for the forgery to be possible, a FORS key would need to be used more than one times. More specifically, 
+%
+% For \fors, the probability of a leaf key of a subtree to have been revealed after $\gamma$ valid signatures
+% is $\gamma/2^a$. The probability of a forgery (leaves of all $k$ subtrees have been revealed) after
+% $\gamma$ signatures is $(\gamma/2^a)^k$. So, the expected cost of a forgery for \fors is $(2^a/\gamma)^k$ and
+% $(2^a/\gamma)^{k/2}$ in the pre-quantum and post-quantum scenario respectively. The respective security levels
+% are $k(a-\log \gamma)$ and $k(a-\log \gamma)/2$. % For the prequantum scenario we are being very conservative.
+%
+% In order for the forgery to be possible, a FORS key would need to be used more than one times. More specifically,
 % we want to find the probability of a FORS key to be used $\gamma$ times after $q$ signatures. As proven in~\cite{Bernstein2015}
 % the probability is approximately $q^\delta / \gamma ! 2^{\delta h}$, where $\delta = \gamma - h/\log (2^h/q)$.
-% 
-% For example, for $h=60$, $a=13$, $k=25$, $q=2^{50}$ the chance of reusing the same FORS key $\gamma=6$ times is $2^{-9.5}$. The 
-% security levels then become 260.5 and 130.25-bits pre-quantum and postquantum respectively. 
+%
+% For example, for $h=60$, $a=13$, $k=25$, $q=2^{50}$ the chance of reusing the same FORS key $\gamma=6$ times is $2^{-9.5}$. The
+% security levels then become 260.5 and 130.25-bits pre-quantum and postquantum respectively.
 % %25(13-2.58) = 260.5
 % %24(12-2.58) = 226.08
 % %24(13-2.58) = 250.08
-% For $\gamma = 9$ the probability drops significantly below $2^{-48}$. The corresponding secutiry levels 
-% are 245.75 and 122.88. 
-% %gamma = 9 
+% For $\gamma = 9$ the probability drops significantly below $2^{-48}$. The corresponding secutiry levels
+% are 245.75 and 122.88.
+% %gamma = 9
 % %25(13-3.17) = 245.75
 % %24(12-3.17) = 211.92
 % %24(13-3.17) = 235.92
-% For bigger $\gamma$s the probability drops even further and the porsquantum security level 
-% drops further below 128-bits. Of course, signing $2^{50}$ messages which would materialize these probabilities would take years 
-% even if the hypertree was signing $2^{20}$ messages per second. Thus using FORS $a=13$ and $k=25$ are of the desired security levels 
+% For bigger $\gamma$s the probability drops even further and the porsquantum security level
+% drops further below 128-bits. Of course, signing $2^{50}$ messages which would materialize these probabilities would take years
+% even if the hypertree was signing $2^{20}$ messages per second. Thus using FORS $a=13$ and $k=25$ are of the desired security levels
 % \todo{Acceptable for Level 2. If we want, we can use smalle $a$ and $k$ for Level 1 parameters. }
-% 
+%
 
 \subsection{Implementation Security and Side-Channel Protection}
 
@@ -562,28 +562,28 @@ free of the two most notorious sources of timing variation.
 An exception is potentially \spx-\haraka, because \haraka is
 based on AES, which is well known to exhibit timing vulnerabilities
 in software implementations~\cite{Ber04,OST06,BM06,NS07}. Clearly, \spx-\haraka should
-only be used in environments that support AES in hardware 
+only be used in environments that support AES in hardware
 (like almost all modern 64-bit Intel and AMD and many ARMv8a processors).
 On \emph{some} processors also certain arithmetic instructions do not
 run in constant time; examples are division instructions on Intel processors
 and the \verb_UMULL_ multiplication instruction on ARM Cortex-M3 proceesors.
 Again, typical implementations of \spx naturally do not use these instructions
-with secret data as input -- secret data is only processed 
+with secret data as input -- secret data is only processed
 by symmetric cryptographic primitives that are \emph{designed}
 to not make use of such potentially dangerous arithmetic.
 
 \subheading{Differential and fault attacks.}
 We expect that any implementation of \spx without dedicated protection
-against differential power or electromagnetic radiation (EM) attacks 
-or against fault-injection attacks will be vulnerable to such attacks. 
+against differential power or electromagnetic radiation (EM) attacks
+or against fault-injection attacks will be vulnerable to such attacks.
 Deployment scenarios of \spx in which an attacker is assumed to have the power
 to mount such attacks require specially protected implementations.
 For protection against differential attacks this will typically require
-masking of the symmetric primitives; 
+masking of the symmetric primitives;
 for protection against fault-injection attacks countermeasures on the hardware level.
 One additional line of defense against such advanced implementation attacks
 is included in the specification of \spx, namely the option to randomize
-the signing procedure via the value $\texttt{OptRand}$ 
+the signing procedure via the value $\texttt{OptRand}$
 (see Subsection~\ref{subsec:optrand}).
 
 
@@ -650,44 +650,44 @@ Therefore we make use of \shatwofivetwelve in some cases to achieve the target s
 
 
 \subsection{Security of \spx-\haraka}
-Both \haraka-256 and \haraka-512 provide a (second)-preimage 
-resistance of 256-bit in the pre-quantum setting and the best known quantum attack 
-is Grover's search on 256-bit. However, the sponge construction we use for 
-\harakasponge has a capacity of 256-bit which allows at most security level 2. 
-The best attack breaking any of the security properties required for \spx is a 
-preimage attack which corresponds to a collision search on 256-bit for the 
-sponge construction we use. 
+Both \haraka-256 and \haraka-512 provide a (second)-preimage
+resistance of 256-bit in the pre-quantum setting and the best known quantum attack
+is Grover's search on 256-bit. However, the sponge construction we use for
+\harakasponge has a capacity of 256-bit which allows at most security level 2.
+The best attack breaking any of the security properties required for \spx is a
+preimage attack which corresponds to a collision search on 256-bit for the
+sponge construction we use.
 Instances with larger output size are limited by this
 and provide a less efficient trade-off between security and efficiency.
 
-Another aspect is that we pseudo-randomly generate round constants derived 
+Another aspect is that we pseudo-randomly generate round constants derived
 from a seed. An attacker cannot influence the values of the constants
-for one instance, but can search for instances having weak constants. As shown by 
+for one instance, but can search for instances having weak constants. As shown by
 Jean~\cite{toscJean16}, a weak choice of round constants can lead to more efficient
-preimage attacks. In general, a bad choice of round constants does not break the 
-symmetry of a single round. In the case of \haraka, which combines several 
-calls of two rounds of AES-128 per round to create bigger blocks, the round 
-constants have to break the symmetry within two rounds of AES, but also 
-between the different calls of the two rounds. Let us first focus on 
+preimage attacks. In general, a bad choice of round constants does not break the
+symmetry of a single round. In the case of \haraka, which combines several
+calls of two rounds of AES-128 per round to create bigger blocks, the round
+constants have to break the symmetry within two rounds of AES, but also
+between the different calls of the two rounds. Let us first focus on
 \haraka-256.
 
-To break the symmetry within one round of AES, we require that the value of the 
-round constant is not the same for each column. For round constants generated 
-via an extendable-output function from a random 256-bit seed, we consider 
-this event to happen with a probability of $2^{-96}$. Moreover, that the 
-symmetry of two rounds of AES is not broken by round-constants happens with 
-$2^{-192}$. In other words, since one instance of \haraka-256 uses 10 times 
+To break the symmetry within one round of AES, we require that the value of the
+round constant is not the same for each column. For round constants generated
+via an extendable-output function from a random 256-bit seed, we consider
+this event to happen with a probability of $2^{-96}$. Moreover, that the
+symmetry of two rounds of AES is not broken by round-constants happens with
+$2^{-192}$. In other words, since one instance of \haraka-256 uses 10 times
 2-round AES, only for a fraction of $10\cdot2^{-192}$ instances/keys,
-we expect that the symmetry within one call of 2 rounds of AES is not broken. 
+we expect that the symmetry within one call of 2 rounds of AES is not broken.
 Even if this happens, all other 2 round AES calls used in \haraka-256
-have with a high probability constants that break the symmetry of 2 rounds of 
-AES for all other calls. Hence, we do not expect any negative consequences for 
+have with a high probability constants that break the symmetry of 2 rounds of
+AES for all other calls. Hence, we do not expect any negative consequences for
 the security.
 
-\haraka-256 processes two 2-round AES-calls in parallel per round. So, 
-we also do not want to have the same round constants in these calls. 
-This condition happens with probability $5\cdot2^{-256}$. Furthermore, 
-the probability that two rounds have the same round constants 
+\haraka-256 processes two 2-round AES-calls in parallel per round. So,
+we also do not want to have the same round constants in these calls.
+This condition happens with probability $5\cdot2^{-256}$. Furthermore,
+the probability that two rounds have the same round constants
 is $10\cdot2^{-512}$. Similar observations are also valid for \haraka-512.
-Hence, we conclude that it is very unlikely, that a pseudo-random generation of 
+Hence, we conclude that it is very unlikely, that a pseudo-random generation of
 the round constants per instance leads to weak round constants.

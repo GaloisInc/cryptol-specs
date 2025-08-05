@@ -2,8 +2,8 @@
 \label{sec:discussion}
 %
 % \TODO{Split into discussion of Pros and Cons and discussion of further options / possibilities.}
-% \TODO{Discuss option of short-term states. Discuss the principal compatibility with XMSS.... Pros n 
-% cons are obvious. Speed / Size vs reliable security. It is the armored cruiser 
+% \TODO{Discuss option of short-term states. Discuss the principal compatibility with XMSS.... Pros n
+% cons are obvious. Speed / Size vs reliable security. It is the armored cruiser
 % among the proposals, stolid but secure.}
 %
 The advantages and limitations of \spx can be summarized in one sentence:
@@ -13,30 +13,30 @@ size and speed. In the following we discuss disadvantages and advantages in
 some more detail.
 
 \subheading{Disadvantage: Signature size and speed.}
-The clear drawback of \spx is signing speed and signature size. \spx is clearly 
-not competing to be the smallest or fastest signature scheme. However, as shown 
-in \autoref{sec:generic-estimates} there exists a magnitude of possible 
-trade-offs allowing to tweak \spx as long as one can tolerate at least one 
+The clear drawback of \spx is signing speed and signature size. \spx is clearly
+not competing to be the smallest or fastest signature scheme. However, as shown
+in \autoref{sec:generic-estimates} there exists a magnitude of possible
+trade-offs allowing to tweak \spx as long as one can tolerate at least one
 of the two, i.e., somewhat slow signing \emph{or} somewhat large signatures.
 
 
 \subheading{Advantage: ``Minimal Security Assumptions''.} In contrast to other post-quantum
-crypto schemes (including signatures as well as public-key encryption schemes), 
+crypto schemes (including signatures as well as public-key encryption schemes),
 \spx does not introduce a new intractability assumption. The security of \spx
-is solely based on assumptions about the used hash function. 
-A secure hash function is required by \emph{any efficient signature scheme} 
+is solely based on assumptions about the used hash function.
+A secure hash function is required by \emph{any efficient signature scheme}
 that supports arbitrary input lengths.
 
-Moreover, a collision attack against the hash function does not suffice to 
-break the security of \spx. We consider this an important feature given the 
-successful collision attacks on MD5 and SHA1. Especially given that even for 
+Moreover, a collision attack against the hash function does not suffice to
+break the security of \spx. We consider this an important feature given the
+successful collision attacks on MD5 and SHA1. Especially given that even for
 MD5 second-preimage resistance has not been broken, yet.
 
 Finally, the cryptographic community has a good
-understanding of (exact) hash-function security, especially after the recent SHA3 
-competition.  This is in contrast to the relatively new problems used in 
+understanding of (exact) hash-function security, especially after the recent SHA3
+competition.  This is in contrast to the relatively new problems used in
 other areas of post-quantum cryptography. Even though some of those problems are
-known already for a long time, estimating the hardness of solving specific 
+known already for a long time, estimating the hardness of solving specific
 problem instances is far less understood.
 
 \subheading{Advantage: State-of-the-art attacks are easily analyzed.}
@@ -55,23 +55,23 @@ signatures. This is typically the case for certificates (or certificate chains)
 as used, for example, in TLS.
 
 \subheading{Advantage: Overlap with XMSS.}
-One more feature of \spx is the large overlap with the stateful hash-based 
+One more feature of \spx is the large overlap with the stateful hash-based
 signature scheme \xmss. Especially the verification code of \xmss is almost
 entirely contained within the \spx verification code. Hence, in scenarios like
-virtual private networks where clients authenticate towards a 
-gateway using signatures it is easy to combine these two. While every client 
-that actually can support to handle a state can use \xmss, every other client 
-can use \spx. Only the gateway has to support verification of both, 
+virtual private networks where clients authenticate towards a
+gateway using signatures it is easy to combine these two. While every client
+that actually can support to handle a state can use \xmss, every other client
+can use \spx. Only the gateway has to support verification of both,
 \xmss and \spx signatures. This becomes especially interesting as \spx is not
-particularly well suited for resource-constrained devices (although it was 
-shown that it is in principle possible to implement \spx on 
-such devices~\cite{Hulsing2016}). However, most resource-constrained devices 
+particularly well suited for resource-constrained devices (although it was
+shown that it is in principle possible to implement \spx on
+such devices~\cite{Hulsing2016}). However, most resource-constrained devices
 can deal with a state and \xmss is far better suited for these devices.
 
 \subheading{Advantage: Reuse of established building blocks.}
 \spx uses the basic hash function as building block many times. Any speedup
 to implementations of SHA-256, SHAKE256 or Haraka directly benefits the
 \spx speed. In particular hardware support for hash functions in the CPU,
-cryptographic coprocessors, 
+cryptographic coprocessors,
 or via instruction-set extensions instantly leads to faster \spx signatures
 (or to smaller \spx signatures via tuning $w$).

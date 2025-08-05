@@ -1,6 +1,6 @@
 /* This module implements an RSA encryption scheme
    with the EME-PCKS1-v1_5 encoding method desribed in
-   section 7.2 of 
+   section 7.2 of
 
    PKCS #1: RSA Cryptography Specifications Version 2.2
 
@@ -18,7 +18,7 @@ import Primitive::Asymmetric::Cipher::RSA
 parameter
 
   type k : #
-  type constraint (fin k, k >= 11) 
+  type constraint (fin k, k >= 11)
 
 
   type KeySize = k * 8
@@ -42,13 +42,13 @@ RSAES_PKCS1_v1_5_Encrypt rand M = I2OSP`{k} c
                           c  = RSAEP ((n,e),m)
 
 
-RSAES_PKCS1_v1_5_Decrypt : [k][8] -> ([k][8],[width k]) 
+RSAES_PKCS1_v1_5_Decrypt : [k][8] -> ([k][8],[width k])
 RSAES_PKCS1_v1_5_Decrypt C = if c >= n then error "decryption error" else (Mp,idx) // M = take`{idx} Mp
                          where
                           c        = OS2IP C
                           m        = RSADP ((n,d),c)
                           EM       = I2OSP`{k} m
-                          (Mp,idx) = EME_PKCS1_v1_5_decode EM 
+                          (Mp,idx) = EME_PKCS1_v1_5_decode EM
 
 
 
@@ -63,7 +63,7 @@ property RSAES_PKCS1_Correct rand M = take`{mLen} ((D ( E rand M ) ).0) == M
 
 
 
-private 
+private
 
         EME_PKCS1_v1_5_decode : [k][8] -> ([k][8],[width k])
         EME_PKCS1_v1_5_decode EM = if (ys!0).removedPad == False then error "decryption error"

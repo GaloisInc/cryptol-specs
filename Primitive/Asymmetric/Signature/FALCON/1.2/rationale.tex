@@ -4,7 +4,7 @@
 
 
 % \section{Preliminaries}
-% 
+%
 % \subsection{Lattice}
 % An $n$-dimensional lattice $\Lambda$ is any subset of $\bR^n$ that is both:
 % \begin{enumerate}
@@ -20,8 +20,8 @@
 % \[
 %  \Lambda(\matB) = \Lambda(\vecb_1, \vecb_2, \ldots, \vecb_n) = \left\{ \vecx\matB~|~\vecx\in\bZ^n \right\}.
 % \]
-% We say that the rank of the lattice is $m$. If $m = n$, the lattice (respectively the matrix) is called a full-rank lattice (resp. a full-rank matrix). In this document we will usually consider full-rank lattices as the more general case.  
-% 
+% We say that the rank of the lattice is $m$. If $m = n$, the lattice (respectively the matrix) is called a full-rank lattice (resp. a full-rank matrix). In this document we will usually consider full-rank lattices as the more general case.
+%
 % \subsection{Gram-Schmidt Orthogonalisation (GSO)}\label{sec:ratio:gso}
 % The Gram-Schmidt orthogonalization (GSO) is an algorithm that transforms any basis $\matB$ of a vector space to an orthogonal basis $\tilde\matB$ of the same vector space. Let $\matB = (\vecb_1,\ldots,\vecb_n)$ be a matrix, the GSO $\tilde\matB = (\tilde\vecb_1,\ldots,\tilde\vecb_n)$ of $\matB$ is defined as follows:
 % \begin{align*}
@@ -61,7 +61,7 @@ The last step was the trapdoor sampler. We devised a new trapdoor sampler which 
 In 2008, Gentry, Peikert and Vaikuntanathan~\cite{STOC:GenPeiVai08} established a framework for obtaining secure lattice-based signatures. At a very high level, this framework may be described as follows:
 
 \begin{itemize}
- \item 
+ \item
  The public key contains a full-rank matrix $\matA \in \bZ_q^{n \times m}$ (with $m>n$) generating a $q$-ary lattice $\Lambda$.
  \item
  The private key contains a matrix $\matB \in \bZ_q^{m \times m}$ generating $\Lambda_q^\perp$, where $\Lambda_q^\perp$ denotes the lattice orthogonal to $\Lambda$ modulo $q$: for any $\vecx \in \Lambda$ and $\vecy \in \Lambda_q^\perp$, we have $\inner{\vecx}{\vecy} = 0 \bmod q$. Equivalently, the rows of $\matA$ and $\matB$ are pairwise orthogonal: $\matB \times \matA^\t = \matzero$.
@@ -77,11 +77,11 @@ This high-level description of a signature scheme is not exclusive to the GPV fr
  In GGH and \ntrusign, $\vecv$ is computed using an algorithm called the round-off algorithm and first formalized by Babai~\cite{STACS:Babai85,Combinatorica:Babai86}. In this deterministic algorithm, $\vecc_0$ is first expressed as a real linear combination of the rows of $\matB$, the vector of these real coordinates is then rounded coefficient-wise and multiplied again by $\matB$: in a nutshell, $\vecv \gets \left\lfloor \vecc_0 \matB^{-1} \right\rceil \matB$, where $\lfloor\cdot\rceil$ denotes coefficient-wise rounding. At the end of the procedure, $\vecs = \vecv- \vecc_0$ is guaranteed to lie in the parallelepiped $[-1, 1]^m \times \matB$, which allows to tightly bound the norm $\|\vecs\|$.
 %
  The problem with this approach is that each signature $\vecs$ lies in $[-1, 1]^m \times \matB$, and therefore leaks information about the basis $\matB$. This fact was exploited by several key-recovery attacks~\cite{EC:NguReg06,AC:DucNgu12b}.
- 
+
 \paragraph{Computing $\vecv$ in the GPV framework.}
  A major contribution of~\cite{STOC:GenPeiVai08}, which is also the key difference between the GPV framework and GGH/\ntrusign, is the way $\vecv$ is computed. Instead of the round-off algorithm, the GPV framework relies on a randomized variant by  ~\cite{SODA:Klein00} of the nearest plane algorithm, also formalized by Babai.
  Just as for the round-off algorithm, using the nearest plane algorithm would have leaked the secret basis $\matB$ and resulted in a total break of the scheme. However, Klein's algorithm prevents this: it is randomized in a way such that for a given \msg, $\vecs$ is sampled according to a spherical Gaussian distribution over the shifted lattice $\vecc_0 + \Lambda_q^\perp$. This method is proven to leak no information about the basis $\matB$. Klein's algorithm was in fact the first of a family of algorithms called \textit{trapdoor samplers}. More details about trapdoor samplers are given in \cref{sec:ratio:ffs}.
- 
+
 \subsection{Features and instantiation of the GPV framework}\label{sec:ratio:features}
 
 %The topic of this section is to make explicit a few aspects and features of the GPV framework.
@@ -104,7 +104,7 @@ In the GPV framework, two different signatures $\vecs, \vecs'$ of a same hash $H
 
 \paragraph{De-randomization.} A second possibility proposed by \cite{STOC:GenPeiVai08} is to de-randomize the signing procedure. However, pseudorandomness would need to be generated in a consistent way over all the implementations (it is not uncommon to have a same signing key used in different devices). While this solution can be applied in a few specific usecases, we do not consider it for \falcon.
 
-\paragraph{Hash randomization.} A third solution is to prepend a salt $\salt \in \{0,1\}^{k}$ to the message \msg before hashing it. Provided that $k$ is large enough, this prevents collisions from occurring. From an operational perspective, this solution is the easiest to apply, and it is still covered by the security proof of the GPV framework~(see \cite[Section 6.2]{STOC:GenPeiVai08}). For a given security level $\lambda$ and up to $q_s$ signature queries, taking $k = \lambda + \log_2( q_s )$ is enough to guarantee that the probability of collision is less than $q_s \cdot 2^{-\lambda}$. 
+\paragraph{Hash randomization.} A third solution is to prepend a salt $\salt \in \{0,1\}^{k}$ to the message \msg before hashing it. Provided that $k$ is large enough, this prevents collisions from occurring. From an operational perspective, this solution is the easiest to apply, and it is still covered by the security proof of the GPV framework~(see \cite[Section 6.2]{STOC:GenPeiVai08}). For a given security level $\lambda$ and up to $q_s$ signature queries, taking $k = \lambda + \log_2( q_s )$ is enough to guarantee that the probability of collision is less than $q_s \cdot 2^{-\lambda}$.
 
 Out of the three solutions, \falcon opts for hash randomization: a salt $\salt \in \{0,1\}^{320}$ is randomly generated and prepended to the message before hashing it. The bitsize $320$ is equal to $\lambda + \log_2( q_s )$ for $\lambda = 256$ the highest security level required by NIST, and $q_s = 2^{64}$ the maximal number of signature which may be queried from a single signer. This size is actually overkill for security levels $ \lambda < 256$, but fixing a single size across all the security levels makes things easier from an API perspective: for example, one can hash a message without knowing the security level of the private signing key.
 
@@ -125,7 +125,7 @@ Let $\phi = x^n + 1$ for $n = 2^\kappa$ a power of two, and $q\in \bN^\star$. A 
 \begin{equation}\label{eq:ntruset}
  f G - g F = q \mod \phi
 \end{equation}
-Provided that $f$ is invertible modulo $q$, we can define the polynomial $h \gets g \cdot f^{-1} \bmod q$. 
+Provided that $f$ is invertible modulo $q$, we can define the polynomial $h \gets g \cdot f^{-1} \bmod q$.
 
  Typically, $h$ will be a public key, whereas $f,g,F,G$ will be secret keys. Indeed, one can check that the matrices $\twotwo{1}{h}{0}{q}$ and $\twotwo{f}{g}{F}{G}$ generate the same lattice, but the first matrix contains two large polynomials ($h$ and q), whereas the second matrix contains only small polynomials, which allows to solve problems as illustrated in \cref{sec:ratio:gpv}. If $f,g$ are generated with enough entropy, then $h$ will look pseudo-random~\cite{EC:SteSte11}. However in practice, even when $f,g$ are quite small, it remains hard to find small polynomials $f',g'$ such that $h = g' \cdot (f')^{-1} \bmod q$. The hardness of this problem constitutes the NTRU assumption.
 
@@ -174,17 +174,17 @@ The bound $\gsnorm{\matB} \leq 1.17 \sqrt{q}$ that we reach in practice is withi
 
 \section{Fast Fourier Sampling}\label{sec:ratio:ffs}
 
-The second choice when instantiating the GPV framework is the trapdoor sampler. A trapdoor sampler takes as input a matrix $\matA$, a trapdoor \textsf{T}, a target $\vecc$ and outputs a short vector $\vecs$ such that $\vecs^\t \matA = \vecc \bmod q$. With the notations of \cref{sec:ratio:gpv}, this is equivalent to finding $\vecv \in \Lambda_q^\perp$ close to $\vecc_0$, so we may indifferently refer by the term ``trapdoor samplers'' to algorithms which perform one task or the other. 
+The second choice when instantiating the GPV framework is the trapdoor sampler. A trapdoor sampler takes as input a matrix $\matA$, a trapdoor \textsf{T}, a target $\vecc$ and outputs a short vector $\vecs$ such that $\vecs^\t \matA = \vecc \bmod q$. With the notations of \cref{sec:ratio:gpv}, this is equivalent to finding $\vecv \in \Lambda_q^\perp$ close to $\vecc_0$, so we may indifferently refer by the term ``trapdoor samplers'' to algorithms which perform one task or the other.
 
 We now list the existing trapdoor samplers, their advantages and limitations. Obviously, being efficient is important for a trapdoor sampler. However, an equally important metric is the ``quality'' of the sampler: the shorter the vector $\vecs$ is (or equivalently, the closer $\vecv$ is to $\vecc_0$), the more secure this sampler will be.
 
 \begin{enumerate}
  \item Klein's algorithm~\cite{SODA:Klein00} takes as a trapdoor the matrix $\matB$. It outputs vectors $\vecs$ of norm proportional to $\gsnorm{\matB}$, which is short and therefore good for security. On the downside, its time and space complexity are in $O(m^2)$.
- 
+
  \item Just like Klein's algorithm is a randomized version of the nearest plane algorithm, Peikert proposed a randomized version of the round-off algorithm~\cite{C:Peikert10}. A nice thing about it is that when $\matB$ has a structure over rings -- as in our case -- then it can be made to run in time and space $O(m \log m)$. However, it outputs vectors of norm proportional to the spectral norm $\|\matB\|_2$ of $\matB$. This is larger than what we get with Klein's algorithm, and therefore it is worse security-wise.
- 
+
  \item Micciancio and Peikert~\cite{EC:MicPei12} proposed a novel approach in which $\matA$ and its trapdoor are constructed in a way which allows simple and efficient trapdoor sampling. Unfortunately, it is not straightforwardly compatible with NTRU lattices and yet has to reach the same level of compactness as with NTRU lattices~\cite{AC:CheGenMuk19}.
- 
+
  \item Ducas and Prest~\cite{ISSAC:DucPre16} proposed ``\textit{fast Fourier nearest plane}'', a variant of Babai's nearest plane algorithm for lattices over rings. It proceeds in a recursive way which is very similar to the fast Fourier transform, hence the name. This algorithm can be randomized: it results in a trapdoor sampler which combines the quality of Klein's algorithm, the efficiency of Peikert's and can be used over NTRU lattices.
 \end{enumerate}
 
@@ -221,56 +221,56 @@ Our fast Fourier sampler shares many similarities with Klein's sampler, includin
 % \tprcomment{Todo: some bonding text
 % \newpage}
 % In this section we review the different known attacks why apply to \falcon. This is done in \cref{sec:rat:sec:attacks}.
-% 
+%
 % \falcon relies on floating-point arithmetic for the signing procedure, which raises the question of the required floating-point arithmetic precision. We dicuss the impact of the precision on the security of \falcon in \cref{sec:rat:sec:precision}.
 % \pagebreak
 
 \subsection{Known Attacks}\label{sec:rat:sec:attacks}
 
-\paragraph{Key Recovery.} The most efficient attacks come from lattice 
+\paragraph{Key Recovery.} The most efficient attacks come from lattice
 reduction.
-We start by considering the lattice generated by the columns of 
+We start by considering the lattice generated by the columns of
 $\twotwo{q}{h}{0}{1}$.
-After using lattice reduction on this basis, we enumerate all lattice 
+After using lattice reduction on this basis, we enumerate all lattice
 points in a ball of radius $\sqrt{2n} \cdot \sigmafg$, centered on the origin.
-With significant probability, we are therefore able to find 
+With significant probability, we are therefore able to find
 $\onetwo{g}{f}$.
-%If we use a block-size of $B$, enumeration takes negligible time if the 
+%If we use a block-size of $B$, enumeration takes negligible time if the
 %$(2n-B)$th Gram-Schmidt norm is larger than $\sqrt{3B/4}\cdot \sigmafg$.
 
-Let $\lambda$ be the $(2n-B)$th Gram-Schmidt norm, which is approximately 
-the norm of the shortest vector of the lattice generated by the last $B$ 
+Let $\lambda$ be the $(2n-B)$th Gram-Schmidt norm, which is approximately
+the norm of the shortest vector of the lattice generated by the last $B$
 vectors projected orthogonally to the first $2n-B-1$ vectors.
-A sieve algorithm performed on this projected lattice will recover all vectors 
+A sieve algorithm performed on this projected lattice will recover all vectors
 of norm smaller than $\sqrt{4/3}\lambda$ (see~\cite{EC:Ducas18} for instance).
-If the projection of the key is among them, that is when 
-$$\sqrt{B}\sigmafg \leq \sqrt{4/3}\lambda,$$ we can recover a secret key vector 
-from its projection by using Babai's Nearest Plane algorithm on all sieved vectors 
+If the projection of the key is among them, that is when
+$$\sqrt{B}\sigmafg \leq \sqrt{4/3}\lambda,$$ we can recover a secret key vector
+from its projection by using Babai's Nearest Plane algorithm on all sieved vectors
 with high probability.
-This is because all remaining Gram-Schmidt norms are larger than $\lambda$, 
+This is because all remaining Gram-Schmidt norms are larger than $\lambda$,
 which is much larger than $\sigmafg$.
 
-For the best known lattice reduction algorithm, DBKZ~\cite[Corollary 2]{EC:MicWal16}, 
+For the best known lattice reduction algorithm, DBKZ~\cite[Corollary 2]{EC:MicWal16},
 we get
 \[ \lambda = \bigg(\frac{B}{2\pi e}\bigg)^{1-n/B}\sqrt{q},\]
-and 
+and
 \begin{equation}\label{eq:blocksize_keyrecovery}
 (B/2\pi e)^{1-n/B}\sqrt{q} = \sqrt{3/4B}\sigmafg
 \end{equation}
-Note that we conservatively assumed that we could perform a sieve algorithm in dimension $B$ 
-for the same cost as the SVP oracle inside the DBKZ algorithm, which is a slight overestimate 
+Note that we conservatively assumed that we could perform a sieve algorithm in dimension $B$
+for the same cost as the SVP oracle inside the DBKZ algorithm, which is a slight overestimate
 \cite{EC:Ducas18}.
 It is then easy to deduce $B$.
 %, and to show that $B=n+o(n)$, which is the fastest attack \emph{asymptotically}.
-Note that the given value for the Gram-Schmidt norm is correct only when 
-the basis is first randomized, and it is necessary to do so 
+Note that the given value for the Gram-Schmidt norm is correct only when
+the basis is first randomized, and it is necessary to do so
 (asymptotically).
 
 
-\paragraph{Forging a Signature.} Forging a signature can be performed by finding a lattice point at distance bounded by $\beta$ from a random point, in the same lattice as above. 
-This task can also be solved by lattice reduction. 
-One possibility is to use Kannan's embedding, that is add $(H(r||m), 0, K)$ to the lattice basis, 
-extended by a row of zeroes, which gives the following matrix: 
+\paragraph{Forging a Signature.} Forging a signature can be performed by finding a lattice point at distance bounded by $\beta$ from a random point, in the same lattice as above.
+This task can also be solved by lattice reduction.
+One possibility is to use Kannan's embedding, that is add $(H(r||m), 0, K)$ to the lattice basis,
+extended by a row of zeroes, which gives the following matrix:
 \[ \left[
 \begin{array}{c|c|c}
 q  & h & H(r\| m) \\
@@ -304,28 +304,28 @@ $(2n+1) \times (2n+1)$ matrix:
 \end{array}
 \right],
 \]
-where $\cC(h)$ is the $n \times n$ matrix which $i$-th row is the vector of coefficients of $x^{i-1} \cdot h \bmod (x^n + 1)$. 
+where $\cC(h)$ is the $n \times n$ matrix which $i$-th row is the vector of coefficients of $x^{i-1} \cdot h \bmod (x^n + 1)$.
 \fi
 %This task is also eased by first carrying out lattice reduction on the  original basis.\todo{Does it change anything to the security?}
 %
 
-As sieve algorithms generate many short vectors, we can certainly find among them a vector of the 
+As sieve algorithms generate many short vectors, we can certainly find among them a vector of the
 form $(c,*, K)$ and then $H(r||m)-c$ is a lattice point.
 
-Taking $K\approx \sqrt{q}$, the DBKZ algorithm~\cite[Corollary 2]{EC:MicWal16} gives as a success condition for 
+Taking $K\approx \sqrt{q}$, the DBKZ algorithm~\cite[Corollary 2]{EC:MicWal16} gives as a success condition for
 the forgery: %requires the blocksize $B$ used for DBKZ to be large enough so that:
 \begin{equation}\label{eq:blocksize_forgery}
 \bigg(\frac{B}{2\pi e}\bigg)^{n/B} \sqrt{q} \leq \beta.
 \end{equation}
 Interestingly, since the factor $\sqrt{q}$ is also present in $\beta$, the modulus $q$ has virtually no effect on the best forgery attack. This is the best attack against our instantiations.
-%, even if we have $B=2n+o(n)$. 
-%\textcolor{red}{TPr: I don't get this last sentence} 
-We convert the blocksize $B$ into concrete bit-security following the methodology of 
-New Hope~\cite{USENIX:ADPS16}, sometimes called ``core-SVP methodology''. 
+%, even if we have $B=2n+o(n)$.
+%\textcolor{red}{TPr: I don't get this last sentence}
+We convert the blocksize $B$ into concrete bit-security following the methodology of
+New Hope~\cite{USENIX:ADPS16}, sometimes called ``core-SVP methodology''.
 This gives the  bit-security as per \cite{SODA:BDGL16,Laarhoven16}:
 \begin{alignat}{4}
 	&\text{Classical:} && \lfloor 0.292 \cdot B \rfloor \label{eq:sec_classic} \\
-	&\text{Quantum:} && \lfloor 0.262 \cdot B \rfloor \label{eq:sec_quantum}	
+	&\text{Quantum:} && \lfloor 0.262 \cdot B \rfloor \label{eq:sec_quantum}
 \end{alignat}
 This gives the following table.
 %\def\lvliforgebkzblocksize{393}
@@ -336,12 +336,12 @@ This gives the following table.
 %\FPeval{\lvlvforgeclassic}{round(\lvlvforgebkzblocksize * 0.292 - 0.5, 0)}
 %\FPeval{\lvlvforgequantum}{round(\lvlvforgebkzblocksize * 0.265 - 0.5, 0)}
 
-%We recall that this is believed to be a conservative estimate, 
-%as we neglect the cost of a large memory, lower order terms in the Nearest Neighbor 
+%We recall that this is believed to be a conservative estimate,
+%as we neglect the cost of a large memory, lower order terms in the Nearest Neighbor
 %Search~\cite{SODA:BDGL16} and the number of calls to the oracle.
-%The optimization of Ducas~\cite{EC:Ducas18} indicates that the dimension of the lattice sieved 
+%The optimization of Ducas~\cite{EC:Ducas18} indicates that the dimension of the lattice sieved
 %is decreased by respectively 36 and 85 compared to the table.
-%We believe the neglected terms have a larger impact than this so that the scheme fulfills 
+%We believe the neglected terms have a larger impact than this so that the scheme fulfills
 %the security levels 1 and 5.
 
 \begin{center}
@@ -388,8 +388,8 @@ larger than $2^{287}$.
 For the quantum cost, we take \cite[Table 10]{EC:JNRV20} as a baseline. For key search on AES-\{128,256\}, it indicates a cost of $\{2^{82}, 2^{143}\}$ gates. This is far below the estimated quantum cost for breaking \falcon.
 
 
-% Taking only the complexity of the shortest vector problem at the first 
-%order of approximation --- a conservative estimate ---, this gives 
+% Taking only the complexity of the shortest vector problem at the first
+%order of approximation --- a conservative estimate ---, this gives
 %respectively $172$ quantum (
 
 %
@@ -398,7 +398,7 @@ For the quantum cost, we take \cite[Table 10]{EC:JNRV20} as a baseline. For key 
 %After using lattice reduction on this basis, we enumerate all lattice points in a ball of radius $\sqrt{2n}\sigma'$, centered on the origin.
 %With significant probability, we are therefore able to find $\onetwo{g}{f}$.
 %If we use a block-size of $B$, enumeration takes negligible time if the $2n-B$th Gram-Schmidt norm is larger than $0.75\sqrt{B}\sigma'$.
-%For the best known lattice reduction algorithm, DBKZ~\cite{EC:MicWal16}, it is 
+%For the best known lattice reduction algorithm, DBKZ~\cite{EC:MicWal16}, it is
 %% \[ \big(\frac{B}{2\pi\mathrm{e}}\big)^{(2n-B)/2B}\sqrt{q}. \]
 %\[ \big(\frac{B}{2\pi\mathrm{e}}\big)^{(1-n/B)}\sqrt{q}. \]
 %It is then easy to deduce $B$, and to show that $B=n+o(n)$.

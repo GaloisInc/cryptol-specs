@@ -1,29 +1,29 @@
 \section{Instantiations}
 \label{sec:instantiations}
 
-This section discusses instantiations for \spx. \spx can be 
-viewed as a signature template. It is a way to build a signature 
+This section discusses instantiations for \spx. \spx can be
+viewed as a signature template. It is a way to build a signature
 scheme by instantiating the cryptographic function families used. We consider
-different ways to implement the cryptographic function families as 
-different signature systems. Orthogonal to instantiating the cryptographic 
+different ways to implement the cryptographic function families as
+different signature systems. Orthogonal to instantiating the cryptographic
 function families are parameter sets. Parameter sets
-assign  specific values to the \spx parameters described in \autoref{sec:spx:params} below. 
+assign  specific values to the \spx parameters described in \autoref{sec:spx:params} below.
 
-In this section, we first define the requirements on parameters and discuss 
-existing trade-offs between 
-security, sizes, and speed controlled by the different parameters. Then we 
-propose 6 different parameter sets that match NIST security levels $I$, 
-$III$, and $V$ (2 parameter sets per security level). Afterwards we propose 
-three different instantiations for the cryptographic function families of \spx. 
-These instantiation are indeed three different signature schemes. We propose 
-\spx-\shathree, \spx-\shatwo, and \spx-\haraka. The 
-former two use the cryptographic hash functions defined in FIPS PUB 202, 
-respectively FIPS PUB 180, to instantiate the cryptographic function families. 
+In this section, we first define the requirements on parameters and discuss
+existing trade-offs between
+security, sizes, and speed controlled by the different parameters. Then we
+propose 6 different parameter sets that match NIST security levels $I$,
+$III$, and $V$ (2 parameter sets per security level). Afterwards we propose
+three different instantiations for the cryptographic function families of \spx.
+These instantiation are indeed three different signature schemes. We propose
+\spx-\shathree, \spx-\shatwo, and \spx-\haraka. The
+former two use the cryptographic hash functions defined in FIPS PUB 202,
+respectively FIPS PUB 180, to instantiate the cryptographic function families.
 The latter uses a new cryptographic (hash) function called \haraka, proposed in
-\cite{articleToSC563}. 
+\cite{articleToSC563}.
 
 \subsection{\spx Parameter Sets}\label{sec:spx:params}
-\spx is described by the following parameters already described in the previous 
+\spx is described by the following parameters already described in the previous
 sections. All parameters take positive integer values.
 \begin{description}
  \item  $n$ : the security parameter in bytes.
@@ -34,11 +34,11 @@ sections. All parameters take positive integer values.
  \item  $t$ : the number of leaves of a \fors tree.
 \end{description}
 
-Recall that 
+Recall that
 we use $a = \log t$. Moreover, from these values the values $m$ and \len are
 computed as
 \begin{itemize}
-  \item $m$: the message digest length in bytes. 
+  \item $m$: the message digest length in bytes.
   It is computed as $m = \floor{(k\log t +7)/ 8} + \floor{(h - h/d +7)/ 8} + \floor{(h / d +7)/ 8}$.
   \item $\len$: the number of $n$-byte string elements in a \wotsp private
         key, public key, and signature. It is computed as $\len =
@@ -50,92 +50,92 @@ computed as
 \end{itemize}
 
 We now repeat the roles of, requirements on, and properties of these parameters.
-Afterwards, we give several formulas that show their exact influence on 
+Afterwards, we give several formulas that show their exact influence on
 performance and security.
 
-The security parameter $n$ is also the output length of all cryptographic function 
-families besides \sphincsHmsg. Therefore, it largely determines which security 
-level a parameter set reaches. It is also the size of virtually any node 
-within the \spx structure and thereby also the size of all elements in a 
-signature, i.e., the signature size is a multiple of $n$. 
+The security parameter $n$ is also the output length of all cryptographic function
+families besides \sphincsHmsg. Therefore, it largely determines which security
+level a parameter set reaches. It is also the size of virtually any node
+within the \spx structure and thereby also the size of all elements in a
+signature, i.e., the signature size is a multiple of $n$.
 
-The Winternitz parameter $w$ determines the number and length of the hash chains per 
-\wotsp instance. A greater value for $w$ linearly increases the length of the 
-hash chains but logarithmically reduces their number. The number of hash 
-chains exactly corresponds to the number of $n$-byte values in a \wotsp 
-signature. Thereby it largely influences the size of a \spx signature. 
-The product of the number and the length of hash chains directly correlates with 
-signing speed as essentially all time in \hyper signature generation is spent 
-computing \wotsp public keys. Therefore, greater $w$ means shorter signatures 
-but slower signing. However, note the exponential gap. The bigger $w$ gets, 
-the more expensive is the signature size reduction. The Winternitz parameter 
+The Winternitz parameter $w$ determines the number and length of the hash chains per
+\wotsp instance. A greater value for $w$ linearly increases the length of the
+hash chains but logarithmically reduces their number. The number of hash
+chains exactly corresponds to the number of $n$-byte values in a \wotsp
+signature. Thereby it largely influences the size of a \spx signature.
+The product of the number and the length of hash chains directly correlates with
+signing speed as essentially all time in \hyper signature generation is spent
+computing \wotsp public keys. Therefore, greater $w$ means shorter signatures
+but slower signing. However, note the exponential gap. The bigger $w$ gets,
+the more expensive is the signature size reduction. The Winternitz parameter
 does not influence \spx security.
 
 The height of the hypertree $h$ determines the number of \fors instances. Hence,
-it determines the probability that a \fors key pair is used several times, 
-given the number of signatures made with a \spx key pair. Hence, the height has 
-a direct impact on security: A taller hypertree gives more security. On the 
+it determines the probability that a \fors key pair is used several times,
+given the number of signatures made with a \spx key pair. Hence, the height has
+a direct impact on security: A taller hypertree gives more security. On the
 other hand, a taller tree leads to larger signatures.
 
 The number of layers $d$ is a pure performance trade-off parameter and does not
-influence security. It determines the number of layers of \xmss trees in the 
-hypertree. Hence, $d$ must divide $h$ without remainder. The parameter $d$ 
+influence security. It determines the number of layers of \xmss trees in the
+hypertree. Hence, $d$ must divide $h$ without remainder. The parameter $d$
 thereby defines the height of the \xmss trees used. The greater $d$, the smaller
-the subtrees, the faster signing. However, $d$ also controls the number of 
-layers and thereby the number of \wotsp signatures within a \hyper and thereby 
-a \spx signature. 
+the subtrees, the faster signing. However, $d$ also controls the number of
+layers and thereby the number of \wotsp signatures within a \hyper and thereby
+a \spx signature.
 
-The parameters $k$ and $t$ determine the performance and security of \fors. The 
+The parameters $k$ and $t$ determine the performance and security of \fors. The
 number of leaves of a tree in \fors $t$ must be a power of two while $k$ can be
 chosen freely. A smaller $t$ generally leads to smaller and faster signatures.
 However, for a given security level a smaller $t$ requires a greater $k$
-which increases signature size and slows down signing. Hence, it is important 
+which increases signature size and slows down signing. Hence, it is important
 to balance these two parameters. This is best done using the formulas below.
 
-The message digest length $m$ is the output length of \sphincsHmsg in bytes. 
-It is $\floor{(k\log t +7)/ 8} + \floor{(h - h/d +7)/ 8} + \floor{(h / d +7)/ 8}$ 
-bytes. 
+The message digest length $m$ is the output length of \sphincsHmsg in bytes.
+It is $\floor{(k\log t +7)/ 8} + \floor{(h - h/d +7)/ 8} + \floor{(h / d +7)/ 8}$
+bytes.
 
 The number $\len$ of chains in a \wotsp key pair determines the \wotsp signature size.
 
 \subsubsection{Influence of Parameters on Security and Performance}
 \label{sec:generic-estimates}
-In the following we provide formulas to compute speed, size and security for 
+In the following we provide formulas to compute speed, size and security for
 a given \spx parameter set. This supports parameter selection. We also provide
 a SAGE script in \autoref{sec:evalscript}.
 
-\paragraph{Key Generation.} Generating the \spx private key and \pseed requires 
-three calls to a secure random number generator. Next we have to generate the 
-top tree. For the leaves we need to do $2^{h/d}$ \wotsp key generations ($\len$ 
-calls to \sphincsPRF for generating the \sk and $w \len$ calls to \sphincsF for the \pk) 
-and we have to compress the \wotsp public key (one call to $T_\len$). Computing 
+\paragraph{Key Generation.} Generating the \spx private key and \pseed requires
+three calls to a secure random number generator. Next we have to generate the
+top tree. For the leaves we need to do $2^{h/d}$ \wotsp key generations ($\len$
+calls to \sphincsPRF for generating the \sk and $w \len$ calls to \sphincsF for the \pk)
+and we have to compress the \wotsp public key (one call to $T_\len$). Computing
 the root of the top tree requires $(2^{h/d} - 1)$ calls to \sphincsH.
 
 \paragraph{Signing.} For randomization and message compression we need one call to
-%$\sphincsPRF$, 
-$\sphincsPRFmsg$, and one to $\sphincsHmsg$. The \fors signature requires 
-$kt$ calls to \sphincsPRF and \sphincsF. Further, we have to compute the root of 
-$k$ binary trees of height $\log t$ which adds $k(t - 1)$ calls to \sphincsH. 
-Finally, we need one call to $T_k$. Next, we compute one HT signature which 
-consists of $d$ trees similar to the key generation. Hence, we have to do 
+%$\sphincsPRF$,
+$\sphincsPRFmsg$, and one to $\sphincsHmsg$. The \fors signature requires
+$kt$ calls to \sphincsPRF and \sphincsF. Further, we have to compute the root of
+$k$ binary trees of height $\log t$ which adds $k(t - 1)$ calls to \sphincsH.
+Finally, we need one call to $T_k$. Next, we compute one HT signature which
+consists of $d$ trees similar to the key generation. Hence, we have to do
 $d(2^{h/d})$ times $\len$ calls to \sphincsPRF and $w\len$ calls to \sphincsF
-as well as $d(2^{h/d})$ calls to $\sphincsT_\len$. For computing 
+as well as $d(2^{h/d})$ calls to $\sphincsT_\len$. For computing
 the root of each tree we get additionally $d(2^{h/d} - 1)$ calls to \sphincsH.
 
-\paragraph{Verification.} First we need to compute the message hash using 
+\paragraph{Verification.} First we need to compute the message hash using
 $\sphincsHmsg$. We need to do one \fors verification which requires
-$k$ calls to %\sphincsPRF and 
+$k$ calls to %\sphincsPRF and
 \sphincsF (to compute the leaf nodes from the signature elements), $k\log t$ calls to \sphincsH (to compute the root nodes using the leaf nodes and the authentication paths), and one call
-to $T_k$ for hashing the roots. Next, we have to verify $d$ \xmss signatures 
+to $T_k$ for hashing the roots. Next, we have to verify $d$ \xmss signatures
 which takes $<w\len$ calls to \sphincsF and one call to $T_\len$ each for \wotsp
-signature verification\footnote{It should be noted that the $w\len$ bound for calls to \sphincsF is a worst-case bound. This is a bound on the cost for \wots signature verification. Given that the messages are hash values which can assumed to be close to uniformly distributed, this value will be closer to the average-case bound $(w/2) \cdot \len$ in actual measurements.}. It also needs $dh/d$ calls to \sphincsH for the $d$ 
+signature verification\footnote{It should be noted that the $w\len$ bound for calls to \sphincsF is a worst-case bound. This is a bound on the cost for \wots signature verification. Given that the messages are hash values which can assumed to be close to uniformly distributed, this value will be closer to the average-case bound $(w/2) \cdot \len$ in actual measurements.}. It also needs $dh/d$ calls to \sphincsH for the $d$
 root computations.
 
 \begin{table}
    \centering
-   \caption{Overview of the number of function calls we require for each 
-            operation. We omit the single calls to $\sphincsHmsg, \sphincsPRFmsg$, 
-            and $\sphincsT_k$ for signing and single calls to $\sphincsHmsg$ 
+   \caption{Overview of the number of function calls we require for each
+            operation. We omit the single calls to $\sphincsHmsg, \sphincsPRFmsg$,
+            and $\sphincsT_k$ for signing and single calls to $\sphincsHmsg$
             and $\sphincsT_k$ for verification as they are negligible when
             estimating speed.}
    \label{tab:perfcalls}
@@ -143,22 +143,22 @@ root computations.
       \toprule
                & \sphincsF & \sphincsH & \sphincsPRF & $T_\len$\\
       \midrule
-      Key Generation & $2^{h/d}w\len $ 
-                     & $2^{h/d} - 1$ 
-                     & $2^{h/d}\len$ 
+      Key Generation & $2^{h/d}w\len $
+                     & $2^{h/d} - 1$
+                     & $2^{h/d}\len$
                      & $2^{h/d}$\\
-      Signing        & $kt + d(2^{h/d})w\len$ 
-                     & $k(t - 1) + d(2^{h/d} - 1)$ 
-                     & $kt + d(2^{h/d})\len$ % + 1$ 
+      Signing        & $kt + d(2^{h/d})w\len$
+                     & $k(t - 1) + d(2^{h/d} - 1)$
+                     & $kt + d(2^{h/d})\len$ % + 1$
                      & $d2^{h/d}$\\
-      Verification   & $k + dw\len$ 
+      Verification   & $k + dw\len$
                      & $k\log t + h$
                      & -- %$kt$
                      & $d$ \\
       \bottomrule
    \end{tabular}
-\end{table} 
-~\\ 
+\end{table}
+~\\
 The size of the \spx private and public keys along with the signature can be deduced from \autoref{sec:spx}
 and is shown in Table~\ref{tab:sizes}.
 
@@ -170,8 +170,8 @@ and is shown in Table~\ref{tab:sizes}.
       \toprule
                & SK & PK & Sig \\
       \midrule
-      Size & $4n$ 
-           & $2n$ 
+      Size & $4n$
+           & $2n$
            & $(h+k(\log t+1) +d\cdot len+1)n$ \\
       \bottomrule
    \end{tabular}
@@ -195,7 +195,7 @@ $$b = - \frac{1}{2} \log\left(
   \left(1-{1\over 2^h}\right)^{q-\gamma}
   {1\over 2^{h\gamma}}\right).
   $$
-Here, we are neglecting the small constant factors inside the logarithm. For details see \autoref{sec:security}.  
+Here, we are neglecting the small constant factors inside the logarithm. For details see \autoref{sec:security}.
 
 
 \subsubsection{Proposed Parameter Sets and Security Levels}
@@ -209,18 +209,18 @@ optimizing for signature size and concrete parameter sets optimizing for speed.
 Specifically, we propose parameter sets achieving security levels 1, 3, and 5;
 for each of these security levels propose one size-optimized (ending on `s'
 for ``small'') and one speed-optimized (ending on `f' for ``fast'') parameter
-set. The parameter sets were obtained with the help of a Sage script that 
+set. The parameter sets were obtained with the help of a Sage script that
 we list in \autoref{sec:evalscript}. In the first line of that script,
 set the ``target bit security'' to a desired value (in our case, close to
 $128$ for security level 1, close to $192$ for security level 3, and close to $256$
 for security level 5). The output of the script will be a long list of possible
 parameters achieving this security level together with the signature size and
-an estimate of the performance, using the formulas from 
+an estimate of the performance, using the formulas from
 \autoref{sec:generic-estimates} above.
 
 Note that we did \emph{not} obtain our proposed parameter sets simply by searching
 this output for the smallest or the fastest option. The reason is that, for example,
-optimizing for size without caring about speed at all results in signatures of 
+optimizing for size without caring about speed at all results in signatures of
 a size of $\approx15$\,KB for a bit security of $256$, but computing one signature
 takes more than 20 minutes on our benchmark platform. Such a tradeoff might be
 interesting for very few select applications, but we cannot think of many applications
@@ -231,15 +231,15 @@ a few seconds in our non-optimized implementation.
 The choice of these parameters is orthogonal to the choice of hash function.
 In~\autoref{subsec:instanthash} we describe three different instantiations
 of the underlying hash function, each with a simple and a robust variant.
-Together with the six parameter sets listed in 
+Together with the six parameter sets listed in
 Table~\ref{tab:params} we obtain 36 different instantiations of \spx.
 
 \input{paramtable}
 
 \subsection{Instantiations of Hash Functions}
 \label{subsec:instanthash}
-In this section we define different signature schemes, which are obtained 
-by instantiating the cryptographic function families of \spx with \shatwo, 
+In this section we define different signature schemes, which are obtained
+by instantiating the cryptographic function families of \spx with \shatwo,
 \shathree, and \haraka. To instantiate the tweakable hash functions,
 we present two different constructions. Leading to a total of six instantiations.
 For the `robust' instances,
@@ -247,10 +247,10 @@ we first generate pseudorandom \emph{bitmasks}
 which are then XORed with the input message. The masked messages are denoted
 as $M^{\oplus}$.
 For the `simple' instances, we take an approach inspired by the LMS proposal for stateful hash-based signatures~\cite{LMSdraft}, and omit the bitmasks.
-We make this difference explicit in the instances defined below. The 'simple' instances 
-are faster as they omit the calls to the underlying hash function to generate bitmasks. When combined with compressed addresses in the \shatwo case this can lead to an estimated reduction of the number of 
-compression function calls by a factor of almost 4. In return, this comes at the cost of a 
-security argument that entirely relies on the random oracle model. 
+We make this difference explicit in the instances defined below. The 'simple' instances
+are faster as they omit the calls to the underlying hash function to generate bitmasks. When combined with compressed addresses in the \shatwo case this can lead to an estimated reduction of the number of
+compression function calls by a factor of almost 4. In return, this comes at the cost of a
+security argument that entirely relies on the random oracle model.
 
 Recall that $n$ and $m$ are the security parameter and the message digest length, in bytes.
 
@@ -282,8 +282,8 @@ Recall that $n$ and $m$ are the security parameter and the message digest length
       \end{aligned}
     \end{equation}
 
-   \paragraph{Generating the Masks.} \shathree can be used as an XOF which 
-   allows us to generate the bitmasks for arbitrary length messages directly. 
+   \paragraph{Generating the Masks.} \shathree can be used as an XOF which
+   allows us to generate the bitmasks for arbitrary length messages directly.
    For a message $M$ with $l$ bits we compute
    \begin{equation*}
       M^{\oplus} = M \oplus \shaketfs(\pseed || \adrs, l).
@@ -318,10 +318,10 @@ Recall that $n$ and $m$ are the security parameter and the message digest length
    \end{aligned}
    \end{equation}
 
-   Here, we use MGF1 as defined in RFC 2437 and HMAC as defined in FIPS-198-1. 
+   Here, we use MGF1 as defined in RFC 2437 and HMAC as defined in FIPS-198-1.
    Note that MGF1 takes as the last input the output length in bytes.
    \paragraph{Generating the Masks.} \shatwo can be turned into a XOF using MGF1
-   which allows us to generate the bitmasks for arbitrary length messages directly. The function MGF1 is used with depends on the function in which the result is used. For \sphincsF we use 
+   which allows us to generate the bitmasks for arbitrary length messages directly. The function MGF1 is used with depends on the function in which the result is used. For \sphincsF we use
    \begin{equation*}
       M^{\oplus} = M \oplus \text{MGF1-}\shatwofs(\pseed || \adrs^{c}, n).
    \end{equation*}
@@ -337,33 +337,33 @@ Recall that $n$ and $m$ are the security parameter and the message digest length
       \zeropad(\pseed) = \pseed || \text{toByte}(0, bl - n).
    \end{equation*}
    where $bl= 64$ for \shatwofs and $bl = 128$ for \shatwofivetwelve.
-   Because of the Merkle-Damg\aa{}rd construction that underlies \shatwo, this allows for reuse of the intermediate \shatwo state after the initial call to the compression function 
+   Because of the Merkle-Damg\aa{}rd construction that underlies \shatwo, this allows for reuse of the intermediate \shatwo state after the initial call to the compression function
    which improves performance.
 
    \paragraph{Compressing \adrs.} To ensure that we require the minimal number of calls to the \shatwo compression function, we use a compressed \adrs for each of these instances. Where possible, this allows for the SHA2 padding to fit within the last input block. Rather than storing the layer address and type field in a full 4-byte word each, we only include the least-significant byte of each. Similarly, we only include the least-significant 8 bytes of the 12-byte tree address. This reduces the address from 32 to 22 bytes. We denote such compressed addresses as $\adrs^{c}$.
 
-   \paragraph{Shorter Outputs.} If a parameter set requires an 
-   output length $n < 32$-bytes for \sphincsF, \sphincsH, \sphincsPRF, and 
-   \sphincsPRFmsg we take the first $n$ bytes of the output and discard the 
+   \paragraph{Shorter Outputs.} If a parameter set requires an
+   output length $n < 32$-bytes for \sphincsF, \sphincsH, \sphincsPRF, and
+   \sphincsPRFmsg we take the first $n$ bytes of the output and discard the
    remaining.
 
 \subsubsection{\spx-\haraka}
-   Our third instantiation is based on the \haraka short-input hash function. 
+   Our third instantiation is based on the \haraka short-input hash function.
    \haraka is not a NIST-approved hash function,
    and since it is new it needs further analysis.
    We specify \spx-\haraka as
-   third signature scheme to demonstrate the possible speed-up by using a 
+   third signature scheme to demonstrate the possible speed-up by using a
    dedicated short-input hash function.
-   
+
    As
    the \haraka family only supports input sizes of 256 and 512 bits we extend it
-   with a sponge-based construction based on the 512-bit permutation $\pi$. The 
-   sponge has a rate of 256-bit respectively a capacity of 256-bit and the 
-   number of rounds used in $\pi$ is $5$. The padding scheme is the same as 
+   with a sponge-based construction based on the 512-bit permutation $\pi$. The
+   sponge has a rate of 256-bit respectively a capacity of 256-bit and the
+   number of rounds used in $\pi$ is $5$. The padding scheme is the same as
    defined in FIPS PUB 202 for \shathree.
 
    We denote this sponge as $\harakasponge(M, d)$, where $M$ is the padded
-   message and $d$ is the length of the message digest in bits. A 256-bit 
+   message and $d$ is the length of the message digest in bits. A 256-bit
    message block $M_i$ is absorbed into the state $S$ by
    \begin{equation}
       \begin{aligned}
@@ -377,20 +377,20 @@ Recall that $n$ and $m$ are the security parameter and the message digest length
                          S = \pi(S).
       \end{aligned}
    \end{equation}
-   
-   For a more efficient construction we generate the round constants of 
-   \haraka using \pseed.\footnote{This is similar to the ideas used for the 
-   MDx-MAC construction~\cite{DBLP:conf/crypto/PrenelO95}.} As \pseed is the 
-   same for all hash function calls for a given key pair we expand \pseed 
-   using \harakasponge and use the result for the round constants in all 
+
+   For a more efficient construction we generate the round constants of
+   \haraka using \pseed.\footnote{This is similar to the ideas used for the
+   MDx-MAC construction~\cite{DBLP:conf/crypto/PrenelO95}.} As \pseed is the
+   same for all hash function calls for a given key pair we expand \pseed
+   using \harakasponge and use the result for the round constants in all
    instantiations of \haraka used in \spx. In total there are $40$ $128$-bit
    round constants defined by
    \begin{equation}
       RC_0,\ldots,RC_{39} = \harakasponge(\pseed, 5120).
    \end{equation}
-   This only has to be done once for each key pair for all subsequent calls 
-   to \haraka hence the costs for this are amortized. We denote \haraka with 
-   the round constants derived from \pseed as $\haraka_{\pseed}$. We can now define 
+   This only has to be done once for each key pair for all subsequent calls
+   to \haraka hence the costs for this are amortized. We denote \haraka with
+   the round constants derived from \pseed as $\haraka_{\pseed}$. We can now define
    all functions we need for \spx-\haraka as
    \begin{equation}
    \begin{aligned}
@@ -404,7 +404,7 @@ Recall that $n$ and $m$ are the security parameter and the message digest length
    \begin{equation}
    \begin{aligned}
       \sphincsF(\pseed, \adrs, M_1) &= \haraka512_{\pseed}(\adrs || M_1^{\oplus}),\\
-      \sphincsH(\pseed, \adrs, M_1 || M_2) &=  \harakasponge_{\pseed}(\adrs || 
+      \sphincsH(\pseed, \adrs, M_1 || M_2) &=  \harakasponge_{\pseed}(\adrs ||
                                            M_1^{\oplus} || M_2^{\oplus}, 8n),\\
       \sphincsT_\ell(\pseed, \adrs, M) &=  \harakasponge_{\pseed}(\adrs || M^{\oplus}, 8n),\\
    \end{aligned}
@@ -414,43 +414,43 @@ Recall that $n$ and $m$ are the security parameter and the message digest length
    \begin{equation}
    \begin{aligned}
       \sphincsF(\pseed, \adrs, M_1) &= \haraka512_{\pseed}(\adrs || M_1),\\
-      \sphincsH(\pseed, \adrs, M_1 || M_2) &=  \harakasponge_{\pseed}(\adrs || 
+      \sphincsH(\pseed, \adrs, M_1 || M_2) &=  \harakasponge_{\pseed}(\adrs ||
                                            M_1 || M_2, 8n),\\
       \sphincsT_\ell(\pseed, \adrs, M) &=  \harakasponge_{\pseed}(\adrs || M, 8n),\\
    \end{aligned}
    \end{equation}
 
    For \sphincsF we pad $M_1$ and $M_1^{\oplus}$ with zero if $n < 32$.
-   Note that \sphincsH 
-   and \sphincsHmsg will always have a different \adrs and we therefore do not 
+   Note that \sphincsH
+   and \sphincsHmsg will always have a different \adrs and we therefore do not
    need any further domain separation.
 
-   \paragraph{Generating the Masks.} The mask for the message used in \sphincsF 
+   \paragraph{Generating the Masks.} The mask for the message used in \sphincsF
    is generated by computing
    \begin{equation}
       M_1^{\oplus} = M_1 \oplus \haraka256_{\pseed}(\adrs)
    \end{equation}
 
-   For all other purposes the masks are generated using \harakasponge. For a 
+   For all other purposes the masks are generated using \harakasponge. For a
    message $M$ with $l$ bytes we compute
    \begin{equation*}
       M^{\oplus} = M \oplus \harakasponge_{\pseed}(\adrs, l).
    \end{equation*}
 
-   \paragraph{Shorter Outputs.} If a parameter set requires an 
+   \paragraph{Shorter Outputs.} If a parameter set requires an
    output length $n < 32$-bytes for \sphincsF and \sphincsPRF,
    we take the first $n$ bytes of the output and discard the remaining.
 
-   \paragraph{Security Restrictions.} Note that our instantiation using \haraka 
-   employs the sponge construction with a capacity of 256-bits. Hence, in 
-   contrast to \spx-\shatwo and \spx-\shathree, \spx-\haraka reaches 
-   security level 2 for 32- and 24-byte outputs and security level 1 for 
+   \paragraph{Security Restrictions.} Note that our instantiation using \haraka
+   employs the sponge construction with a capacity of 256-bits. Hence, in
+   contrast to \spx-\shatwo and \spx-\shathree, \spx-\haraka reaches
+   security level 2 for 32- and 24-byte outputs and security level 1 for
    16-byte outputs.
-   
-   
+
+
 % \subsubsection{Summary of Instantiations}
 % \TODO{Table of all instantiations (for all parameters)}
 
 
 
-   
+

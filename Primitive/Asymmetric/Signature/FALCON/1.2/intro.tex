@@ -65,7 +65,7 @@ This section presents a non-exhaustive list of work related to \falcon, and subs
 
 \paragraph{Raptor: Ring signatures using \falcon.}  Lu, Au and Zhang~\cite{EPRINT:LuAuZha18} have proposed Raptor, a ring signature scheme which uses \falcon as a building block. The authors provided a security proof in the random oracle model, as well as an efficient implementation.
 
-\paragraph{Implementation on ARM Cortex.} Works by Oder \textit{et al.}~\cite{PQCRYPTO:OSHG19} and Pornin~\cite{EPRINT:Pornin19} have implemented \falcon on ARM Cortex-M microprocessors. See also pqm4~\cite{EPRINT:KRSS19}. 
+\paragraph{Implementation on ARM Cortex.} Works by Oder \textit{et al.}~\cite{PQCRYPTO:OSHG19} and Pornin~\cite{EPRINT:Pornin19} have implemented \falcon on ARM Cortex-M microprocessors. See also pqm4~\cite{EPRINT:KRSS19}.
 
 \paragraph{Key generation.} Pornin and Prest~\cite{PKC:PorPre19} have formally studied the part of the key generation where polynomials $F,G$ are computed from $f,g$.
 This paper can be used as a complement for readers willing to understand more thoroughly this part of the key generation.
@@ -82,11 +82,11 @@ In this section, we provide a mapping of the requirements by NIST to the appropr
   \item Advantages and limitations as per~\cite[Section 2.B.6]{NIST} are listed in \cref{sec:ratio:advantages}.
   \item Two sets of parameters as per NIST~\cite[Section 4.A.5]{NIST} can be found in \cref{sec:spec:params}.
  \end{itemize}
- 
+
  Other requirements in \cite{NIST} are not addressed in this document, but in other parts of the submission package.
  \begin{itemize}
 % \item
-% A cover sheet as per \cite[Section 2.A]{NIST} is present in this submission package. 
+% A cover sheet as per \cite[Section 2.A]{NIST} is present in this submission package.
  \item
  A reference implementation as per \cite[Section 2.C.1]{NIST} and Known Answer Test values as per \cite[Section 2.B.2]{NIST} are present in this submission package.
 % \item
@@ -108,14 +108,14 @@ The differences with the version 1.1~\cite{NISTPQC-R2:FALCON19} are:
 	\item We propose a formal specification of the Gaussian sampler over the integers, see \cref{sec:spec:sign:integers}. This specification consists of four algorithms (\cref{alg:basesampler,alg:approxexp,alg:berexp,alg:samplerz}). In addition, \cref{tab:kat} and {\small\tt Supporting\_Documentation/additional/test-vector-sampler-falcon\{512,1024\}.txt}\newline provide test vectors to validate the implementation of \samplerz.
 	\item We tweak \longcompress and \longdecompress in order to enforce a unique encoding of signatures. We are thankful to Quan Nguyen for pointing out to us the (benign) malleability of the original encodings.
 	\item We provide updated parameters, see \cref{tab:falconparam}. The parameter sets are more detailed and, in the case of \falcon-512, now provide a few more bits of security. In addition, we now detail our parameter selection process in \cref{sec:parametersummary} and {\small\tt Supporting\_Documentation/additional/parameters.py}. We discuss the concrete security of our parameter sets in \cref{sec:rat:sec:attacks}.
-	
+
 	\item We make incremental changes to some algorithms. Most reflect optimizations that the reference code was already doing (e.g. loop unrolling). Others are introduced by \samplerz and our modified \compress/\decompress.
 	Finally, we correct some typos (marked with $\dagger$ below).
-	
+
 	\begin{multicols*}{2}
 	\begin{itemize}
 	\setlength\itemsep{.4em}
-	\item 
+	\item
 	\ntrugen:	\cref{line:sigmafg,step:ntt,line:gamma,line:botntrusolve,line:botntrusolverestart};
 	\item
 	\ntrusolve:	lines \ref{line:botgcd2}, \ref{line:g} and \ref{line:f}${}^\dagger$;
