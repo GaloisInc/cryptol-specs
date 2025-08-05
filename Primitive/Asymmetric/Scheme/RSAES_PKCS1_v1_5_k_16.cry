@@ -1,3 +1,7 @@
+/**
+ * @copyright Galois, Inc
+ * @author Ajay Kumar Eeralla <aeeralla@galois.com>
+ */
 module Primitive::Asymmetric::Scheme::RSAES_PKCS1_v1_5_k_16= Primitive::Asymmetric::Scheme::RSAES_PKCS1_v1_5 where
 
 type k = 256

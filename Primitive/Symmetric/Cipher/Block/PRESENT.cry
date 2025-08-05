@@ -1,11 +1,12 @@
-/* Cryptol PRESENT Implementation
-   Copyright (c) 2018, Galois Inc.
-   www.cryptol.net
-
-   Source: "PRESENT: An Ultra-Lightweight Block Cipher" by Bogdanov et. al
-   Author: Ajay Kumar Eeralla
-   Block size: 64 bits, key size:80, 128 bits
-*/
+/**
+ * Cryptol PRESENT Implementation
+ * @copyright Galois Inc. 2018
+ * www.cryptol.net
+ *
+ * Source: "PRESENT: An Ultra-Lightweight Block Cipher" by Bogdanov et. al
+ * @author Ajay Kumar Eeralla
+ * Block size: 64 bits, key size:80, 128 bits
+ */
 
 module Primitive::Symmetric::Cipher::Block::PRESENT where
 

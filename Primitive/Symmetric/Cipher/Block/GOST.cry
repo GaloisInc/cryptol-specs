@@ -1,8 +1,10 @@
-// Cryptol GOST Implementation
-// Copyright (c) 2018, Galois Inc.
-// www.cryptol.net
-// Author: Ajay Kumar Eeralla
-// Block size: 64 bits, key size: 256 bits
+/**
+ * Cryptol GOST Implementation
+ * @copyright Galois Inc. 2018
+ * @author Ajay Kumar Eeralla
+ * www.cryptol.net
+ * Block size: 64 bits, key size: 256 bits
+ */
 
 module Primitive::Symmetric::Cipher::Block::GOST where
 
