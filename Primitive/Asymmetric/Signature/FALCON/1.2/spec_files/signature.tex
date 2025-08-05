@@ -91,13 +91,13 @@ Formally, given a private key \sk and a message \msg, the signer uses \sk to sig
 %limited: it is always greater than $1.2$, and always lower than $1.9$.
 
 
- 
+
  \subsection{Fast Fourier Sampling}
- 
+
  This section describes our fast Fourier sampler: \longffsampling. We note that we perform all the operations in \fft representation for efficiency reasons, but the whole algorithm could also be executed in coefficient representation instead, at a price of a $O(\log n)$ penalty in speed.
- 
+
 % \tprcomment{I inserted \samplerz in \ffsampling}
- 
+
  \begin{algorithm}[!htb]
   \caption{$\ffsampling_{\ n}(\vect, \tree)$}\label{alg:ffsampling}
  \begin{algorithmic}[1]
@@ -211,7 +211,7 @@ The distribution $\chi$ is extremely close to the ``half-Gaussian'' $D_{\bZ^+, \
 \paragraph{\berexp and \approxexp.} \longberexp and its subroutine \longapproxexp serve to perform rejection sampling. Let $C$ be the following list of 64-bit numbers (in hexadecimal form):
 
 \begin{align*}
-C = & \footnotesize{\texttt{% 
+C = & \footnotesize{\texttt{%
 	[0x00000004741183A3, 0x00000036548CFC06, 0x0000024FDCBF140A, 0x0000171D939DE045,}} \\
 	& \footnotesize{\texttt{%
 	\ 0x0000D00CF58F6F84, 0x000680681CF796E3, 0x002D82D8305B0FEA, 0x011111110E066FD0,}}\\%
@@ -222,7 +222,7 @@ C = & \footnotesize{\texttt{%
 \end{align*}
 Let $f \in \bR[x]$ be the polynomial defined as:
 $$f(x) = 2^{-63} \cdot \sum_{i=0}^{\poldeg} C[i] \cdot x^{\poldeg - i}.$$
-$f(-x)$ serves as a very good approximation of $\exp(-x)$ over $[0, \ln(2)]$, see~\cite{TC:ZhaSteSak20}. This is leveraged by \longapproxexp to compute integral approximations of $2^{63} \cdot ccs \cdot \exp(-x)$ for $x$ in a certain range. Note that the intermediate variables $y, z$ in \approxexp are always in the range $\{0, ..., 2^{63} - 1\}$, with one exception: if $x = 0$, then at the end of the for loop (\cref{step:approxloop,step:approxloopin}) we have $y = 2^{63}$. This makes it easy to represent $x,y$ using, for example, the C type \verb+uint64_t+. 
+$f(-x)$ serves as a very good approximation of $\exp(-x)$ over $[0, \ln(2)]$, see~\cite{TC:ZhaSteSak20}. This is leveraged by \longapproxexp to compute integral approximations of $2^{63} \cdot ccs \cdot \exp(-x)$ for $x$ in a certain range. Note that the intermediate variables $y, z$ in \approxexp are always in the range $\{0, ..., 2^{63} - 1\}$, with one exception: if $x = 0$, then at the end of the for loop (\cref{step:approxloop,step:approxloopin}) we have $y = 2^{63}$. This makes it easy to represent $x,y$ using, for example, the C type \verb+uint64_t+.
 
 \todo[inline]{Fat warning: check that \approxexp is correct}
 

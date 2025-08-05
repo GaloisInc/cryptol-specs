@@ -17,7 +17,7 @@ type PrRkeySize = 64
 type PrKeySize128 = 128
 
 
-//S-box 
+//S-box
 
 sbox = [0xc, 0x5, 0x6, 0xb, 0x9, 0x0, 0xa, 0xd, 0x3, 0xe, 0xf, 0x8, 0x4, 0x7, 0x1, 0x2]
 
@@ -31,7 +31,7 @@ pbox = [0x00, 0x10, 0x20, 0x30, 0x01, 0x11, 0x21, 0x31, 0x02, 0x12, 0x22,
         0x18, 0x28, 0x38, 0x09, 0x19, 0x29, 0x39, 0x0a, 0x1a, 0x2a, 0x3a,
         0x0b, 0x1b, 0x2b, 0x3b, 0x0c, 0x1c, 0x2c, 0x3c, 0x0d, 0x1d, 0x2d,
         0x3d, 0x0e, 0x1e, 0x2e, 0x3e, 0x0f, 0x1f, 0x2f, 0x3f]
-        
+
 pbox_inv = [0x00, 0x04, 0x08, 0x0c, 0x10, 0x14, 0x18, 0x1c, 0x20, 0x24, 0x28,
           0x2c, 0x30, 0x34, 0x38, 0x3c, 0x01, 0x05, 0x09, 0x0d, 0x11, 0x15,
           0x19, 0x1d, 0x21, 0x25, 0x29, 0x2d, 0x31, 0x35, 0x39, 0x3d, 0x02,
@@ -90,13 +90,13 @@ stateToMsg : State -> [PrBlockSize]
 stateToMsg st = join (join st)
 
 //pemutation Layer
-     
+
 SubpLayer: [PrBlockSize] -> [PrBlockSize]
 SubpLayer pt =  hs
           where hs = [ pt!(pbox_inv ! i) | i <- [0,1..63] ]
 
 //pLayer for decryption
-  
+
 SubpLayer_dec: [PrBlockSize] -> [PrBlockSize]
 SubpLayer_dec pt =  hs
           where hs = [ pt!(pbox ! i) | i <- [0,1..63] ]
@@ -115,23 +115,23 @@ roundDecrypt (pt, key) = SubCells_dec (msgToState(SubpLayer_dec (stateToMsg (add
 
 PrEncrypt : ([PrKeySize], [PrBlockSize]) -> [PrBlockSize]
 PrEncrypt (key, pt) = stateToMsg(addRoundKey (hs!0) (msgToState(key'@31).0))
-                where hs = [ roundEncrypt (msgToState(pt), msgToState((key'@0).0)) ] # [ roundEncrypt(pT, msgToState((key'@i).0)) 
+                where hs = [ roundEncrypt (msgToState(pt), msgToState((key'@0).0)) ] # [ roundEncrypt(pT, msgToState((key'@i).0))
                                                                                        | i<- [1,2..30]
                                                                                        | pT <- hs ]
                       key'= (RoundKeyList key)
-                      
+
 // Decryption
 
 PrDecrypt : ([PrKeySize], [PrBlockSize]) -> _
 PrDecrypt (key, pt) = stateToMsg(addRoundKey (hs!0) (msgToState(key'@0).0))
-                where hs = [ roundDecrypt (msgToState(pt), msgToState((key'@31).0)) ] # [ roundDecrypt(pT, msgToState((key'@i).0)) 
+                where hs = [ roundDecrypt (msgToState(pt), msgToState((key'@31).0)) ] # [ roundDecrypt(pT, msgToState((key'@i).0))
                                                                                        | i<- [30,29..1]
                                                                                        | pT <- hs ]
                       key'= (RoundKeyList key)
-                                                                                         
-                                                                       
 
-                           
+
+
+
 
 
 //Correctness
@@ -163,16 +163,16 @@ RoundKeyList_128 key = hs
 PrEncrypt_128 : ([PrKeySize128], [PrBlockSize]) -> _
 PrEncrypt_128 (key , pt) = stateToMsg(addRoundKey (hs!0) (msgToState(key'@31).0))
                          //stateToMsg(addRoundKey (hs!0) (msgToState(key'@31).0))
-                where hs = [ roundEncrypt (msgToState(pt), msgToState((key'@0).0)) ] # [ roundEncrypt(pT, msgToState((key'@i).0)) 
+                where hs = [ roundEncrypt (msgToState(pt), msgToState((key'@0).0)) ] # [ roundEncrypt(pT, msgToState((key'@i).0))
                                                                                        | i<- [1,2..30]
                                                                                        | pT <- hs ]
                       key'= (RoundKeyList_128 key)
-                     
+
 //Decryption-128bit
 
 PrDecrypt_128 : ([PrKeySize128], [PrBlockSize]) -> _
 PrDecrypt_128 (key, pt) = stateToMsg(addRoundKey (hs!0) (msgToState(key'@0).0))
-                where hs = [ roundDecrypt (msgToState(pt), msgToState((key'@31).0)) ] # [ roundDecrypt(pT, msgToState((key'@i).0)) 
+                where hs = [ roundDecrypt (msgToState(pt), msgToState((key'@31).0)) ] # [ roundDecrypt(pT, msgToState((key'@i).0))
                                                                                        | i<- [30,29..1]
                                                                                        | pT <- hs ]
                       key'= (RoundKeyList_128 key)

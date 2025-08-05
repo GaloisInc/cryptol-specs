@@ -4,7 +4,7 @@ Institute for System Dynamics and Control Theory
 Russian Academy of Sciences
 */
 
-module Primitive::Symmetric::Cipher::Stream::bivium where 
+module Primitive::Symmetric::Cipher::Stream::bivium where
 
 Bivium_stream : [93] -> [84] -> [inf]
 Bivium_stream R1 R2 = stream

@@ -3,10 +3,10 @@
   module sphincs_spec where
 \end{code}
 \label{sec:spx}
-We now have all ingredients to describe our main construction \spx. 
-Essentially, \spx is an orchestration of the methods and schemes described 
+We now have all ingredients to describe our main construction \spx.
+Essentially, \spx is an orchestration of the methods and schemes described
 before. It only adds randomized message compression and verifiable index
-generation. 
+generation.
 
 \subsection{\spx Parameters}
 
@@ -20,15 +20,15 @@ generation.
  \item  $t$ : the number of leaves of a \fors tree as defined in \autoref{sec:fors:params}.
 \end{description}
 
-All the restrictions stated in the previous sections apply. Recall that 
+All the restrictions stated in the previous sections apply. Recall that
 we use $a = \log t$. Moreover, from these values the values $m$ and \len are
 computed as
 \begin{itemize}
-  \item $m$: the message digest length in bytes. 
-  It is computed as 
+  \item $m$: the message digest length in bytes.
+  It is computed as
   $$m=\floor{(k\log t +7)/ 8} + \floor{(h - h/d +7)/ 8} + \floor{(h / d +7)/ 8}.$$
 
-  While only $h + k\log t$ bits would be needed, using the longer $m$ as defined 
+  While only $h + k\log t$ bits would be needed, using the longer $m$ as defined
   above simplifies implementations significantly.
   \item $\len$: the number of $n$-byte string elements in a \wotsp private
         key, public key, and signature. It is computed as $\len =
@@ -43,20 +43,20 @@ In the following, we assume that all algorithms have access to these parameters.
 
 \subsection{\spx Key Generation (Function \spxkgen)}
 
-   The \spx private key contains two elements. First, the $n$-byte secret seed 
-   \sseed which is used to generate all the \wotsp and \fors private key elements. 
-   Second, an $n$-byte PRF key \skprf which is used to deterministically 
-   generate a randomization value for the randomized message hash. 
+   The \spx private key contains two elements. First, the $n$-byte secret seed
+   \sseed which is used to generate all the \wotsp and \fors private key elements.
+   Second, an $n$-byte PRF key \skprf which is used to deterministically
+   generate a randomization value for the randomized message hash.
 
-   The \spx public key also contains two elements. First, the \hyper public key, 
+   The \spx public key also contains two elements. First, the \hyper public key,
    i.e. the root of the tree on the top layer. Second, an $n$-byte public seed
    value \pseed which is sampled uniformly at random.
-   
-   As \spxsign does not get the public key, but needs access to \pseed (and 
-   possibly to \proot for fault attack mitigation), the \spx secret key contains 
+
+   As \spxsign does not get the public key, but needs access to \pseed (and
+   possibly to \proot for fault attack mitigation), the \spx secret key contains
    a copy of the public key.
-   
-   The description of algorithm \spxkgen assumes the existence of a function 
+
+   The description of algorithm \spxkgen assumes the existence of a function
    \texttt{sec\_rand} which on input $i$ returns $i$-bytes of cryptographically strong
    randomness.
 
@@ -66,7 +66,7 @@ In the following, we assume that all algorithms have access to these parameters.
 # Input: (none)
 # Output: SPHINCS+ key pair (SK,PK)
 
-spx_keygen( ){          
+spx_keygen( ){
      SK.seed = sec_rand(n);
      SK.prf = sec_rand(n);
      PK.seed = sec_rand(n);
@@ -101,17 +101,17 @@ spx_keygen( ){
         \end{center}
       \end{minipage}
   \end{center}
-  \caption{Left: \spx secret key. Right: \spx public key.} 
+  \caption{Left: \spx secret key. Right: \spx public key.}
   \label{fig:spx:keys}
 \end{figure}
 
 \subsection{\spx Signature}
 
-   A \spx signature \htsig is a byte string of length $(1 + k(a + 1) + h + d\len)n$.  
-   It consists of an $n$-byte randomization string $R$, a \fors signature 
-   \forssig consisting of $k(a+1)$ $n$-byte strings, and a \hyper signature \htsig 
+   A \spx signature \htsig is a byte string of length $(1 + k(a + 1) + h + d\len)n$.
+   It consists of an $n$-byte randomization string $R$, a \fors signature
+   \forssig consisting of $k(a+1)$ $n$-byte strings, and a \hyper signature \htsig
    of $(h + d\len)n$ bytes.
-   
+
    The data format for a signature is given in \autoref{fig:xmssmt:sig}
 
 %Not so elegant way for the table in the figure below with the right row height.
@@ -124,45 +124,45 @@ spx_keygen( ){
       \\[-0.5em] \hyper signature \htsig ($(h +d\len)n$ bytes) \\[-0.5em] \\ \hline
     \end{tabular}
   \end{center}
-  \caption{\spx signature} 
+  \caption{\spx signature}
   \label{fig:spx:sig}
 \end{figure}
 
 \subsection{\spx Signature Generation (Function \spxsign)}
-   Generating a \spx signature consists of four steps. First, a random value 
+   Generating a \spx signature consists of four steps. First, a random value
    \Random
-   is pseudorandomly generated. Next, this is used to compute a $m$ byte message 
+   is pseudorandomly generated. Next, this is used to compute a $m$ byte message
    digest which is split into a $\floor{(k\log t +7)/ 8}$-byte partial message
-   digest $\texttt{tmp\_md}$, a $\floor{(h - h/d +7)/ 8}$-byte tree index $\texttt{tmp\_idx\_tree}$, and 
-   a $\floor{(h / d +7)/ 8}$-byte 
+   digest $\texttt{tmp\_md}$, a $\floor{(h - h/d +7)/ 8}$-byte tree index $\texttt{tmp\_idx\_tree}$, and
+   a $\floor{(h / d +7)/ 8}$-byte
    leaf index $\texttt{tmp\_idx\_leaf}$. Next, the actual values \md,
-   $\texttt{idx\_tree}$, and $\texttt{idx\_leaf}$ are computed by extracting the 
+   $\texttt{idx\_tree}$, and $\texttt{idx\_leaf}$ are computed by extracting the
    necessary number of bits.
    The partial message digest
-   \md is then signed with the $\texttt{idx\_leaf}$-th 
-   \fors key pair of the $\texttt{idx\_tree}$-th \xmss tree on the lowest \hyper layer. 
-   The public key of the \fors key pair is then signed using 
+   \md is then signed with the $\texttt{idx\_leaf}$-th
+   \fors key pair of the $\texttt{idx\_tree}$-th \xmss tree on the lowest \hyper layer.
+   The public key of the \fors key pair is then signed using
    \hyper. As described in Section~\ref{sec:hyper:sign}, the index is never
    actually used as a whole, but immediately split into a tree index
    and a leaf index, for ease of implementation.
-   
-   When computing \Random, the PRF takes a $n$-byte string \texttt{opt} 
+
+   When computing \Random, the PRF takes a $n$-byte string \texttt{opt}
    which is initialized with \pseed but can be overwritten with randomness
    if the global variable RANDOMIZE is set. This option is given as otherwise
-   \spx signatures would be always deterministic. This might be problematic in 
-   some settings. See \autoref{sec:security} and \autoref{sec:discussion} for 
+   \spx signatures would be always deterministic. This might be problematic in
+   some settings. See \autoref{sec:security} and \autoref{sec:discussion} for
    more details.
 
 \begin{lstlisting}[label=alg:spx:sign, mathescape, language=pseudoc,
                    caption=\spxsign\ -- Generating a \spx signature]
-   
+
 # Input: Message M, private key SK = (SK.seed, SK.prf, PK.seed, PK.root)
 # Output: SPHINCS+ signature SIG
 
 spx_sign(M, SK){
      // init
      ADRS = toByte(0, 32);
-     
+
      // generate randomizer
      opt = PK.seed;
      if(RANDOMIZE){
@@ -170,13 +170,13 @@ spx_sign(M, SK){
      }
      R = PRF_msg(SK.prf, opt, M);
      SIG = SIG || R;
-     
+
      // compute message digest and index
      digest = H_msg(R, PK.seed, PK.root, M);
      tmp_md = first floor((ka +7)/ 8) bytes of digest;
      tmp_idx_tree = next floor((h - h/d +7)/ 8) bytes of digest;
      tmp_idx_leaf = next floor((h/d +7)/ 8) bytes of digest;
-     
+
      md = first ka bits of tmp_md;
      idx_tree = first h - h/d bits of tmp_idx_tree;
      idx_leaf = first h/d bits of tmp_idx_leaf;
@@ -189,32 +189,32 @@ spx_sign(M, SK){
 
      SIG_FORS = fors_sign(md, SK.seed, PK.seed, ADRS);
      SIG = SIG || SIG_FORS;
-     
+
      // get FORS public key
      PK_FORS = fors_pkFromSig(SIG_FORS, md, PK.seed, ADRS);
-     
+
      // sign FORS public key with HT
      ADRS.setType(TREE);
      SIG_HT = ht_sign(PK_FORS, SK.seed, PK.seed, idx_tree, idx_leaf);
      SIG = SIG || SIG_HT;
-     
+
      return SIG;
 }
 \end{lstlisting}
 
 \subsection{\spx Signature Verification (Function \spxverify)}
 
-   \spx signature verification (\autoref{alg:spx:ver}) can be summarized as 
+   \spx signature verification (\autoref{alg:spx:ver}) can be summarized as
    recomputing message digest and index, computing a candidate \fors public key,
    and verifying the \hyper signature on that public key. Note that the \hyper
    signature verification will fail if the \fors public key is not matching the
-   real one (with overwhelming probability). \spx signature verification takes 
+   real one (with overwhelming probability). \spx signature verification takes
    a message \msg, a signature \spxsig, and a \spx public key \PK.
 
 \begin{lstlisting}[breaklines=true, label=alg:spx:ver, mathescape, language=pseudoc,
                    caption=\spxverify\ -- Verify a \spx signature \spxsig on a
    message \msg using a \spx public key \PK]
-   
+
 # Input: Message M, signature SIG, public key PK
 # Output: Boolean
 
@@ -225,13 +225,13 @@ spx_verify(M, SIG, PK){
      SIG_FORS = SIG.getSIG_FORS();
      SIG_HT = SIG.getSIG_HT();
 
-     
+
      // compute message digest and index
      digest = H_msg(R, PK.seed, PK.root, M);
      tmp_md = first floor((ka +7)/ 8) bytes of digest;
      tmp_idx_tree = next floor((h - h/d +7)/ 8) bytes of digest;
      tmp_idx_leaf = next floor((h/d +7)/ 8) bytes of digest;
-     
+
      md = first ka bits of tmp_md;
      idx_tree = first h - h/d bits of tmp_idx_tree;
      idx_leaf = first h/d bits of tmp_idx_leaf;
@@ -241,9 +241,9 @@ spx_verify(M, SIG, PK){
      ADRS.setTreeAddress(idx_tree);
      ADRS.setType(FORS_TREE);
      ADRS.setKeyPairAddress(idx_leaf);
-     
+
      PK_FORS = fors_pkFromSig(SIG_FORS, md, PK.seed, ADRS);
-     
+
      // verify HT signature
      ADRS.setType(TREE);
      return ht_verify(PK_FORS, SIG_HT, PK.seed, idx_tree, idx_leaf, PK.root);

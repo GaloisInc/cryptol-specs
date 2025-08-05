@@ -36,7 +36,7 @@ import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
  * Parameters: key, initialization vector, plaintext
  *
  * NIST Specification (Section 6.3):
- * 
+ *
  *   I_1 = IV;
  *   I_j = LSB_{b-s}(I_{j-1}) | C_{j-1}  for j = 2 ... n;
  *   O_j = CIPH_K(I_j)                   for j = 1 ... n;
@@ -83,7 +83,7 @@ decrypt : {s, n} (fin s, fin n, s >= 0, s <= C::BlockSize)
 decrypt K IV Cs = Ps
     where
         CIPH_K = C::encrypt K
-        Is = [ (drop`{s} I_j_1) # C_j_1 
+        Is = [ (drop`{s} I_j_1) # C_j_1
              | I_j_1 <- [IV] # Is
              | C_j_1 <- Cs
              ]

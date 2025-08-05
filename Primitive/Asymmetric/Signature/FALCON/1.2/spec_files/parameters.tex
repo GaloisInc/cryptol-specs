@@ -18,7 +18,7 @@ The main impact of this mode is that the public key becomes extremely compact: $
 
 \section{Recommended Parameters} \label{sec:spec:params}
 
-We specify two sets of parameters that address security levels I and V as defined by NIST~\cite[Section 4.A.5]{NIST}. These can be found in Table~\ref{tab:falconparam}. Core-SVP hardness is given for the best known classical (C) and quantum (Q) algorithms. 
+We specify two sets of parameters that address security levels I and V as defined by NIST~\cite[Section 4.A.5]{NIST}. These can be found in Table~\ref{tab:falconparam}. Core-SVP hardness is given for the best known classical (C) and quantum (Q) algorithms.
 
 \todo[inline]{Tentative new table}
 
@@ -43,13 +43,13 @@ We specify two sets of parameters that address security levels I and V as define
 	Max. signature square norm $\sqsignorm$ & \sqsignormvali & \sqsignormvalv \\
 	\hline
 	Public key bytelength & 897 & 1~793 \\
-	Signature bytelength $\sigbytelen$ & \sigbytelenvali & \sigbytelenvalv \\	
+	Signature bytelength $\sigbytelen$ & \sigbytelenvali & \sigbytelenvalv \\
 	\hhline{|=|=|=|}
 	\multirow{3}{*}{$\text{Key-recovery:}\begin{cases}
 		\text{BKZ blocksize $B$ \eqref{eq:blocksize_keyrecovery}} \\[-1.1ex]
 		\text{Core-SVP hardness (C)} \\[-.8ex]
 		\text{Core-SVP hardness (Q)}
-		\end{cases} 
+		\end{cases}
 		$} & \keyrecbkzi & \keyrecbkzv \\
 	& \keyrecclassici & \keyrecclassicv \\
 	& \keyrecquantumi & \keyrecquantumv \\
@@ -58,7 +58,7 @@ We specify two sets of parameters that address security levels I and V as define
 	\text{BKZ blocksize $B$ \eqref{eq:blocksize_forgery}} \\[-1.1ex]
 	\text{Core-SVP hardness (C)} \\[-.8ex]
 	\text{Core-SVP hardness (Q)}
-	\end{cases} 
+	\end{cases}
 	$} & \forgebkzi & \forgebkzv \\
 	& \forgeclassici & \forgeclassicv \\
 	& \forgequantumi & \forgequantumv \\
@@ -97,16 +97,16 @@ We specify two sets of parameters that address security levels I and V as define
 % \paragraph{Set of parameters for $n=768$.} We intend to propose a third set of parameters for the final submission package, for $n=768$. The description of \falcon for $n=768$ is different from the other cases and is not yet described in this document. Since $n = 768$ is not a power of two, the modulus polynomial $\phi$ will not be $x^n+1$, as for $n$ a power of two, but $x^{n}-x^{n/2}+1$. Overall, we do not intend to provide more than three distinct sets of parameters to cover the five security strength categories defined in \cite[Section 4.A.5]{NIST}
 
 % TODO: Move these explanations to the rationale?
-% 
+%
 % \paragraph{Smoothing Parameter.}
 % The smoothing parameter \(\eta_\epsilon(\Lambda)\) quantifies the minimal discrete Gaussian standard deviation $\sigma$ required to obtain a given level of smoothness on the lattice $\Lambda$. Intuitively, if one picks a noise vector over a lattice from a discrete Gaussian distribution with radius at least as large as the smoothing parameter, and reduces this modulo the fundamental parallelepiped of the lattice, then the resulting distribution is very close to uniform (for details and formal definition see \cite{MicReg07?}). Since the number of queries is $q_s \leq 2^{64}$, we may set $\epsilon \leq 2^{-64}$ and we therefore have $\eta_\epsilon(\bZ^n) \leq 1.29$.
-% 
+%
 % \paragraph{Norm of the NTRU Polynomials $\|(f,g)\|$.}
 % The polynomials $f$ and $g$ shall be chosen as to minimize the Gram-Schmidt norm of the secret NTRU basis $\|\matB\|_{GS}$. This leads to more secure trapdoor sampling. In this regard, a close to optimal is to have the Euclidean norm of $(f,g) \in \bZ^{2n}$ close to but smaller than $1.2 \cdot \sqrt{q} \approx 133.03$.
-% 
+%
 % \paragraph{Standard Deviation $\sigma$.}
 % $\ffsampling$ shall be used with a standard deviation $\sigma$ close to but greater than $\eta_\epsilon(\bZ^n)\cdot\|\matB\|_{GS}$. From the discussions above, it is clear that $\sigma = 1.55 \cdot \sqrt{q} \approx 171.83$ is enough. Note that $\sigma$ can be derived from $q$ as well as the upper bound on the Gram-Schmidt norm of the secret NTRU basis, therefore each of these two parameters have only one specified value for the three quantum security level specified.
-% 
+%
 % \paragraph{Acceptance Bound $\bound$.}
 % The signature shall be accepted if and only if its Euclidean norm is less than $\bound = 1.2\cdot\sigma \cdot \sqrt{2n}$ (see Table~\ref{tab:falconparam}). Note that the $1.2$ factor is a security-efficiency trade-off. If we define the acceptance bound as $\bound = \delta\cdot\sigma \cdot \sqrt{2n}$ with $\delta \geq 1$, then the greater $\delta$ the smaller the security and the smaller $\delta$ the greater the probability of obtaining a signature whose the norm is too large during the signature generation.
 

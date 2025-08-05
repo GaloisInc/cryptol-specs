@@ -9,7 +9,7 @@
 
 For readability, \cref{tab:kat} splits \randombytes according to each iteration of \samplerz. As an example, line 1 of \cref{tab:kat} indicates that for $\mu = -91.90471153063714$, $\sigma' = 1.7037990414754918$, \randombytes = {\small \texttt{0fc5442ff043d66e91d1eacac64ea5450a22941edc6c}} and $z = -92$ , the equation \eqref{eq:samplerz} is verified when running \samplerz with randomness \randombytes. In addition, \samplerz iterates twice before terminating. More precisely, \randombytes is used as follows:
 \[
-\underbrace{\tt 0fc5442ff043d66e91|d1|ea}_{\text{Iteration 1}}| 
+\underbrace{\tt 0fc5442ff043d66e91|d1|ea}_{\text{Iteration 1}}|
 \underbrace{\tt cac64ea5450a22941e|dc|6c}_{\text{Iteration 2}}
 \]
 At each iteration, the first $9$ random bytes are used by \basesampler, the next one by \cref{line:sign} and the last one(s) by \berexp. Note that at each call, \berexp has a probability $\frac{1}{2^8}$ of using more than $1$ random byte; this is rare, but happens. This is illustrated by line 9 of \cref{tab:kat}, which contain an example for which one iteration of \berexp uses $2$ random bytes.

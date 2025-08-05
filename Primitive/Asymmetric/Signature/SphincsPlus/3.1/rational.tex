@@ -1,241 +1,241 @@
 \section{Design rationale}
-% \TODO{Essentially argue that we use the same reasoning as for SPHINCS, 
+% \TODO{Essentially argue that we use the same reasoning as for SPHINCS,
 % repeat / sketch that reasoning. Explain changes we made and why we made them.
 % Explain ideas we had which got discarded and why. }
 
-The design rationale behind \spx is to follow the original \spc construction 
-and apply several results from more recent research. The idea behind \spc was 
-as follows. One can build a 
-stateless hash-based signature scheme using a massive binary 
-certification tree and selecting a leaf at random 
-for each message to be signed. The problem with this approach is that the 
+The design rationale behind \spx is to follow the original \spc construction
+and apply several results from more recent research. The idea behind \spc was
+as follows. One can build a
+stateless hash-based signature scheme using a massive binary
+certification tree and selecting a leaf at random
+for each message to be signed. The problem with this approach is that the
 tree has to be extremely high, i.e., a height of about twice the security level
 would be necessary. This leads to totally unpractical signature sizes. Using a
-hypertree instead of a binary certification tree allows to trade speed for 
+hypertree instead of a binary certification tree allows to trade speed for
 signature size. However, this is still not sufficient to get practical sizes
-and speed. 
+and speed.
 
-The main new idea in \spc was to not use the leaves directly to 
-sign messages but to use the leaves to certify FTS key pairs. This allowed to 
-massively reduce the total tree height (by a factor about $4$). This is due to 
-the fact that the security of an FTS instance degrades with every signature 
-a key pair is used for. Hence, the height of the tree does not have to be such 
-that collisions do only occur with negligible probability anymore. Instead, 
-it has to be ensured that the product of the probability of a $\gamma$-times 
-collision on a leaf and the forging probability of an adversary after seeing 
+The main new idea in \spc was to not use the leaves directly to
+sign messages but to use the leaves to certify FTS key pairs. This allowed to
+massively reduce the total tree height (by a factor about $4$). This is due to
+the fact that the security of an FTS instance degrades with every signature
+a key pair is used for. Hence, the height of the tree does not have to be such
+that collisions do only occur with negligible probability anymore. Instead,
+it has to be ensured that the product of the probability of a $\gamma$-times
+collision on a leaf and the forging probability of an adversary after seeing
 $\gamma$ FTS signatures (with the same key pair) is negligible.
 
-From this, it is mainly a question of balancing parameters to find a practical 
+From this, it is mainly a question of balancing parameters to find a practical
 scheme. For the full original reasoning see~\cite{Bernstein2015}.
 
-In the following we give a more detailed reasoning regarding the changes 
-made to \spc in \spx, %further decisions made on the way 
-and changes that were 
+In the following we give a more detailed reasoning regarding the changes
+made to \spc in \spx, %further decisions made on the way
+and changes that were
 discussed by the \spx team but got discarded.
 
 \subsection{Changes Made}
-We changed several details of \spc leading to \spx. The reasoning behind those 
+We changed several details of \spc leading to \spx. The reasoning behind those
 changes is discussed in the following.
-\subsubsection{Multi-Target Attack Protection} 
-\spc was designed to be collision-resilient i.e., to not be vulnerable to 
+\subsubsection{Multi-Target Attack Protection}
+\spc was designed to be collision-resilient i.e., to not be vulnerable to
 collision attacks against the used hash function. This had two reasons. First,
-it allowed to choose a smaller output length at the same security level which 
-led to smaller signatures. Second, collision resistance is a far stronger 
-assumption than the used (second-)preimage resistance and pseudorandomness 
-assumptions. 
+it allowed to choose a smaller output length at the same security level which
+led to smaller signatures. Second, collision resistance is a far stronger
+assumption than the used (second-)preimage resistance and pseudorandomness
+assumptions.
 
-However, the use of (second-)preimage resistance introduced a new issue as 
+However, the use of (second-)preimage resistance introduced a new issue as
 pointed out in~\cite{Huelsing2016}: Multi-target attacks. Preimage resistance
 properties are targeted properties. An adversary is asked to invert the function
 on a given target value, or to find a second-preimage for a given target value.
-If it suffices to break the given property for one out of many targets, the 
+If it suffices to break the given property for one out of many targets, the
 adversarial effort is reduced by a factor of the number of targets. To prevent
-this in our we apply the mitigation techniques from \cite{Huelsing2016} using keyed 
-hash functions. Each hash function call is keyed with a different key and applies 
+this in our we apply the mitigation techniques from \cite{Huelsing2016} using keyed
+hash functions. Each hash function call is keyed with a different key and applies
 different bitmasks. Keys are derived from, and bitmasks are
-pseudorandomly generated from a public seed and an address specifying the 
-context of the call. For this we introduce the notion of tweakable hash functions 
+pseudorandomly generated from a public seed and an address specifying the
+context of the call. For this we introduce the notion of tweakable hash functions
 which take in addition to the input value a public seed and an address.
 
-This pseudorandom generation of bitmasks comes at the cost of introducing a 
+This pseudorandom generation of bitmasks comes at the cost of introducing a
 random oracle assumption for the PRF used to generate the bitmasks. However,
-this only applies to the pseudorandom generation of the bitmasks. I.e., if 
-all bitmasks would be stored in the public key, the scheme would have a standard 
-model security proof (even if these bitmasks where generated using exactly the 
-same way but without giving away the seed). Hence, the security reduction 
-in~\cite{Huelsing2016} is in the quantum-accessible random oracle model. 
+this only applies to the pseudorandom generation of the bitmasks. I.e., if
+all bitmasks would be stored in the public key, the scheme would have a standard
+model security proof (even if these bitmasks where generated using exactly the
+same way but without giving away the seed). Hence, the security reduction
+in~\cite{Huelsing2016} is in the quantum-accessible random oracle model.
 
-One difference to \cite{Huelsing2016} is that in all instantiations of \spx, 
-keys are not pseudorandomly generated. Instead, the concatenation of 
-public seed and address is used to practically key the functions. 
-Given how the tweakable hash functions are instantiated, this means that we 
-assume that there do not exist any (exponentially large) subsets of the domain 
+One difference to \cite{Huelsing2016} is that in all instantiations of \spx,
+keys are not pseudorandomly generated. Instead, the concatenation of
+public seed and address is used to practically key the functions.
+Given how the tweakable hash functions are instantiated, this means that we
+assume that there do not exist any (exponentially large) subsets of the domain
 on which second-preimage finding is easy. This assumption holds for any hash
-function based on the sponge or Merkle-D{\aa}mgard construction, assuming the 
+function based on the sponge or Merkle-D{\aa}mgard construction, assuming the
 block or compression function behaves like a random function.
 
 \subsubsection{Tree-less \wotsp Public Key Compression}
-\spx compresses the end nodes of the \wotsp hash chains with a single call 
+\spx compresses the end nodes of the \wotsp hash chains with a single call
 to a tweakable hash function, while \spc used a so called L-tree.
-The reason to use L-trees in \spc was that this required only two 
-$n$-byte bitmasks per layer, i.e., $2\ceil{\log \len}$ bitmasks. A single call 
-to a tweakable hash requires $\len$ $n$-byte bitmasks. 
-As the bitmasks were stored in the public key, this meant 
-smaller public keys. Now, that bitmasks are pseudorandomly generated anyway and 
+The reason to use L-trees in \spc was that this required only two
+$n$-byte bitmasks per layer, i.e., $2\ceil{\log \len}$ bitmasks. A single call
+to a tweakable hash requires $\len$ $n$-byte bitmasks.
+As the bitmasks were stored in the public key, this meant
+smaller public keys. Now, that bitmasks are pseudorandomly generated anyway and
 hence are not stored in the public key anymore,
-this argument does not apply. On the opposite, tree based compression 
+this argument does not apply. On the opposite, tree based compression
 is slower than using a single call to a tweakable hash with longer input.
 
 \subsubsection{\fors} \label{sec:changes:fors}
 \fors was used to replace \horst. \horst, as its predecessor
-\hors, had the problem that weak messages existed as recently independently 
-pointed out in \cite{Aumasson2017}. More specifically, in \horst the message 
-is also split into $k$ indexes as for \fors. However, these indexes all selected 
-values from the same single set of secret key values. Hence, if the same index 
-appeared multiple times in a signature, still only a single secret value would be 
-required. In extreme cases this means that for the signature of a message only 
-a single secret value has to be know. \fors prevents this using separate secret 
+\hors, had the problem that weak messages existed as recently independently
+pointed out in \cite{Aumasson2017}. More specifically, in \horst the message
+is also split into $k$ indexes as for \fors. However, these indexes all selected
+values from the same single set of secret key values. Hence, if the same index
+appeared multiple times in a signature, still only a single secret value would be
+required. In extreme cases this means that for the signature of a message only
+a single secret value has to be know. \fors prevents this using separate secret
 value sets per index obtained from the message. Even if a message maps $k$-times
-to the same index, the signature now contains $k$ different secret values. 
+to the same index, the signature now contains $k$ different secret values.
 
-For the same parameters $k$ and $t$ this would mean an increase in signature 
-size and worse speed as now $k$ trees of height $\log t$ have to be computed 
-instead of one and for each signature value an authentication path of length 
-$(\log t) -1$ is needed. However, due to the strengthened security, we can 
-choose different values for $k$ and $t$. This in the end leads to smaller 
-signatures than for \horst. 
+For the same parameters $k$ and $t$ this would mean an increase in signature
+size and worse speed as now $k$ trees of height $\log t$ have to be computed
+instead of one and for each signature value an authentication path of length
+$(\log t) -1$ is needed. However, due to the strengthened security, we can
+choose different values for $k$ and $t$. This in the end leads to smaller
+signatures than for \horst.
 
 We also considered a method similar to Octopus~\cite{Aumasson2017a}. The idea
-is that authentication paths in \horst largely overlap. Hence, it becomes 
-possible to reduce the signature size removing any redundancy in the 
-authentication paths. This comes at the cost of a rather involved method to 
-collect the right nodes as well as variable size signatures. In practice this 
-means that one still has to prepare for the worst case. This worst case 
-indeed still has smaller signatures than \horst. We decided against this option 
+is that authentication paths in \horst largely overlap. Hence, it becomes
+possible to reduce the signature size removing any redundancy in the
+authentication paths. This comes at the cost of a rather involved method to
+collect the right nodes as well as variable size signatures. In practice this
+means that one still has to prepare for the worst case. This worst case
+indeed still has smaller signatures than \horst. We decided against this option
 as the \fors signature size matches that of Octopus' worst case signature size.
 At the same time, \fors gives more flexibility in the choice of $k$ and $t$, and
 comes with a far simpler signature and verification method that Octopus.
 
-\subsubsection{Verifiable Index Selection} 
+\subsubsection{Verifiable Index Selection}
 In \spc the index of the \horst instance to be used was pseudorandomly selected.
-This had the drawback that the index appeared random to a verifier and it was 
-impossible to verify that the index was indeed generated that way. This allowed 
-an adversary a multi-target attack on \horst (similarly for \fors in \spx). An 
-adversary could first map a message to an index set and then check if the 
-necessary secret values were already uncovered for some \horst key pair. Then it 
-would just select the index of that \horst key pair as index and succeed in 
-forging a signature. 
+This had the drawback that the index appeared random to a verifier and it was
+impossible to verify that the index was indeed generated that way. This allowed
+an adversary a multi-target attack on \horst (similarly for \fors in \spx). An
+adversary could first map a message to an index set and then check if the
+necessary secret values were already uncovered for some \horst key pair. Then it
+would just select the index of that \horst key pair as index and succeed in
+forging a signature.
 
-To prevent this attack, we decided to make index generation verifiable. More 
+To prevent this attack, we decided to make index generation verifiable. More
 specifically, we generate the index together with the message digest:
 
  We compute message digest and index as
         $$( \md || \idx ) = \sphincsHmsg ( \Random, \PK, \msg )$$
  where $\PK = ( \pseed || \proot )$ contains the top root node and the public seed.
- 
- This way, an adversary can no longer freely choose an index. Indeed, selecting 
- a message immediately also fixes the index. This method has another advantage 
- in addition to avoiding the multi-target 
- attack against \fors /\horst. We can omit the index in the SPHINCS 
- signature as it would be redundant. 
- 
+
+ This way, an adversary can no longer freely choose an index. Indeed, selecting
+ a message immediately also fixes the index. This method has another advantage
+ in addition to avoiding the multi-target
+ attack against \fors /\horst. We can omit the index in the SPHINCS
+ signature as it would be redundant.
+
  \subsubsection{Making Deterministic Signing Optional}
  \label{subsec:optrand}
- The pseudorandom generation of randomizer $\Random$ now allows to use additional 
- randomness. It takes a $n$-byte value $\texttt{OptRand}$. Per default 
- $\texttt{OptRand}$ is set to 0 but it can be filled 
- with random bits e.g. taken from a TRNG. The randomizer is then computed as 
-        
+ The pseudorandom generation of randomizer $\Random$ now allows to use additional
+ randomness. It takes a $n$-byte value $\texttt{OptRand}$. Per default
+ $\texttt{OptRand}$ is set to 0 but it can be filled
+ with random bits e.g. taken from a TRNG. The randomizer is then computed as
+
         $$\Random = \sphincsPRF (\skprf, \texttt{OptRand}, \msg).$$
-        
- That way, deterministic signing becomes optional. Deterministic signing can be 
- a problem for devices which are susceptible to side-channel attacks 
+
+ That way, deterministic signing becomes optional. Deterministic signing can be
+ a problem for devices which are susceptible to side-channel attacks
  as it allows to collect several traces
- for the exactly same computation by just asking for a signature on the same 
- message multiple times. 
- 
- We could of course also have replaced $\Random$ by a truly random value on 
- default. This would have caused the scheme to become susceptible to bad 
- randomness. The new method prevents this. If $\texttt{OptRand}$ is a high 
- entropy string, \Random has as much entropy as that string. If 
- $\texttt{OptRand}$ is left as zero or has only little entropy, \Random 
+ for the exactly same computation by just asking for a signature on the same
+ message multiple times.
+
+ We could of course also have replaced $\Random$ by a truly random value on
+ default. This would have caused the scheme to become susceptible to bad
+ randomness. The new method prevents this. If $\texttt{OptRand}$ is a high
+ entropy string, \Random has as much entropy as that string. If
+ $\texttt{OptRand}$ is left as zero or has only little entropy, \Random
  is just a pseudorandom value as in \spc.
 
 
 % \subsection{Decision Made}
 %  \TODO{I am not sure if we want the following in here or rather ``forget about it''.}
-%  \TODO{I think it is valuable to explain that the XMSS optimizations (like the tweakable hashes) 
+%  \TODO{I think it is valuable to explain that the XMSS optimizations (like the tweakable hashes)
 %  proposed here to improve the SPHINCS performance are not part of the IETF XMSS draft. I propose
 % to rename this subsection "Compatibility with IETF XMSS draft" - Panos }
-% We want to highlight one decision made when deciding on the details of 
+% We want to highlight one decision made when deciding on the details of
 % \spx. A big advantage of \spc-type schemes is the large overlap with stateful
 % schemes like XMSS($^{MT}$). Especially the verification of standalone XMSS-style schemes
-% is essentially just a combination of \hyper signature verification and the 
-% initial randomized message hash. Hence, it was an obvious question if \spx 
-% should be compatible with the current CFRG Internet Draft on 
-% \xmss~\cite{Huelsing2015}. It turned out that some decisions made in the \xmss 
+% is essentially just a combination of \hyper signature verification and the
+% initial randomized message hash. Hence, it was an obvious question if \spx
+% should be compatible with the current CFRG Internet Draft on
+% \xmss~\cite{Huelsing2015}. It turned out that some decisions made in the \xmss
 % draft were not optimal in hind sight. We decided to go for the optimal choices.
-% One of the main points for this decision was that one of the incompatibility 
-% comes from the way we abstract and instantiate the tweakable hash functions. 
-% This has a huge impact on speed. This is far more an issue for \spx than for 
+% One of the main points for this decision was that one of the incompatibility
+% comes from the way we abstract and instantiate the tweakable hash functions.
+% This has a huge impact on speed. This is far more an issue for \spx than for
 % \xmss.
 
 \subsubsection{\spx-'simple' and \spx-'robust'}
 
-The updated, Round 2 submission of \spx introduces instantiations of the tweakable hash functions similar to those of the LMS proposal for stateful hash-based signatures~\cite{LMSdraft}. These instantiations are called 'simple' (compared to the established instantiations which we now call 'robust'). The 'simple' instantiations omit the use of bitmasks, i.e., no bitmasks have to be generated and XORed with the message input 
-of the tweakable hash functions \sphincsF, \sphincsH or \sphincsT. 
-%Instead it uses the seed \pseed, address \adrs and message as the input 
-%to the tweakable hash function. 
-This has the advantage of better speed since the calls to 
-the underlying hash function (needed in order to generate the bitmasks for each tweakable hash calculation) are saved. However, the resulting drawback is a security argument which in its entirety only applies in the random oracle model. 
+The updated, Round 2 submission of \spx introduces instantiations of the tweakable hash functions similar to those of the LMS proposal for stateful hash-based signatures~\cite{LMSdraft}. These instantiations are called 'simple' (compared to the established instantiations which we now call 'robust'). The 'simple' instantiations omit the use of bitmasks, i.e., no bitmasks have to be generated and XORed with the message input
+of the tweakable hash functions \sphincsF, \sphincsH or \sphincsT.
+%Instead it uses the seed \pseed, address \adrs and message as the input
+%to the tweakable hash function.
+This has the advantage of better speed since the calls to
+the underlying hash function (needed in order to generate the bitmasks for each tweakable hash calculation) are saved. However, the resulting drawback is a security argument which in its entirety only applies in the random oracle model.
 
-Another reason to propose these simple instantiations is the possibility to align the construction 
-with the stateful scheme \cite{LMSdraft} such that clients can easily implement the verification 
+Another reason to propose these simple instantiations is the possibility to align the construction
+with the stateful scheme \cite{LMSdraft} such that clients can easily implement the verification
 procedure for both with a small code-base, as for the robust instantiations and XMSS. However, the simple instantiations of \spx are so far not compatible with the LMS signature scheme as described in~\cite{LMSdraft}. The simple instantiations of \spx uses \pseed and \adrs to distinguish hash calls. LMS uses a specially crafted security string which has the same purpose, is similar, but differs in the details.
 
-Most of the time in \spx, XMSS, and LMS, is spent on \sphincsF computations. The LMS proposal \cite{LMSdraft} optimized the length of their security string for \shatwo to ensure that the \sphincsF computations of the OTS signatures can be done with a single compression function call. 
-We use a similar approach, applied to our \spx-\shatwo instantiation. For this purpose we compress the hash addresses in case of \shatwo instantiations and pad \pseed to fit a full compression function block (with an exception of the mask generation). As \pseed is constant for a key pair, this allows to precompute the internal state of \shatwo after absorbing this block and reduce the necessary online computations to a single compression function call for the \shatwo-simple instances. Also for the robust instantiations this saves a factor of two in compression function calls. For \shathree and \haraka such an optimization is of no effect as one \sphincsF computation already takes only a single call to the inner function. 
+Most of the time in \spx, XMSS, and LMS, is spent on \sphincsF computations. The LMS proposal \cite{LMSdraft} optimized the length of their security string for \shatwo to ensure that the \sphincsF computations of the OTS signatures can be done with a single compression function call.
+We use a similar approach, applied to our \spx-\shatwo instantiation. For this purpose we compress the hash addresses in case of \shatwo instantiations and pad \pseed to fit a full compression function block (with an exception of the mask generation). As \pseed is constant for a key pair, this allows to precompute the internal state of \shatwo after absorbing this block and reduce the necessary online computations to a single compression function call for the \shatwo-simple instances. Also for the robust instantiations this saves a factor of two in compression function calls. For \shathree and \haraka such an optimization is of no effect as one \sphincsF computation already takes only a single call to the inner function.
 
 \subsection{Discarded Changes}
-In \autoref{sec:changes:fors}, we already explained that we discarded the use of 
-an Octopus-like method as we found a better alternative. 
+In \autoref{sec:changes:fors}, we already explained that we discarded the use of
+an Octopus-like method as we found a better alternative.
 
-One more idea which we discarded on the way was a 
-signature - secret key size trade-off. 
-To further shrink the \spx signature size, the top $z$ layers of the 
-hypertree can be merged together into a a single tree of height $zh'$. That way 
-an \spx signature includes $z-1$ less \wotsp signatures. This decreases the 
-signature size by $n\cdot len(z-1)$ bytes, but typically comes at 
-the cost of speed as now a tree of height $zh'$ has to be computed for 
+One more idea which we discarded on the way was a
+signature - secret key size trade-off.
+To further shrink the \spx signature size, the top $z$ layers of the
+hypertree can be merged together into a a single tree of height $zh'$. That way
+an \spx signature includes $z-1$ less \wotsp signatures. This decreases the
+signature size by $n\cdot len(z-1)$ bytes, but typically comes at
+the cost of speed as now a tree of height $zh'$ has to be computed for
 each signature generation.
-%For $z=2$ the signature shrinks by 1kb for w=256 and 2kb for w=16. 
-This can be prevented by storing the 
-% 
-% The trade-off of that optimization is that the intermediate tree significantly increases the signing  
-% time as it would take more time calculate the bigger intermediate tree in order to build the 
-% authentication path to the root for the signature. To alleviate the extra cost, the 
-nodes at height $ih'$, where $0 < i < z$, %would need to be kept 
+%For $z=2$ the signature shrinks by 1kb for w=256 and 2kb for w=16.
+This can be prevented by storing the
+%
+% The trade-off of that optimization is that the intermediate tree significantly increases the signing
+% time as it would take more time calculate the bigger intermediate tree in order to build the
+% authentication path to the root for the signature. To alleviate the extra cost, the
+nodes at height $ih'$, where $0 < i < z$, %would need to be kept
 as part of the secret key. These nodes (auxiliary data) can
 be used to build the authentication paths to the root of the merged tree without
-actually computing the whole tree. Indeed, authentication path computation in 
-this case gets faster than computing the authentication paths for $z$ tree layers 
-in the original hypertree. 
-The size of the auxiliary data 
+actually computing the whole tree. Indeed, authentication path computation in
+this case gets faster than computing the authentication paths for $z$ tree layers
+in the original hypertree.
+The size of the auxiliary data
 is %$n2^{ih'}$. %$
 %
-% Andy: @Panos the simple formula without sum only applies for z=2 
-%       which we did not establish yet. 
+% Andy: @Panos the simple formula without sum only applies for z=2
+%       which we did not establish yet.
 %
-$n \sum_{i=1}^{z-1} 2^{ih'}$. %For \spx, this optimization is used with $z=2$. One more significant trade-off is 
-While this already grows extremely fast, the real problem turned out to be 
-key generation time. As the full tree still has to be 
-computed once during key generation, key generation time increases. 
-Key generation would now take 
-$2^{zh'}$ \wotsp key generations. 
+$n \sum_{i=1}^{z-1} 2^{ih'}$. %For \spx, this optimization is used with $z=2$. One more significant trade-off is
+While this already grows extremely fast, the real problem turned out to be
+key generation time. As the full tree still has to be
+computed once during key generation, key generation time increases.
+Key generation would now take
+$2^{zh'}$ \wotsp key generations.
 
-Initial experiments suggested that key generation time easily moves into 
-the order of minutes already for $z=2$ while the benefit in signature size is 
-1KB or 2KB for $w=256$ and $w=16$ respectively. In addition, this optimization 
-significantly complicates implementations as the top tree has to be handled 
-differently than the remaining trees. Hence, this idea was discarded. 
+Initial experiments suggested that key generation time easily moves into
+the order of minutes already for $z=2$ while the benefit in signature size is
+1KB or 2KB for $w=256$ and $w=16$ respectively. In addition, this optimization
+significantly complicates implementations as the top tree has to be handled
+differently than the remaining trees. Hence, this idea was discarded.
 % \todo{Optionally, put in a drawing that shows how the $z-1$ trees are merged, there are no WOTS+ signatures any more and what the auxiliary nodes kept are. }

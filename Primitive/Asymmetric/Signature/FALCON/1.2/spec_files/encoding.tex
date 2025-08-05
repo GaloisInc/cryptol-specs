@@ -43,12 +43,12 @@ In this section we specify algorithms for compressing and decompressing efficien
  \begin{enumerate}
   \item The first bit of $\str_i$ is the sign of $s_i$;
   \item The $7$ next bits of $\str_i$ are the $7$ least significant bits of $|s_i|$, in order of significance, i.e. most to least significant;
-  \item The last bits of $\str_i$  are an encoding of the most significant bits of $|s_i|$ using unary coding. If $\lfloor|s_i|/2^7\rfloor = k$, then its encoding is $\underbrace{\tt{0\dots 0}}_{k \text{ times}} \tt 1$, which we also note ${{\tt 0}^k \tt 1}$; 
+  \item The last bits of $\str_i$  are an encoding of the most significant bits of $|s_i|$ using unary coding. If $\lfloor|s_i|/2^7\rfloor = k$, then its encoding is $\underbrace{\tt{0\dots 0}}_{k \text{ times}} \tt 1$, which we also note ${{\tt 0}^k \tt 1}$;
  \end{enumerate}
-  \item 
+  \item
  The compression of $s$ is the concatenated string $\str \gets (\str_0\|\str_1\|\dots\|\str_{n-1})$.
- 
- \item 
+
+ \item
  \str is padded with zeroes to a fixed width \slen.
 \end{enumerate}
 This encoding is based on two observations. First, since $s_i \bmod 2^7$ is close to uniform, it is pointless to compress the $7$ least significant bits of $s_i$. Second, if a Huffman table is computed for the most significant bits of $|s_i|$, it results in the unary code we just described. So our unary code is actually a Huffman code for the distribution of the most significant bits of $|s_i|$. A formal description is given in \longcompress.
@@ -107,7 +107,7 @@ The corresponding decompression algorithm is given in \longdecompress. For any p
 	\State{$\str \gets \str[9+k \dots \ell-1]$}\Comment{We remove the bits of \str that encore $s_i$.}
 	\EndFor
 	\If{$(\str \neq {\tt 0}^{|\str|})$}\label{line:trail} \Comment{Enforce trailing bits at ${\tt 0}$}
-	\Return{$\bot$}\label{line:trail2} 
+	\Return{$\bot$}\label{line:trail2}
 	\EndIf
 	\Return {$s = \sum_{i=0}^{n-1} s_i x^i$}
 	\end{algorithmic}

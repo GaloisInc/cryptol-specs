@@ -62,7 +62,7 @@ roundKey' key = [ rk@0, rk@1, rk@2, rk@3, rk@4, rk@5, rk@6, rk@7,
                  rk@7, rk@6, rk@5, rk@4, rk@3, rk@2, rk@1, rk@0
                  ]
          where rk = (keySchedule key)
-//Round function 
+//Round function
 
 roundFun : [StdBlockSize]-> [StdBlockSize] -> [StdBlockSize]
 roundFun subpt subkey = roundRes
@@ -75,7 +75,7 @@ roundFun subpt subkey = roundRes
 
 roundEncryption: [StdBlockSize] -> [StdBlockSize] -> [StdBlockSize] -> [BlockSize]
 roundEncryption lpt rpt rkey =  rpt # (lpt ^ (roundFun rpt rkey))
-                       
+
 
 //Encryption
 
@@ -121,11 +121,11 @@ property gostCorrect key m = gostDecrypt(key, gostEncrypt(key, m)) == m
 gostEncrypt64: ([BlockSize],[BlockSize]) -> [BlockSize]
 gostEncrypt64 (pt, key)  = gostEncrypt(key', pt)
              where key' = key # zero
-          
+
 gostDecrypt64 : ([BlockSize], [BlockSize]) -> [BlockSize]
 gostDecrypt64 (ct, key)  = gostDecrypt(key', ct)
              where key' = key #zero
-      
+
 
 property gostCorrect64 key m = gostDecrypt64( key, gostEncrypt64(key, m)) == m
 
