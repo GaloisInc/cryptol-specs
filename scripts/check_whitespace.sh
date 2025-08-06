@@ -2,58 +2,58 @@
 
 # This is modified from `harupy`'s `find-trailing-whitespace` action
 # @see https://github.com/harupy/find-trailing-whitespace/blob/56310d70ae8fd21afec8d4307d2d9ab6c15e7c5d/entrypoint.sh
+#
+# It checks all git-tracked files (`git ls-files`) for unwanted trailing
+# whitespace and correctly newline-terminated files.
+#
 
-set -e
-
-function file_ends_with_newline() {
-    [[ $(tail -c1 "$1" | wc -l) -gt 0 ]]
+function files_end_with_newline() {
+  # `egrep` is used to ignore binary files (`-I`) and return the
+  # original file name (`-l`).
+  # The conditional:
+  # - checks the last byte of the file (`tail`),
+  # - counts the number of newlines (`wc`), and
+  # - fails if there are none (`gt`).
+  # If the conditional fails, we output the file name (`echo`).
+  for file in $(git ls-files | xargs egrep -Il ""); do
+    [[ $(tail -c1 "$file" | wc -l) -gt 0 ]] || printf '%s\n' "$file"
+  done
 }
 
-function file_has_trailing_whitespace() {
-  lines=$(egrep -rnIH " +$" $1 | cut -f-2 -d ":")
-  if [ ! -z "$lines" ]; then
-    echo "$([[ -z "$tw_lines" ]] && echo "$lines" || echo $'\n'"$lines")"
-  fi
+function files_have_trailing_whitespace() {
+  # egrep arguments are:
+  # -H: print the file name
+  # -n: print the line number
+  # -o: print only the matching part of the line (invisible, since it's whitespace)
+  # -I: ignore binary files
+  # The regex checks for any amount of blank space at the end of the line.
+  git ls-files | xargs egrep -HnoI "[[:blank:]]+$"
 }
 
-mn_files="" # Files missing a final newline.
-tw_lines=""  # Lines containing trailing whitespaces.
+function print_findings() {
+  type=$1
+  shift
+  failing_lines=$@
 
-# The `sed` command adds `./` in front of each path.
-for file in $(git ls-files | sed -e 's/^/.\//')
-do
-  # Ignore non-text files.
-  case ${file##*.} in
-    "pdf" | "jpg" | "xcf" | "pptx" | "vsd" ) continue;;
-    *) ;;
-  esac
-
-  if ! file_ends_with_newline $file; then
-    mn_files+="$file\n"
+  if [ ! -z "$failing_lines" ]; then
+    printf "\n=== Failure! The following have $type :( ===\n"
+    printf '%s\n' $failing_lines
+    return 1
+  else
+    printf "\n=== Success! No $type!! ===\n"
+    return 0
   fi
-  tw_lines+=$(file_has_trailing_whitespace $file)
-done
 
-exit_code=0
+}
 
-# If `tw_lines`` is not empty, fail.
-if [ ! -z "$tw_lines" ]; then
-  echo -e "\n***** Lines containing trailing whitespace *****\n"
-  echo -e "${tw_lines[@]}"
-  echo -e "\nFailed.\n"
-  exit_code=1
-else
-  echo -e "\n***** No lines contained trailing whitespace! *****\n"
-fi
+# Check for trailing whitespace
+tw_lines=$(files_have_trailing_whitespace);
+print_findings "trailing whitespace" "$tw_lines"
+c1=$?
 
-# If `mn_files` is not empty, fail.
-if [ ! -z "$mn_files" ]; then
-  echo -e "\n***** Files missing a final newline *****\n"
-  echo -e "${mn_files}"
-  echo -e "\nFailed.\n"
-  exit_code=1
-else
-  echo -e "\n***** No files were missing a final newline! *****\n"
-fi
+# Check for final newlines
+mn_files=$(files_end_with_newline);
+print_findings "missing final newlines" "$mn_files"
+c2=$?
 
-exit $exit_code
+exit $c1 || $c2
