@@ -56,4 +56,4 @@ mn_files=$(files_end_with_newline);
 print_findings "missing final newlines" "$mn_files"
 c2=$?
 
-exit $c1 || $c2
+exit $(($c1 || $c2))
