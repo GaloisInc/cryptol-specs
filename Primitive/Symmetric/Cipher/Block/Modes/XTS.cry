@@ -271,19 +271,19 @@ decrypt (K1 # K2) i C
 
       // Partition the ciphertext into `M` full blocks and a partial final block.
       C_0_m2 # Cm1 # Cm = C
-      
+
       // Step 1.
       P_0_m2 = join [decryptBlock K1 T blk | T <- T_0_m2 | blk <- split`{M - 1} C_0_m2]
-      
+
       // Steps 4d - 4f.
       Pm # CP = decryptBlock K1 Tm Cm1
-      
+
       // Step 4g.
       CC = Cm # CP
 
       // Step 4h.
       Pm1 = decryptBlock K1 Tm1 (Cm # CP)
-      
+
       // Step 5.
       P = P_0_m2 # Pm1 # Pm
 

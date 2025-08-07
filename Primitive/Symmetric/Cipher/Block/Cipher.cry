@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2013-2018 Galois, Inc.
- * 
+ * @copyright Galois, Inc. 2013-2018
+ * @author Nichole Schimanski <nls@galois.com>
  */
 
 module Primitive::Symmetric::Cipher::Block::Cipher where

@@ -17,7 +17,7 @@
  * [NIST-SP-800-38A]: Morris Dworkin. Recommendation for Block Cipher
  *     Modes of Operation: Methods and Techniques. NIST Special Publication
  *     800-38A. December 2001.
- *     @see https://doi.org/10.6028/NIST.SP.800-38A 
+ *     @see https://doi.org/10.6028/NIST.SP.800-38A
  *
  */
 
@@ -36,9 +36,9 @@ import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
  */
 encrypt : {n} (fin n) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> [n][C::BlockSize]
 encrypt K IV Ps = Cs
-    where 
+    where
         CIPH_K = C::encrypt K
-        Cs = [ CIPH_K (P_j ^ C_j_1) | P_j <- Ps | C_j_1 <- [IV] # Cs] 
+        Cs = [ CIPH_K (P_j ^ C_j_1) | P_j <- Ps | C_j_1 <- [IV] # Cs]
 
 /**
  * CBC decryption: [NIST-SP-800-38A] Section 6.2.
@@ -51,9 +51,9 @@ encrypt K IV Ps = Cs
  */
 decrypt : {n} (fin n) => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize] -> [n][C::BlockSize]
 decrypt K IV Cs = Ps
-    where 
+    where
         CIPH_K_inv = C::decrypt K
-        Ps = [ (CIPH_K_inv C_j) ^ C_j_1 | C_j <- Cs | C_j_1 <- [IV] # Cs] 
+        Ps = [ (CIPH_K_inv C_j) ^ C_j_1 | C_j <- Cs | C_j_1 <- [IV] # Cs]
 
 /**
  * Decryption must be the inverse of encryption.

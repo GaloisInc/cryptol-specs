@@ -1,8 +1,11 @@
 /* Source:
-Alexander Semenov
-Institute for System Dynamics and Control Theory
-Russian Academy of Sciences
-*/
+ * @author Alexander Semenov
+ * Institute for System Dynamics and Control Theory
+ * Russian Academy of Sciences
+ *
+ * @editor Brian Huffman <huffman@galois.com>
+ * @copyright Galois, Inc
+ */
 
 module Primitive::Symmetric::Cipher::Stream::trivium where
 

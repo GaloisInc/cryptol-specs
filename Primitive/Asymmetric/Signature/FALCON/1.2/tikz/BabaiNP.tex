@@ -1,3 +1,15 @@
+% @author Thomas Prest
+% @author Pierre-Alain Fouque
+% @author Jeffrey Hoffstein
+% @author Paul Kirchner
+% @author Vadim Lyubashevsky
+% @author Thomas Pornin
+% @author Thomas Ricosset
+% @author Gregor Seiler
+% @author William Whyte
+% @author Zhenfei Zhang
+% @copyright The authors
+
 \documentclass[crop,tikz]{standalone}
 \input{header}
 
@@ -8,7 +20,7 @@
         \clip (2.5,-1.2) rectangle (7cm,3cm);
 
       \node (c) at (4.7,.8) {};
-      
+
        \fill[draw=black,fill=shamrock!50] ($(c)+(-1,-.3)$) rectangle ($(c)+(1,.3)$);
        \pgftransformcm{1}{0}{0.7}{0.3}{\pgfpoint{0cm}{0cm}};
 
@@ -16,18 +28,18 @@
       \node (c) at (c) [cpoint] {};
 
       \node[color=black] at ($(c)+(.1,.1)$) [scale=0.5] {\textbf{c}};
-      
+
         \foreach \x in {-4,-2,0,2,4,6,8,10} {
             \foreach \y in {-4,-2,0,2,4,6,8,10} {
                 \node at (\x,\y) [point] {};
             }
         }
 
-      
+
       \node (v) at (4,2) [point] {};
       \draw[->,black] (c) to (v);
 
-        
+
       \draw[style=help lines,dashed] (-10,-10) grid[step=2cm] (14,14);
 
 

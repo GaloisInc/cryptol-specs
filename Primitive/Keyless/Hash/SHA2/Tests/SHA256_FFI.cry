@@ -21,4 +21,3 @@ FFIAndCryptolAreEqual : {l} (SHA256::ValidMessageLength (8 * l))
 property FFIAndCryptolAreEqual M = ffi == cryptol where
     ffi = SHA256_FFI::hashBytes M
     cryptol = SHA256::hashBytes M
-

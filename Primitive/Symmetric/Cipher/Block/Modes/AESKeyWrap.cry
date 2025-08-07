@@ -211,7 +211,7 @@ private
   wrapRound key (A, R) j = wrappedBlocks ! 0 where
     wrappedBlocks = [(A, R)] # [wrapBlock key s j i | s <- wrappedBlocks
                                                     | i <- [1..n]]
-  
+
   /**
    * The body of the inner loop of Step 2 of the Key Unwrap algorithm.
    *
