@@ -27,7 +27,8 @@ import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
 interface constraint (C::KeySize >= 64)
 interface constraint (C::BlockSize == 128)
 
-import Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap { interface C }
+import interface Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrapInterface as W
+interface constraint (W::KeySize == C::KeySize)
 
 /**
  * The key size (in bits).
@@ -102,7 +103,7 @@ extendedKeyWrap plaintext key
   // the AIV as the initial value.  The result is n+1 64-bit blocks {C[0], C[1],
   // ..., C[n]}.
   | n > 1 =>
-    keyWrap P key AIV`{m}
+    W::keyWrap P key AIV`{m}
     where
       P = padPlaintext`{m} plaintext
 
@@ -180,8 +181,7 @@ private
     // slightly delayed to Step 2 below since the padded plaintext is needed
     // to perform this verification when the AIV is used.
     | n > 1 => split (join ([A'] # R')) where
-      (A', R') = keyUnwrapUnchecked ciphertext key
-
+      (A', R') = W::keyUnwrapUnchecked ciphertext key
 import Common::OptionUtils(optTest)
 
 /**

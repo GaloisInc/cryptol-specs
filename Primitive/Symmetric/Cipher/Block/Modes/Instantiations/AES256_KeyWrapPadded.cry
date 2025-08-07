@@ -6,5 +6,6 @@
  */
 module Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_KeyWrapPadded =
     Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrapPadded {
-        Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES256
+        C = Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES256,
+        W = Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_KeyWrap
     }

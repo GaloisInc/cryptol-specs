@@ -1,0 +1,47 @@
+/**
+ * AES Key Wrap Algorithm.
+ *
+ * This is the public interface exposed by the specification for AES Key Wrap
+ * (defined in [RFC-3394] and [TODO:NIST]). It is used by AES Key Wrap with
+ * padding (defined in [RFC-3394] and [TODO:NIST]), and is not expected to be
+ * used outside of that context.
+ *
+ * Further notes on the constraints and types here can be found in the
+ * executable specification of AES KeyWrap.
+ *
+ * References:
+ *
+ * [RFC-3394]: J. Schaad, R. Housley. Advanced Encryption Standard (AES) Key
+ *     Wrap Algorithm. Internet Request for Comments (RFC) 3394. September
+ *     2002.
+ *     @see https://datatracker.ietf.org/doc/rfc3394
+ *
+ * [RFC-5649]: R. Housley, M. Dworkin. Advanced Encryption Standard (AES) Key
+ *     Wrap with Padding Algorithm. Internet Request for Comments (RFC) 5649.
+ *     August 2009.
+ *     @see https://datatracker.ietf.org/doc/rfc5649
+
+ *
+ * @copyright Galois Inc.
+ * @author Eric Mertens <emertens@galois.com>
+ * www.cryptol.net
+ */
+interface module Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrapInterface where
+
+/**
+ * The key size (in bits).
+ */
+type KeySize : #
+
+/**
+ * The restriction on valid input sizes.
+ */
+type constraint ValidInputSize n = (fin n, n >= 2, width n <= 64)
+
+keyWrap : {n} (ValidInputSize n) => [n][64] -> [KeySize] -> [64] -> [n + 1][64]
+
+keyUnwrap : {n} (ValidInputSize n) =>
+    [n + 1][64] -> [KeySize] -> [64] -> Option ([n][64])
+
+keyUnwrapUnchecked : {n} (ValidInputSize n) =>
+    [n + 1][64] -> [KeySize] -> ([64], [n][64])
