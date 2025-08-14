@@ -1,0 +1,11 @@
+/*
+ * Instantiate KeyWrap mode for AES 256.
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::Instantiations::Experimental_AES256_KeyWrap =
+    Primitive::Symmetric::Cipher::Block::Modes::KeyWrap {
+        Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES256
+    }
+

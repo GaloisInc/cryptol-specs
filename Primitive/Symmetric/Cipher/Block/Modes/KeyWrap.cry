@@ -1,0 +1,144 @@
+
+module Primitive::Symmetric::Cipher::Block::Modes::KeyWrap where
+
+/*
+ * This algorithm is only approved for instantiation with AES.
+ * [SP-800-38F] Section 3.1.
+ */
+import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
+interface constraint (C::KeySize >= 64)
+interface constraint (C::BlockSize == 128)
+
+/**
+ * A byte.
+ * [SP-800-38F] Section 4.1.
+ */
+type Octet = 8
+
+/**
+ * Given a block cipher `C`, a bit string whose length is half of the block
+ * size.
+ * [SP-800-38F] Section 4.1.
+ */
+type Semiblock = C::BlockSize / 2
+
+/**
+ * The 64-bit default ICV (integrity check value) for KW.
+ * [SP-800-38F] Section 4.3.
+ */
+ICV1 = 0xA6A6A6A6A6A6A6A6
+
+/**
+ * The 32-bit default ICV (integrity check value) for KWP.
+ * [SP-800-38F] Section 4.3.
+ */
+ICV2 = 0xA65959A6
+
+/**
+ * [SP-800-38F] Section 4.4.
+ */
+CIPHK K X = C::encrypt K X
+
+/**
+ * [SP-800-38F] Section 4.4.
+ */
+CIPHInvK K X = C::decrypt K X
+
+/**
+ * [SP-800-38F] Section 4.4.
+ */
+int = toInteger
+
+/**
+ * [SP-800-38F] Section 4.4.
+ */
+len : {n} (fin n) => [n] -> Integer
+len _ = `n
+
+/**
+ * Get the `s` right-most bits of the input.
+ * [SP-800-38F] Section 4.4.
+ */
+LSB : {s, n} (fin s, fin n, n >= s) => [n] -> [s]
+LSB = drop`{n - s}
+
+/**
+ * Get the `s` left-most bits of the input.
+ * [SP-800-38F] Section 4.4.
+ */
+MSB : {s, n} (fin s, fin n, n >= s) => [n] -> [s]
+MSB = take`{s}
+
+/**
+ * [SP-800-38F] Section 4.5.
+ * ```repl
+ * :prove hexRepresentation
+ * ```
+ */
+property hexRepresentation = 0xA659 == 0b1010011001011001
+
+/**
+ * [SP-800-38F] Section 4.5.
+ * ```repl
+ * :prove zeroRepresentation
+ * ```
+ */
+property zeroRepresentation = (zero : [8]) == 0b00000000
+
+/**
+ * [SP-800-38F] Section 4.5.
+ * ```repl
+ * :prove concatRepresentation
+ * ```
+ */
+property concatRepresentation = 0b001 # 0b10111 == 0b00110111
+
+/**
+ * [SP-800-38F] Section 4.5.
+ * ```repl
+ * :prove xorRepresentation
+ * ```
+ */
+property xorRepresentation = 0b10011 ^ 0b10101 == 0b00110
+
+/**
+ * [SP-800-38F] Section 4.5.
+ * ```repl
+ * :prove lenRepresentation
+ * ```
+ */
+property lenRepresentation = len 0b00010 == 5
+
+/**
+ * [SP-800-38F] Section 4.5.
+ * ```repl
+ * :prove signficanceWorks
+ * ```
+ */
+property signficanceWorks = lsb && msb where
+    X = 0b111011010
+    lsb = LSB`{3} X == 0b010
+    msb = MSB`{4} X == 0b1110
+
+/**
+ * The instances of the `[x]_s` notation in the spec are all used to convert
+ * base-10 literal values into bit strings. We can handle these instances using
+ * explicit typing in Cryptol. This property shows the expected notation and
+ * demonstrates that the endianness of this conversion aligns with the
+ * requirement in the specification.
+ * [SP-800-38F] Section 4.5.
+ * ```repl
+ * :prove integerToString
+ * ```
+ */
+property integerToString = (39 == 0b00100111) && ((39 : [8]) == 0b00100111)
+
+/**
+ * [SP-800-38F] Section 4.5.
+ * ```repl
+ * :prove stringToInteger
+ * ```
+ */
+property stringToInteger = int 0b00011010 == 26
+
+
