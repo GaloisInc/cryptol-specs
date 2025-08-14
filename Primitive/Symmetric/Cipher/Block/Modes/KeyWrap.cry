@@ -141,4 +141,32 @@ property integerToString = (39 == 0b00100111) && ((39 : [8]) == 0b00100111)
  */
 property stringToInteger = int 0b00011010 == 26
 
+/**
+ * The plaintext for AES key wrap (KW) shall be a semiblock string with fewer
+ * than 2^54 semiblocks.
+ * Note: the Cryptol expression `width n < X` is equivalent to `n < 2^^X - 1`.
+ * [SP-800-38F] Section 5.3.1 and Table 1.
+ */
+type constraint KW_Plaintext n = (2 <= n, width n <= 54)
 
+/**
+ * The ciphertext for AES key wrap (KW) is a semiblock string with length one
+ * longer than the corresponding ciphertext.
+ * [SP-800-38F] Section 5.3.1 and Table 1.
+ */
+type constraint KW_Ciphertext n = (3 <= n, n <= 2^^54)
+
+/**
+ * The plaintext for AES key wrap with padding (KWP) shall be an _octet_ string
+ * with fewer than 2^32 octets.
+ * Note: the Cryptol expression `width n < X` is equivalent to `n < 2^^X - 1`.
+ * [SP-800-38F] Section 5.3.1 and Table 1.
+ */
+type constraint KWP_Plaintext n = (1 <= n, width n <= 32)
+
+/**
+ * The ciphertext for AES key wrap with padding (KWP) is a semiblock string
+ * with length one longer than the corresponding ciphertext.
+ * [SP-800-38F] Section 5.3.1 and Table 1.
+ */
+type constraint KWP_Ciphertext n = (2 <= n, n <= 2^^29)
