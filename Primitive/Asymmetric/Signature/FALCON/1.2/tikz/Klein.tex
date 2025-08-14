@@ -1,3 +1,15 @@
+% @author Thomas Prest
+% @author Pierre-Alain Fouque
+% @author Jeffrey Hoffstein
+% @author Paul Kirchner
+% @author Vadim Lyubashevsky
+% @author Thomas Pornin
+% @author Thomas Ricosset
+% @author Gregor Seiler
+% @author William Whyte
+% @author Zhenfei Zhang
+% @copyright The authors
+
 \documentclass[crop,tikz]{standalone}
 \input{header}
 
@@ -6,26 +18,26 @@
         \clip (2.5,-1.2) rectangle (7cm,3cm);
 
       \node[cpoint] (c) at (4.69,.81) {};
-      
+
             \foreach\i in {1,2,...,99} {
       \draw[fill=shamrock!\i,draw=none] (c) ellipse ({.96*sqrt(ln(100/\i)} and {.96*sqrt(ln(100/\i)});}
       \draw[fill=none,draw=black,radius={.96}] (c) circle;
-      
-      
+
+
         \pgftransformcm{1}{0}{0.7}{0.3}{\pgfpoint{0cm}{0cm}};
-        
+
 
       \node [cpoint] (c) at (2.8,2.7) {};
 
 
       \node[color=black] at ($(c)+(.1,.1)$) [scale=0.5] {\textbf{c}};
-      
+
         \foreach \x in {-4,-2,0,2,4,6,8,10} {
             \foreach \y in {-4,-2,0,2,4,6,8,10} {
                 \node at (\x,\y) [point] {};
             }
         }
-        
+
       \draw[style=help lines,dashed] (-10,-10) grid[step=2cm] (14,14);
 
 

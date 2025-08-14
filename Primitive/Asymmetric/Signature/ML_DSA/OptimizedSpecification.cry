@@ -1,6 +1,6 @@
 /**
  * Optimized implementation of the ML-DSA (CRYSTALS-Dilithium) signature scheme.
- * 
+ *
  * This implementation deviates from the specification in favor of performance.
  *
  * @copyright Galois Inc
@@ -60,7 +60,7 @@ type PrivateKey = Spec::PrivateKey
 type Signature = Spec::Signature
 
 /**
- * This is almost identical to `Spec`; it's duplicated to pull in the optimized 
+ * This is almost identical to `Spec`; it's duplicated to pull in the optimized
  * dependencies in this file but H`{64} is replaced by H to avoid compilation
  * errors.
  */
@@ -217,7 +217,7 @@ HintBitPack = Spec::HintBitPack
 HintBitUnpack = Spec::HintBitUnpack
 
 /**
- * This is unchanged from `Spec`; it's duplicated to pull in the optimized 
+ * This is unchanged from `Spec`; it's duplicated to pull in the optimized
  * dependencies in this file.
  */
 pkEncode : [32]Byte -> [k]R -> PublicKey
@@ -233,7 +233,7 @@ pkEncodeEquivalence : [32]Byte -> [k]R -> Bit
 property pkEncodeEquivalence ρ t1 = Spec::pkEncode ρ t1 == pkEncode ρ t1
 
 /**
- * This is unchanged from `Spec`; it's duplicated to pull in the optimized 
+ * This is unchanged from `Spec`; it's duplicated to pull in the optimized
  * dependencies in this file.
  */
 pkDecode : PublicKey -> ([32]Byte, [k]R)
@@ -254,7 +254,7 @@ pkDecodeEquivalence : PublicKey -> Bit
 property pkDecodeEquivalence pk = Spec::pkDecode pk == pkDecode pk
 
 /**
- * This is unchanged from `Spec`; it's duplicated to pull in the optimized 
+ * This is unchanged from `Spec`; it's duplicated to pull in the optimized
  * dependencies in this file.
  */
 skEncode : [32]Byte -> [32]Byte -> [64]Byte -> [ell]R -> [k]R -> [k]R
@@ -280,7 +280,7 @@ skEncodeEquivalence : [32]Byte -> [32]Byte -> [64]Byte -> [ell]R -> [k]R -> [k]R
 property skEncodeEquivalence ρ K tr s1 s2 t0 = Spec::skEncode ρ K tr s1 s2 t0 == skEncode ρ K tr s1 s2 t0
 
 /**
- * This is unchanged from `Spec`; it's duplicated to pull in the optimized 
+ * This is unchanged from `Spec`; it's duplicated to pull in the optimized
  * dependencies in this file.
  */
 skDecode : PrivateKey -> ([32]Byte, [32]Byte, [64]Byte, [ell]R, [k]R, [k]R)
@@ -308,7 +308,7 @@ skDecodeEquivalence : PrivateKey -> Bit
 property skDecodeEquivalence sk = Spec::skDecode sk == skDecode sk
 
 /**
- * This is unchanged from `Spec`; it's duplicated to pull in the optimized 
+ * This is unchanged from `Spec`; it's duplicated to pull in the optimized
  * dependencies in this file.
  */
 sigEncode : [λ / 4]Byte -> [ell]R -> [k]R2 -> Signature
@@ -322,7 +322,7 @@ sigEncode c_til z h = σ where
     σ = σ3 # HintBitPack h
 
 /**
- * This is unchanged from `Spec`; it's duplicated to pull in the optimized 
+ * This is unchanged from `Spec`; it's duplicated to pull in the optimized
  * dependencies in this file.
  */
 sigDecode : Signature -> ([λ / 4]Byte, [ell]R, Option ([k]R2))
@@ -338,7 +338,7 @@ sigDecode σ = (c_til, z, h) where
     h = HintBitUnpack y
 
 /**
- * This is unchanged from `Spec`; it's duplicated to pull in the optimized 
+ * This is unchanged from `Spec`; it's duplicated to pull in the optimized
  * dependencies in this file.
  */
 w1Encode : [k]R -> [32 * k * width ((q - 1) / (2 * γ2) - 1)]Byte
@@ -355,7 +355,7 @@ w1EncodeEquivalence : [k]R -> Bit
 property w1EncodeEquivalence w1 = Spec::w1Encode w1 == w1Encode w1
 
 /**
- * This is almost identical to `Spec`; it's duplicated to pull in the optimized 
+ * This is almost identical to `Spec`; it's duplicated to pull in the optimized
  * dependencies in this file but H`{inf} is replaced by H to avoid compilation
  * errors.
  */
@@ -409,7 +409,7 @@ RejNTTPoly = Spec::RejNTTPoly
 RejBoundedPoly = Spec::RejBoundedPoly
 
 /**
- * This is unchanged from `Spec`; it's duplicated to pull in the optimized 
+ * This is unchanged from `Spec`; it's duplicated to pull in the optimized
  * dependencies in this file.
  */
 ExpandA : [32]Byte -> [k][ell]Tq
@@ -429,7 +429,7 @@ ExpandAEquivalence : [32]Byte -> Bit
 property ExpandAEquivalence ρ = Spec::ExpandA ρ == ExpandA ρ
 
 /**
- * This is unchanged from `Spec`; it's duplicated to pull in the optimized 
+ * This is unchanged from `Spec`; it's duplicated to pull in the optimized
  * dependencies in this file.
  */
 ExpandS : [64]Byte -> ([ell]R, [k]R)
@@ -447,7 +447,7 @@ ExpandSEquivalence : [64]Byte -> Bit
 property ExpandSEquivalence ρ = Spec::ExpandS ρ == ExpandS ρ
 
 /**
- * This is almost identical to `Spec`; it's duplicated to pull in the optimized 
+ * This is almost identical to `Spec`; it's duplicated to pull in the optimized
  * dependencies in this file but H`{32 * c} is replaced by H to avoid compilation
  * errors. Moreover, the type of `c` is not used so it's removed.
  */

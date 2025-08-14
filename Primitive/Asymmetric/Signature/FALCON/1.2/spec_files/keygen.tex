@@ -1,5 +1,17 @@
 % !TeX root = ../falcon.tex
 
+% @author Thomas Prest
+% @author Pierre-Alain Fouque
+% @author Jeffrey Hoffstein
+% @author Paul Kirchner
+% @author Vadim Lyubashevsky
+% @author Thomas Pornin
+% @author Thomas Ricosset
+% @author Gregor Seiler
+% @author William Whyte
+% @author Zhenfei Zhang
+% @copyright The authors
+
 \section{Key Pair Generation} \label{sec:spec:keygen}
 
 
@@ -9,28 +21,28 @@ The key pair generation can be decomposed in two clearly separate parts.
 \begin{itemize}
  \item \emph{Solving the NTRU equation.} The first step of the key pair generation consists of computing polynomials $f, g, F, G \in \bZ[x]/(\phi)$ which verify \eqref{eq:ntru} -- the NTRU equation.
  Generating $f$ and $g$ is easy; the hard part is to efficiently compute polynomials $F,G$ such that \eqref{eq:ntru} is verified.
- 
+
  To do this, we propose a novel method that exploits the tower-of-rings structure highlighted in \eqref{eq:binarytower}.
  We use the field norm $\N$ to map the NTRU equation onto a smaller ring $\bZ[x]/(\phi')$ of the tower of rings, all the way down to $\bZ$. We then solve the equation in $\bZ$ -- using an extended gcd -- and use properties of the norm to lift the solutions $(F,G)$ back to the original ring $\bZ[x]/(\phi)$.
- 
+
  Implementers should be mindful that this step does \textit{not} perform modular reduction modulo $q$, which leads us to handle polynomials with large coefficients (a few thousands of bits per coefficient in the lowest levels of the recursion). See \cref{sec:spec:keygen:ntrugen} for a formal specification of this step, and \cite{PKC:PorPre19} for an in-depth analysis.
- 
+
  \item \emph{Computing a \falcon tree.} Once suitable polynomials $f,g,F,G$ are generated, the second part of the key generation consists of preprocessing them into an adequate format: by adequate we mean that this format should be reasonably compact and allow fast signature generation on-the-go.
- 
- \falcon trees are precisely this adequate format. To compute a \falcon tree, we compute the $\LDLs$ decomposition $\matG = \matL \matD \adj \matL$ of the matrix $\matG = \matB \adj \matB$, where 
+
+ \falcon trees are precisely this adequate format. To compute a \falcon tree, we compute the $\LDLs$ decomposition $\matG = \matL \matD \adj \matL$ of the matrix $\matG = \matB \adj \matB$, where
  \begin{equation}
- \matB = \twotwo{g}{-f}{G}{-F}, 
+ \matB = \twotwo{g}{-f}{G}{-F},
  \end{equation}
  which is equivalent to computing the Gram-Schmidt orthogonalization $\matB = \matL \times \tilde \matB$. If we were using Klein's well-known sampler (or a variant thereof) as a trapdoor sampler, knowing $\matL$ would be sufficient but a bit unsatisfactory as we would not exploit the tower-of-rings structure of $\bQ[x]/(\phi)$.
- 
+
  So instead of stopping there, we store $\matL$ (or rather $L_{10}$, its bottom-left and only non-trivial term) in the root of a tree, use the splitting operators defined in \cref{sec:spec:splitmerge} to ``break'' the diagonal elements $D_{ii}$ of $\matD$ into matrices $\matG_i$ over smaller rings $\bQ[x]/(\phi')$, at which point we create subtrees for each matrix $\matG_i$ and recursively start over the process of $\LDLs$ decomposition and splitting.
- 
+
  The recursion continues until the matrix $\matG$ has its coefficients in $\bQ$, which correspond to the bottom of the recursion tree. How this is done is specified in \cref{sec:spec:keygen:ffldl}.
- 
+
  The main technicality of this part is that it exploits the tower-of-rings structure of $\bQ[x]/(\phi)$ by breaking its elements onto smaller rings. In addition, intermediate results are stored in a tree, which requires precise bookkeeping as elements of different tree levels do not live in the same field. Finally, for performance reasons, the step is realized completely in the \fft domain.
 \end{itemize}
 
-Once these two steps are done, the rest of the key pair generation is straightforward. A final step normalizes the leaves of the LDL tree to turn it into a \falcon tree. The result is wrapped in a private key \sk and the corresponding public key \pk is $h = g f^{-1} \bmod q$. 
+Once these two steps are done, the rest of the key pair generation is straightforward. A final step normalizes the leaves of the LDL tree to turn it into a \falcon tree. The result is wrapped in a private key \sk and the corresponding public key \pk is $h = g f^{-1} \bmod q$.
 
 
 A formal description is given in algorithms \ref{alg:keygen} to \ref{alg:ffldl}, the main algorithm being the procedure \longkeygen. The general architecture of the key pair generation is also illustrated in \cref{fig:keygen}.
@@ -93,7 +105,7 @@ The first step of the key pair generation generates suitable polynomials $f,g,F,
  \end{enumerate}
  \item Second, short polynomials $F,G$ are computed such that $f,g,F,G$ verify \eqref{eq:ntru}. This is done by the procedure \longntrusolve.
  \end{enumerate}
- 
+
 \begin{algorithm}%[!htp]
   \caption{$\ntrugen(\phi, q)$ \hfill}\label{alg:ntrugen}
  \begin{algorithmic}[1]
@@ -136,11 +148,11 @@ z_i \gets \samplerz(0, \sigmastar),\\
 This exploits the fact the sum of $k$ Gaussians of standard deviation $\sigmastar$ is a Gaussian of standard deviation $\sigmastar \sqrt{k}$. Here $\sigmastar$ is chosen so that $\sigmastar \leq \sigmax$, see \cref{sec:spec:sign:integers}. Note that the reference code currently implements a similar idea, but with a $\sigmastar > \sigmax$ for which we sample using a precomputed table.
 
  \subsubsection{Solving the NTRU equation \eqref{eq:ntru}}
- 
+
  We now explain how to solve \eqref{eq:ntru}. As mentioned in \cref{sec:spec:keygen:overview}, we repeatedly use the field norm $\N$ to map $f,g$ to a smaller ring $\bZ[x]/(x^{n/2}+1)$, until we reach the ring $\bZ$. Solving \eqref{eq:ntru} then amounts to computing an extended GCD over $\bZ$, which is simple. We then use the multiplicative properties of the field norm to repeatedly lift the solutions up to $\bZ[x]/(x^{n}+1)$, at which point we have solved \eqref{eq:ntru}.
- 
+
 % \todo{Fix algorithm}
- 
+
 % \tprcomment{I changed lines 11 and 12 of \ntrusolve}
 
   \begin{algorithm}[!htp]
@@ -168,16 +180,16 @@ This exploits the fact the sum of $k$ Gaussians of standard deviation $\sigmasta
   \Return{$(F,G)$}
   \end{algorithmic}
  \end{algorithm}
- 
+
  \ntrusolve uses \longreduce as a subroutine to reduce the size of the solutions $F,G$.
  The principle of \reduce is a simple generalization of textbook vectors' reduction. Given vectors $\vecu, \vecv \in \bZ^k$, reducing $\vecu$ with respect to $\vecv$ is done by simply performing $\vecu \gets \vecu - \left\lfloor \frac{ \inner{\vecu}{\vecv} }{ \inner{\vecv}{\vecv} } \right\rceil \vecv$. \reduce does the same by replacing $\bZ^k$ by $(\bZ[x]/(\phi))^2$, $\vecu$ by $(F,G)$ and $\vecv$ by $ (f,g)$. A detailed explanation of the mathematical and algorithmic principles underlying \ntrusolve can be found in~\cite{PKC:PorPre19}.
- 
+
   \begin{algorithm}[!htp]
   \caption{$\reduce(f,g,F,G)$}\label{alg:reduce}
  \begin{algorithmic}[1]
   \Require{Polynomials $f,g,F,G \in \bZ[x]/(\phi)$}
   \Ensure{$(F,G)$ is reduced with respect to $(f,g)$}
-  
+
   \Do
   \State{$k \gets \left \lfloor \frac{F\adj f + G\adj g}{\ffgg}\right\rceil$}
   \Comment{$\frac{F\adj f + G\adj g}{\ffgg} \in \bQ[x]/(\phi)$ and $k \in \bZ[x]/(\phi)$}
@@ -191,7 +203,7 @@ This exploits the fact the sum of $k$ Gaussians of standard deviation $\sigmasta
 \clearpage
 
 \subsection{Computing a \falcon Tree} \label{sec:spec:keygen:ffldl}
- 
+
  The second step of the key generation consists of preprocessing the polynomials $f,g,F,G$ into an adequate secret key format. The secret key is of the form $\sk = (\hat\matB, \tree)$, where:
  \begin{itemize}
  \item $\hat\matB = \twotwo{\fft(g)}{-\fft(f)}{\fft(G)}{-\fft(F)}$
@@ -202,24 +214,24 @@ This exploits the fact the sum of $k$ Gaussians of standard deviation $\sigmasta
  \end{enumerate}
  For efficiency reasons, polynomials manipulated in \longldlalgo and \longffldl always remain in \fft representation.
  \end{itemize}
- 
+
  At a high level, the method for computing the LDL tree at step 1 (before normalization) is simple:
  \begin{enumerate}
   \item We compute the LDL decomposition of $\matG$: we write $\matG = \matL \times \matD \times \adj{\matL} $, with $\matL$ a lower triangular matrix with $1$'s on the diagonal and $\matD$ a diagonal matrix. See \longldlalgo.
 
   We store $\matL$ in \tree.\data, which is the value of the root of \tree. Since $\matL$ is of the form $\matL = \twotwo{1}{\ \ \ 0\ \ \ }{L_{10}}{1}$, we only need to store $L_{10} \in \bQ[x]/(\phi)$.
-  
+
   \item We then use the splitting operator to ``break'' each diagonal element of $\matD$ into a matrix of smaller elements. More precisely, for a diagonal element $d \in \bQ[x]/(x^n + 1)$, we consider the associated endomorphism $\psi_d : z \in \bQ[x]/(x^n + 1) \mapsto dz$ and write its transformation matrix over the smaller ring $\bQ[x]/(x^{n/2} + 1)$. Following the argument of \cref{sec:spec:splitmerge:algebraic}, the transformation matrix of $\psi_d$ can be written as
    \begin{equation}\label{eq:matsplit1}
     \twotwo{d_{0}}{d_{1}}{x d_{1}}{d_{0}} \left( =  \twotwo{d_{0}}{d_{1}}{\adj d_{1}}{d_{0}} \right)\footnote{The equality in parentheses is true if and only if d is self-adjoint, \ie $\adj d = d$. This is the case in \longffldl.}.
    \end{equation}
- 
+
   For each diagonal element broken into a self-adjoint matrix $\matG_i$ over a smaller ring, we recursively compute its LDL tree as in step 1 and store the result in the left or right child of \tree (which we denote \tree.\lchild and \tree.\rchild respectively).
-  
+
   We continue the recursion until we end up with coefficients in the ring $\bQ$.
-  
+
  \end{enumerate}
- 
+
  An implementation of this ``LDL tree'' strategy is given in \longffldl. Note that in \falcon, the input of \ffldl is always a matrix of dimension $2 \times 2$, which greatly simplifies the implementation of its subroutine \longldlalgo.
 
 % \tprcomment{Should we simplify the description of \ldlalgo?}
@@ -237,7 +249,7 @@ This exploits the fact the sum of $k$ Gaussians of standard deviation $\sigmasta
 % \For{$j$ from $0$ to $(i-1)$}
 % \State {$\l_{ij} \gets \frac{1}{D_{j}} \left( G_{ij} -  \sum_{k<j} \l_{ik} \fdot  \adj \l_{jk} \fdot D_k \right)$}
 % \EndFor
-% \State {$D_{i} \gets G_{ii} - \sum_{j<i} \l_{ij} \fdot \adj \l_{ij} \fdot D_j$} 
+% \State {$D_{i} \gets G_{ii} - \sum_{j<i} \l_{ij} \fdot \adj \l_{ij} \fdot D_j$}
 % \EndFor
 % \Return{$(\L, \matD )$} \Comment{$\matL = \twotwo{1}{0}{L_{10}}{1}, \matD = \twotwo{D_{00}}{0}{0}{D_{11}}$}
 % \end{algorithmic}
@@ -258,8 +270,8 @@ This exploits the fact the sum of $k$ Gaussians of standard deviation $\sigmasta
 		\Return{$(\L, \matD )$}
 	\end{algorithmic}
 \end{algorithm}
- 
- 
+
+
  \begin{algorithm}[!htb]
  \caption{$\ffldl(\matG)$\hfill}\label{alg:ffldl}
  \begin{algorithmic}[1]

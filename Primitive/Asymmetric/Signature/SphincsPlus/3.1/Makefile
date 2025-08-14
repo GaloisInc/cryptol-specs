@@ -3,9 +3,9 @@ sphincs.pdf: sphincs.tex
 	-bibtex sphincs
 	pdflatex sphincs.tex
 	pdflatex sphincs.tex
-	
+
 .PHONY: clean
-	
+
 clean:
 	-rm *.pdf
 	-rm *.log

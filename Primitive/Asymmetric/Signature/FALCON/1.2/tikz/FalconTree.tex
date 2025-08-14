@@ -1,3 +1,15 @@
+% @author Thomas Prest
+% @author Pierre-Alain Fouque
+% @author Jeffrey Hoffstein
+% @author Paul Kirchner
+% @author Vadim Lyubashevsky
+% @author Thomas Pornin
+% @author Thomas Ricosset
+% @author Gregor Seiler
+% @author William Whyte
+% @author Zhenfei Zhang
+% @copyright The authors
+
 \documentclass[crop,tikz]{standalone}
 \input{header}
 
@@ -13,7 +25,7 @@
 \begin{document}
 
 \begin{tikzpicture}[>=stealth]
- 
+
  \node[case,minimum width=\largeur] (C) at (0,0) {$\ell$};
 
  \foreach \i in {0,1}%
@@ -29,10 +41,10 @@
          }
      }
  }
- 
+
  \foreach \l in {1,...,8}{
  \node[case,minimum width=0.12*\largeur] at (0.125*\l*\largeur-0.125*\largeur,-4.5*\hauteur) {$\sigma_\l$};
- } 
+ }
 
 
 \end{tikzpicture}

@@ -1,3 +1,15 @@
+% @author Thomas Prest
+% @author Pierre-Alain Fouque
+% @author Jeffrey Hoffstein
+% @author Paul Kirchner
+% @author Vadim Lyubashevsky
+% @author Thomas Pornin
+% @author Thomas Ricosset
+% @author Gregor Seiler
+% @author William Whyte
+% @author Zhenfei Zhang
+% @copyright The authors
+
 \section{Hashing} \label{sec:spec:hash}
 
 As for any hash-and-sign signature scheme, the first step to sign a message or verify a signature consists of hashing the message. In our case, the message needs to be hashed into a polynomial in $\bZ_q[x]/(\phi)$. An approved extendable-output hash function (XOF), as specified in FIPS 202~\cite{FIPS}, shall be used during this procedure.
@@ -8,7 +20,7 @@ This XOF shall have a security level at least equal to the security level target
  \item \shakeinject(\shakectx, \str) denotes the injection of the data \str in the hashing context \shakectx;
  \item \shakeextract(\shakectx, $b$) denotes extraction from a hashing context \shakectx of $b$ bits of pseudorandomness.
 \end{itemize}
- 
+
 \longhashtopoint defines the hashing process used in \falcon. It is defined for any $q \leq 2^{16}$. In \falcon, big-endian convention is used to interpret a chunk of $b$
 bits, extracted from a \shake instance, into an integer in the $0$ to
 $2^b-1$ range (the first of the $b$ bits has numerical weight $2^{b-1}$,
@@ -59,7 +71,7 @@ Of course, any variant deviating from the procedure expressed in
 to a different value, which breaks interoperability.
 
 % Algorithm~\ref{alg:hashtopoint} can be used to efficiently achieve this \hashtopoint operation. It is not constant-time but, for most applications, variable-time generation of the public parameter $c$ is not a problem. It is defined for $q \leq 2^{16}$ but can be easily adapted for arbitrary large $q$. As described in \cite{https://eprint.iacr.org/2016/467.pdf}, step~\ref{alg:hashtopoint:cmp}-\ref{alg:hashtopoint:mod} execute a rejection on the \shake output considered as an array of 16-bit, unsigned, little-endian integers. Each of those integers is used as a coefficient of $c$, after having been reduced modulo $q$, if it is smaller than $\lfloor 2^{16}/q \rfloor q$ and rejected otherwise.
-% 
+%
 % Note that, when timing leak of public information can be a problem, one can use the alternative approach described in \cite{USENIX:ADPS16} to parse the \shake output, which is more slower and incompatible with the straightforward approach described above, but does not leak any timing information about $c$.
-% 
+%
 % Todo: describe this constant-time approach?
