@@ -13,7 +13,7 @@ interface constraint (C::BlockSize == 128)
  * A byte.
  * [SP-800-38F] Section 4.1.
  */
-type Octet = 8
+type Octet = [8]
 
 /**
  * Given a block cipher `C`, a bit string whose length is half of the block
@@ -314,3 +314,26 @@ keyWrapInverts K P = inverts where
     inverts = case (KW_AD K C) of
         Some maybeP -> maybeP == P
         None -> False
+
+KWP_AE : {n} (KWP_Plaintext n, KWP_Ciphertext (n /^ 8 + 1)) => [C::KeySize] -> [n]Octet -> [n /^ 8 + 1]Semiblock
+KWP_AE K P
+    | 8 * n <= 64 => split C where
+        type lenP = 8 * n
+        // Step 2.
+        type padlen = 8 * (lenP /^ 64) - (lenP / 8)
+        // Step 3.
+        PAD = zero : [8 * padlen]
+        // Step 4. This is a string of bits; we `join P` to convert it from an
+        // octet string to a bit string.
+        S = ICV2 # ((`lenP / 8) : [32]) # (join P) # PAD
+        C = CIPHK K S
+    | 8 * n > 64 => C where
+        type lenP = 8 * n
+        // Step 2.
+        type padlen = 8 * (lenP /^ 64) - (lenP / 8)
+        // Step 3.
+        PAD = zero : [8 * padlen]
+        // Step 4. This is a string of bits; we `join P` to convert it from an
+        // octet string to a bit string.
+        S = ICV2 # (`(lenP / 8) : [32]) # (join P) # PAD
+        C = W K (split S)
