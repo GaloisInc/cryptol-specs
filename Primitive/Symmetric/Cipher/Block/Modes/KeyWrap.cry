@@ -20,7 +20,7 @@ type Octet = 8
  * size.
  * [SP-800-38F] Section 4.1.
  */
-type Semiblock = C::BlockSize / 2
+type Semiblock = [C::BlockSize / 2]
 
 /**
  * The 64-bit default ICV (integrity check value) for KW.
@@ -170,3 +170,41 @@ type constraint KWP_Plaintext n = (1 <= n, width n <= 32)
  * [SP-800-38F] Section 5.3.1 and Table 1.
  */
 type constraint KWP_Ciphertext n = (2 <= n, n <= 2^^29)
+
+/**
+ * Wrapping function for the encryption functions in AES key wrap and AES key
+ * wrap with padding.
+ * [SP-800-38F] Section 6.1, Algorithm 1.
+ *
+ * There is an additional explicit constraint here that the variable `s` must
+ * fit into a semiblock. This is implied by the conversion in step 2a: `[t]_64`
+ * gives the binary representation of `t` in 64 bits, and requires that `t` is
+ * less than `2^64`, and the maximum value of `t` is `s`. See the definition of
+ * `[]` in Section 4.4. This constraint will always be satisfied in an approved
+ * instantiation due to the plaintext length restrictions from Section 5.3.1;
+ * see also discussion in Appendix A.4.
+ */
+W : {n} (fin n, n >= 3, width (6 * (n - 1)) <= C::BlockSize / 2)
+    => [C::KeySize] -> [n]Semiblock -> [n]Semiblock
+W K S = C where
+    // Step 1. Note that the input string is 1-indexed in the spec and
+    // 0-indexed here.
+    type s = 6 * (n - 1)
+    A0 = S@0
+    R0 = drop`{1} S
+
+    // Step 2.
+    // `At1` corresponds to `A^{t-1}` in the text. Likewise for `Rt1`.
+    // In the spec, `R^t` is indexed from 2 to `n`. Here, it is indexed
+    // from 0 to `n - 2`.
+    update_variables : (Semiblock, [n-1]Semiblock) -> Semiblock -> (Semiblock, [n-1]Semiblock)
+    update_variables (At1, Rt1) t = (At, Rt) where
+        At = MSB`{64} (CIPHK K (At1 # Rt1@0)) ^ t
+        Rnt = LSB`{64} (CIPHK K (At1 # Rt1@0))
+        Rt = drop`{1} Rt1 # [Rnt]
+
+    (As, Rs) = foldl update_variables (A0, R0) [1..s]
+
+    C1 = [As]
+    Cis = Rs
+    C = C1 # Cis
