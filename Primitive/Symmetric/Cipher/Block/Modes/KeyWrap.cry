@@ -284,7 +284,8 @@ property wrappingInverts K S = S == S' where
  * Authenticated encryption function for AES key wrap.
  * [SP-800-38F] Section 6.2, Algorithm 3.
  */
-KW_AE : {n} (KW_Plaintext n) => [C::KeySize] -> [n]Semiblock -> [n + 1]Semiblock
+KW_AE : {n} (KW_Plaintext n)
+    => [C::KeySize] -> [n]Semiblock -> [n + 1]Semiblock
 KW_AE K P = C where
     S = ICV1 # P
     C = W K S
@@ -293,7 +294,8 @@ KW_AE K P = C where
  * Authenticated decryption function for AES key wrap.
  * [SP-800-38F] Section 6.2, Algorithm 4.
  */
-KW_AD : {n} (KW_Ciphertext n) => [C::KeySize] -> [n]Semiblock -> Option ([n - 1]Semiblock)
+KW_AD : {n} (KW_Ciphertext n)
+    => [C::KeySize] -> [n]Semiblock -> Option ([n - 1]Semiblock)
 KW_AD K C = if MSBArr`{64} S != ICV1 then None
     else Some (LSBArr`{64 * (n - 1)} S)
     where
