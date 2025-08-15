@@ -197,7 +197,8 @@ W K S = C where
     // `At1` corresponds to `A^{t-1}` in the text. Likewise for `Rt1`.
     // In the spec, `R^t` is indexed from 2 to `n`. Here, it is indexed
     // from 0 to `n - 2`.
-    update_variables : (Semiblock, [n-1]Semiblock) -> Semiblock -> (Semiblock, [n-1]Semiblock)
+    update_variables : (Semiblock, [n-1]Semiblock) -> Semiblock
+        -> (Semiblock, [n-1]Semiblock)
     update_variables (At1, Rt1) t = (At, Rt) where
         At = MSB`{64} (CIPHK K (At1 # Rt1@0)) ^ t
         Rnt = LSB`{64} (CIPHK K (At1 # Rt1@0))
@@ -205,6 +206,58 @@ W K S = C where
 
     (As, Rs) = foldl update_variables (A0, R0) [1..s]
 
+    // Step 3.
     C1 = [As]
     Cis = Rs
     C = C1 # Cis
+
+/**
+ * Unwrapping function for the decryption functions in AES key wrap and AES key
+ * wrap with padding. This is denoted `W^{-1}` in the spec.
+ * [SP-800-38F] Section 6.1, Algorithm 2.
+ *
+ * There is an additional explicit constraint here that the variable `s` must
+ * fit into a semiblock. See note on `W`.
+ */
+WInv : {n} (fin n, n >= 3, width (6 * (n - 1)) <= C::BlockSize / 2)
+    => [C::KeySize] -> [n]Semiblock -> [n]Semiblock
+WInv K C = S where
+    // Step 1. Note that the input string is 1-indexed in the spec and
+    // 0-indexed here.
+    type s = 6 * (n - 1)
+    As = C@0
+    Rs = drop`{1} C
+
+    // Step 2.
+    // `At1` corresponds to `A^{t-1}` in the text. Likewise for `Rt1`.
+    // In the spec, `R^t` is indexed from 2 to `n`. Here, it is indexed
+    // from 0 to `n - 2`.
+    update_variables : (Semiblock, [n-1]Semiblock) -> Semiblock
+        -> (Semiblock, [n-1]Semiblock)
+    update_variables (At, Rt) t = (At1, Rt1) where
+        At1 = MSB`{64} (CIPHInvK K ((At ^ t) # Rt@`(n-2)))
+        R2t1 = LSB`{64} (CIPHInvK K ((At ^ t) # Rt@`(n-2)))
+        Rt1 = [R2t1] # take`{n-2} Rt
+
+    (A0, R0) = foldl update_variables (As, Rs) [s, s-1..1]
+
+    // Step 3.
+    S1 = [A0]
+    Sis = R0
+    S = S1 # Sis
+
+/**
+ * The unwrapping function `WInv` must be the inverse of the wrapping function
+ * `W`.
+ * [SP-800-38F] Section 5.2.
+ * ```repl
+ * :check wrappingInverts`{3}
+ * :check wrappingInverts`{6}
+ * ```
+ */
+wrappingInverts :
+    {n} (fin n, n >= 3, width (6 * (n - 1)) <= C::BlockSize / 2)
+    => [C::KeySize] -> [n]Semiblock -> Bit
+property wrappingInverts K S = S == S' where
+    C = W K S
+    S' = WInv K C
