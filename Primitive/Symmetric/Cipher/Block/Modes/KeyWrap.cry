@@ -26,7 +26,7 @@ type Semiblock = [C::BlockSize / 2]
  * The 64-bit default ICV (integrity check value) for KW.
  * [SP-800-38F] Section 4.3.
  */
-ICV1 = 0xA6A6A6A6A6A6A6A6
+ICV1 = [0xA6A6A6A6A6A6A6A6]
 
 /**
  * The 32-bit default ICV (integrity check value) for KWP.
@@ -63,11 +63,29 @@ LSB : {s, n} (fin s, fin n, n >= s) => [n] -> [s]
 LSB = drop`{n - s}
 
 /**
+ * Get the `s` right-most bits of the input, where the input is partitioned
+ * into semiblocks.
+ * This is implicitly used in [SP-800-38F] Algorithm 4.
+ */
+LSBArr : {s, n} (fin s, fin n, 64 * n >= s, s % 64 == 0)
+    => [n]Semiblock -> [s / 64]Semiblock
+LSBArr X = split (LSB (join X))
+
+/**
  * Get the `s` left-most bits of the input.
  * [SP-800-38F] Section 4.4.
  */
 MSB : {s, n} (fin s, fin n, n >= s) => [n] -> [s]
 MSB = take`{s}
+
+/**
+ * Get the `s` left-most bits of the input, where the input is partitioned into
+ * semiblocks.
+ * This is implicitly used in [SP-800-38F] Algorithm 4.
+ */
+MSBArr : {s, n} (fin s, fin n, 64 * n >= s, s % 64 == 0)
+    => [n]Semiblock -> [s / 64]Semiblock
+MSBArr X = split (MSB (join X))
 
 /**
  * [SP-800-38F] Section 4.5.
@@ -261,3 +279,38 @@ wrappingInverts :
 property wrappingInverts K S = S == S' where
     C = W K S
     S' = WInv K C
+
+/**
+ * Authenticated encryption function for AES key wrap.
+ * [SP-800-38F] Section 6.2, Algorithm 3.
+ */
+KW_AE : {n} (KW_Plaintext n)
+    => [C::KeySize] -> [n]Semiblock -> [n + 1]Semiblock
+KW_AE K P = C where
+    S = ICV1 # P
+    C = W K S
+
+/**
+ * Authenticated decryption function for AES key wrap.
+ * [SP-800-38F] Section 6.2, Algorithm 4.
+ */
+KW_AD : {n} (KW_Ciphertext n)
+    => [C::KeySize] -> [n]Semiblock -> Option ([n - 1]Semiblock)
+KW_AD K C = if MSBArr`{64} S != ICV1 then None
+    else Some (LSBArr`{64 * (n - 1)} S)
+    where
+        S = WInv K C
+
+/**
+ * Authenticated decryption must be the inverse of authenticated encryption for
+ * AES key wrap.
+ * ```repl
+ * :check keyWrapInverts`{3}
+ * ```
+ */
+keyWrapInverts : {n} (KW_Plaintext n) => [C::KeySize] -> [n]Semiblock -> Bit
+keyWrapInverts K P = inverts where
+    C = KW_AE K P
+    inverts = case (KW_AD K C) of
+        Some maybeP -> maybeP == P
+        None -> False
