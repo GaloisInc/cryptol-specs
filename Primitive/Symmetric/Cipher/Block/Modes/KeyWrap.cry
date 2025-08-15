@@ -266,14 +266,16 @@ WInv K C = S where
 
 /**
  * The unwrapping function `WInv` must be the inverse of the wrapping function
- * `W`. This property isn't explicitly stated, but it's implied by the naming
- * of the two functions.
+ * `W`.
+ * [SP-800-38F] Section 5.2.
  * ```repl
  * :check wrappingInverts`{3}
  * :check wrappingInverts`{6}
  * ```
  */
-wrappingInverts : {n} (fin n, n >= 3, width (6 * (n - 1)) <= C::BlockSize / 2) => [C::KeySize] -> [n]Semiblock -> Bit
+wrappingInverts :
+    {n} (fin n, n >= 3, width (6 * (n - 1)) <= C::BlockSize / 2)
+    => [C::KeySize] -> [n]Semiblock -> Bit
 property wrappingInverts K S = S == S' where
     C = W K S
     S' = WInv K C
