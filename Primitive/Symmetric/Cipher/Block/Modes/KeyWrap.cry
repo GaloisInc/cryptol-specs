@@ -13,7 +13,7 @@ interface constraint (C::BlockSize == 128)
  * A byte.
  * [SP-800-38F] Section 4.1.
  */
-type Octet = 8
+type Octet = [8]
 
 /**
  * Given a block cipher `C`, a bit string whose length is half of the block
@@ -314,3 +314,40 @@ keyWrapInverts K P = inverts where
     inverts = case (KW_AD K C) of
         Some maybeP -> maybeP == P
         None -> False
+
+/**
+ * The authenticated encryption function for AES key wrap with padding (KWP).
+ * [SP-800-38F] Section 6.3, Algorithm 5.
+ */
+KWP_AE : {n} (KWP_Plaintext n, KWP_Ciphertext (n /^ 8 + 1))
+    => [C::KeySize] -> [n]Octet -> [n /^ 8 + 1]Semiblock
+KWP_AE K P = C where
+    // The type signature checks the validity of the plaintext `P` against `n`:
+    // the number of octets. `lenP` in the spec is the number of _bits_.
+    type lenP = 8 * n
+
+    // Step 2.
+    type padlen = 8 * (lenP /^ 64) - (lenP / 8)
+
+    // Step 3.
+    PAD = zero : [8 * padlen]
+
+    // Step 4. This is a string of bits; we `join P` to convert it from an
+    // octet string to a bit string.
+    S = ICV2 # (`(lenP / 8) : [32]) # (join P) # PAD
+
+    // Step 5.
+    C = KWP_AE_Step5`{n} K S
+
+/**
+ * This is step 5 of the KWP_AE algorithm.
+ * [SP-800-38F] Section 6.3, Algorithm 5, Step 5.
+ *
+ * It's separated into its own function to use the numeric constraint guard,
+ * which is only permitted in a top-level function.
+ */
+KWP_AE_Step5: {n} (KWP_Plaintext n)
+    => [C::KeySize] -> [(n /^ 8 + 1) * 64] -> [n /^ 8 + 1]Semiblock
+KWP_AE_Step5 K S
+    | 8 * n <= 64 => split (CIPHK K S)
+    | 8 * n > 64 => W K (split S)
