@@ -1,6 +1,10 @@
+/*
+ * @copyright Galois, Inc.
+ * @author Nichole Schimanski <nls@galois.com>
+ * @editor Brian Huffman <huffman@galois.com>
+ * @editor Ryan Scott <rscott@galois.com>
+ */
 module Common::mul_java where
-
-import Common::bv
 
 mul_java_inner : (Bit, [24][32], [32], [32], [32], [64]) -> { mji_a : [24][32], mji_d : [64]}
 mul_java_inner (azero, a, ij, xi, yj, d) = { mji_a = a', mji_d = d' >> 32 }
