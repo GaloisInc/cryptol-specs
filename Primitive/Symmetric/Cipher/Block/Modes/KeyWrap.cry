@@ -1,4 +1,43 @@
-
+/**
+ * This specification describes algorithms that are approved for
+ * "key wrapping:" protecting the confidentiality and integrity of
+ * cryptographic keys.
+ *
+ * These modes of operation are approved to be used to protect both
+ * cryptographic keys and general data.
+ *
+ * This specification is based on [SP-800-38F]. The schemes are
+ * essentially equivalent to [RFC-3394] and [RFC-6549], but use
+ * different naming and have some additional restrictions. See
+ * [SP-800-38F], Appendix B.1.
+ *
+ * This executable specification has some minor differences relative to
+ * the NIST specification [SP-800-38F].
+ * - [SP-800-38F] allows implementations of the authenticated-encryption and
+ *   authenticated-decryption functions to further restrict the lengths of
+ *   the plaintext and ciphertext (Section 8). This executable specification
+ *   requires exactly the maximum allowable lengths.
+ * - [SP-800-38F] also defines a key wrap method based on a different
+ *   block cipher, TDEA. This executable specification does not include
+ *   those algorithms.
+ * - This executable specification adds an additional input to the KWP-AD
+ *   function. See the notes on that algorithm.
+ * - In [SP-800-38F], all the functions (`W`, `W^{-1}`, `KW-AE`, `KW-AD`,
+ *   `KWP-AE`, `KWP-AD`) take the keyed cipher functions (`CIPH_K` and
+ *   `CIPH_K^{-1}`) as prerequisites, rather than explicitly passing the
+ *   cipher function and key as parameters. This executable specification
+ *   takes the key as an explicit parameter.
+ *
+ * References:
+ * [SP-800-38F]: Morris Dworkin. Recommendations for Bloc Cipher Modes of
+ *     Operation: Methods for Key Wrapping. (National Institute of Standards
+ *     and Technology, Gaithersburg, MD), NIST Special Publication (SP) NIST
+ *     SP 800-38F. December 2012.
+ *     @see https://doi.org/10.6028/NIST.SP.800-38F
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
 module Primitive::Symmetric::Cipher::Block::Modes::KeyWrap where
 
 /*
@@ -201,6 +240,9 @@ type constraint KWP_Ciphertext n = (2 <= n, n <= 2^^29)
  * `[]` in Section 4.4. This constraint will always be satisfied in an approved
  * instantiation due to the plaintext length restrictions from Section 5.3.1;
  * see also discussion in Appendix A.4.
+ *
+ * This function is not approved for use independently of the KW_AE and KWP_AE
+ * functions. [SP-800-38F] Section 8.
  */
 W : {n} (fin n, n >= 3, width (6 * (n - 1)) <= C::BlockSize / 2)
     => [C::KeySize] -> [n]Semiblock -> [n]Semiblock
@@ -236,6 +278,9 @@ W K S = C where
  *
  * There is an additional explicit constraint here that the variable `s` must
  * fit into a semiblock. See note on `W`.
+ *
+ * This function is not approved for use independently of the KW_AD and KWP_AD
+ * functions. [SP-800-38F] Section 8.
  */
 WInv : {n} (fin n, n >= 3, width (6 * (n - 1)) <= C::BlockSize / 2)
     => [C::KeySize] -> [n]Semiblock -> [n]Semiblock
@@ -375,6 +420,7 @@ KWP_AE_Step5 K S
  *      the number of octets in the plaintext. We use the ceiling modulus to
  *      compute the expected amount of padding for `m`.
  *
+ * Thanks to Sean Weaver for assistance with formulating this definition.
  */
 KWP_AD : {m, n} (KWP_Ciphertext n, KWP_Plaintext m, n == 1 + m /^ 8)
     => [C::KeySize] -> [n]Semiblock -> Option ([m]Octet)
