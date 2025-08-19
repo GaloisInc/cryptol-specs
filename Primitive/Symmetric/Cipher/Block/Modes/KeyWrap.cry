@@ -309,7 +309,7 @@ KW_AD K C = if MSBArr`{64} S != ICV1 then None
  * ```
  */
 keyWrapInverts : {n} (KW_Plaintext n) => [C::KeySize] -> [n]Semiblock -> Bit
-keyWrapInverts K P = inverts where
+property keyWrapInverts K P = inverts where
     C = KW_AE K P
     inverts = case (KW_AD K C) of
         Some maybeP -> maybeP == P
@@ -351,3 +351,81 @@ KWP_AE_Step5: {n} (KWP_Plaintext n)
 KWP_AE_Step5 K S
     | 8 * n <= 64 => split (CIPHK K S)
     | 8 * n > 64 => W K (split S)
+
+/**
+ * The authenticated decryption function for AES key wrap with padding (KWP).
+ * [SP-800-38F] Section 6.3, Algorithm 6.
+ *
+ * This algorithm differs from the specification in that it requires the output
+ * length (`m`, the length of the unpadded plaintext in octets) to be specified
+ * at the top level; the specification determines the length dynamically, based
+ * on the ciphertext.
+ * The additional type parameter is necessary in Cryptol to allow stripping the
+ * padding off the plaintext, but it introduces two concrete changes:
+ *
+ * 1. There is an additional type constraint, which restricts the ciphertext and
+ *    plaintext lengths to be within the range of allowable padding of each
+ *    other.
+ *
+ * 2. There are two additional failure checks, to make sure that `m` is correct
+ *    with respect to the values (`Plen`, `padlen`) derived from the ciphertext:
+ *    - `Plen` must be the same as `m`.
+ *    - `padlen == m %^ 8`. `padlen` is the number of octets of padding needed
+ *      to fill out the plaintext to the nearest semiblock (8 bytes) and `m` is
+ *      the number of octets in the plaintext. We use the ceiling modulus to
+ *      compute the expected amount of padding for `m`.
+ *
+ */
+KWP_AD : {m, n} (KWP_Ciphertext n, KWP_Plaintext m, n == 1 + m /^ 8)
+    => [C::KeySize] -> [n]Semiblock -> Option ([m]Octet)
+KWP_AD K C =
+    if (ICV2 != MSB`{32} S)                 // Step 4.
+        || (padlen < 0)                     // Step 7.
+        || (padlen > 7)                     // Step 7.
+        || (zero   != LSB`{8 * m %^ 64} S)  // Step 8.
+        || (Plen   != `m)                   // Cryptol-specific.
+        || (padlen != `(m %^ 8))            // Cryptol-specific.
+    then None
+    else Some (split P)
+    where
+        S = KWP_AD_Step3 K C
+
+        // Step 5 - 6.
+        Plen = LSB`{32} (MSB`{64} S)
+        padlen = 8 * (`n - 1) - Plen
+
+        // Step 9.
+        P = MSB`{8 * m} (LSB`{64 * (n - 1)} S)
+
+/**
+ * This is step 3 of the KWP_AD algorithm.
+ * [SP-800-38F] Section 6.3, Algorithm 6.
+ *
+ * It is separated into its own function to support the numeric constraint
+ * guard, which is only permitted in a top-level function.
+ */
+KWP_AD_Step3 : {n} (KWP_Ciphertext n)
+    => [C::KeySize] -> [n]Semiblock -> [n * 64]
+KWP_AD_Step3 K C
+    | n == 2 => CIPHInvK K (join C)
+    | n > 2 => join (WInv K C)
+
+/**
+ * Authenticated decryption must be the inverse of authenticated encryption for
+ * AES key wrap with padding.
+ *
+ * The lengths below are chosen to check various amounts of padding.
+ * ```repl
+ * :check keyWrapInverts`{1}
+ * :check keyWrapInverts`{3}
+ * :check keyWrapInverts`{7}
+ * :check keyWrapInverts`{8}
+ * ```
+ */
+keyWrapPaddedInverts : {n} (KWP_Ciphertext (n /^ 8 + 1), KWP_Plaintext n)
+    => [C::KeySize] -> [n]Octet -> Bit
+property keyWrapPaddedInverts K P = inverts where
+    C = KWP_AE K P
+    inverts = case (KWP_AD K C) of
+        Some maybeP -> maybeP == P
+        None -> False
