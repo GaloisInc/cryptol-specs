@@ -16,7 +16,7 @@
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
  */
-module Primitive::Symmetric::Cipher::Block::Modes::Tests::Experimental_AES256_KeyWrap where
+module Primitive::Symmetric::Cipher::Block::Modes::Tests::AES256_KeyWrap_AD where
 
 import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::Experimental_AES256_KeyWrap
 
