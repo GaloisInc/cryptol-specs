@@ -52,20 +52,24 @@ interface constraint (C::BlockSize == 128)
  * A byte.
  * [SP-800-38F] Section 4.1.
  */
-type Octet = [8]
+type Octet = 8
 
 /**
  * Given a block cipher `C`, a bit string whose length is half of the block
  * size.
  * [SP-800-38F] Section 4.1.
+ *
+ * Note: the term "`n` semiblocks" can mean a bit string that
+ * can be represented as `n` semiblocks (`[n * Semiblock]`) or a semiblock
+ * string of length `n` (`[n][Semiblock]`). [SP-800-38F] Section 5.2.
  */
-type Semiblock = [C::BlockSize / 2]
+type Semiblock = C::BlockSize / 2
 
 /**
  * The 64-bit default ICV (integrity check value) for KW.
  * [SP-800-38F] Section 4.3.
  */
-ICV1 = [0xA6A6A6A6A6A6A6A6]
+ICV1 = 0xA6A6A6A6A6A6A6A6
 
 /**
  * The 32-bit default ICV (integrity check value) for KWP.
@@ -102,29 +106,11 @@ LSB : {s, n} (fin s, fin n, n >= s) => [n] -> [s]
 LSB = drop`{n - s}
 
 /**
- * Get the `s` right-most bits of the input, where the input is partitioned
- * into semiblocks.
- * This is implicitly used in [SP-800-38F] Algorithm 4.
- */
-LSBArr : {s, n} (fin s, fin n, 64 * n >= s, s % 64 == 0)
-    => [n]Semiblock -> [s / 64]Semiblock
-LSBArr X = split (LSB (join X))
-
-/**
  * Get the `s` left-most bits of the input.
  * [SP-800-38F] Section 4.4.
  */
 MSB : {s, n} (fin s, fin n, n >= s) => [n] -> [s]
 MSB = take`{s}
-
-/**
- * Get the `s` left-most bits of the input, where the input is partitioned into
- * semiblocks.
- * This is implicitly used in [SP-800-38F] Algorithm 4.
- */
-MSBArr : {s, n} (fin s, fin n, 64 * n >= s, s % 64 == 0)
-    => [n]Semiblock -> [s / 64]Semiblock
-MSBArr X = split (MSB (join X))
 
 /**
  * [SP-800-38F] Section 4.5.
@@ -208,13 +194,13 @@ type constraint KW_Plaintext n = (2 <= n, width n <= 54)
 
 /**
  * The ciphertext for AES key wrap (KW) is a semiblock string with length one
- * longer than the corresponding ciphertext.
+ * semiblock longer than the corresponding ciphertext.
  * [SP-800-38F] Section 5.3.1 and Table 1.
  */
 type constraint KW_Ciphertext n = (3 <= n, n <= 2^^54)
 
 /**
- * The plaintext for AES key wrap with padding (KWP) shall be an _octet_ string
+ * The plaintext for AES key wrap with padding (KWP) shall be an octet string
  * with fewer than 2^32 octets.
  * Note: the Cryptol expression `width n < X` is equivalent to `n < 2^^X - 1`.
  * [SP-800-38F] Section 5.3.1 and Table 1.
@@ -223,7 +209,7 @@ type constraint KWP_Plaintext n = (1 <= n, width n <= 32)
 
 /**
  * The ciphertext for AES key wrap with padding (KWP) is a semiblock string
- * with length one longer than the corresponding ciphertext.
+ * with length one semiblock longer than the corresponding ciphertext.
  * [SP-800-38F] Section 5.3.1 and Table 1.
  */
 type constraint KWP_Ciphertext n = (2 <= n, n <= 2^^29)
@@ -244,8 +230,8 @@ type constraint KWP_Ciphertext n = (2 <= n, n <= 2^^29)
  * This function is not approved for use independently of the KW_AE and KWP_AE
  * functions. [SP-800-38F] Section 8.
  */
-W : {n} (fin n, n >= 3, width (6 * (n - 1)) <= C::BlockSize / 2)
-    => [C::KeySize] -> [n]Semiblock -> [n]Semiblock
+W : {n} (fin n, n >= 3, width (6 * (n - 1)) <= Semiblock)
+    => [C::KeySize] -> [n][Semiblock] -> [n * Semiblock]
 W K S = C where
     // Step 1. Note that the input string is 1-indexed in the spec and
     // 0-indexed here.
@@ -257,8 +243,8 @@ W K S = C where
     // `At1` corresponds to `A^{t-1}` in the text. Likewise for `Rt1`.
     // In the spec, `R^t` is indexed from 2 to `n`. Here, it is indexed
     // from 0 to `n - 2`.
-    update_variables : (Semiblock, [n-1]Semiblock) -> Semiblock
-        -> (Semiblock, [n-1]Semiblock)
+    update_variables : ([Semiblock], [n-1][Semiblock]) -> [Semiblock]
+        -> ([Semiblock], [n-1][Semiblock])
     update_variables (At1, Rt1) t = (At, Rt) where
         At = MSB`{64} (CIPHK K (At1 # Rt1@0)) ^ t
         Rnt = LSB`{64} (CIPHK K (At1 # Rt1@0))
@@ -267,9 +253,9 @@ W K S = C where
     (As, Rs) = foldl update_variables (A0, R0) [1..s]
 
     // Step 3.
-    C1 = [As]
+    C1 = As
     Cis = Rs
-    C = C1 # Cis
+    C = C1 # (join Cis)
 
 /**
  * Unwrapping function for the decryption functions in AES key wrap and AES key
@@ -282,8 +268,8 @@ W K S = C where
  * This function is not approved for use independently of the KW_AD and KWP_AD
  * functions. [SP-800-38F] Section 8.
  */
-WInv : {n} (fin n, n >= 3, width (6 * (n - 1)) <= C::BlockSize / 2)
-    => [C::KeySize] -> [n]Semiblock -> [n]Semiblock
+WInv : {n} (fin n, n >= 3, width (6 * (n - 1)) <= Semiblock)
+    => [C::KeySize] -> [n][Semiblock] -> [n * Semiblock]
 WInv K C = S where
     // Step 1. Note that the input string is 1-indexed in the spec and
     // 0-indexed here.
@@ -295,8 +281,8 @@ WInv K C = S where
     // `At1` corresponds to `A^{t-1}` in the text. Likewise for `Rt1`.
     // In the spec, `R^t` is indexed from 2 to `n`. Here, it is indexed
     // from 0 to `n - 2`.
-    update_variables : (Semiblock, [n-1]Semiblock) -> Semiblock
-        -> (Semiblock, [n-1]Semiblock)
+    update_variables : ([Semiblock], [n-1][Semiblock]) -> [Semiblock]
+        -> ([Semiblock], [n-1][Semiblock])
     update_variables (At, Rt) t = (At1, Rt1) where
         At1 = MSB`{64} (CIPHInvK K ((At ^ t) # Rt@`(n-2)))
         R2t1 = LSB`{64} (CIPHInvK K ((At ^ t) # Rt@`(n-2)))
@@ -305,9 +291,9 @@ WInv K C = S where
     (A0, R0) = foldl update_variables (As, Rs) [s, s-1..1]
 
     // Step 3.
-    S1 = [A0]
+    S1 = A0
     Sis = R0
-    S = S1 # Sis
+    S = S1 # (join Sis)
 
 /**
  * The unwrapping function `WInv` must be the inverse of the wrapping function
@@ -319,32 +305,32 @@ WInv K C = S where
  * ```
  */
 wrappingInverts :
-    {n} (fin n, n >= 3, width (6 * (n - 1)) <= C::BlockSize / 2)
-    => [C::KeySize] -> [n]Semiblock -> Bit
+    {n} (fin n, n >= 3, width (6 * (n - 1)) <= Semiblock)
+    => [C::KeySize] -> [n * Semiblock] -> Bit
 property wrappingInverts K S = S == S' where
-    C = W K S
-    S' = WInv K C
+    C = W K (split S)
+    S' = WInv K (split C)
 
 /**
  * Authenticated encryption function for AES key wrap.
  * [SP-800-38F] Section 6.2, Algorithm 3.
  */
 KW_AE : {n} (KW_Plaintext n)
-    => [C::KeySize] -> [n]Semiblock -> [n + 1]Semiblock
+    => [C::KeySize] -> [n * Semiblock] -> [(n + 1) * Semiblock]
 KW_AE K P = C where
     S = ICV1 # P
-    C = W K S
+    C = W K (split S)
 
 /**
  * Authenticated decryption function for AES key wrap.
  * [SP-800-38F] Section 6.2, Algorithm 4.
  */
 KW_AD : {n} (KW_Ciphertext n)
-    => [C::KeySize] -> [n]Semiblock -> Option ([n - 1]Semiblock)
-KW_AD K C = if MSBArr`{64} S != ICV1 then None
-    else Some (LSBArr`{64 * (n - 1)} S)
+    => [C::KeySize] -> [n * Semiblock] -> Option [(n - 1) * Semiblock]
+KW_AD K C = if MSB`{64} S != ICV1 then None
+    else Some (LSB`{64 * (n - 1)} S)
     where
-        S = WInv K C
+        S = WInv K (split C)
 
 /**
  * Authenticated decryption must be the inverse of authenticated encryption for
@@ -353,7 +339,7 @@ KW_AD K C = if MSBArr`{64} S != ICV1 then None
  * :check keyWrapInverts`{3}
  * ```
  */
-keyWrapInverts : {n} (KW_Plaintext n) => [C::KeySize] -> [n]Semiblock -> Bit
+keyWrapInverts : {n} (KW_Plaintext n) => [C::KeySize] -> [n * Semiblock] -> Bit
 property keyWrapInverts K P = inverts where
     C = KW_AE K P
     inverts = case (KW_AD K C) of
@@ -365,10 +351,10 @@ property keyWrapInverts K P = inverts where
  * [SP-800-38F] Section 6.3, Algorithm 5.
  */
 KWP_AE : {n} (KWP_Plaintext n, KWP_Ciphertext (n /^ 8 + 1))
-    => [C::KeySize] -> [n]Octet -> [n /^ 8 + 1]Semiblock
+    => [C::KeySize] -> [n * Octet] -> [(n /^ 8 + 1) * Semiblock]
 KWP_AE K P = C where
     // The type signature checks the validity of the plaintext `P` against `n`:
-    // the number of octets. `lenP` in the spec is the number of _bits_.
+    // the number of octets. `len(P)` in the spec is the number of _bits_.
     type lenP = 8 * n
 
     // Step 2.
@@ -377,9 +363,8 @@ KWP_AE K P = C where
     // Step 3.
     PAD = zero : [8 * padlen]
 
-    // Step 4. This is a string of bits; we `join P` to convert it from an
-    // octet string to a bit string.
-    S = ICV2 # (`(lenP / 8) : [32]) # (join P) # PAD
+    // Step 4.
+    S = ICV2 # (`(lenP / 8) : [32]) # P # PAD
 
     // Step 5.
     C = KWP_AE_Step5`{n} K S
@@ -392,9 +377,9 @@ KWP_AE K P = C where
  * which is only permitted in a top-level function.
  */
 KWP_AE_Step5: {n} (KWP_Plaintext n)
-    => [C::KeySize] -> [(n /^ 8 + 1) * 64] -> [n /^ 8 + 1]Semiblock
+    => [C::KeySize] -> [(n /^ 8 + 1) * Semiblock] -> [(n /^ 8 + 1) * Semiblock]
 KWP_AE_Step5 K S
-    | 8 * n <= 64 => split (CIPHK K S)
+    | 8 * n <= 64 => CIPHK K S
     | 8 * n > 64 => W K (split S)
 
 /**
@@ -423,7 +408,7 @@ KWP_AE_Step5 K S
  * Thanks to Sean Weaver for assistance with formulating this definition.
  */
 KWP_AD : {m, n} (KWP_Ciphertext n, KWP_Plaintext m, n == 1 + m /^ 8)
-    => [C::KeySize] -> [n]Semiblock -> Option ([m]Octet)
+    => [C::KeySize] -> [n * Semiblock] -> Option [m * Octet]
 KWP_AD K C =
     if (ICV2 != MSB`{32} S)                 // Step 4.
         || (padlen < 0)                     // Step 7.
@@ -432,7 +417,7 @@ KWP_AD K C =
         || (Plen   != `m)                   // Cryptol-specific.
         || (padlen != `(m %^ 8))            // Cryptol-specific.
     then None
-    else Some (split P)
+    else Some P
     where
         S = KWP_AD_Step3 K C
 
@@ -451,10 +436,10 @@ KWP_AD K C =
  * guard, which is only permitted in a top-level function.
  */
 KWP_AD_Step3 : {n} (KWP_Ciphertext n)
-    => [C::KeySize] -> [n]Semiblock -> [n * 64]
+    => [C::KeySize] -> [n * Semiblock] -> [n * 64]
 KWP_AD_Step3 K C
-    | n == 2 => CIPHInvK K (join C)
-    | n > 2 => join (WInv K C)
+    | n == 2 => CIPHInvK K C
+    | n > 2 => WInv K (split C)
 
 /**
  * Authenticated decryption must be the inverse of authenticated encryption for
@@ -469,7 +454,7 @@ KWP_AD_Step3 K C
  * ```
  */
 keyWrapPaddedInverts : {n} (KWP_Ciphertext (n /^ 8 + 1), KWP_Plaintext n)
-    => [C::KeySize] -> [n]Octet -> Bit
+    => [C::KeySize] -> [n * Octet] -> Bit
 property keyWrapPaddedInverts K P = inverts where
     C = KWP_AE K P
     inverts = case (KWP_AD K C) of

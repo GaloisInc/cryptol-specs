@@ -10,7 +10,7 @@
  *
  * Rather than decorate every property, we use a single docstring up here:
  * ```repl
- * :prove
+ * :exhaust
  * ```
  *
  * @copyright Galois, Inc.
@@ -20,7 +20,7 @@ module Primitive::Symmetric::Cipher::Block::Modes::Tests::AES256_KeyWrapPadded_A
 
 import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::Experimental_AES256_KeyWrap
 
-check_KWP_AE key pt expected_ct = KWP_AE key (split pt) == (split expected_ct)
+check_KWP_AE key pt expected_ct = KWP_AE key pt == expected_ct
 
 property tcId1001 = testPassed == check_KWP_AE key pt ct where
     testPassed = True
