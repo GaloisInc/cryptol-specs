@@ -7,7 +7,7 @@
  * cryptographic keys and general data.
  *
  * This specification is based on [SP-800-38F]. The schemes are
- * essentially equivalent to [RFC-3394] and [RFC-6549], but use
+ * essentially equivalent to [RFC-3394] and [RFC-5649], but use
  * different naming and have some additional restrictions. See
  * [SP-800-38F], Appendix B.1.
  *
@@ -34,6 +34,16 @@
  *     and Technology, Gaithersburg, MD), NIST Special Publication (SP) NIST
  *     SP 800-38F. December 2012.
  *     @see https://doi.org/10.6028/NIST.SP.800-38F
+ *
+ * [RFC-3394]: J. Schaad, R. Housley. Advanced Encryption Standard (AES) Key
+ *     Wrap Algorithm. Internet Request for Comments (RFC) 3394. September
+ *     2002.
+ *     @see https://datatracker.ietf.org/doc/rfc3394
+ *
+ * [RFC-5649]: R. Housley, M. Dworkin. Advanced Encryption Standard (AES) Key
+ *     Wrap with Padding Algorithm. Internet Request for Comments (RFC) 5649.
+ *     August 2009.
+ *     @see https://datatracker.ietf.org/doc/rfc5649
  *
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
