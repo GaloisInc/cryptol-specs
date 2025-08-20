@@ -20,7 +20,7 @@
  */
 module Primitive::Symmetric::Cipher::Block::Modes::Tests::AES256_KeyWrap_AE where
 
-import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::Experimental_AES256_KeyWrap
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_KeyWrap
 
 property tcId1201 = ct == actual_ct where
     key = 0x34E4F758C148713363D343220C6ED9243D162E0405E4E072BFF885EA0511884F

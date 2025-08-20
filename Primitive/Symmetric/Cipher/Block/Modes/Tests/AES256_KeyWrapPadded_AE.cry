@@ -18,7 +18,7 @@
  */
 module Primitive::Symmetric::Cipher::Block::Modes::Tests::AES256_KeyWrapPadded_AE where
 
-import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::Experimental_AES256_KeyWrap
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_KeyWrap
 
 check_KWP_AE key pt expected_ct = KWP_AE key pt == expected_ct
 

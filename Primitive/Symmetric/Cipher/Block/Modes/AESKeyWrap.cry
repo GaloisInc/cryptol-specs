@@ -38,7 +38,7 @@
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
  */
-module Primitive::Symmetric::Cipher::Block::Modes::KeyWrap where
+module Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap where
 
 /*
  * This algorithm is only approved for instantiation with AES.

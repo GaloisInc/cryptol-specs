@@ -1,0 +1,11 @@
+/*
+ * Instantiate AES key wrap and AES key wrap with padding for AES 256.
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_KeyWrap =
+    Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap {
+        Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES256
+    }
+

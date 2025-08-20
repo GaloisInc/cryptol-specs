@@ -8,9 +8,8 @@ At this time, this directory does not contain all the instantiations included in
 
 | Mode          | AES Instantiations                                                                    |
 | ------------- | ------------------------------------------------------------------------------------- |
+| AES key wrap (with and without padding) | [AES-256](./AES256_KeyWrap.cry)                             |
 | CBC           | [AES-128](./AES128_CBC.cry), [AES-192](./AES192_CBC.cry), [AES-256](./AES256_CBC.cry) |
 | CFB           | [AES-128](./AES128_CFB.cry), [AES-192](./AES192_CFB.cry), [AES-256](./AES256_CFB.cry) |
 | CTR           | [AES-128](./AES128_CTR.cry), [AES-192](./AES192_CTR.cry), [AES-256](./AES256_CTR.cry) |
-| KeyWrap       | [AES-256](./AES256_KeyWrap.cry)                                                       |
-| KeyWrapPadded | [AES-256](./AES256_KeyWrapPadded.cry)                                                 |
 | XTS           | [AES-128](./AES128_XTS.cry), [AES-256](./AES256_XTS.cry)

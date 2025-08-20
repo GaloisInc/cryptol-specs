@@ -18,7 +18,7 @@
  */
 module Primitive::Symmetric::Cipher::Block::Modes::Tests::AES256_KeyWrapPadded_AD where
 
-import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::Experimental_AES256_KeyWrap
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_KeyWrap
 
 check_KWP_AD key pt ct = case KWP_AD key ct of
     Some pt' -> pt == pt'
