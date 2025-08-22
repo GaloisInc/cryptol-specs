@@ -29,7 +29,7 @@
  *   takes the key as an explicit parameter.
  *
  * References:
- * [SP-800-38F]: Morris Dworkin. Recommendations for Bloc Cipher Modes of
+ * [SP-800-38F]: Morris Dworkin. Recommendations for Block Cipher Modes of
  *     Operation: Methods for Key Wrapping. (National Institute of Standards
  *     and Technology, Gaithersburg, MD), NIST Special Publication (SP) NIST
  *     SP 800-38F. December 2012.
@@ -76,37 +76,49 @@ type Octet = 8
 type Semiblock = C::BlockSize / 2
 
 /**
- * The 64-bit default ICV (integrity check value) for KW.
+ * The 64-bit default ICV (integrity check value) for AES key wrap (KW).
  * [SP-800-38F] Section 4.3.
  */
 ICV1 = 0xA6A6A6A6A6A6A6A6
 
 /**
- * The 32-bit default ICV (integrity check value) for KWP.
+ * The 32-bit default ICV (integrity check value) for AES key wrap with
+ * padding (KWP).
  * [SP-800-38F] Section 4.3.
  */
 ICV2 = 0xA65959A6
 
 /**
+ * The output of the cipher function of the block cipher under the key `K`
+ * applied to the block `X`.
  * [SP-800-38F] Section 4.4.
  */
 CIPHK K X = C::encrypt K X
 
 /**
+ * The output of the inverse of the cipher function of the block cipher under
+ * the key `K` applied to the block `X`.
  * [SP-800-38F] Section 4.4.
  */
 CIPHInvK K X = C::decrypt K X
 
 /**
+ * The integer for which the bit string passed as a parameter is the binary
+ * representation.
  * [SP-800-38F] Section 4.4.
  */
 int = toInteger
 
 /**
+ * The bit length of the bit string `_X`.
  * [SP-800-38F] Section 4.4.
+ *
+ * Note: This demotes the Cryptol type to a value. In practice, we use the
+ * type representation of the value (e.g. using `n` directly, rather than
+ * calling this function). See `KWP_AE`, below.
  */
 len : {n} (fin n) => [n] -> Integer
-len _ = `n
+len _X = `n
 
 /**
  * Get the `s` right-most bits of the input.
@@ -229,13 +241,15 @@ type constraint KWP_Ciphertext n = (2 <= n, n <= 2^^29)
  * wrap with padding.
  * [SP-800-38F] Section 6.1, Algorithm 1.
  *
- * There is an additional explicit constraint here that the variable `s` must
- * fit into a semiblock. This is implied by the conversion in step 2a: `[t]_64`
- * gives the binary representation of `t` in 64 bits, and requires that `t` is
- * less than `2^64`, and the maximum value of `t` is `s`. See the definition of
- * `[]` in Section 4.4. This constraint will always be satisfied in an approved
- * instantiation due to the plaintext length restrictions from Section 5.3.1;
- * see also discussion in Appendix A.4.
+ * There is an additional explicit constraint here that the variable
+ * `s = 6(n - 1)` must fit into a semiblock (64 bits). This is implied by the
+ * conversion in step 2a: `[t]_64` gives the binary representation of `t` in
+ * 64 bits; it requires that `t` is less than `2^64`. The maximum value of `t`
+ * is `s`. This constraint will always be satisfied in an approved
+ * instantiation due to the plaintext length restrictions. See:
+ * - the definition of `[]` in Section 4.4;
+ * - Plaintext length descriptions in Section 5.3.1; and
+ * - Discussion on plaintext length descriptions in Appendix A.4.
  *
  * This function is not approved for use independently of the KW_AE and KWP_AE
  * functions. [SP-800-38F] Section 8.
@@ -432,10 +446,10 @@ KWP_AD K C =
         S = KWP_AD_Step3 K C
 
         // Step 5 - 6.
-        Plen = LSB`{32} (MSB`{64} S)
+        Plen = int (LSB`{32} (MSB`{64} S))
         padlen = 8 * (`n - 1) - Plen
 
-        // Step 9.
+        // Step 9. The conditional above restricts `m = Plen`.
         P = MSB`{8 * m} (LSB`{64 * (n - 1)} S)
 
 /**
