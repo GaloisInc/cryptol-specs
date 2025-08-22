@@ -1,0 +1,623 @@
+/**
+ * Test vectors for AES key wrap with padding's authenticated encryption
+ * function from NIST's ACVP cryptographic validation program.
+ *
+ * These values are specifically drawn from the `internalProjection.json` file,
+ * specifically the section with group ID `"tgId" : 11`.
+ *
+ * [ACVP]: NIST. usnistgov. GitHub repo "ACVP-Server".
+ *     @see https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ACVP-AES-KWP-1.0
+ *
+ * Rather than decorate every property, we use a single docstring up here:
+ * ```repl
+ * :exhaust
+ * ```
+ *
+ * @copyright Galois, Inc.
+ * @author Marcella Hastings <marcella@galois.com>
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::Tests::AES256_KeyWrapPadded_AE where
+
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES256_KeyWrap
+
+check_KWP_AE key pt expected_ct = KWP_AE key pt == expected_ct
+
+property tcId1001 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x39FA276B26B762599AA1070192987D0CF8184DDB1C98EEA23F06FF81B63481E0
+    pt = 0x8D
+    ct = 0x35A739A8A322805B94DEB3CB1A56A008
+
+property tcId1002 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xF80E0BDD0D1B3407F241522045574E3C80CA99D3A6854706047942EB694CDBF3
+    pt = 0xC5
+    ct = 0x9581CB7E06C38D57C5262A7BD4BD8840
+
+property tcId1003 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xC93821958B2A3AC969FFCA59EF5623E609F38585A6C9A9ADE41D546578DE141D
+    pt = 0x1E
+    ct = 0xDD6DC03E825F2E77480F998902FA6BE8
+
+property tcId1004 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xF6C4018216BC7EAB22D57893BE5E9E3A2A7189813E37D26BFD8A866BADE775F8
+    pt = 0xE3
+    ct = 0x56F07FA0F5512B159F5E70A50C442B0B
+
+property tcId1005 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xDC426450A27CCAD9B7890661B13480D2225918AAC7C03829512492865763ABDC
+    pt = 0x3F
+    ct = 0x686DE8ABFFBEDF79AAFD4432ECD4CF50
+
+property tcId1006 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x44F2DE705C848A3448FF6FFCBD221C0DC2119351D384CE21D5AC2606FE21B6F8
+    pt = 0xDA
+    ct = 0xE4B9BC2CE14293EAF05955A42627269D
+
+property tcId1007 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xC933E2E4EE7D519FA406AA70EAC833CCD50FBB044427B1D25624254A555EDC43
+    pt = 0x1E
+    ct = 0x901B3CE56E12F8C188039535EBA61996
+
+property tcId1008 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x6E0627242E7C51B204DB46A58D6A411B96514555CF8C21DD8B2DC37CDA95F9CD
+    pt = 0x15
+    ct = 0x2AD76F428813B950D099C10105A29FB5
+
+property tcId1009 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x1FD3508E9533EC697E4B8F59FFFE4B98857919A4DEF918426D068F70F3B2948E
+    pt = 0x02
+    ct = 0x530967E906FD940C887A6AD9F37AC42D
+
+property tcId1010 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x85BFD16F7B562AD251329106A3D7A184C5C96CCE489B2DD797A084A72404376D
+    pt = 0x94
+    ct = 0xEFC758A879A703D39B7B85F7BB7B2D44
+
+property tcId1011 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xDDD6FAB4C49DD7FF2985AE928BD5EA87CC70A31163074F1FB1BC02F7F969D418
+    pt = 0x86
+    ct = 0xBD96D9C865A87BE05A306AB3D6BBA3A5
+
+property tcId1012 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xDA37F25B6EBE88C9DB9E03A5E126D5AE55F632B1686115C956228326A0DBC789
+    pt = 0xA9
+    ct = 0xAC58CFA83697E911CD09BEA23CA4CD45
+
+property tcId1013 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x1BB566FE462A27901D86EEF8558F53E505E47D81A66F2918AADE08EA347201B3
+    pt = 0x1D
+    ct = 0x8A51E6B709CB04F59981F7FFDB783D0B
+
+property tcId1014 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x73B2AB98DDC2A3557AC51C1976D43F2997D4305D6C1D8DE38B393161DE44A1BA
+    pt = 0x54
+    ct = 0x281900A08220B5F74CF06D739F7C5DC6
+
+property tcId1015 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xCACF12AE11477B1254437CA92D329F1C7EE6B2C022E4F12C3EAC649621AB0137
+    pt = 0xE2
+    ct = 0x6DCC8657EC2A2443DD056EF73DBBFB7B
+
+property tcId1016 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x3E7517AE08DA6B2B027AC829D0D96FB0D2B27C611D217174FFF385EEA51ABC9F
+    pt = 0x7E
+    ct = 0x542A995D5BEB0FEF0CA3B56DB914E0DF
+
+property tcId1017 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x636062EAF492C67B4E98DC4653031942CE29FB1B81462A31FCA2A40DF760ED1F
+    pt = 0x9C
+    ct = 0x9F24ED46467485D4ED54D232E50E8885
+
+property tcId1018 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x86CF07CC35A7624129A9390B14EE6FA8B8D7A9F613050E7CE3E3AF3CAD54ABB3
+    pt = 0x75
+    ct = 0x76A00B69214577BAD18CCDC983C8BAFD
+
+property tcId1019 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xC4C825E849AE1C195748979D8821711590403E3AC47984C526DF896D120E7396
+    pt = 0x9E
+    ct = 0x5808672A0F4EEDD81328D99819993EB7
+
+property tcId1020 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xFF84BC98909D273B28F0AC9D0C44386533BFE6A0586294D57DF370FFECCDDB3F
+    pt = 0xC9
+    ct = 0xDA9785C2ADC2CE92EFF5E3523D469235
+
+property tcId1021 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x8670FB10B54781839B56C7A14C660412FE2E48F3655ACC55553B794D9FFA32B7
+    pt = 0xF0
+    ct = 0x8850EF6CB7396E775D4F330C6E01EDCE
+
+property tcId1022 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x211A909A1C1B0F56BEBBF3362DC2CD75AB14BB2CB4EB191557B5ABAC7EF9E4E4
+    pt = 0x19
+    ct = 0xC76400B498AEB0023E266AFF9EE30FE8
+
+property tcId1023 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xB77EBA3E4E1FD9D5989A233E66BFC9CBB8CF245C9DCF7C59AF1D5FDD4811D76A
+    pt = 0xC0
+    ct = 0xC8869A194252053D69CB3700B519B400
+
+property tcId1024 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x96A325D96DF23193F21C409B20B83B157E4BC00E7B872A96D57EA7791575B797
+    pt = 0x60
+    ct = 0x9C5C1DCBFE8CEA38DED462DC2268D090
+
+property tcId1025 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x67BA246D02CBBBEDDE0B24C8DD8EE9ECF80DC34ECF0A211B1967BC141265F099
+    pt = 0x00
+    ct = 0x38AE876F1E45933C75D8B57531B59075
+
+property tcId1026 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x81C3403F359326663B025C16865E245808C4848A54011F6B88385A1A64FBECBC
+    pt = 0xC2
+    ct = 0x8C0DEC2FD4B6AB0231EC56BD50852D84
+
+property tcId1027 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x428666365FFAE2B604A71E3EA61D1AB85CFCDEDEF5D40CFE8E53FDB96AC27630
+    pt = 0x1D
+    ct = 0x48D46E384AE3AA2BDCEC10399A82BE37
+
+property tcId1028 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x859857F302D7B4BECF1220B55857A1DF064355AB306E9E9C3FEC3DC86FAFCC3A
+    pt = 0x91
+    ct = 0x7E0CF4C530ED36B947CA4C5D7DE0097A
+
+property tcId1029 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xFC304BE2EBA8E1CD41680F2228E150718D829821F99994AC44D59C7494BDB6A8
+    pt = 0xC2
+    ct = 0xF125384DEE677C7923697F5A3BFC6184
+
+property tcId1030 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x5D124C781D08A9A1EF74B9BFC5B92C093F47B6C20E566B12ECBC361813688F01
+    pt = 0x3D
+    ct = 0x8435A5CB88740BADEC2C57FE0BBA0DA8
+
+property tcId1031 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xAA5AB62D3DF457E141F244ECB7A1B02B7C849535F6114EE43FE5474FA7934D3E
+    pt = 0x19
+    ct = 0xF3E526B2D27DCAE85E3B603219079B17
+
+property tcId1032 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x5B2B4903C7F4FEBFE9600D357C043E891BC2659AA21694810AD9DF8DE2C5D87B
+    pt = 0x7F
+    ct = 0x9AE5B26B28514B2E02866F655689D8A2
+
+property tcId1033 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x5B7572593C032234A0047A9D2A92E9F7323226FD9879B8F8BF73631C16560922
+    pt = 0x5E
+    ct = 0x2E94CB8DFFCDA2399BC422B24928A91A
+
+property tcId1034 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x68380612EB8E22DC776E8D05BE01B619D0C1CB99EBC7947C8444CB26FEAC0E91
+    pt = 0xBB
+    ct = 0xAA6ABD32EA59851AFE3AD836727E5DC6
+
+property tcId1035 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xED0580C7DAB265D63DCCFEB165778BA3ADCC9C92D807B0DA7D08F05A2D1E0EF1
+    pt = 0xAB
+    ct = 0xC3DC9EA6773BA6B254156BCA2D6CCDC4
+
+property tcId1036 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x512E2D54D84820280EFEC1286247D6A17DC5A23F33FC1C32D5A023D38EE43B8E
+    pt = 0xF5
+    ct = 0x4E50FAEF7FEDF00A97744D1E50180D29
+
+property tcId1037 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xCDDD9A61EE554E27E75D9D2A6905763363ABFDA1A2E0D1351CFAC3B870E72AB7
+    pt = 0x9C
+    ct = 0x13865E5DA697B608016326560370FC34
+
+property tcId1038 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xBCDA299791DF47EFEFA436000A4234F9F1DDB2959F7F5CECD7D114DA1555DF39
+    pt = 0x23
+    ct = 0x957A898CF5CA014FA0BC445FA0411B8E
+
+property tcId1039 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x14AC4E2D21736EDCC6D423E3AF1E2BC4E8115A9C190AFD7C5A764CB7FDEFE222
+    pt = 0x27
+    ct = 0x47F8738AE025CB323AA904BB8FC94D5A
+
+property tcId1040 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xD780739A8A8F203E593DFA988C4BEDDAD17EC65E32FF9420E8B7B094AD3504CE
+    pt = 0xA4
+    ct = 0x0ACA7980AA5D91E7CF8A7FF32ACFB820
+
+property tcId1041 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xFE9E71CE3F0372783D47D1219919A9176DBBA7E1E7BB0E6BD94599DA51F616EA
+    pt = 0x18
+    ct = 0x4BEF98A1A912C5CCFB44398501393A5B
+
+property tcId1042 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xD067989158B5C486D6CB2317DC4A1F174EDA232A5D0572313666B602F80FAA82
+    pt = 0x87
+    ct = 0x1622F42C6EB932C9C3BA6EE528F5EE2E
+
+property tcId1043 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xF08EAD0CDBBCC69EF06549FAED6989E5177678A31CDE24081E962C06F80DFFF1
+    pt = 0xB6
+    ct = 0xA164FE1AAC233A7B292190106242BC35
+
+property tcId1044 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x6FFA0B069567D8B8CF189E1E651126E16432F4B1DF14D28C7930F167D90E71DC
+    pt = 0xBC
+    ct = 0x81AF399406890408830494067B975DC3
+
+property tcId1045 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xF0D9A00431BFC37776632DCE8392FB668738B8E7E87B32FE6970AEDE141DBB12
+    pt = 0x15
+    ct = 0x21A2E83460738D67E274DE0231F5DB08
+
+property tcId1046 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x8758E274D03DE0037EB638671BF7A5762262CD81FA4710612F0F8C00DD544FD2
+    pt = 0x10
+    ct = 0xB58EF1C43EF4FB8D25C53D673C074A9F
+
+property tcId1047 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x611CB910E6F3554891709BE3269311CAEEA4167646770C93B1EB24150B08E7FF
+    pt = 0xAE
+    ct = 0xC4D38071B0325A7DBAE7B8C97E140567
+
+property tcId1048 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x595D643FEE1B9DA657E5E0DD89BEA95FBA9D60A9F569E5BD2263ECDA865B6397
+    pt = 0x8A
+    ct = 0x291C122B76FF48EB7A9B1A25C20FF3E9
+
+property tcId1049 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xF66827A982352FB10D7BD294A6DA6661B9593E850D9AEE8C7E2C2F0662B66609
+    pt = 0x1A
+    ct = 0x8320E7CDE94090DDB0AFA279F71CF86C
+
+property tcId1050 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x927B27D5B50BA9D198E9EECD1317FD659A80F9E061A2703E797B61D420C7164D
+    pt = 0x62
+    ct = 0xEF84DE1F6C508958F7ADC6D11C606DB8
+
+property tcId1051 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xF416A4C6552B4E2E2D5F88C6AF5494C4EA1D04BB22A377C0806611418475F1F8
+    pt = 0x10
+    ct = 0x562ADB01EA14439CE1D8A6FBA46515F4
+
+property tcId1052 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x42EE175CB7A7F28620500AE8856C7CDE3C4052FBA5ABF91C9E91E20857AF5066
+    pt = 0x29
+    ct = 0xB5465699DD3DC2969DCF8B1DA3C0DFCC
+
+property tcId1053 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xD9C652FA5E6A16E51DC513B53AFBC7E6624B8C3E4E3C58CD223320228EEE5DFD
+    pt = 0x55
+    ct = 0x0AD61A07DB5EC915C16F1A320BF0EAED
+
+property tcId1054 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x070FDEE3C8E60C382E9EFB3E61AD9B84620F2513F25DE9A535C344774F14BBC0
+    pt = 0xA4
+    ct = 0x906B0FA922E825B9375863FCA511B446
+
+property tcId1055 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x965B12BA6F405A1C99A702AC08084090FD80854BF5C09D00D1CBF8020E1FC853
+    pt = 0xEE
+    ct = 0x338C2D6EF2A4F0215F32117A6999E2FE
+
+property tcId1056 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x16E8974B487171A030AB25FE03E5789772A2A91E4FBBEFA62A2C3957AC69DAC3
+    pt = 0x51
+    ct = 0xFE89DB7AB88A6A50DBC7B4BBFD7C7D19
+
+property tcId1057 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x9A729225A773F82968D4E4A61F67F7FEFA1C1EB951506220D2B44FB4EF06C54A
+    pt = 0xFD
+    ct = 0xBC7ED8E326F929CD1CF2939519972DB5
+
+property tcId1058 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x41472533F605B84462AD4C8FD062FC9B24B9EE7EBA935D0ECA424D2AB503DEF8
+    pt = 0xF9
+    ct = 0x32746F33EC7A049B4A3C48BD0ED21CE8
+
+property tcId1059 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x80F14DD8F5F9EF689A6840363AD88F58DE0EDCDB74700BA33A7DD923FDCB5DAD
+    pt = 0x29
+    ct = 0xF34CACF3816972C90A4AF0E67E7AED85
+
+property tcId1060 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xBD62F4F0449F892825008928D877A7543FADFAD05D3877033FFBD343EB83E622
+    pt = 0xD7
+    ct = 0x54F7EF87C184A81009EBF9BF6688CD7C
+
+property tcId1061 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x44D2B78F5FD38A5F681DA45F2FD177AFC122B7E780BB516AF29D928F3A17DAF5
+    pt = 0xD2
+    ct = 0x286F752B981CE6847661E0DCDD4D5F49
+
+property tcId1062 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x19556188E0349531F56D4144DAD2E5E0F6FFD349E017EFD31A05DB09291ED515
+    pt = 0xEF
+    ct = 0xE6DFA16F00FA7241F84E614649045B40
+
+property tcId1063 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xC2DF0F8EC128AC630349FA9E452A2A8A10B500E00B9524E146518780EE62B117
+    pt = 0x81
+    ct = 0xDF68CB42ED2761D74BEBCE73E590A4DF
+
+property tcId1064 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x4E88503C08AD7EF21832B200F39489D3C5457CDB45912DAA380A6DF414B125C8
+    pt = 0x2D
+    ct = 0x52D5A548C2E4D287DCAAFE03E016AD79
+
+property tcId1065 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xA45AFB02BF762298F315E033B04325127E9DC8F237261DDB114D384B44571929
+    pt = 0x42
+    ct = 0xCD487595DFE7F933FEF5B10587AC8981
+
+property tcId1066 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x7FB2623EBF05DBAEBD5122920E97DFFF06F57C838DA933538C97FAD59E25EB8A
+    pt = 0x77
+    ct = 0x8A5F782FBED1132D0636F53A51CDBF79
+
+property tcId1067 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x150F4FB634BAC25DE6992583F54DD734173E93AB43F63594832D9287778AD0EE
+    pt = 0x7A
+    ct = 0x799C8243EF5EF87891E005B506BF2F64
+
+property tcId1068 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x5B6CF52B74C43964097B6E38D37E01D673FB71F23C3329581F6409D8ED32A16E
+    pt = 0x4D
+    ct = 0xF293CE2D1F9C6725E1F9F107421AC396
+
+property tcId1069 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x2644CCF9D7C419A437C954C8141CBB2D60F57DE10A5393554A14CCC72229E286
+    pt = 0xE0
+    ct = 0xDA510B1D9A10255380655980A3A73536
+
+property tcId1070 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x5A2BF1A5098964EEC4D82F7E7C2D5723A5777F202E5CF729B506A5DC9775F1DE
+    pt = 0x11
+    ct = 0x19B164EFC41F5FFF402A1097CD89259C
+
+property tcId1071 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x9B35B7F2AB8EEBA30101BC8D0BF94B09C8EA02114ED9912F7659967DC3C7D841
+    pt = 0x71
+    ct = 0xC788AB3CE96444554BBA805A1E3A8F91
+
+property tcId1072 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x5B7783AD07911FC6D685E60FCB1213EDFF5DCD7EAC1D73DA2685585AE4C39177
+    pt = 0x3E
+    ct = 0x0EA7AB3B26CDA9612A508EF9B41DB7C8
+
+property tcId1073 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xFB56787EC73A1EED0C9061D023A305AC301E2455E349B2E573F2AFE326709ADD
+    pt = 0xC1
+    ct = 0x2C713F375FDD12469E753C68BAEAC6D4
+
+property tcId1074 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x1AC45D1DB5E960DECD86AEA2507F1CD51EAC9BD3EA8B6093D4A795EFCA7187B0
+    pt = 0x73
+    ct = 0x24B65C239B23D8C8F44EC2721ED03B15
+
+property tcId1075 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xDE8A1521277486D6FCDA3A24031DEE8647344F88A051A4DA7F452A7036DAA8C0
+    pt = 0x5E
+    ct = 0x708D55D92DB692A62CBA3CA4D009C8CE
+
+property tcId1076 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xA66E6DA21D52FC24733C303A121AD10626A5194884054CF8B73E7A71AA49380B
+    pt = 0xD3
+    ct = 0x7AD507B5FA5CD4A98C797A8DD824923F
+
+property tcId1077 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xCC3710FD1C78A8B019AE0E8608E5C60F614D1F043196A3D87A67074A267B5542
+    pt = 0x02
+    ct = 0xF02A71952C7F74D6F509D0DA905B5E44
+
+property tcId1078 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x371EEFF5ACEC4E980CA59E9D91BEBF9B1B8013B3340BC45D624F0AA0943118DA
+    pt = 0x74
+    ct = 0x7BD179C985A426CD4FF9BFBEF858436E
+
+property tcId1079 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x54D9324535DAC6090439406626141312CB4A61ADC61189947D5572FBD326CB57
+    pt = 0x7F
+    ct = 0xFF0061FC09D685215C4B22BE822405FD
+
+property tcId1080 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x3EA9325069ED93A96C331BDD6DD766EC64BBBA83A72C69ED75DF55043FB0BFD1
+    pt = 0x06
+    ct = 0x40A9C42012BA38211B800E6E313B6876
+
+property tcId1081 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x2C0CD8480E0768FB9E33A9929F3991A0DE0B0AC1F35D0CB7E58757A9D28D49D4
+    pt = 0x06
+    ct = 0xCADAD5CFD536F7BA6897EF398483F38F
+
+property tcId1082 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x2BB319F216DBBA31EB4BB3265FF85D13ABD8B12083DC0CD48C40372C946F70D5
+    pt = 0xE5
+    ct = 0x85427703FBC3BE25BE88765DC8791554
+
+property tcId1083 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xD393149C58FDB23C4ABDF43EE03D603DEB1FD06CD625F821FF93B27376458C9E
+    pt = 0x1B
+    ct = 0x3D737A3A014ABDDA0BE2696C8097EE95
+
+property tcId1084 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x03353DEAB5D9CD40338E8ECC8D810DE4E29B6D34CF158F68DB5AE356A4225266
+    pt = 0x8D
+    ct = 0x9313D7D59E08024181C2146F9123A78F
+
+property tcId1085 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x0CFD3A3B0540E5B3F044EB60050FEAFC80BAC758DB99016F79F0F5BF80307779
+    pt = 0xFC
+    ct = 0x02EC669FB26BDCDCC398545D7BDBDEC7
+
+property tcId1086 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x4CBC12CEE939C4F915DAE23A4B6F30B8B45734686067B27BF592BCF929C7E75E
+    pt = 0x34
+    ct = 0x5965D7F3EE0A4940BADDDFFA05A30BF4
+
+property tcId1087 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x1BAD340ABB934070C9B7662815BB7BAA652A056CCF246A375B6D959ADD5D7DEC
+    pt = 0x2A
+    ct = 0xEED916D3195F9C39406802285CA665D3
+
+property tcId1088 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xB0D6764B9B604A44D6A201A07E1F3CFCD0DA1A322DAA1251EFA19C12A8488D0E
+    pt = 0x8A
+    ct = 0xFE2A001CB35F00EAF85614EC594E2D9F
+
+property tcId1089 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x59BB9A295C7263842521D5F1EDD2DB92D9F09A607F758E2E3EF8CA6137616C93
+    pt = 0xB0
+    ct = 0x4AE1CF2A3BBD5BC2573D8A13212E445A
+
+property tcId1090 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x07E0C27A362DFB87EDE1B5E0A1790FA3FB09A99E12A6A71EB0A41B6356C9CC92
+    pt = 0xAC
+    ct = 0x70D749E0C9C77A0EDD98F8BCE3753733
+
+property tcId1091 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x50E530EF3EB1A1BAE45B8263BA7E30F6F5A7D2418F3611E30830C87D741647CD
+    pt = 0xFB
+    ct = 0x4FAA8357F2F3EF340A5E8B7AA74DD290
+
+property tcId1092 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xE1DE28540953AAF2AFB9EEF0DDBD08B5A1AAB73EECDD2F0E85F8915C94699E4A
+    pt = 0x17
+    ct = 0xC686DC8FE198F9D36374F5C56B99E3DF
+
+property tcId1093 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xFBDCABF978959C69724C63165A17DB5F1FA7FC2871F9BDFC799391C908F78F6C
+    pt = 0xC8
+    ct = 0xB6B5D8288DAFE8F8584514B5193EEEFE
+
+property tcId1094 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x417887E598A05E102E6C651F6900C22412DEB49140585A650DECA9B1BA211B1E
+    pt = 0x72
+    ct = 0x5B0B9FAB5479528F87EB3C91225BB64D
+
+property tcId1095 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x3BDBA3053CC76471EA0D78531BBA04A9584995BE194A348185698FE4D1338BBE
+    pt = 0xFA
+    ct = 0xF56924CE90ED7C0A79B8CAA4101D1DBC
+
+property tcId1096 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x9DDFEA3DA8FF9F5401D5BDBBE520E4D47263E5B268BB15DC6FD62939FFA49377
+    pt = 0x58
+    ct = 0x01F0962438250AAEEDF8069D7CFD1F95
+
+property tcId1097 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x59DE802DC7805F487E4537941C71A24317B585BD58CC1FF9B5AC18FFA78E74A3
+    pt = 0x0E
+    ct = 0x2B7E6ACDA4967F644662A58CE8077917
+
+property tcId1098 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x35F2322E2999AAA3BEBA5E33A237E9D84DF0DA5BB732370AAEF97316F78DD413
+    pt = 0x1E
+    ct = 0x8A4DBD736974C2E73DD27C5E47955D94
+
+property tcId1099 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0x45D780CFD96B54CF1AB425FAA701645B0FC5F84AA385B1372771BD7AD6109F0F
+    pt = 0xFC
+    ct = 0xA2E47585D0D8F81BA155324417EC2571
+
+property tcId1100 = testPassed == check_KWP_AE key pt ct where
+    testPassed = True
+    key = 0xDF9F0529DBBABA0D2A925AD2E0B81E01A0386DFC2033D3D6D446845957C02A15
+    pt = 0x0A
+    ct = 0xF6B6398CA55ACE0222A9391FD81CD276

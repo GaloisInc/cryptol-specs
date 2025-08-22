@@ -1,13 +1,39 @@
 /**
- * AES Key Wrap Algorithm.
+ * This specification describes algorithms that are approved for
+ * "key wrapping:" protecting the confidentiality and integrity of
+ * cryptographic keys.
  *
- * This is an implementation of the Key Wrap and Key Unwrap algorithms in
- * [RFC-3394]. [RFC-3394] provides two equivalent descriptions of Key Wrap, one
- * using shifting and the other using indexing. This specification closely
- * matches the index-based algorithm description as that description is more
- * similar to the BoringSSL AES Key Wrap implementation.
+ * These modes of operation are approved to be used to protect both
+ * cryptographic keys and general data.
+ *
+ * This specification is based on [SP-800-38F]. The schemes are
+ * essentially equivalent to [RFC-3394] and [RFC-5649], but use
+ * different naming and have some additional restrictions. See
+ * [SP-800-38F], Appendix B.1.
+ *
+ * This executable specification has some minor differences relative to
+ * the NIST specification [SP-800-38F].
+ * - [SP-800-38F] allows implementations of the authenticated-encryption and
+ *   authenticated-decryption functions to further restrict the lengths of
+ *   the plaintext and ciphertext (Section 8). This executable specification
+ *   requires exactly the maximum allowable lengths.
+ * - [SP-800-38F] also defines a key wrap method based on a different
+ *   block cipher, TDEA. This executable specification does not include
+ *   those algorithms.
+ * - This executable specification adds an additional input to the KWP-AD
+ *   function. See the notes on that algorithm.
+ * - In [SP-800-38F], all the functions (`W`, `W^{-1}`, `KW-AE`, `KW-AD`,
+ *   `KWP-AE`, `KWP-AD`) take the keyed cipher functions (`CIPH_K` and
+ *   `CIPH_K^{-1}`) as prerequisites, rather than explicitly passing the
+ *   cipher function and key as parameters. This executable specification
+ *   takes the key as an explicit parameter.
  *
  * References:
+ * [SP-800-38F]: Morris Dworkin. Recommendations for Block Cipher Modes of
+ *     Operation: Methods for Key Wrapping. (National Institute of Standards
+ *     and Technology, Gaithersburg, MD), NIST Special Publication (SP) NIST
+ *     SP 800-38F. December 2012.
+ *     @see https://doi.org/10.6028/NIST.SP.800-38F
  *
  * [RFC-3394]: J. Schaad, R. Housley. Advanced Encryption Standard (AES) Key
  *     Wrap Algorithm. Internet Request for Comments (RFC) 3394. September
@@ -18,241 +44,443 @@
  *     Wrap with Padding Algorithm. Internet Request for Comments (RFC) 5649.
  *     August 2009.
  *     @see https://datatracker.ietf.org/doc/rfc5649
-
  *
- * @copyright Galois Inc.
- * @author Brett Boston
- * @author Ryan Scott <rscott@galois.com>
+ * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
- * @author Alex J Malozemoff <amaloz@galois.com>
- *  www.cryptol.net
  */
 module Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap where
 
 /*
- * While this algorithm is only valid when instantiated with AES, we use the
- * generic block cipher interface to avoid reinstantiating AES.
+ * This algorithm is only approved for instantiation with AES.
+ * [SP-800-38F] Section 3.1.
  */
 import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
 interface constraint (C::KeySize >= 64)
 interface constraint (C::BlockSize == 128)
 
 /**
- * The key size (in bits).
+ * A byte.
+ * [SP-800-38F] Section 4.1.
  */
-type KeySize = C::KeySize
+type Octet = 8
 
 /**
- * A valid input corresponds to two or more 64-bit blocks (cf., [RFC-3394]
- * Section 2). In addition, Although [RFC-3394] explicitly places no upper bound
- * on the number `n` of 64-bit message blocks (cf. Section 2), the algorithms
- * _do_ in fact place a bound in that `width n <= 64`, since the computation of
- * `A = MSB(64, B) ^ t where t = (n*j)+i` in the Key Wrap algorithm (and
- * likewise a similar statement in the Key Unwrap algorithm) implicitly requires
- * that `width n <= 64`. Thus we retain that bound on `n` in our implementation.
+ * Given a block cipher `C`, a bit string whose length is half of the block
+ * size.
+ * [SP-800-38F] Section 4.1.
+ *
+ * Note: the term "`n` semiblocks" can mean a bit string that
+ * can be represented as `n` semiblocks (`[n * Semiblock]`) or a semiblock
+ * string of length `n` (`[n][Semiblock]`). [SP-800-38F] Section 5.2.
  */
-type constraint ValidInputSize n = (fin n, n >= 2, width n <= 64)
+type Semiblock = C::BlockSize / 2
 
 /**
- * Default initial value.
- *
- * [RFC-3394] Section 2.2.3.
+ * The 64-bit default ICV (integrity check value) for AES key wrap (KW).
+ * [SP-800-38F] Section 4.3.
  */
-DefaultIV : [64]
-DefaultIV = 0xA6A6A6A6A6A6A6A6
+ICV1 = 0xA6A6A6A6A6A6A6A6
 
 /**
- * Key Wrap.
- *
- * This differs from the algorithm in [RFC-3394] in that we include an explicit
- * IV argument. We use this variable IV in AES Key Wrap with Padding (cf.
- * [RFC-3394] Section 2.2.3.2).
- *
- *   Inputs:  Plaintext, n 64-bit values {P1, P2, ..., Pn}, and
- *            Key, K (the KEK).
- *   Outputs: Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}.
- *
- *   1) Initialize variables.
- *
- *      Set A = IV, an initial value (see 2.2.3)
- *      For i = 1 to n
- *          R[i] = P[i]
- *
- *   2) Calculate intermediate values.
- *
- *      For j = 0 to 5
- *          For i=1 to n
- *              B = AES(K, A | R[i])
- *              A = MSB(64, B) ^ t where t = (n*j)+i
- *              R[i] = LSB(64, B)
- *
- *   3) Output the results.
- *
- *      Set C[0] = A
- *      For i = 1 to n
- *          C[i] = R[i]
- *
- * [RFC-3394] Section 2.2.1.
+ * The 32-bit default ICV (integrity check value) for AES key wrap with
+ * padding (KWP).
+ * [SP-800-38F] Section 4.3.
  */
-keyWrap : {n} (ValidInputSize n)
-  => [n][64] -> [C::KeySize] -> [64] -> [n + 1][64]
-keyWrap plaintext key iv = C where
-  // 1) Initialize variables.
-  A = iv
-  R = plaintext
-  // 2) Calculate intermediate values.
-  intermediates = [(A, R)] # [wrapRound key s j | s <- intermediates
-                                                | j <- [0..5]]
-  // 3) Output the results.
-  (A', R') = intermediates ! 0
-  C = [A'] # R'
+ICV2 = 0xA65959A6
 
 /**
- * Key Unwrap.
- *
- * This differs from the algorithm in [RFC-3394] in that we include an explicit
- * IV argument. We use this variable IV in AES Key Unwrap with Padding.
- *
- *   Inputs:  Ciphertext, (n+1) 64-bit values {C0, C1, ..., Cn}, and
- *            Key, K (the KEK).
- *   Outputs: Plaintext, n 64-bit values {P0, P1, K, Pn}.
- *
- *   1) Initialize variables.
- *
- *       Set A = C[0]
- *       For i = 1 to n
- *           R[i] = C[i]
- *
- *   2) Compute intermediate values.
- *
- *       For j = 5 to 0
- *           For i = n to 1
- *               B = AES-1(K, (A ^ t) | R[i]) where t = n*j+i
- *               A = MSB(64, B)
- *               R[i] = LSB(64, B)
- *
- *   3) Output results.
- *
- *   If A is an appropriate initial value (see 2.2.3),
- *   Then
- *       For i = 1 to n
- *           P[i] = R[i]
- *   Else
- *       Return an error
- *
- * [RFC-3394] Section 2.2.2.
+ * The output of the cipher function of the block cipher under the key `K`
+ * applied to the block `X`.
+ * [SP-800-38F] Section 4.4.
  */
-keyUnwrap : {n} (ValidInputSize n)
-  => [n + 1][64] -> [C::KeySize] -> [64] -> Option ([n][64])
-keyUnwrap ciphertext key iv = plaintext where
-  // The following steps are done as part of `keyUnwrapUnchecked`.
-  // 1) Initialize variables.
-  // 2) Compute intermediate values.
-  (A', R') = keyUnwrapUnchecked ciphertext key
-  // 3) Output results.
-  plaintext = if A' == iv then Some R' else None
+CIPHK K X = C::encrypt K X
 
 /**
- * Key Unwrap without checking the validity of the IV.
- *
- * This algorithm is not explicitly defined in [RFC-3394], however it is used
- * to implement AES Key Unwrap with Padding as defined in [RFC-5649].
- *
- * ⚠️ WARNING ⚠️: This algorithm _does not validate the IV_. Do not use it
- * unless you have a verify specific requirement where you do not need to check
- * the IV!
- *
- * [RFC-3394] Section 2.2.2.
+ * The output of the inverse of the cipher function of the block cipher under
+ * the key `K` applied to the block `X`.
+ * [SP-800-38F] Section 4.4.
  */
-keyUnwrapUnchecked : {n} (fin n, n >= 1, width n <= 64) =>
-                     [n + 1][64] -> [C::KeySize] -> ([64], [n][64])
-keyUnwrapUnchecked ciphertext key = (A', R') where
-  // 1) Initialize variables.
-  A = join (take`{1} ciphertext)
-  R = drop`{1} ciphertext
-  // 2) Compute intermediate values.
-  intermediates = [(A, R)] # [unwrapRound key s j | s <- intermediates
-                                                  | j <- [5, 4 .. 0]]
-  (A', R') = intermediates ! 0
-
-private
-  /**
-   * The body of the inner loop of Step 2 of the Key Wrap algorithm.
-   *
-   *     B = AES(K, A | R[i])
-   *     A = MSB(64, B) ^ t where t = (n*j)+i
-   *     R[i] = LSB(64, B)
-   *
-   * [RFC-3394] Section 2.2.1, Step 2.
-   */
-  wrapBlock : {n} (fin n, n >= 1, width n <= 64) =>
-              [C::KeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
-  wrapBlock key (A, R) j i =
-    if i == 0 then error "`i` must be greater than 0"
-              else (A', R') where
-    // `i ∈ [1..n]` but `R` is 0-index, so we use `i - 1` here.
-    B  = C::encrypt key (A # (R @ (i-1)))
-    A' = (take`{64} B) ^ (((`n : [64]) * j) + i)
-    // See above comment for use of `i - 1`.
-    R' = update R (i-1) (drop`{64} B)
-
-  /**
-   * A single round of the inner loop of Step 2 of the Key Wrap algorithm.
-   *
-   *     For i=1 to n
-   *         B = AES(K, A | R[i])
-   *         A = MSB(64, B) ^ t where t = (n*j)+i
-   *         R[i] = LSB(64, B)
-   *
-   * [RFC-3394] Section 2.2.1 Step 2.
-   */
-  wrapRound : {n} (fin n, n >= 1, width n <= 64) =>
-              [C::KeySize] -> ([64], [n][64]) -> [64] -> ([64], [n][64])
-  wrapRound key (A, R) j = wrappedBlocks ! 0 where
-    wrappedBlocks = [(A, R)] # [wrapBlock key s j i | s <- wrappedBlocks
-                                                    | i <- [1..n]]
-
-  /**
-   * The body of the inner loop of Step 2 of the Key Unwrap algorithm.
-   *
-   *     B = AES-1(K, (A ^ t) | R[i]) where t = n*j+i
-   *     A = MSB(64, B)
-   *     R[i] = LSB(64, B)
-   *
-   * [RFC-3394] Section 2.2.2, Step 2.
-   */
-  unwrapBlock : {n} (fin n, width n <= 64) =>
-                [C::KeySize] -> ([64], [n][64]) -> [64] -> [64] -> ([64], [n][64])
-  unwrapBlock K (A, R) j i = (A', R') where
-    B  = C::decrypt K ((A ^ (((`n : [64]) * j) + i)) # (R @ (i-1)))
-    A' = take`{64} B
-    R' = update R (i-1) (drop`{64} B)
-
-  /**
-   * A single round of the inner loop of Step 2 of the Key Unwrap algorithm.
-   *
-   *     For i = n to 1
-   *         B = AES-1(K, (A ^ t) | R[i]) where t = n*j+i
-   *         A = MSB(64, B)
-   *         R[i] = LSB(64, B)
-   *
-   * [RFC-3394] Section 2.2.2, Step 2.
-   */
-  unwrapRound : {n} (fin n, n >= 1, width n <= 64) =>
-                [C::KeySize] -> ([64], [n][64]) -> [64] -> ([64], [n][64])
-  unwrapRound key (A, R) j = unwrappedBlocks ! 0 where
-    unwrappedBlocks = [(A, R)] # [unwrapBlock key s j i | s <- unwrappedBlocks
-                                                        | i <- [n, n-1 .. 1]]
-
-import Common::OptionUtils(optTest)
+CIPHInvK K X = C::decrypt K X
 
 /**
- * Key unwrap must be the inverse of key wrap.
+ * The integer for which the bit string passed as a parameter is the binary
+ * representation.
+ * [SP-800-38F] Section 4.4.
+ */
+int = toInteger
+
+/**
+ * The bit length of the bit string `_X`.
+ * [SP-800-38F] Section 4.4.
+ *
+ * Note: This demotes the Cryptol type to a value. In practice, we use the
+ * type representation of the value (e.g. using `n` directly, rather than
+ * calling this function). See `KWP_AE`, below.
+ */
+len : {n} (fin n) => [n] -> Integer
+len _X = `n
+
+/**
+ * Get the `s` right-most bits of the input.
+ * [SP-800-38F] Section 4.4.
+ */
+LSB : {s, n} (fin s, fin n, n >= s) => [n] -> [s]
+LSB = drop`{n - s}
+
+/**
+ * Get the `s` left-most bits of the input.
+ * [SP-800-38F] Section 4.4.
+ */
+MSB : {s, n} (fin s, fin n, n >= s) => [n] -> [s]
+MSB = take`{s}
+
+/**
+ * [SP-800-38F] Section 4.5.
  * ```repl
- * :check keyWrapInverts`{n=5}
+ * :prove hexRepresentation
  * ```
  */
-keyWrapInverts : {n} (ValidInputSize n)
-  => [n][64] -> [C::KeySize] -> Bool
-property keyWrapInverts plaintext key =
-  optTest (\result -> result == plaintext) (keyUnwrap (keyWrap plaintext key DefaultIV) key DefaultIV)
+property hexRepresentation = 0xA659 == 0b1010011001011001
+
+/**
+ * [SP-800-38F] Section 4.5.
+ * ```repl
+ * :prove zeroRepresentation
+ * ```
+ */
+property zeroRepresentation = (zero : [8]) == 0b00000000
+
+/**
+ * [SP-800-38F] Section 4.5.
+ * ```repl
+ * :prove concatRepresentation
+ * ```
+ */
+property concatRepresentation = 0b001 # 0b10111 == 0b00110111
+
+/**
+ * [SP-800-38F] Section 4.5.
+ * ```repl
+ * :prove xorRepresentation
+ * ```
+ */
+property xorRepresentation = 0b10011 ^ 0b10101 == 0b00110
+
+/**
+ * [SP-800-38F] Section 4.5.
+ * ```repl
+ * :prove lenRepresentation
+ * ```
+ */
+property lenRepresentation = len 0b00010 == 5
+
+/**
+ * [SP-800-38F] Section 4.5.
+ * ```repl
+ * :prove signficanceWorks
+ * ```
+ */
+property signficanceWorks = lsb && msb where
+    X = 0b111011010
+    lsb = LSB`{3} X == 0b010
+    msb = MSB`{4} X == 0b1110
+
+/**
+ * The instances of the `[x]_s` notation in the spec are all used to convert
+ * base-10 literal values into bit strings. We can handle these instances using
+ * explicit typing in Cryptol. This property shows the expected notation and
+ * demonstrates that the endianness of this conversion aligns with the
+ * requirement in the specification.
+ * [SP-800-38F] Section 4.5.
+ * ```repl
+ * :prove integerToString
+ * ```
+ */
+property integerToString = (39 == 0b00100111) && ((39 : [8]) == 0b00100111)
+
+/**
+ * [SP-800-38F] Section 4.5.
+ * ```repl
+ * :prove stringToInteger
+ * ```
+ */
+property stringToInteger = int 0b00011010 == 26
+
+/**
+ * The plaintext for AES key wrap (KW) shall be a semiblock string with fewer
+ * than 2^54 semiblocks.
+ * Note: the Cryptol expression `width n < X` is equivalent to `n < 2^^X - 1`.
+ * [SP-800-38F] Section 5.3.1 and Table 1.
+ */
+type constraint KW_Plaintext n = (2 <= n, width n <= 54)
+
+/**
+ * The ciphertext for AES key wrap (KW) is a semiblock string with length one
+ * semiblock longer than the corresponding ciphertext.
+ * [SP-800-38F] Section 5.3.1 and Table 1.
+ */
+type constraint KW_Ciphertext n = (3 <= n, n <= 2^^54)
+
+/**
+ * The plaintext for AES key wrap with padding (KWP) shall be an octet string
+ * with fewer than 2^32 octets.
+ * Note: the Cryptol expression `width n < X` is equivalent to `n < 2^^X - 1`.
+ * [SP-800-38F] Section 5.3.1 and Table 1.
+ */
+type constraint KWP_Plaintext n = (1 <= n, width n <= 32)
+
+/**
+ * The ciphertext for AES key wrap with padding (KWP) is a semiblock string
+ * with length one semiblock longer than the corresponding ciphertext.
+ * [SP-800-38F] Section 5.3.1 and Table 1.
+ */
+type constraint KWP_Ciphertext n = (2 <= n, n <= 2^^29)
+
+/**
+ * Wrapping function for the encryption functions in AES key wrap and AES key
+ * wrap with padding.
+ * [SP-800-38F] Section 6.1, Algorithm 1.
+ *
+ * There is an additional explicit constraint here that the variable
+ * `s = 6(n - 1)` must fit into a semiblock (64 bits). This is implied by the
+ * conversion in step 2a: `[t]_64` gives the binary representation of `t` in
+ * 64 bits; it requires that `t` is less than `2^64`. The maximum value of `t`
+ * is `s`. This constraint will always be satisfied in an approved
+ * instantiation due to the plaintext length restrictions. See:
+ * - the definition of `[]` in Section 4.4;
+ * - Plaintext length descriptions in Section 5.3.1; and
+ * - Discussion on plaintext length descriptions in Appendix A.4.
+ *
+ * This function is not approved for use independently of the KW_AE and KWP_AE
+ * functions. [SP-800-38F] Section 8.
+ */
+W : {n} (fin n, n >= 3, width (6 * (n - 1)) <= Semiblock)
+    => [C::KeySize] -> [n][Semiblock] -> [n * Semiblock]
+W K S = C where
+    // Step 1. Note that the input string is 1-indexed in the spec and
+    // 0-indexed here.
+    type s = 6 * (n - 1)
+    A0 = S@0
+    R0 = drop`{1} S
+
+    // Step 2.
+    // `At1` corresponds to `A^{t-1}` in the text. Likewise for `Rt1`.
+    // In the spec, `R^t` is indexed from 2 to `n`. Here, it is indexed
+    // from 0 to `n - 2`.
+    update_variables : ([Semiblock], [n-1][Semiblock]) -> [Semiblock]
+        -> ([Semiblock], [n-1][Semiblock])
+    update_variables (At1, Rt1) t = (At, Rt) where
+        At = MSB`{64} (CIPHK K (At1 # Rt1@0)) ^ t
+        Rnt = LSB`{64} (CIPHK K (At1 # Rt1@0))
+        Rt = drop`{1} Rt1 # [Rnt]
+
+    (As, Rs) = foldl update_variables (A0, R0) [1..s]
+
+    // Step 3.
+    C1 = As
+    Cis = Rs
+    C = C1 # (join Cis)
+
+/**
+ * Unwrapping function for the decryption functions in AES key wrap and AES key
+ * wrap with padding. This is denoted `W^{-1}` in the spec.
+ * [SP-800-38F] Section 6.1, Algorithm 2.
+ *
+ * There is an additional explicit constraint here that the variable `s` must
+ * fit into a semiblock. See note on `W`.
+ *
+ * This function is not approved for use independently of the KW_AD and KWP_AD
+ * functions. [SP-800-38F] Section 8.
+ */
+WInv : {n} (fin n, n >= 3, width (6 * (n - 1)) <= Semiblock)
+    => [C::KeySize] -> [n][Semiblock] -> [n * Semiblock]
+WInv K C = S where
+    // Step 1. Note that the input string is 1-indexed in the spec and
+    // 0-indexed here.
+    type s = 6 * (n - 1)
+    As = C@0
+    Rs = drop`{1} C
+
+    // Step 2.
+    // `At1` corresponds to `A^{t-1}` in the text. Likewise for `Rt1`.
+    // In the spec, `R^t` is indexed from 2 to `n`. Here, it is indexed
+    // from 0 to `n - 2`.
+    update_variables : ([Semiblock], [n-1][Semiblock]) -> [Semiblock]
+        -> ([Semiblock], [n-1][Semiblock])
+    update_variables (At, Rt) t = (At1, Rt1) where
+        At1 = MSB`{64} (CIPHInvK K ((At ^ t) # Rt@`(n-2)))
+        R2t1 = LSB`{64} (CIPHInvK K ((At ^ t) # Rt@`(n-2)))
+        Rt1 = [R2t1] # take`{n-2} Rt
+
+    (A0, R0) = foldl update_variables (As, Rs) [s, s-1..1]
+
+    // Step 3.
+    S1 = A0
+    Sis = R0
+    S = S1 # (join Sis)
+
+/**
+ * The unwrapping function `WInv` must be the inverse of the wrapping function
+ * `W`.
+ * [SP-800-38F] Section 5.2.
+ * ```repl
+ * :check wrappingInverts`{3}
+ * :check wrappingInverts`{6}
+ * ```
+ */
+wrappingInverts :
+    {n} (fin n, n >= 3, width (6 * (n - 1)) <= Semiblock)
+    => [C::KeySize] -> [n * Semiblock] -> Bit
+property wrappingInverts K S = S == S' where
+    C = W K (split S)
+    S' = WInv K (split C)
+
+/**
+ * Authenticated encryption function for AES key wrap.
+ * [SP-800-38F] Section 6.2, Algorithm 3.
+ */
+KW_AE : {n} (KW_Plaintext n)
+    => [C::KeySize] -> [n * Semiblock] -> [(n + 1) * Semiblock]
+KW_AE K P = C where
+    S = ICV1 # P
+    C = W K (split S)
+
+/**
+ * Authenticated decryption function for AES key wrap.
+ * [SP-800-38F] Section 6.2, Algorithm 4.
+ */
+KW_AD : {n} (KW_Ciphertext n)
+    => [C::KeySize] -> [n * Semiblock] -> Option [(n - 1) * Semiblock]
+KW_AD K C = if MSB`{64} S != ICV1 then None
+    else Some (LSB`{64 * (n - 1)} S)
+    where
+        S = WInv K (split C)
+
+/**
+ * Authenticated decryption must be the inverse of authenticated encryption for
+ * AES key wrap.
+ * ```repl
+ * :check keyWrapInverts`{3}
+ * ```
+ */
+keyWrapInverts : {n} (KW_Plaintext n) => [C::KeySize] -> [n * Semiblock] -> Bit
+property keyWrapInverts K P = inverts where
+    C = KW_AE K P
+    inverts = case (KW_AD K C) of
+        Some maybeP -> maybeP == P
+        None -> False
+
+/**
+ * The authenticated encryption function for AES key wrap with padding (KWP).
+ * [SP-800-38F] Section 6.3, Algorithm 5.
+ */
+KWP_AE : {n} (KWP_Plaintext n, KWP_Ciphertext (n /^ 8 + 1))
+    => [C::KeySize] -> [n * Octet] -> [(n /^ 8 + 1) * Semiblock]
+KWP_AE K P = C where
+    // The type signature checks the validity of the plaintext `P` against `n`:
+    // the number of octets. `len(P)` in the spec is the number of _bits_.
+    type lenP = 8 * n
+
+    // Step 2.
+    type padlen = 8 * (lenP /^ 64) - (lenP / 8)
+
+    // Step 3.
+    PAD = zero : [8 * padlen]
+
+    // Step 4.
+    S = ICV2 # (`(lenP / 8) : [32]) # P # PAD
+
+    // Step 5.
+    C = KWP_AE_Step5`{n} K S
+
+/**
+ * This is step 5 of the KWP_AE algorithm.
+ * [SP-800-38F] Section 6.3, Algorithm 5, Step 5.
+ *
+ * It's separated into its own function to use the numeric constraint guard,
+ * which is only permitted in a top-level function.
+ */
+KWP_AE_Step5: {n} (KWP_Plaintext n)
+    => [C::KeySize] -> [(n /^ 8 + 1) * Semiblock] -> [(n /^ 8 + 1) * Semiblock]
+KWP_AE_Step5 K S
+    | 8 * n <= 64 => CIPHK K S
+    | 8 * n > 64 => W K (split S)
+
+/**
+ * The authenticated decryption function for AES key wrap with padding (KWP).
+ * [SP-800-38F] Section 6.3, Algorithm 6.
+ *
+ * This algorithm differs from the specification in that it requires the output
+ * length (`m`, the length of the unpadded plaintext in octets) to be specified
+ * at the top level; the specification determines the length dynamically, based
+ * on the ciphertext.
+ * The additional type parameter is necessary in Cryptol to allow stripping the
+ * padding off the plaintext, but it introduces two concrete changes:
+ *
+ * 1. There is an additional type constraint, which restricts the ciphertext and
+ *    plaintext lengths to be within the range of allowable padding of each
+ *    other.
+ *
+ * 2. There are two additional failure checks, to make sure that `m` is correct
+ *    with respect to the values (`Plen`, `padlen`) derived from the ciphertext:
+ *    - `Plen` must be the same as `m`.
+ *    - `padlen == m %^ 8`. `padlen` is the number of octets of padding needed
+ *      to fill out the plaintext to the nearest semiblock (8 bytes) and `m` is
+ *      the number of octets in the plaintext. We use the ceiling modulus to
+ *      compute the expected amount of padding for `m`.
+ *
+ * Thanks to Sean Weaver for assistance with formulating this definition.
+ */
+KWP_AD : {m, n} (KWP_Ciphertext n, KWP_Plaintext m, n == 1 + m /^ 8)
+    => [C::KeySize] -> [n * Semiblock] -> Option [m * Octet]
+KWP_AD K C =
+    if (ICV2 != MSB`{32} S)                 // Step 4.
+        || (padlen < 0)                     // Step 7.
+        || (padlen > 7)                     // Step 7.
+        || (zero   != LSB`{8 * m %^ 64} S)  // Step 8.
+        || (Plen   != `m)                   // Cryptol-specific.
+        || (padlen != `(m %^ 8))            // Cryptol-specific.
+    then None
+    else Some P
+    where
+        S = KWP_AD_Step3 K C
+
+        // Step 5 - 6.
+        Plen = int (LSB`{32} (MSB`{64} S))
+        padlen = 8 * (`n - 1) - Plen
+
+        // Step 9. The conditional above restricts `m = Plen`.
+        P = MSB`{8 * m} (LSB`{64 * (n - 1)} S)
+
+/**
+ * This is step 3 of the KWP_AD algorithm.
+ * [SP-800-38F] Section 6.3, Algorithm 6.
+ *
+ * It is separated into its own function to support the numeric constraint
+ * guard, which is only permitted in a top-level function.
+ */
+KWP_AD_Step3 : {n} (KWP_Ciphertext n)
+    => [C::KeySize] -> [n * Semiblock] -> [n * 64]
+KWP_AD_Step3 K C
+    | n == 2 => CIPHInvK K C
+    | n > 2 => WInv K (split C)
+
+/**
+ * Authenticated decryption must be the inverse of authenticated encryption for
+ * AES key wrap with padding.
+ *
+ * The lengths below are chosen to check various amounts of padding.
+ * ```repl
+ * :check keyWrapInverts`{1}
+ * :check keyWrapInverts`{3}
+ * :check keyWrapInverts`{7}
+ * :check keyWrapInverts`{8}
+ * ```
+ */
+keyWrapPaddedInverts : {n} (KWP_Ciphertext (n /^ 8 + 1), KWP_Plaintext n)
+    => [C::KeySize] -> [n * Octet] -> Bit
+property keyWrapPaddedInverts K P = inverts where
+    C = KWP_AE K P
+    inverts = case (KWP_AD K C) of
+        Some maybeP -> maybeP == P
+        None -> False
