@@ -52,9 +52,25 @@ modules = [
     "Primitive/Symmetric/Cipher/Block/AES/Instantiations/AES256.cry",
     "Primitive/Symmetric/Cipher/Block/AES/Tests/*",
 
+    # AES (CBC mode)
+    "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES*_CBC.cry",
+    "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES*_CBC.cry",
+
+    # AES (CFB mode)
+    "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES*_CFB.cry",
+    "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES*_CFB.cry",
+
     # AES (counter mode)
     "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES*_CTR.cry",
     "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES*_CTR.cry",
+
+    # AES (key wrap and key wrap padded mode)
+    "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES256_KeyWrap.cry",
+    "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES256_KeyWrap*.cry",
+
+    # AES (XTS mode)
+    "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES*_XTS.cry",
+    "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES*_XTS.cry",
 
     # HMAC
     "Primitive/Symmetric/MAC/HMAC/Instantiations/*",
