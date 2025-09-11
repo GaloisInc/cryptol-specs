@@ -471,10 +471,9 @@ KWP_AD_Step3 K C
  *
  * The lengths below are chosen to check various amounts of padding.
  * ```repl
- * :check keyWrapInverts`{1}
- * :check keyWrapInverts`{3}
- * :check keyWrapInverts`{7}
- * :check keyWrapInverts`{8}
+ * :check keyWrapPaddedInverts`{3}
+ * :check keyWrapPaddedInverts`{7}
+ * :check keyWrapPaddedInverts`{8}
  * ```
  */
 keyWrapPaddedInverts : {n} (KWP_Ciphertext (n /^ 8 + 1), KWP_Plaintext n)
