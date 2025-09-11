@@ -21,6 +21,10 @@ modules = [
     "Primitive/Asymmetric/Signature/ECDSA/Tests/ECDSA_P256_SHA256.cry",
     "Primitive/Asymmetric/Signature/ECDSA/Tests/ECDSA_P384_SHA384.cry",
 
+    # SHA1
+    "Primitive/Keyless/Hash/SHA1/Specification.cry",
+    "Primitive/Keyless/Hash/SHA1/Tests/*",
+
     # SHA2
     "Primitive/Keyless/Hash/SHA2/Instantiations/SHA224.cry",
     "Primitive/Keyless/Hash/SHA2/Instantiations/SHA256.cry",
@@ -33,6 +37,10 @@ modules = [
     "Primitive/Keyless/Hash/SHA2/Tests/SHA384.cry",
     "Primitive/Keyless/Hash/SHA2/Tests/SHA512.cry",
     "Primitive/Keyless/Hash/SHA2/Tests/CAVP/*",
+
+    # SHA3
+    "Primitive/Keyless/Hash/SHA3/Instantiations/*",
+    "Primitive/Keyless/Hash/SHA3/Tests/*",
 
     # AES (GCM mode)
     "Primitive/Symmetric/Cipher/Authenticated/GCM/Instantiations/*.cry",
@@ -47,4 +55,8 @@ modules = [
     # AES (counter mode)
     "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES*_CTR.cry",
     "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES*_CTR.cry",
+
+    # HMAC
+    "Primitive/Symmetric/MAC/HMAC/Instantiations/*",
+    "Primitive/Symmetric/MAC/HMAC/Tests/*"
 ]
