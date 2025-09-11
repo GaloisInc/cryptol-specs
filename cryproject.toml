@@ -1,5 +1,6 @@
-# Build and cache the collection of Suite B algorithms.
+# Build and cache the collection of gold standard algorithms.
 #
+# Ordering is alphabetical up to the algorithm level.
 # @copyright Galois, Inc.
 # @author Marcella Hastings <marcella@galois.com>
 #
@@ -20,20 +21,6 @@ modules = [
     "Primitive/Asymmetric/Signature/ECDSA/Tests/ECDSA_P256_SHA256.cry",
     "Primitive/Asymmetric/Signature/ECDSA/Tests/ECDSA_P384_SHA384.cry",
 
-    # AES (standalone)
-    "Primitive/Symmetric/Cipher/Block/AES/Instantiations/AES128.cry",
-    "Primitive/Symmetric/Cipher/Block/AES/Instantiations/AES192.cry",
-    "Primitive/Symmetric/Cipher/Block/AES/Instantiations/AES256.cry",
-    "Primitive/Symmetric/Cipher/Block/AES/Tests/*",
-
-    # AES (counter mode)
-    "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES*_CTR.cry",
-    "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES*_CTR.cry",
-
-    # AES (GCM mode)
-    "Primitive/Symmetric/Cipher/Authenticated/GCM/Instantiations/*.cry",
-    "Primitive/Symmetric/Cipher/Authenticated/GCM/Tests/*",
-
     # SHA2
     "Primitive/Keyless/Hash/SHA2/Instantiations/SHA224.cry",
     "Primitive/Keyless/Hash/SHA2/Instantiations/SHA256.cry",
@@ -46,4 +33,18 @@ modules = [
     "Primitive/Keyless/Hash/SHA2/Tests/SHA384.cry",
     "Primitive/Keyless/Hash/SHA2/Tests/SHA512.cry",
     "Primitive/Keyless/Hash/SHA2/Tests/CAVP/*",
+
+    # AES (GCM mode)
+    "Primitive/Symmetric/Cipher/Authenticated/GCM/Instantiations/*.cry",
+    "Primitive/Symmetric/Cipher/Authenticated/GCM/Tests/*",
+
+    # AES (cipher)
+    "Primitive/Symmetric/Cipher/Block/AES/Instantiations/AES128.cry",
+    "Primitive/Symmetric/Cipher/Block/AES/Instantiations/AES192.cry",
+    "Primitive/Symmetric/Cipher/Block/AES/Instantiations/AES256.cry",
+    "Primitive/Symmetric/Cipher/Block/AES/Tests/*",
+
+    # AES (counter mode)
+    "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES*_CTR.cry",
+    "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES*_CTR.cry",
 ]
