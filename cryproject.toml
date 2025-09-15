@@ -73,6 +73,14 @@ modules = [
     # "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES*_XTS.cry",
     # "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES*_XTS.cry",
 
+    # Simon
+    "Primitive/Symmetric/Cipher/Block/Simon/Instantiations/*",
+    "Primitive/Symmetric/Cipher/Block/Simon/Tests/*",
+
+    # Speck
+    "Primitive/Symmetric/Cipher/Block/Speck/Instantiations/*",
+    "Primitive/Symmetric/Cipher/Block/Speck/Tests/*",
+
     # HMAC
     "Primitive/Symmetric/MAC/HMAC/Instantiations/*",
     "Primitive/Symmetric/MAC/HMAC/Tests/*"
