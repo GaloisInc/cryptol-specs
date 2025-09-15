@@ -66,11 +66,12 @@ modules = [
 
     # AES (key wrap and key wrap padded mode)
     "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES256_KeyWrap.cry",
-    "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES256_KeyWrap*.cry",
+    # Blocked by cryptol#1903
+    # "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES256_KeyWrap*.cry",
 
-    # AES (XTS mode)
-    "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES*_XTS.cry",
-    "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES*_XTS.cry",
+    # AES (XTS mode) -- blocked by cryptol#1903
+    # "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES*_XTS.cry",
+    # "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES*_XTS.cry",
 
     # HMAC
     "Primitive/Symmetric/MAC/HMAC/Instantiations/*",
