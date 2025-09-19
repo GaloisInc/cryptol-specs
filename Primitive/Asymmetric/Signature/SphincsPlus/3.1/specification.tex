@@ -2352,7 +2352,7 @@ generation.
     type h : #
     type constraint (fin h)
     type d : #
-    type constraint (d >= 2, h%d == 0, h/d >= 1)
+    type constraint (fin d, d >= 2, h%d == 0, h/d >= 1)
     // the following constraint is needed because
     // h - h/d bits should define a tree address
     type constraint (3*4*8 >= h - h/d)
