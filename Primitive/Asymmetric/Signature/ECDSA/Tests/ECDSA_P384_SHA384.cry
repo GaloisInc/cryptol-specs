@@ -8,6 +8,7 @@
  *
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
+ * @editor Ryan Scott <rscott@galois.com>
  */
 module Primitive::Asymmetric::Signature::ECDSA::Tests::ECDSA_P384_SHA384 where
 import Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P384_SHA384 as ECDSA
