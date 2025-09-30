@@ -14,7 +14,7 @@ module Primitive::Asymmetric::Signature::ECDSA::Tests::ECDSA_P384_SHA384 where
 import Primitive::Asymmetric::Signature::ECDSA::Instantiations::ECDSA_P384_SHA384 as ECDSA
 import Common::utils(BVtoZ)
 
-property checkSignature d msg k expected_r expected_s =
+checkSignature d msg k expected_r expected_s =
     signIsCorrect && verifyIsCorrect where
 
     sig = ECDSA::sign msg d k
