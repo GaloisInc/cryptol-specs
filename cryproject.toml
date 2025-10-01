@@ -13,6 +13,12 @@ modules = [
     "Primitive/Asymmetric/KEM/ECDH/Instantiations/*",
     "Primitive/Asymmetric/KEM/ECDH/Tests/*",
 
+    # ML-KEM
+    "Primitive/Asymmetric/KEM/ML_KEM/Instantiations/ML_KEM512.cry",
+    "Primitive/Asymmetric/KEM/ML_KEM/Instantiations/ML_KEM768.cry",
+    "Primitive/Asymmetric/KEM/ML_KEM/Instantiations/ML_KEM1024.cry",
+    "Primitive/Asymmetric/KEM/ML_KEM/Tests/*.cry",
+
     # ECDSA, instantiated with P-curves and SHA2
     "Primitive/Asymmetric/Signature/ECDSA/Instantiations/ECDSA_P224_SHA224.cry",
     "Primitive/Asymmetric/Signature/ECDSA/Instantiations/ECDSA_P256_SHA256.cry",
