@@ -27,6 +27,12 @@ modules = [
     "Primitive/Asymmetric/Signature/ECDSA/Tests/ECDSA_P256_SHA256.cry",
     "Primitive/Asymmetric/Signature/ECDSA/Tests/ECDSA_P384_SHA384.cry",
 
+    # ML-DSA, omitting ML-DSA_87 because it takes a long time.
+    "Primitive/Asymmetric/Signature/ML_DSA/Instantiations/ML_DSA_44.cry",
+    "Primitive/Asymmetric/Signature/ML_DSA/Instantiations/ML_DSA_65.cry",
+    "Primitive/Asymmetric/Signature/ML_DSA/Tests/ML_DSA_44.cry",
+    "Primitive/Asymmetric/Signature/ML_DSA/Tests/ML_DSA_65.cry",
+
     # SHA1
     "Primitive/Keyless/Hash/SHA1/Specification.cry",
     "Primitive/Keyless/Hash/SHA1/Tests/*",
