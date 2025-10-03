@@ -13,6 +13,12 @@ modules = [
     "Primitive/Asymmetric/KEM/ECDH/Instantiations/*",
     "Primitive/Asymmetric/KEM/ECDH/Tests/*",
 
+    # ML-KEM
+    "Primitive/Asymmetric/KEM/ML_KEM/Instantiations/ML_KEM512.cry",
+    "Primitive/Asymmetric/KEM/ML_KEM/Instantiations/ML_KEM768.cry",
+    "Primitive/Asymmetric/KEM/ML_KEM/Instantiations/ML_KEM1024.cry",
+    "Primitive/Asymmetric/KEM/ML_KEM/Tests/*.cry",
+
     # ECDSA, instantiated with P-curves and SHA2
     "Primitive/Asymmetric/Signature/ECDSA/Instantiations/ECDSA_P224_SHA224.cry",
     "Primitive/Asymmetric/Signature/ECDSA/Instantiations/ECDSA_P256_SHA256.cry",
@@ -20,6 +26,12 @@ modules = [
     "Primitive/Asymmetric/Signature/ECDSA/Tests/ECDSA_P224_SHA224.cry",
     "Primitive/Asymmetric/Signature/ECDSA/Tests/ECDSA_P256_SHA256.cry",
     "Primitive/Asymmetric/Signature/ECDSA/Tests/ECDSA_P384_SHA384.cry",
+
+    # ML-DSA, omitting ML-DSA_87 because it takes a long time.
+    "Primitive/Asymmetric/Signature/ML_DSA/Instantiations/ML_DSA_44.cry",
+    "Primitive/Asymmetric/Signature/ML_DSA/Instantiations/ML_DSA_65.cry",
+    "Primitive/Asymmetric/Signature/ML_DSA/Tests/ML_DSA_44.cry",
+    "Primitive/Asymmetric/Signature/ML_DSA/Tests/ML_DSA_65.cry",
 
     # SHA1
     "Primitive/Keyless/Hash/SHA1/Specification.cry",
@@ -66,12 +78,11 @@ modules = [
 
     # AES (key wrap and key wrap padded mode)
     "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES256_KeyWrap.cry",
-    # Blocked by cryptol#1903
-    # "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES256_KeyWrap*.cry",
+    "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES256_KeyWrap*.cry",
 
-    # AES (XTS mode) -- blocked by cryptol#1903
-    # "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES*_XTS.cry",
-    # "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES*_XTS.cry",
+    # AES (XTS mode)
+    "Primitive/Symmetric/Cipher/Block/Modes/Instantiations/AES*_XTS.cry",
+    "Primitive/Symmetric/Cipher/Block/Modes/Tests/AES*_XTS.cry",
 
     # Simon
     "Primitive/Symmetric/Cipher/Block/Simon/Instantiations/*",
