@@ -6,6 +6,7 @@
 
 module Primitive::Symmetric::Cipher::Authenticated::MEE_CBC where
 
+import Common::OptionUtils(optApply, optTest)
 
 // Fixing block size for simplicity.
 type blkBytes = 16
@@ -39,8 +40,8 @@ pad msg tag = split `{each=blkBytes} (msg # tag # padding)
 
 unpad : {n, p, b}
         (fin n, 8 >= width p, p == blkBytes*b - n, blkBytes*b >= n) =>
-        [b+2]Blk -> ([n][8], Tag, Bit)
-unpad ct = (m, t, good)
+        [b+2]Blk -> Option ([n][8], Tag)
+unpad ct = if good then Some (m, t) else None
   where
     padded = join ct
     m = take `{n} padded
@@ -49,7 +50,9 @@ unpad ct = (m, t, good)
     good = p == ((repeat `p) : [p][8]) /* /\ 1 <= p /\ p <= 16 */
 
 property unpad_pad_good_1000_256 msg tag =
-  unpad (pad `{n=1000,p=104} msg tag) == (msg, tag, True)
+  optTest (\x -> x == (msg, tag)) unpad_pad
+  where
+    unpad_pad = unpad (pad `{n=1000,p=104} msg tag)
 
 mee_enc : {n, p, b}
           (fin n, p == blkBytes*b - n, 8 >= width p, b >= 1, 16*b >= n) =>
@@ -63,11 +66,13 @@ mee_dec : {n, p, b}
           (fin n, p == blkBytes*b - n, 8 >= width (32 + p), b >= 1, 16*b >= n)
        => (EKey -> Blk -> Blk)
        -> (SKey -> [n][8] -> Tag)
-       -> EKey -> SKey -> Blk -> [b+2]Blk -> ([n][8], Bit)
-mee_dec dec sign ekey skey iv ct = (m, good /\ sign skey m == t)
+       -> EKey -> SKey -> Blk -> [b+2]Blk -> Option ([n][8])
+mee_dec dec sign ekey skey iv ct =
+  if optTest (\x -> sign skey x.0 == x.1) m_and_t then m else None
   where
-    (m, t, good) = unpad (cbc_dec dec ekey iv ct)
+    m_and_t = unpad (cbc_dec dec ekey iv ct)
+    m = optApply (\x -> x.0) m_and_t
 
 property mee_enc_dec_good_1000 enc dec sign ekey skey iv msg =
-  mee_dec `{n=1000,p=104} dec sign ekey skey iv ct == (msg, True)
+  optTest (\x -> x == msg) (mee_dec `{n=1000,p=104} dec sign ekey skey iv ct)
     where ct = mee_enc `{n=1000,p=104} enc sign ekey skey iv msg
