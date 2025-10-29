@@ -1,78 +1,84 @@
 /**
+ * Mac-then-Encode-then-Encrypt using CBC Mode (MEE-CBC).
+ *
+ * MEE-CBC is used in the TLS 1.2 Record Protocol [TLS1.2].
+ *
+ * References:
+ * [TLS1.2] T. Dierks and E. Rescorla. The Transport Layer Security (TLS)
+   Protocol Version 1.2. RFC 5246, August 2008.
+   @see http://www.ietf.org/rfc/rfc5246.txt.
+ *
  * @copyright Galois, Inc.
  * @author Nichole Schimanski <nls@galois.com>
+ * @author Alex J. Malozemoff <amaloz@galois.com>
  */
-
 
 module Primitive::Symmetric::Cipher::Authenticated::MEE_CBC where
 
+import Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES128_CBC as CBC
+import Primitive::Symmetric::MAC::HMAC::Instantiations::HMAC_SHA1 as HMAC
+
 import Common::OptionUtils(optApply, optTest)
 
-// Fixing block size for simplicity.
-type blkBytes = 16
-// Using blocks of bytes for greatest compatibility with both EasyCrypt
-// and other external descriptions of these algorithms
-type Blk = [blkBytes][8]
-// Fixing encryption key size for simplicity.
-type EKey = [blkBytes][8]
+type KeySize = 128
+type SignKey = [64][8]
+type BlockSize = 128
+type TagSize = 20
 
-// Fixing tag size for simplicity.
-type tagBytes = 32
-type Tag = [tagBytes][8]
-
-// Fixing signing key size for simplicity.
-type skeyBytes = 64
-type SKey = [skeyBytes][8]
-
-cbc_enc : {n} (fin n) => (EKey -> Blk -> Blk) -> EKey -> Blk -> [n]Blk -> [n]Blk
-cbc_enc enc k iv ps = cs
- where cs = [ enc k (p ^ c') | p <- ps | c' <- [iv] # cs ]
-
-cbc_dec : {n} (fin n) => (EKey -> Blk -> Blk) -> EKey -> Blk -> [n]Blk -> [n]Blk
-cbc_dec dec k iv cs = [ (dec k c) ^ c' | c <- cs | c' <- [iv] # cs ]
-
-pad : {n, p, b}
-      (fin n, 8 >= width p, p == blkBytes*b - n, blkBytes*b >= n) =>
-      [n][8] -> Tag -> [b+2]Blk
-pad msg tag = split `{each=blkBytes} (msg # tag # padding)
+pad : {n, p, ℓ}
+      (fin n,
+       8 >= width p,
+       ℓ == n + TagSize + p,
+       (8 * ℓ) % BlockSize == 0
+      ) => [n][8] -> [TagSize][8] -> [ℓ][8]
+pad msg tag = (msg # tag # padding)
   where
     padding = (repeat `p) : [p][8]
 
-unpad : {n, p, b}
-        (fin n, 8 >= width p, p == blkBytes*b - n, blkBytes*b >= n) =>
-        [b+2]Blk -> Option ([n][8], Tag)
+unpad : {n, p, ℓ}
+        (fin n,
+         8 >= width p,
+         ℓ == n + TagSize + p
+        ) => [ℓ][8] -> Option ([n][8], [TagSize][8])
 unpad ct = if good then Some (m, t) else None
   where
-    padded = join ct
-    m = take `{n} padded
-    t = take `{tagBytes} (drop `{n} padded)
-    p = drop `{n + tagBytes} padded
-    good = p == ((repeat `p) : [p][8]) /* /\ 1 <= p /\ p <= 16 */
+    m = take `{n} ct
+    t = take `{TagSize} (drop `{n} ct)
+    p = drop `{n + TagSize} ct
+    good = p == ((repeat `p) : [p][8]) /\ 1 <= `p /\ `p <= 16
 
 property unpad_pad_good_1000_256 msg tag =
   optTest (\x -> x == (msg, tag)) unpad_pad
   where
-    unpad_pad = unpad (pad `{n=1000,p=104} msg tag)
+    unpad_pad = unpad (pad `{n=1000,p=100} msg tag)
 
-mee_enc : {n, p, b}
-          (fin n, p == blkBytes*b - n, 8 >= width p, b >= 1, 16*b >= n) =>
-          (Blk -> Blk -> Blk)
-       -> (SKey -> [n][8] -> Tag)
-       -> EKey -> SKey -> Blk -> [n][8] -> [b+2]Blk
-mee_enc enc sign ekey skey iv msg =
-  cbc_enc enc ekey iv (pad msg (sign skey msg))
-
-mee_dec : {n, p, b}
-          (fin n, p == blkBytes*b - n, 8 >= width (32 + p), b >= 1, 16*b >= n)
-       => (EKey -> Blk -> Blk)
-       -> (SKey -> [n][8] -> Tag)
-       -> EKey -> SKey -> Blk -> [b+2]Blk -> Option ([n][8])
-mee_dec dec sign ekey skey iv ct =
-  if optTest (\x -> sign skey x.0 == x.1) m_and_t then m else None
+mee_enc : {n, p, ℓ}
+          (fin n,
+           8 >= width p,
+           ℓ == n + TagSize + p,
+           (8 * ℓ) % BlockSize == 0,
+           width (8 * (64 + n)) <= 64
+          ) => [KeySize] -> SignKey -> [BlockSize] -> [n][8] -> [ℓ][8]
+mee_enc ekey skey iv msg = split (join ct)
   where
-    m_and_t = unpad (cbc_dec dec ekey iv ct)
+    tag = HMAC::hmac skey msg
+    padded = pad`{n, p} msg tag
+    ct = CBC::encrypt`{ℓ / 16} ekey iv (split (join padded))
+    
+mee_dec : {n, p, ℓ}
+          (fin n,
+           8 >= width p,
+           ℓ == n + TagSize + p,
+           (8 * ℓ) % BlockSize == 0,
+           width (8 * (64 + n)) <= 64
+          ) => [KeySize] -> SignKey -> [BlockSize] -> [ℓ][8] -> Option ([n][8])
+mee_dec ekey skey iv ct = if valid_tag then m else None
+  where
+    pt = CBC::decrypt`{ℓ / 16} ekey iv (split (join ct))
+    m_and_t = unpad (split (join pt))
+    valid_tag = optTest (\x -> HMAC::hmac skey x.0 == x.1) m_and_t
     m = optApply (\x -> x.0) m_and_t
 
-property mee_enc_dec_good_1000 enc dec sign ekey skey iv msg =
-  optTest (\x -> x == msg) (mee_dec `{n=1000,p=104} dec sign ekey skey iv ct)
-    where ct = mee_enc `{n=1000,p=104} enc sign ekey skey iv msg
+property mee_enc_dec_good_1000 ekey skey iv msg =
+  optTest (\x -> x == msg) (mee_dec`{n=1000,p=100} ekey skey iv ct)
+    where ct = mee_enc`{n=1000,p=100} ekey skey iv msg
