@@ -32,3 +32,4 @@ interface module Primitive::Symmetric::Cipher::Block::Modes::CBCInterface where
      * implementors must manually verify that their IVs were chosen appropriately.
      */
     decrypt : {n} (fin n) => [KeySize] -> [BlockSize] -> [n][BlockSize] -> [n][BlockSize]
+    
