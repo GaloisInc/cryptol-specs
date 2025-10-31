@@ -1,3 +1,9 @@
+/**
+ * A basic interface for CBC-mode instantiations.
+ *
+ * @copyright Galois, Inc.
+ * @author Alex J. Malozemoff <amaloz@galois.com>
+ */
 interface module Primitive::Symmetric::Cipher::Block::Modes::CBCInterface where
 
     /**
@@ -32,4 +38,3 @@ interface module Primitive::Symmetric::Cipher::Block::Modes::CBCInterface where
      * implementors must manually verify that their IVs were chosen appropriately.
      */
     decrypt : {n} (fin n) => [KeySize] -> [BlockSize] -> [n][BlockSize] -> [n][BlockSize]
-    

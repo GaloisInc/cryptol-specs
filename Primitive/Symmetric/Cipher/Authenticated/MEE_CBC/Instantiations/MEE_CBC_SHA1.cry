@@ -1,3 +1,9 @@
+/**
+ * Instantiate MEE-CBC using AES128-CBC and HMAC-SHA1.
+ *
+ * @copyright Galois, Inc.
+ * @author Alex J. Malozemoff <amaloz@galois.com>
+ */
 module Primitive::Symmetric::Cipher::Authenticated::MEE_CBC::Instantiations::MEE_CBC_SHA1 =
     Primitive::Symmetric::Cipher::Authenticated::MEE_CBC::Specification {
         HMAC = Primitive::Symmetric::MAC::HMAC::Instantiations::HMAC_SHA1,

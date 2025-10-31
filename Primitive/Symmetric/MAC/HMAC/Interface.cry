@@ -1,3 +1,9 @@
+/**
+ * A basic interface for HMAC instantiations.
+ *
+ * @copyright Galois, Inc.
+ * @author Alex J. Malozemoff <amaloz@galois.com>
+ */
 interface module Primitive::Symmetric::MAC::HMAC::Interface where
 
   /**
