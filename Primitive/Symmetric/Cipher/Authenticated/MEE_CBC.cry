@@ -25,19 +25,42 @@ type SignKey = [64][8]
 type BlockSize = 128
 type TagSize = 20
 
+/**
+ * MEE-CBC padding function.
+ *
+ * The padding works by appending `p` bytes, with each appended byte containing
+   the value of `p`.
+ *
+ * See [TLS1.2, Section 6.2.3.2].
+ */
 pad : {n, p, ℓ}
       (fin n,
+       // Enforces that `p ≤ 255`.
        8 >= width p,
+       // `ℓ` is the padded ciphertext length, in bytes.
        ℓ == n + TagSize + p,
+       // The padded ciphertext length `ℓ` must be an integral multiple of the
+       // block length.
        (8 * ℓ) % BlockSize == 0
       ) => [n][8] -> [TagSize][8] -> [ℓ][8]
 pad msg tag = (msg # tag # padding)
   where
     padding = (repeat `p) : [p][8]
 
+/**
+ * MEE-CBC unpadding function.
+ *
+ * This checks that the padding of a ciphertext `ct` is valid, and if so,
+ * strips off the padding, returning the message and tag portions of the
+ * ciphertext.
+ *
+ * See [TLS1.2, Section 6.2.3.2].
+ */
 unpad : {n, p, ℓ}
-        (fin n,
+        (fin n, fin p,
+         // Enforces that `p ≤ 255`.
          8 >= width p,
+         // `ℓ` is the padded ciphertext length, in bytes.
          ℓ == n + TagSize + p
         ) => [ℓ][8] -> Option ([n][8], [TagSize][8])
 unpad ct = if good then Some (m, t) else None
@@ -45,36 +68,78 @@ unpad ct = if good then Some (m, t) else None
     m = take `{n} ct
     t = take `{TagSize} (drop `{n} ct)
     p = drop `{n + TagSize} ct
-    good = p == ((repeat `p) : [p][8]) /\ 1 <= `p /\ `p <= 16
+    good = p == ((repeat `p) : [p][8])
 
 property unpad_pad_good_1000_256 msg tag =
   optTest (\x -> x == (msg, tag)) unpad_pad
   where
     unpad_pad = unpad (pad `{n=1000,p=100} msg tag)
 
+/**
+ * MEE-CBC encryption.
+ *
+ * The construction works as follows, where `EK` is the CBC encryption key and
+ * `SK` is the HMAC signing key.
+ * ```
+ * MEE-CBC[EK, SK](IV, M):
+ *   T = HMAC[SK](M)
+ *   M_padded = pad(M, T)
+ *   CT = CBC.Encrypt[EK](IV, M_padded)
+ *   return CT
+ * ```
+ */
 mee_enc : {n, p, ℓ}
           (fin n,
+           // Enforces that `p ≤ 255`.
            8 >= width p,
+           // `ℓ` is the padded ciphertext length, in bytes.
            ℓ == n + TagSize + p,
+           // The padded ciphertext length `ℓ` must be an integral multiple of the
+           // block length.
            (8 * ℓ) % BlockSize == 0,
+           // The message length `n` must be HMAC-able, which is where this
+           // constraint comes from.
            width (8 * (64 + n)) <= 64
           ) => [KeySize] -> SignKey -> [BlockSize] -> [n][8] -> [ℓ][8]
 mee_enc ekey skey iv msg = split (join ct)
   where
     tag = HMAC::hmac skey msg
     padded = pad`{n, p} msg tag
-    ct = CBC::encrypt`{ℓ / 16} ekey iv (split (join padded))
-    
+    type nblocks = ℓ / (BlockSize / 8)
+    ct = CBC::encrypt`{nblocks} ekey iv (split (join padded))
+
+/**
+ * MEE-CBC decryption.
+ *
+ * The construction works as follows, where `EK` is the CBC encryption key and
+ * `SK` is the HMAC signing key.
+ * ```
+ * MEE-DEC[EK, SK](CT):
+ *   M_and_T = CBC.Decrypt[EK](CT)
+ *   (M, T) = unpad(M_and_T), or abort if unpad fails
+ *   if HMAC[SK](M) == T then
+ *     return M
+ *   else
+ *     abort
+ * ```
+ */
 mee_dec : {n, p, ℓ}
-          (fin n,
+          (fin n, fin p,
+           // Enforces that `p ≤ 255`.
            8 >= width p,
+           // `ℓ` is the padded ciphertext length, in bytes.
            ℓ == n + TagSize + p,
+           // The padded ciphertext length `ℓ` must be an integral multiple of the
+           // block length.
            (8 * ℓ) % BlockSize == 0,
+           // The message length `n` must be HMAC-able, which is where this
+           // constraint comes from.
            width (8 * (64 + n)) <= 64
           ) => [KeySize] -> SignKey -> [BlockSize] -> [ℓ][8] -> Option ([n][8])
 mee_dec ekey skey iv ct = if valid_tag then m else None
   where
-    pt = CBC::decrypt`{ℓ / 16} ekey iv (split (join ct))
+    type nblocks = ℓ / (BlockSize / 8)
+    pt = CBC::decrypt`{nblocks} ekey iv (split (join ct))
     m_and_t = unpad (split (join pt))
     valid_tag = optTest (\x -> HMAC::hmac skey x.0 == x.1) m_and_t
     m = optApply (\x -> x.0) m_and_t
