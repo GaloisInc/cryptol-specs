@@ -40,6 +40,15 @@ parameter
   H : {T} (width (8 * T) <= B) => [T][8] -> [L][8]
 
 /**
+ * An upper bound on the HMAC key size (in bytes).
+ */
+type KeySizeUpperBound = B
+/**
+ * The HMAC tag size (in bytes).
+ */
+type TagSize = L
+
+/**
  * Compute a pseudorandom block using the HMAC construction as
  * specified in [FIPS-198-1], Section 4.
  *

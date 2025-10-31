@@ -26,6 +26,15 @@ module Primitive::Symmetric::Cipher::Block::Modes::CBC where
 import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
 
 /**
+ * The key size for CBC is equal to the underlying block cipher key size.
+ */
+type KeySize = C::KeySize
+/**
+ * The block size for CBC is equal to the underlying block cipher key size.
+ */
+type BlockSize = C::BlockSize
+
+/**
  * CBC encryption: [NIST-SP-800-38A] Section 6.2.
  *
  * Parameters: key, initialization vector, plaintext
