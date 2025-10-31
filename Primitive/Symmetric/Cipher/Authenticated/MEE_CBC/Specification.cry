@@ -26,7 +26,8 @@ import Common::OptionUtils(optApply, optTest)
  * MEE-CBC padding function.
  *
  * The padding works by appending `p` bytes, with each appended byte containing
-   the value of `p`.
+ * the value of `p`. Note however, that encryption works over the padding _plus
+ * the padding length_, and hence the actual amount of padding is `p + 1` bytes.
  *
  * See [TLS1.2, Section 6.2.3.2].
  */
@@ -35,14 +36,14 @@ pad : {n, p, ℓ}
        // Enforces that `p ≤ 255`.
        8 >= width p,
        // `ℓ` is the padded ciphertext length, in bytes.
-       ℓ == n + HMAC::TagSize + p,
+       ℓ == n + HMAC::TagSize + p + 1,
        // The padded ciphertext length `ℓ` must be an integral multiple of the
        // block length.
        (8 * ℓ) % CBC::BlockSize == 0
       ) => [n][8] -> [HMAC::TagSize][8] -> [ℓ][8]
 pad msg tag = (msg # tag # padding)
   where
-    padding = (repeat `p) : [p][8]
+    padding = (repeat `p) : [p + 1][8]
 
 /**
  * MEE-CBC unpadding function.
@@ -58,14 +59,14 @@ unpad : {n, p, ℓ}
          // Enforces that `p ≤ 255`.
          8 >= width p,
          // `ℓ` is the padded ciphertext length, in bytes.
-         ℓ == n + HMAC::TagSize + p
+         ℓ == n + HMAC::TagSize + p + 1
         ) => [ℓ][8] -> Option ([n][8], [HMAC::TagSize][8])
 unpad ct = if good then Some (m, t) else None
   where
     m = take`{n} ct
-    t = take`{HMAC::TagSize, p} (drop`{n} ct)
+    t = take`{HMAC::TagSize, p + 1} (drop`{n} ct)
     padding = drop`{n + HMAC::TagSize} ct
-    good = padding == ((repeat `p) : [p][8])
+    good = padding == ((repeat `p) : [p + 1][8])
 
 /**
  * Validate that padding inverts as expected.
@@ -87,13 +88,15 @@ property paddingInverts msg tag =
  *   CT = CBC.Encrypt[EK](IV, M_padded)
  *   return CT
  * ```
+ *
+ * See [TLS1.2, Section 6.2.3.2].
  */
 encrypt : {k, n, p, ℓ}
            (fin k, fin n,
             // Enforces that `p ≤ 255`.
             8 >= width p,
             // `ℓ` is the padded ciphertext length, in bytes.
-            ℓ == n + HMAC::TagSize + p,
+            ℓ == n + HMAC::TagSize + p + 1,
             // The padded ciphertext length `ℓ` must be an integral multiple of the
             // block length.
             (8 * ℓ) % CBC::BlockSize == 0,
@@ -123,13 +126,15 @@ encrypt ekey skey iv msg = split (join ct)
  *   else
  *     abort
  * ```
+ *
+ * See [TLS1.2, Section 6.2.3.2].
  */
 decrypt : {k, n, p, ℓ}
            (fin k, fin n,
             // Enforces that `p ≤ 255`.
             8 >= width p,
             // `ℓ` is the padded ciphertext length, in bytes.
-            ℓ == n + HMAC::TagSize + p,
+            ℓ == n + HMAC::TagSize + p + 1,
             // The padded ciphertext length `ℓ` must be an integral multiple of the
             // block length.
             (8 * ℓ) % CBC::BlockSize == 0,
