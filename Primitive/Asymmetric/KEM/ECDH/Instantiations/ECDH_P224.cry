@@ -1,0 +1,13 @@
+/*
+ * Instantiate cryptographic primitives for key establishment with curve P-224.
+ *
+ * @copyright Galois, Inc.
+ * @author Ryan Scott <rscott@galois.com>
+ */
+module Primitive::Asymmetric::KEM::ECDH::Instantiations::ECDH_P224 =
+    Primitive::Asymmetric::KEM::ECDH::Specification {
+        Common::EC::PrimeField::Instantiations::P224
+    }
+
+
+
