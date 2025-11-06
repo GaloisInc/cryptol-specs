@@ -75,11 +75,20 @@ unpad ct = if good then Some (m, t) else None
 
 /**
  * Validate that padding inverts as expected.
+ * ```repl
+ * :check paddingInverts`{n=61, p=14}
+ * ```
  */
-property paddingInverts msg tag =
-  optTest (\x -> x == (msg, tag)) unpad_pad
+paddingInverts : {n, p, ℓ}
+                 (fin n,
+                  8 >= width p,
+                  ℓ == n + HMAC::TagSize + p + 1,
+                  (8 * ℓ) % CBC::BlockSize == 0
+                 ) => [n][8] -> [HMAC::TagSize][8] -> Bool
+property paddingInverts content MAC =
+  optTest (\x -> x == (content, MAC)) unpad_pad
   where
-    unpad_pad = unpad (pad msg tag)
+    unpad_pad = unpad (pad`{n, p, ℓ} content MAC)
 
 /**
  * MEE-CBC encryption.
@@ -127,9 +136,9 @@ encrypt : {k, n, p, ℓ}
             // The padded ciphertext length `ℓ` must be an integral multiple of the
             // block length.
             (8 * ℓ) % CBC::BlockSize == 0,
-            // The message length `n` must be HMAC-able, which is where this
-            // constraint comes from.
+            // The message length `n` must be HMAC-able.
             width (8 * (HMAC::KeySizeUpperBound + n)) <= HMAC::KeySizeUpperBound,
+            // The key size `k` must be within the HMAC key size upper bound.
             width (8 * k) <= HMAC::KeySizeUpperBound
            ) => [CBC::KeySize] -> [k][8] -> [CBC::BlockSize] -> [n][8] -> [ℓ][8]
 encrypt ekey skey iv msg = split (join ct)
@@ -187,9 +196,9 @@ decrypt : {k, n, p, ℓ}
             // The padded ciphertext length `ℓ` must be an integral multiple of the
             // block length.
             (8 * ℓ) % CBC::BlockSize == 0,
-            // The message length `n` must be HMAC-able, which is where this
-            // constraint comes from.
+            // The message length `n` must be HMAC-able.
             width (8 * (HMAC::KeySizeUpperBound + n)) <= HMAC::KeySizeUpperBound,
+            // The key size `k` must be within the HMAC key size upper bound.
             width (8 * k) <= HMAC::KeySizeUpperBound
            ) => [CBC::KeySize] -> [k][8] -> [CBC::BlockSize] -> [ℓ][8] -> Option ([n][8])
 decrypt ekey skey iv ct = if valid_tag then m else None
@@ -202,7 +211,18 @@ decrypt ekey skey iv ct = if valid_tag then m else None
 
 /**
  * Validate that decryption inverts encryption.
+ * ```repl
+ * :check encryptInverts`{k=16, n=16, p=11}
+ * ```
  */
+encryptInverts : {k, n, p, ℓ}
+                  (fin k, fin n,
+                   8 >= width p,
+                   ℓ == n + HMAC::TagSize + p + 1,
+                   (8 * ℓ) % CBC::BlockSize == 0,
+                   width (8 * (HMAC::KeySizeUpperBound + n)) <= HMAC::KeySizeUpperBound,
+                   width (8 * k) <= HMAC::KeySizeUpperBound
+                  ) => [CBC::KeySize] -> [k][8] -> [CBC::BlockSize] -> [n][8] -> Bool
 property encryptInverts ekey skey iv msg =
   optTest (\x -> x == msg) (decrypt ekey skey iv ct)
-    where ct = encrypt ekey skey iv msg
+    where ct = encrypt`{k, n, p, ℓ} ekey skey iv msg
