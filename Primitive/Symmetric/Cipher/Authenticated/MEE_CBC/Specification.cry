@@ -1,0 +1,228 @@
+/**
+ * Mac-then-Encode-then-Encrypt using CBC Mode (MEE-CBC).
+ *
+ * MEE-CBC is used in the TLS 1.2 Record Protocol [TLS1.2].
+ *
+ * References:
+ * [TLS1.2] T. Dierks and E. Rescorla. The Transport Layer Security (TLS)
+ * Protocol Version 1.2. RFC 5246, August 2008.
+ * @see http://www.ietf.org/rfc/rfc5246.txt.
+ *
+ * @copyright Galois, Inc.
+ * @author Nichole Schimanski <nls@galois.com>
+ * @author Alex J. Malozemoff <amaloz@galois.com>
+ */
+
+module Primitive::Symmetric::Cipher::Authenticated::MEE_CBC::Specification where
+
+import interface Primitive::Symmetric::MAC::HMAC::Interface as HMAC
+import interface Primitive::Symmetric::Cipher::Block::Modes::CBCInterface as CBC
+import Common::OptionUtils(optApply, optTest)
+
+/*
+ * The block size for CBC-mode must be at least one bit.
+ */
+interface constraint (CBC::BlockSize >= 1)
+
+/**
+ * MEE-CBC padding function.
+ *
+ * The padding works by appending `p` bytes, with each appended byte containing
+ * the value of `p`. Note however, that encryption works over the padding _plus
+ * the padding length_, and hence the actual amount of padding is `p + 1` bytes.
+ *
+ * See [TLS1.2, Section 6.2.3.2].
+ */
+pad : {n, p, ℓ}
+      (fin n,
+       // Enforces that `p ≤ 255`.
+       8 >= width p,
+       // `ℓ` is the padded ciphertext length, in bytes.
+       ℓ == n + HMAC::TagSize + p + 1,
+       // The padded ciphertext length `ℓ` must be an integral multiple of the
+       // block length.
+       (8 * ℓ) % CBC::BlockSize == 0
+      ) => [n][8] -> [HMAC::TagSize][8] -> [ℓ][8]
+pad content MAC = (content # MAC # padding # [padding_length])
+  where
+    padding = (repeat `p) : [p][8]
+    padding_length = `p
+
+/**
+ * MEE-CBC unpadding function.
+ *
+ * This checks that the padding of a ciphertext `ct` is valid, and if so,
+ * strips off the padding, returning the message and tag portions of the
+ * ciphertext.
+ *
+ * See [TLS1.2, Section 6.2.3.2].
+ */
+unpad : {n, p, ℓ}
+        (fin n,
+         // Enforces that `p ≤ 255`.
+         8 >= width p,
+         // `ℓ` is the padded ciphertext length, in bytes.
+         ℓ == n + HMAC::TagSize + p + 1
+        ) => [ℓ][8] -> Option ([n][8], [HMAC::TagSize][8])
+unpad ct = if good then Some (m, t) else None
+  where
+    m : [n][8]
+    t : [HMAC::TagSize][8]
+    padding : [p][8]
+    padding_length : [1][8]
+    (m # t # padding # padding_length) = ct
+    good = padding # padding_length == ((repeat `p) : [p + 1][8])
+
+/**
+ * Validate that padding inverts as expected.
+ * ```repl
+ * :check paddingInverts`{n=61, p=14}
+ * ```
+ */
+paddingInverts : {n, p, ℓ}
+                 (fin n,
+                  8 >= width p,
+                  ℓ == n + HMAC::TagSize + p + 1,
+                  (8 * ℓ) % CBC::BlockSize == 0
+                 ) => [n][8] -> [HMAC::TagSize][8] -> Bool
+property paddingInverts content MAC =
+  optTest (\x -> x == (content, MAC)) unpad_pad
+  where
+    unpad_pad = unpad (pad`{n, p, ℓ} content MAC)
+
+/**
+ * MEE-CBC encryption.
+ *
+ * Parameters: encryption key, signing key, initialization vector, plaintext.
+ *
+ * ⚠️ Warning ⚠️: To ensure confidentiality, MEE-CBC requires that the
+ * initialization vector (IV) MUST be "unpredictable", and SHOULD be chosen at
+ * random. This specification does not verify IV generation;
+ * implementors must manually verify that their IVs are chosen appropriately.
+ *
+ * This construction is implicitly defined in [TLS1.2, Section 6.2.3.2] as a
+ * `GenericBlockCipher` struct:
+ * ```ignore
+ *       struct {
+ *        opaque IV[SecurityParameters.record_iv_length];
+ *        block-ciphered struct {
+ *            opaque content[TLSCompressed.length];
+ *            opaque MAC[SecurityParameters.mac_length];
+ *            uint8 padding[GenericBlockCipher.padding_length];
+ *            uint8 padding_length;
+ *        };
+ *    } GenericBlockCipher;
+ * ```
+ * That is, the "block-ciphered struct" is what is encrypted using CBC mode.
+ * Within this struct, the `MAC` is produced using HMAC and the `content` +
+ * `MAC` is padded.
+ *
+ * Viewed in procedural form, the construction works as follows, where `EK` is
+ * the CBC encryption key and `SK` is the HMAC signing key.
+ * ```ignore
+ * MEE-CBC EK SK IV content:
+ *   MAC = HMAC SK content
+ *   struct = pad(content, MAC)
+ *   CT = CBC.Encrypt EK IV struct
+ *   return CT
+ * ```
+ */
+encrypt : {k, n, p, ℓ}
+           (fin k, fin n,
+            // Enforces that `p ≤ 255`.
+            8 >= width p,
+            // `ℓ` is the padded ciphertext length, in bytes.
+            ℓ == n + HMAC::TagSize + p + 1,
+            // The padded ciphertext length `ℓ` must be an integral multiple of the
+            // block length.
+            (8 * ℓ) % CBC::BlockSize == 0,
+            // The message length `n` must be HMAC-able.
+            width (8 * (HMAC::KeySizeUpperBound + n)) <= HMAC::KeySizeUpperBound,
+            // The key size `k` must be within the HMAC key size upper bound.
+            width (8 * k) <= HMAC::KeySizeUpperBound
+           ) => [CBC::KeySize] -> [k][8] -> [CBC::BlockSize] -> [n][8] -> [ℓ][8]
+encrypt ekey skey iv msg = split (join ct)
+  where
+    tag = HMAC::hmac skey msg
+    padded = pad`{n, p, ℓ} msg tag
+    type nblocks = 8 * ℓ / CBC::BlockSize
+    ct = CBC::encrypt`{nblocks} ekey iv (split (join padded))
+
+/**
+ * MEE-CBC decryption.
+ *
+ * Parameters: encryption key, signing key, initialization vector, ciphertext.
+ *
+ * ⚠️ Warning ⚠️: To ensure confidentiality, MEE-CBC requires that the
+ * initialization vector (IV) MUST be "unpredictable", and SHOULD be chosen at
+ * random. This specification does not verify IV generation;
+ * implementors must manually verify that their IVs are chosen appropriately.
+ *
+ * This construction is implicitly defined in [TLS1.2, Section 6.2.3.2] as a
+ * `GenericBlockCipher` struct:
+ * ```ignore
+ *       struct {
+ *        opaque IV[SecurityParameters.record_iv_length];
+ *        block-ciphered struct {
+ *            opaque content[TLSCompressed.length];
+ *            opaque MAC[SecurityParameters.mac_length];
+ *            uint8 padding[GenericBlockCipher.padding_length];
+ *            uint8 padding_length;
+ *        };
+ *    } GenericBlockCipher;
+ * ```
+ * That is, the "block-ciphered struct" is what is decrypted using CBC mode.
+ * Upon decryption, the `padding` + `padding_length` and `MAC` are checked for
+ * correctness.
+ *
+ * Viewed in procedural form, the construction works as follows, where `EK` is
+ * the CBC decryption key and `SK` is the HMAC verification key.
+ * ```ignore
+ * MEE-DEC EK SK CT:
+ *   M_and_T = CBC.Decrypt EK CT
+ *   (M, T) = unpad M_and_T, or abort if unpad fails
+ *   if HMAC SK M == T then
+ *     return M
+ *   else
+ *     abort
+ * ```
+ */
+decrypt : {k, n, p, ℓ}
+           (fin k, fin n,
+            // Enforces that `p ≤ 255`.
+            8 >= width p,
+            // `ℓ` is the padded ciphertext length, in bytes.
+            ℓ == n + HMAC::TagSize + p + 1,
+            // The padded ciphertext length `ℓ` must be an integral multiple of the
+            // block length.
+            (8 * ℓ) % CBC::BlockSize == 0,
+            // The message length `n` must be HMAC-able.
+            width (8 * (HMAC::KeySizeUpperBound + n)) <= HMAC::KeySizeUpperBound,
+            // The key size `k` must be within the HMAC key size upper bound.
+            width (8 * k) <= HMAC::KeySizeUpperBound
+           ) => [CBC::KeySize] -> [k][8] -> [CBC::BlockSize] -> [ℓ][8] -> Option ([n][8])
+decrypt ekey skey iv ct = if valid_tag then m else None
+  where
+    type nblocks = 8 * ℓ / CBC::BlockSize
+    pt = CBC::decrypt`{nblocks} ekey iv (split (join ct))
+    m_and_t = unpad`{n, p, ℓ} (split (join pt))
+    valid_tag = optTest (\x -> HMAC::hmac skey x.0 == x.1) m_and_t
+    m = optApply (\x -> x.0) m_and_t
+
+/**
+ * Validate that decryption inverts encryption.
+ * ```repl
+ * :check encryptInverts`{k=16, n=16, p=11}
+ * ```
+ */
+encryptInverts : {k, n, p, ℓ}
+                  (fin k, fin n,
+                   8 >= width p,
+                   ℓ == n + HMAC::TagSize + p + 1,
+                   (8 * ℓ) % CBC::BlockSize == 0,
+                   width (8 * (HMAC::KeySizeUpperBound + n)) <= HMAC::KeySizeUpperBound,
+                   width (8 * k) <= HMAC::KeySizeUpperBound
+                  ) => [CBC::KeySize] -> [k][8] -> [CBC::BlockSize] -> [n][8] -> Bool
+property encryptInverts ekey skey iv msg =
+  optTest (\x -> x == msg) (decrypt ekey skey iv ct)
+    where ct = encrypt`{k, n, p, ℓ} ekey skey iv msg

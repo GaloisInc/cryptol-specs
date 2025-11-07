@@ -1,0 +1,40 @@
+/**
+ * A basic interface for CBC-mode instantiations.
+ *
+ * @copyright Galois, Inc.
+ * @author Alex J. Malozemoff <amaloz@galois.com>
+ */
+interface module Primitive::Symmetric::Cipher::Block::Modes::CBCInterface where
+
+    /**
+     * The key size (in bits).
+     */
+    type KeySize : #
+    /**
+     * The block size (in bits).
+     */
+    type BlockSize : #
+
+    type constraint (fin KeySize, fin BlockSize)
+
+    /**
+     * CBC encryption: [NIST-SP-800-38A] Section 6.2.
+     *
+     * Parameters: key, initialization vector, plaintext
+     *
+     * ⚠️ Warning ⚠️: To ensure confidentiality, CBC mode requires that the initialization vector (IV) is generated "unpredictably".
+     * This specification does not verify IV generation;
+     * implementors must manually verify that their IVs were chosen appropriately.
+     */
+    encrypt : {n} (fin n) => [KeySize] -> [BlockSize] -> [n][BlockSize] -> [n][BlockSize]
+
+    /**
+     * CBC decryption: [NIST-SP-800-38A] Section 6.2.
+     *
+     * Parameters: key, initialization vector, ciphertext
+     *
+     * ⚠️ Warning ⚠️: To ensure confidentiality, CBC mode requires that the initialization vector (IV) is generated "unpredictably".
+     * This specification does not verify IV generation;
+     * implementors must manually verify that their IVs were chosen appropriately.
+     */
+    decrypt : {n} (fin n) => [KeySize] -> [BlockSize] -> [n][BlockSize] -> [n][BlockSize]

@@ -1,0 +1,34 @@
+/**
+ * A basic interface for HMAC instantiations.
+ *
+ * @copyright Galois, Inc.
+ * @author Alex J. Malozemoff <amaloz@galois.com>
+ */
+interface module Primitive::Symmetric::MAC::HMAC::Interface where
+
+  /**
+   * An upper bound on the HMAC key size (in bytes).
+   */
+  type KeySizeUpperBound : #
+
+  /**
+   * The HMAC tag size (in bytes).
+   */
+  type TagSize : #
+
+  type constraint (fin KeySizeUpperBound, fin TagSize)
+
+  /**
+   * Compute a pseudorandom block using the HMAC construction as
+   * specified in [FIPS-198-1], Section 4.
+   *
+   * # Type parameters
+   * - k: Length of secret key (in bytes)
+   * - n: Length of input text (in bytes)
+   *
+   * # Parameters
+   * - K: Secret key shared between the originator and the intended receiver(s).
+   * - text: The data on which the HMAC is calculated. text does *not* include
+   *         the padded key. The length of text is n bits, where 0 ≤ n < 2^B - 8B.
+   */
+  hmac : {k, n} (width (8 * k) <= KeySizeUpperBound, width (8 * (n + KeySizeUpperBound)) <= KeySizeUpperBound) => [k][8] -> [n][8] -> [TagSize][8]
