@@ -6,7 +6,7 @@ This document is a literate [Cryptol](https://cryptol.net/) document. This means
 Cryptol from the website you can run ```cryptol DES.md``` in your terminal and all of the
 definitions will be typecheck, and the test cases can be run.
 
-All text in this document is directly from the
+All text in this section is directly from the
 [Data Encryption Standard](https://csrc.nist.gov/files/pubs/fips/46-3/final/docs/fips46-3.pdf).
 
 ```cryptol
@@ -638,4 +638,66 @@ private
             k3  = 0x3849674c2602319e
             pt3 = 0x51454b582ddf440a
             ct3 = 0x7178876e01f19b2a
+```
+
+# SP800-67: RECOMMENDATION FOR THE TRIPLE DATA ENCRYPTION ALGORITHM (TDEA) BLOCK CIPHER
+
+## Addendum
+
+All text in this section is directly from
+[SP800-67](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-67r1.pdf).
+
+### Weak Keys
+
+There are a few keys that are considered weak for the DEA cryptographic engine. The use of
+weak keys can reduce the effective security afforded by TDEA and should be avoided. Keys that
+are considered weak are (in hexadecimal format):
+
+``` cryptol
+weakKeys = [
+      0x0101010101010101
+    , 0xFEFEFEFEFEFEFEFE
+    , 0xE0E0E0E0F1F1F1F1
+    , 0x1F1F1F1F0E0E0E0E
+]
+```
+
+Note that the weak keys listed above and the semi-weak keys and the possibly weak keys listed
+below are expressed with odd parity, which is indicated in the rightmost bit of each byte.
+Some pairs of keys encrypt plaintext to identical ciphertext and also should be avoided. These
+semi-weak keys are (in hexadecimal format):
+
+```cryptol
+semiWeakKeys = [
+   (0x011F011F010E010E, 0x1F011F010E010E01)
+ , (0x01E001E001F101F1 , 0xE001E001F101F101)
+ , (0x01FE01FE01FE01FE , 0xFE01FE01FE01FE01)
+ , (0x1FE01FE00EF10EF1 , 0xE01FE01FF10EF10E)
+ , (0x1FFE1FFE0EFE0EFE , 0xFE1FFE1FFE0EFE0E)
+ , (0xE0FEE0FEF1FEF1FE , 0xFEE0FEE0FEF1FEF1)
+]
+```
+
+There are also 48 keys that produce only four distinct subkeys (instead of 16) - these are called
+possibly weak keys and should be avoided. These possibly weak keys are (in hex):
+
+```cryptol
+possiblyWeakKeys = [
+    0x01011F1F01010E0E, 0x1F1F01010E0E0101, 0xE0E01F1FF1F10E0E
+  , 0x0101E0E00101F1F1, 0x1F1FE0E00E0EF1F1, 0xE0E0FEFEF1F1FEFE
+  , 0x0101FEFE0101FEFE, 0x1F1FFEFE0E0EFEFE, 0xE0FE011FF1FE010E
+  , 0x011F1F01010E0E01, 0x1FE001FE0EF101FE, 0xE0FE1F01F1FE0E01
+  , 0x011FE0FE010EF1FE, 0x1FE0E01F0EF1F10E, 0xE0FEFEE0F1FEFEF1
+  , 0x011FFEE0010EFEF1, 0x1FE0FE010EF1FE01, 0xFE0101FEFE0101FE
+  , 0x01E01FFE01F10EFE, 0x1FFE01E00EFE01F1, 0xFE011FE0FE010EF1
+  , 0xFE01E01FFE01F10E, 0x1FFEE0010EFEF101, 0xFE1F01E0FE0E01F1
+  , 0x01E0E00101F1F101, 0x1FFEFE1F0EFEFE0E, 0xFE1FE001FE0EF101
+  , 0x01E0FE1F01F1FE0E, 0xE00101E0F10101F1, 0xFE1F1FFEFE0E0EFE
+  , 0x01FE1FE001FE0EF1, 0xE0011FFEF1010EFE, 0xFEE0011FFEF1010E
+  , 0x01FEE01F01FEF10E, 0xE001FE1FF101FE0E, 0xFEE01F01FEF10E01
+  , 0x01FEFE0101FEFE01, 0xE01F01FEF10E01FE, 0xFEE0E0FEFEF1F1FE
+  , 0x1F01011F0E01010E, 0xE01F1FE0F10E0EF1, 0xFEFE0101FEFE0101
+  , 0x1F01E0FE0E01F1FE, 0xE01FFE01F10EFE01, 0xFEFE1F1FFEFE0E0E
+  , 0x1F01FEE00E01FEF1, 0xE0E00101F1F10101, 0xFEFEE0E0FEFEF1F1
+]
 ```
