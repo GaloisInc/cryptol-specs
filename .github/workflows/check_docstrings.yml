@@ -65,22 +65,28 @@ jobs:
 
       # Run the check-docstrings script, regardless of cache load.
       - name: "Run the check-docstrings script."
+        id: checkscript
         run: |
           git config --global --add safe.directory '*'
           echo "Check which caches exist, for sanity."
           gh cache list
 
           bash scripts/check_docstrings.sh .
+        # Timeout is slightly less than 6 hours to allow saving a cache in the case of timeout.
+        # The following steps don't run if this step failed, but do run if it was cancelled
+        # (e.g. due to hitting this timeout).
+        timeout-minutes: 355
+        continue-on-error: true
 
       # Caches can only be uploaded once. If we're on master and the cache already exists,
       # we need to delete it...
       - name: "If we're on master, delete the cache"
-        if: github.ref == 'refs/heads/master' && steps.load-cache.outputs.cache-hit == 'true'
+        if: github.ref == 'refs/heads/master' && steps.load-cache.outputs.cache-hit == 'true' && steps.checkscript.outcome != 'failure'
         run: gh cache delete ${{ env.CRYPTOL_CACHE_KEY }}
 
       # ...before we upload it. Do this regardless of whether it previously existed.
       - id: save-cache
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' && steps.checkscript.outcome != 'failure'
         uses: actions/cache/save@v4
         with:
           path: ${{ env.CRYPTOL_CACHE }}
