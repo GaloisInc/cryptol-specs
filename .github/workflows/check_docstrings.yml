@@ -91,3 +91,10 @@ jobs:
         with:
           path: ${{ env.CRYPTOL_CACHE }}
           key: ${{ env.CRYPTOL_CACHE_KEY }}
+
+      # After potentially uploading the cache, we fail according to the checkscript step.
+      - name: "Check whether the script failed"
+        if: steps.checkscript.outcome != 'success'
+        run: |
+          echo "Docstrings script failed with ${{ steps.checkscript.outcome }}"
+          exit 1
