@@ -71,8 +71,6 @@ jobs:
           echo "Check which caches exist, for sanity."
           gh cache list
 
-          ls -la ${{ github.workspace }}
-
           bash scripts/check_docstrings.sh .
         # Timeout is slightly less than 6 hours to allow saving a cache in the case of timeout.
         # The following steps don't run if this step failed, but do run if it was cancelled
@@ -85,9 +83,14 @@ jobs:
           cryptol --version
           echo "outcome: ${{ steps.checkscript.outcome }}"
           echo "conclusion: ${{ steps.checkscript.conclusion }}"
-          ls -la "${{ github.workspace }}"
-          ls -la "${{ github.workspace }}/.cryproject"
-          cat ${{ env.CRYPTOL_CACHE }}
+
+          echo $GITHUB_WORKSPACE
+          ls -la "$GITHUB_WORKSPACE" || true
+          ls -la "$GITHUB_WORKSPACE/.cryproject" || true
+          pwd
+          ls -la .
+          ls -la .cryproject/ || true
+          cat ${{ env.CRYPTOL_CACHE }} || true
 
       # Caches can only be uploaded once. If we're on master and the cache already exists,
       # we need to delete it...
