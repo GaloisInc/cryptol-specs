@@ -75,7 +75,7 @@ jobs:
         # Timeout is slightly less than 6 hours to allow saving a cache in the case of timeout.
         # The following steps don't run if this step failed, but do run if it was cancelled
         # (e.g. due to hitting this timeout).
-        timeout-minutes: 4
+        timeout-minutes: 355
         continue-on-error: true
 
       - name: "debug info"
