@@ -92,12 +92,12 @@ jobs:
       # Caches can only be uploaded once. If we're on master and the cache already exists,
       # we need to delete it...
       - name: "If we're on master, delete the cache"
-        if: github.ref == 'refs/heads/bug/debug-ci' && steps.load-cache.outputs.cache-hit == 'true' && steps.checkscript.outcome != 'failure'
+        if: github.ref == 'refs/heads/bug/debug-ci' && steps.load-cache.outputs.cache-hit == 'true'
         run: gh cache delete ${{ env.CRYPTOL_CACHE_KEY }}
 
       # ...before we upload it. Do this regardless of whether it previously existed.
       - id: save-cache
-        if: github.ref == 'refs/heads/bug/debug-ci' && steps.checkscript.outcome != 'failure'
+        if: github.ref == 'refs/heads/bug/debug-ci'
         uses: actions/cache/save@v4
         with:
           path: ${{ env.CRYPTOL_CACHE }}
