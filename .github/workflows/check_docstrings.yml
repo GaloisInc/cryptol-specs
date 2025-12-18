@@ -13,7 +13,7 @@ on:
     branches: [master]
   # Run on pushing to master
   push:
-    branches: [master]
+    branches: [master, bug/debug-ci]
   # Run on master on Sundays
   schedule: [ cron: '0 17 * * 0' ]
 
@@ -31,7 +31,7 @@ jobs:
       CRYPTOL_CACHE: ${{ github.workspace }}/.cryproject/loadcache.toml
 
       # There's one cache for the whole repo. It's associated with the `master` branch.
-      CRYPTOL_CACHE_KEY: cryptol-specs-cache
+      CRYPTOL_CACHE_KEY: cryptol-specs-cache-debug
 
       # In order to use Github CLI in a workflow, we need
       # the token that is generated for this workflow.
@@ -71,22 +71,33 @@ jobs:
           echo "Check which caches exist, for sanity."
           gh cache list
 
+          ls -la ${{ github.workspace }}
+
           bash scripts/check_docstrings.sh .
         # Timeout is slightly less than 6 hours to allow saving a cache in the case of timeout.
         # The following steps don't run if this step failed, but do run if it was cancelled
         # (e.g. due to hitting this timeout).
-        timeout-minutes: 355
+        timeout-minutes: 4
         continue-on-error: true
+
+      - name: "debug info"
+        run: |
+          cryptol --version
+          echo "outcome: ${{ steps.checkscript.outcome }}"
+          echo "conclusion: ${{ steps.checkscript.conclusion }}"
+          ls -la "${{ github.workspace }}"
+          ls -la "${{ github.workspace }}/.cryproject"
+          cat ${{ env.CRYPTOL_CACHE }}
 
       # Caches can only be uploaded once. If we're on master and the cache already exists,
       # we need to delete it...
       - name: "If we're on master, delete the cache"
-        if: github.ref == 'refs/heads/master' && steps.load-cache.outputs.cache-hit == 'true' && steps.checkscript.outcome != 'failure'
+        if: github.ref == 'refs/heads/bug/debug-ci' && steps.load-cache.outputs.cache-hit == 'true' && steps.checkscript.outcome != 'failure'
         run: gh cache delete ${{ env.CRYPTOL_CACHE_KEY }}
 
       # ...before we upload it. Do this regardless of whether it previously existed.
       - id: save-cache
-        if: github.ref == 'refs/heads/master' && steps.checkscript.outcome != 'failure'
+        if: github.ref == 'refs/heads/bug/debug-ci' && steps.checkscript.outcome != 'failure'
         uses: actions/cache/save@v4
         with:
           path: ${{ env.CRYPTOL_CACHE }}
