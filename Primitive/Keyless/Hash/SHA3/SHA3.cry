@@ -13,10 +13,6 @@
  */
 module Primitive::Keyless::Hash::SHA3::SHA3 where
 import Primitive::Keyless::Hash::SHA3::KeccakBitOrdering as KBO
-import Primitive::Keyless::Hash::SHA3::Specification where
-    type b = 1600
-    type nr = 24
-    type c = 2 * digest
 
 parameter
     /**
@@ -29,6 +25,11 @@ parameter
      */
     type digest : #
     type constraint (fin digest, digest % 8 == 0, digest >= 224, digest <= 512)
+
+import Primitive::Keyless::Hash::SHA3::Specification where
+    type b = 1600
+    type nr = 24
+    type c = 2 * digest
 
 /**
  * Length of the hash digest.
