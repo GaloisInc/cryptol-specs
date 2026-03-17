@@ -4,6 +4,8 @@
  */
 module falcon_parameterized where
 
+import Float
+
 parameter
     type _k : #
     type _n : #
@@ -380,7 +382,6 @@ BaseSampler : [72] -> ZZ
 BaseSampler(u) = z0 where
     z0 = zero
 
-import Float
 ApproxExp : (Float64, Float64) -> [64]
 ApproxExp(x, ccs) = y'' where
     C = [
