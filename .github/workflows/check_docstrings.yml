@@ -108,7 +108,6 @@ jobs:
       # If we used a branch cache, delete and re-upload it.
       - name: "If we used a branch cache, delete it"
         if: |
-          github.ref != 'refs/heads/master' &&
           contains(github.event.pull_request.labels.*.name, 'use-branch-cache') &&
           steps.load-branch-cache.outputs.cache-hit == 'true'
         run: gh cache delete ${{ env.BRANCH_CACHE_KEY }}
