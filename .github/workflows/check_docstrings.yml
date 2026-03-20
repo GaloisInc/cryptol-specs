@@ -33,6 +33,11 @@ jobs:
       # There's one cache for the whole repo. It's associated with the `master` branch.
       CRYPTOL_CACHE_KEY: cryptol-specs-cache
 
+      # Backup key, if we need to rebuild the cache from scratch on a branch.
+      # This is shared among all branches so it's not necessarily reliable.
+      # Only used when a branch has the `use-branch-cache` label.
+      BRANCH_CACHE_KEY: branch-cache
+
       # In order to use Github CLI in a workflow, we need
       # the token that is generated for this workflow.
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -52,16 +57,24 @@ jobs:
 
       # Check out the code.
       - id: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       # Pull the default cache
       - id: load-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: ${{ env.CRYPTOL_CACHE }}
           key: ${{ env.CRYPTOL_CACHE_KEY }}
+
+      # Use branch cache
+      - id: load-branch-cache
+        uses: actions/cache/restore@v5
+        if: contains(github.event.pull_request.labels.*.name, 'use-branch-cache')
+        with:
+          path: ${{ env.CRYPTOL_CACHE }}
+          key: ${{ env.BRANCH_CACHE_KEY }}
 
       # Run the check-docstrings script, regardless of cache load.
       - name: "Run the check-docstrings script."
@@ -87,10 +100,23 @@ jobs:
       # ...before we upload it. Do this regardless of whether it previously existed.
       - id: save-cache
         if: github.ref == 'refs/heads/master'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: ${{ env.CRYPTOL_CACHE }}
           key: ${{ env.CRYPTOL_CACHE_KEY }}
+
+      # If we used a branch cache, delete and re-upload it.
+      - name: "If we used a branch cache, delete it"
+        if: |
+          contains(github.event.pull_request.labels.*.name, 'use-branch-cache') &&
+          steps.load-branch-cache.outputs.cache-hit == 'true'
+        run: gh cache delete ${{ env.BRANCH_CACHE_KEY }}
+      - name: "Re-upload branch cache"
+        if: contains(github.event.pull_request.labels.*.name, 'use-branch-cache')
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ env.CRYPTOL_CACHE }}
+          key: ${{ env.BRANCH_CACHE_KEY }}
 
       # After potentially uploading the cache, we fail according to the checkscript step.
       - name: "Check whether the script failed"

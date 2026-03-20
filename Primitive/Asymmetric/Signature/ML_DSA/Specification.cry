@@ -27,6 +27,9 @@ module Primitive::Asymmetric::Signature::ML_DSA::Specification where
 import Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE128 as SHAKE128
 import Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE256 as SHAKE256
 
+// [FIPS-204] Section 4 is largely defined in this interface.
+import interface Primitive::Asymmetric::Signature::ML_DSA::Parameters
+
 /**
  * The set {0, 1, ..., 255} of integers represented by a byte, denoted 𝔹 in
  * the spec.
@@ -184,9 +187,6 @@ HBits str = split (SHAKE256::xof`{8 * l} (str))
  */
 G : {l, m} (fin m) => [m][8] -> [l][8]
 G str = SHAKE128::xofBytes`{8 * l} str
-
-// [FIPS-204] Section 4 is largely defined in this interface.
-import interface Primitive::Asymmetric::Signature::ML_DSA::Parameters
 
 /**
  * A 512th root of unity in `Z_q`.

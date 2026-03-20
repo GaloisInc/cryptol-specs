@@ -81,6 +81,77 @@ private
  */
 type Byte = [8]
 
+parameter
+    /*
+     * The parameter `k` determines the dimensions of the encryption key matrix
+     * and the secret and noise vectors created and used in key generation and
+     * encryption.
+     * [FIPS-203] Section 8.
+     *
+     * The constraint on the width of `k` is drawn from `K-PKE-KeyGen`. In
+     * that function, the variable `N` varies from 0 to `2k` and is passed as
+     * the second parameter to the `PRF` function. `PRF` restricts the second
+     * parameter to be exactly 1 byte. Therefore, `2k` must fit into a byte.
+     * [FIPS-203] Section 5.1 Algorithm 13 (see lines 2 and 8-15) and Section
+     * 4.1 Equation 4.2.
+     */
+    type k : #
+    type constraint (width k > 0, width (2*k) <= 8)
+
+    /*
+     * The parameter `eta_1` specifies the distribution from which the secret
+     * vectors are drawn in key generation and encryption.
+     * [FIPS-203] Section 8.
+     *
+     * eta_1 must be in the set {2, 3} for use in a PRF and to parameterize
+     * sampling from the centered binomial distribution.
+     * [FIPS-203] Section 4.1 "Pseudorandom Function" and Section 4.2.2
+     * "Sampling from the centered binomial distribution"
+     */
+    type eta_1 : #
+    type constraint (fin eta_1, 2 <= eta_1, eta_1 <= 3)
+
+    /*
+     * The parameter eta_2 is required to specify the distribution from which
+     * the noise vectors are drawn in encryption.
+     * [FIPS-203] Section 8.
+     *
+     * eta_2 must be in the set {2, 3} for use in a PRF and to parameterize
+     * sampling from the centered binomial distribution.
+     * [FIPS-203] Section 4.1 "Pseudorandom Function" and Section 4.2.2
+     * "Sampling from the centered binomial distribution"
+     */
+    type eta_2 : #
+    type constraint (fin eta_2, 2 <= eta_2, eta_2 <= 3)
+
+    /*
+     * The parameter `d_u` is a parameter and input for the compression and
+     * encoding functions.
+     * [FIPS-203] Section 8.
+     *
+     * For compression, `d_u` must be smaller than the bit length of `q` (fixed
+     * to 12).
+     * [FIPS-203] Section 4.2.1 "Compression and decompression".
+     * For encoding, the valid range of values for `d_u` is `1 ≤ d_u ≤ 12`.
+     * [FIPS-203] Section 4.2.1 "Encoding and decoding".
+     */
+    type d_u : #
+    type constraint (fin d_u, d_u < 12, d_u > 0)
+
+    /*
+     * The parameter `d_v` is a parameter and input for the compression and
+     * encoding functions.
+     * [FIPS-203] Section 8.
+     *
+     * For compression, `d_v` must be smaller than the bit length of `q` (fixed
+     * to 12).
+     * [FIPS-203] Section 4.2.1 "Compression and decompression".
+     * For encoding, the valid range of values for `d_v` is `1 ≤ d_v ≤ 12`.
+     * [FIPS-203] Section 4.2.1 "Encoding and decoding".
+     */
+    type d_v : #
+    type constraint (fin d_v, d_v < 12, d_v > 0)
+
 private
     /**
      * An element in the ring `R_q`.
@@ -714,7 +785,6 @@ private
  * prove mathematical equivalence.
  * [FIPS-203] Introduction, "7. Implementations".
  */
-import submodule NTT
 submodule NTT where
     private
         /**
@@ -1019,6 +1089,7 @@ submodule NTT where
         [k1][k2]Tq -> [k2][k3]Tq -> [k1][k3]Tq
     dotMatMat matrix1 matrix2 = transpose [dotMatVec matrix1 vector | vector <- m']
         where m' = transpose matrix2
+import submodule NTT
 
 /**
  * The K-PKE component scheme.
@@ -1422,74 +1493,3 @@ private
  */
 Decaps : DecapsulationKey -> Ciphertext -> SharedSecretKey
 Decaps = Decaps_internal
-
-parameter
-    /*
-     * The parameter `k` determines the dimensions of the encryption key matrix
-     * and the secret and noise vectors created and used in key generation and
-     * encryption.
-     * [FIPS-203] Section 8.
-     *
-     * The constraint on the width of `k` is drawn from `K-PKE-KeyGen`. In
-     * that function, the variable `N` varies from 0 to `2k` and is passed as
-     * the second parameter to the `PRF` function. `PRF` restricts the second
-     * parameter to be exactly 1 byte. Therefore, `2k` must fit into a byte.
-     * [FIPS-203] Section 5.1 Algorithm 13 (see lines 2 and 8-15) and Section
-     * 4.1 Equation 4.2.
-     */
-    type k : #
-    type constraint (width k > 0, width (2*k) <= 8)
-
-    /*
-     * The parameter `eta_1` specifies the distribution from which the secret
-     * vectors are drawn in key generation and encryption.
-     * [FIPS-203] Section 8.
-     *
-     * eta_1 must be in the set {2, 3} for use in a PRF and to parameterize
-     * sampling from the centered binomial distribution.
-     * [FIPS-203] Section 4.1 "Pseudorandom Function" and Section 4.2.2
-     * "Sampling from the centered binomial distribution"
-     */
-    type eta_1 : #
-    type constraint (fin eta_1, 2 <= eta_1, eta_1 <= 3)
-
-    /*
-     * The parameter eta_2 is required to specify the distribution from which
-     * the noise vectors are drawn in encryption.
-     * [FIPS-203] Section 8.
-     *
-     * eta_2 must be in the set {2, 3} for use in a PRF and to parameterize
-     * sampling from the centered binomial distribution.
-     * [FIPS-203] Section 4.1 "Pseudorandom Function" and Section 4.2.2
-     * "Sampling from the centered binomial distribution"
-     */
-    type eta_2 : #
-    type constraint (fin eta_2, 2 <= eta_2, eta_2 <= 3)
-
-    /*
-     * The parameter `d_u` is a parameter and input for the compression and
-     * encoding functions.
-     * [FIPS-203] Section 8.
-     *
-     * For compression, `d_u` must be smaller than the bit length of `q` (fixed
-     * to 12).
-     * [FIPS-203] Section 4.2.1 "Compression and decompression".
-     * For encoding, the valid range of values for `d_u` is `1 ≤ d_u ≤ 12`.
-     * [FIPS-203] Section 4.2.1 "Encoding and decoding".
-     */
-    type d_u : #
-    type constraint (fin d_u, d_u < 12, d_u > 0)
-
-    /*
-     * The parameter `d_v` is a parameter and input for the compression and
-     * encoding functions.
-     * [FIPS-203] Section 8.
-     *
-     * For compression, `d_v` must be smaller than the bit length of `q` (fixed
-     * to 12).
-     * [FIPS-203] Section 4.2.1 "Compression and decompression".
-     * For encoding, the valid range of values for `d_v` is `1 ≤ d_v ≤ 12`.
-     * [FIPS-203] Section 4.2.1 "Encoding and decoding".
-     */
-    type d_v : #
-    type constraint (fin d_v, d_v < 12, d_v > 0)

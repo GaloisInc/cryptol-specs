@@ -190,6 +190,53 @@ data types or structures.
   parameter
     type Byte = [8]
 
+    // This is from section "tweakable hash functions"
+    T : {l} (fin l) => ([n]Byte, [32]Byte, [l*n]Byte) -> [n]Byte
+
+    // This is from section "PRF and Message digest"
+    PRF : ([n]Byte, [32]Byte) -> [n]Byte
+    PRF_msg : {lmsg} (fin lmsg) => ([n]Byte, [n]Byte, [lmsg]Byte) -> [n]Byte
+    H_msg : {lmsg} (fin lmsg) =>
+      ([n]Byte, [n]Byte, [n]Byte, [lmsg]Byte) -> [m]Byte
+
+    // This is from section "wotsp parameters"
+    type n : #
+    type constraint (fin n, n > 0)
+
+    // we define loglogw as the parameter since
+    // w can only take the values 4,16,256
+    type loglogw : #
+    type constraint (loglogw >= 1, loglogw <= 3)
+
+    // This is from section "FORS: Forest of random subsets"
+    type t : #
+    type constraint (fin t, t >= 1)
+    type logt : #
+    type constraint (logt == a)
+    type FORSMessage = [k * a]Bit
+    type FORSPrKey = [k * t][n]Byte
+    type FORSPbKey = [n]Byte
+
+    // These are from sections "SPX Parameters"
+    type h : #
+    type constraint (fin h)
+    type d : #
+    type constraint (fin d, d >= 2, h%d == 0, h/d >= 1)
+    // the following constraint is needed because
+    // h - h/d bits should define a tree address
+    type constraint (3*4*8 >= h - h/d)
+    type k : #
+    type constraint (fin k, k >= 1)
+    // instead of t, we consider a = log t as the parameter since
+    // it is a that is instantiated.
+    type a : #
+    type constraint (fin a, a >= 1)
+
+    type m : #
+    type constraint (m == (k*logt+7)/8 + (h-h/d+7)/8 + (h/d+7)/8)
+
+
+
   property ByteLength = length (groupBy`{8} 0xe534f0) == 3
 \end{code}
 
@@ -420,10 +467,10 @@ base_w(X, w, out_len) {
    The function $\sphincsT_\ell$ is denoted by \texttt{T\_l} in pseudocode.
    %\TODO{Check this again if we change addresses --> We agreed on 32byte addresses, so we are fine.}
 
-\begin{code}
-  parameter
-    T : {l} (fin l) => ([n]Byte, [32]Byte, [l*n]Byte) -> [n]Byte
-\end{code}
+%\begin{code}
+%  parameter
+%    T : {l} (fin l) => ([n]Byte, [32]Byte, [l*n]Byte) -> [n]Byte
+%\end{code}
 
    There are two special cases which we rename for consistency with previous
    descriptions of hash-based signature schemes:
@@ -462,13 +509,13 @@ base_w(X, w, out_len) {
 %    \TODO{Verify required key and output length.}
 %    \TODO{$m$ is only defined in the FORS section. In practice this also includes a bit of rounding to bytes, as well, and we also want to pull the leaf index from this output. -Joost}
 
-\begin{code}
-  parameter
-    PRF : ([n]Byte, [32]Byte) -> [n]Byte
-    PRF_msg : {lmsg} (fin lmsg) => ([n]Byte, [n]Byte, [lmsg]Byte) -> [n]Byte
-    H_msg : {lmsg} (fin lmsg) =>
-      ([n]Byte, [n]Byte, [n]Byte, [lmsg]Byte) -> [m]Byte
-\end{code}
+%\begin{code}
+%  parameter
+%    PRF : ([n]Byte, [32]Byte) -> [n]Byte
+%    PRF_msg : {lmsg} (fin lmsg) => ([n]Byte, [n]Byte, [lmsg]Byte) -> [n]Byte
+%    H_msg : {lmsg} (fin lmsg) =>
+%      ([n]Byte, [n]Byte, [n]Byte, [lmsg]Byte) -> [m]Byte
+%\end{code}
 
 \subsubsection{Hash Function Address Scheme (Structure of \adrs)}\label{prelim:addresses}
 
@@ -755,14 +802,14 @@ These parameters are summarized as follows:
 \end{itemize}
 
 \begin{code}
-  parameter
-    type n : #
-    type constraint (fin n, n > 0)
+//  parameter
+//    type n : #
+//    type constraint (fin n, n > 0)
 
     // we define loglogw as the parameter since
     // w can only take the values 4,16,256
-    type loglogw : #
-    type constraint (loglogw >= 1, loglogw <= 3)
+//    type loglogw : #
+//    type constraint (loglogw >= 1, loglogw <= 3)
 
   type logw = 2^^loglogw
   type w = 2^^logw
@@ -1942,16 +1989,16 @@ $i$th private key element of the first set gets selected and so on. The signatur
 consists of the selected private key elements and the associated authentication
 paths.
 
-\begin{code}
-  parameter
-    type t : #
-    type constraint (fin t, t >= 1)
-    type logt : #
-    type constraint (logt == a)
-    type FORSMessage = [k * a]Bit
-    type FORSPrKey = [k * t][n]Byte
-    type FORSPbKey = [n]Byte
-\end{code}
+%\begin{code}
+%  parameter
+%    type t : #
+%    type constraint (fin t, t >= 1)
+%    type logt : #
+%    type constraint (logt == a)
+%    type FORSMessage = [k * a]Bit
+%    type FORSPrKey = [k * t][n]Byte
+%    type FORSPbKey = [n]Byte
+%\end{code}
 
 \spx uses implicit verification for \fors, only using a method to compute
 a candidate public key from a signature. This is done by computing root nodes
@@ -2347,22 +2394,22 @@ generation.
  \item  $t$ : the number of leaves of a \fors tree as defined in \autoref{sec:fors:params}.
 \end{description}
 
-\begin{code}
-  parameter
-    type h : #
-    type constraint (fin h)
-    type d : #
-    type constraint (fin d, d >= 2, h%d == 0, h/d >= 1)
-    // the following constraint is needed because
-    // h - h/d bits should define a tree address
-    type constraint (3*4*8 >= h - h/d)
-    type k : #
-    type constraint (fin k, k >= 1)
-    // instead of t, we consider a = log t as the parameter since
-    // it is a that is instantiated.
-    type a : #
-    type constraint (fin a, a >= 1)
-\end{code}
+%\begin{code}
+%  parameter
+%    type h : #
+%    type constraint (fin h)
+%    type d : #
+%    type constraint (fin d, d >= 2, h%d == 0, h/d >= 1)
+%    // the following constraint is needed because
+%    // h - h/d bits should define a tree address
+%    type constraint (3*4*8 >= h - h/d)
+%    type k : #
+%    type constraint (fin k, k >= 1)
+%    // instead of t, we consider a = log t as the parameter since
+%    // it is a that is instantiated.
+%    type a : #
+%    type constraint (fin a, a >= 1)
+%\end{code}
 
 All the restrictions stated in the previous sections apply. Recall that
 we use $a = \log t$. Moreover, from these values the values $m$ and \len are
@@ -2372,11 +2419,11 @@ computed as
   It is computed as
   $$m=\floor{(k\log t +7)/ 8} + \floor{(h - h/d +7)/ 8} + \floor{(h / d +7)/ 8}.$$
 
-\begin{code}
-  parameter
-    type m : #
-    type constraint (m == (k*logt+7)/8 + (h-h/d+7)/8 + (h/d+7)/8)
-\end{code}
+%\begin{code}
+%  parameter
+%    type m : #
+%    type constraint (m == (k*logt+7)/8 + (h-h/d+7)/8 + (h/d+7)/8)
+%\end{code}
 
   While only $h + k\log t$ bits would be needed, using the longer $m$ as defined
   above simplifies implementations significantly.

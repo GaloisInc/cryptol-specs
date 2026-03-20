@@ -56,10 +56,27 @@ coefficients. The degree $n$ is normally a power of two (typically 512 or
 $\phi$ (which is always of the form $\phi = x^n + 1$).
 
 \begin{code}
-  parameter
     type _k : #
     type _n : #
     type constraint (fin _k, _n == 2^^_k, _k > 0)
+
+    // This type comes from the "quotient rings" section below.
+    type q : #
+    type constraint (fin q, q > 0, q <= 2 ^^ 16, width q >= 7,
+                 prime q, Literal q (Float 11 53), q >= _n+1)
+
+    // These come from the section "Public Parameters" below.
+    sigma : Float64
+    type sbytelen : #
+    type constraint (fin sbytelen)
+
+    // This comes from the NTT section below.
+    r : Z q
+
+    // These types come from the "recommended parameters" section below.
+    sigma_min : Float64
+    sigma_max : Float64
+    beta : Integer
 
   type Poly degree a = [degree]a
   type ZZ = Integer
@@ -177,12 +194,12 @@ On one hand, classical algebraic operations in the field $\bQ[x]/(x^{n} + 1)$ ar
 \paragraph{Matrices, vectors and scalars.} Matrices will usually be in bold uppercase (e.g. $\matB$), vectors in bold lowercase (e.g. $\vecv$) and scalars -- which include polynomials -- in italic (e.g. $s$). We use the row convention for vectors. The transpose of a matrix $\matB$ may be noted $\matB^\t$. It is to be noted that for a polynomial $f$, we do \emph{not} use $f'$ to denote its derivative in this document.
 
 \paragraph{Quotient rings.} For $q \in \bN^\star$, we denote by $\bZ_q$ the quotient ring $\bZ/q\bZ$. In \falcon, our integer modulus $q = 12289$ is prime so $\bZ_q$ is also a finite field. We denote by $\bZ_q^\times$ the group of invertible elements of $\bZ_q$, and by $\varphi$ Euler's totient function: $\varphi(q) = |\bZ_q^\times| = q - 1 = 3 \cdot 2^{12}$ since $q$ is prime.
-\begin{code}
-  parameter
-    type q : #
-    type constraint (fin q, q > 0, q <= 2 ^^ 16, width q >= 7,
-                     prime q, Literal q (Float 11 53), q >= _n+1)
-\end{code}
+%\begin{code}
+%  parameter
+%    type q : #
+%    type constraint (fin q, q > 0, q <= 2 ^^ 16, width q >= 7,
+%                     prime q, Literal q (Float 11 53), q >= _n+1)
+%\end{code}
 
 
 \paragraph{Number fields.} \falcon uses a polynomial modulus $\phi = x^n+1$ (for $n = 2^\kappa$). It is a monic polynomial of $\bZ[x]$, irreducible in $\bQ[x]$ and with distinct roots over $\bC$.
@@ -312,12 +329,12 @@ For clarity, public parameters may be omitted (\eg in algorithms' headers) when 
 % $q$ such that $q$ is prime and $q = 1 \bmod 2n$; for $n\leq 1024$, $q =
 % 18433$ is such an alternate modulus value.
 
-\begin{code}
-  parameter
-    sigma : Float64
-    type sbytelen : #
-    type constraint (fin sbytelen)
-\end{code}
+%\begin{code}
+%  parameter
+%    sigma : Float64
+%    type sbytelen : #
+%    type constraint (fin sbytelen)
+%\end{code}
 
 \subsection{Private Key}
 
@@ -637,8 +654,8 @@ The \falcon public key \pk corresponding to the private key $\sk =
 
 \begin{code}
   /* Recursive NTT */
-  parameter
-    r : Z q
+  //parameter
+  //  r : Z q
 
   roots : [inf](Z q)
   roots = iterate ((*) (r * r)) 1
@@ -2376,12 +2393,12 @@ We specify two sets of parameters that address security levels I and V as define
 	\caption{\falcon parameter sets.}\label{tab:falconparam}
 \end{table}
 
-\begin{code}
-  parameter
-    sigma_min : Float64
-    sigma_max : Float64
-    beta : Integer
-\end{code}
+%\begin{code}
+%  parameter
+%    sigma_min : Float64
+%    sigma_max : Float64
+%    beta : Integer
+%\end{code}
 
 \tprcomment{I commented the paragraph on the acceptance bound}
 %\paragraph{Acceptance bound.} It is important that signers and verifiers
