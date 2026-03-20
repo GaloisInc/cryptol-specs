@@ -57,13 +57,13 @@ jobs:
 
       # Check out the code.
       - id: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       # Pull the default cache
       - id: load-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: ${{ env.CRYPTOL_CACHE }}
           key: ${{ env.CRYPTOL_CACHE_KEY }}
@@ -100,7 +100,7 @@ jobs:
       # ...before we upload it. Do this regardless of whether it previously existed.
       - id: save-cache
         if: github.ref == 'refs/heads/master'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: ${{ env.CRYPTOL_CACHE }}
           key: ${{ env.CRYPTOL_CACHE_KEY }}
