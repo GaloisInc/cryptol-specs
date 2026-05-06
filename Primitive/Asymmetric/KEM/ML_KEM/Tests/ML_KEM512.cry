@@ -16,7 +16,7 @@ import Primitive::Asymmetric::KEM::ML_KEM::Instantiations::ML_KEM512 as ML_KEM
  * :prove t0
  * ```
  */
-property t0 = keygenWorks && encapsWorks && decapsWorks where
+property t0 = keygenWorks && encapsWorks && decapsWorks && decapsFailsCorrectly where
     keygenWorks = ML_KEM::KeyGen (Some d) (Some z) == (pk, sk)
     encapsWorks = ML_KEM::Encaps pk (Some msg) == (ss, ct)
     decapsWorks = ML_KEM::Decaps sk ct == ss
