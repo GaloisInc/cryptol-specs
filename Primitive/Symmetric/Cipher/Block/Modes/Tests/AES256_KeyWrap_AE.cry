@@ -8,7 +8,7 @@
  * incorporated here.
  *
  * [ACVP]: NIST. usnistgov. GitHub repo "ACVP-Server".
- *     @see https://github.com/usnistgov/ACVP-Server/tree/master/gen-val/json-files/ACVP-AES-KW-1.0
+ *     @see https://github.com/usnistgov/ACVP-Server/blob/8e6f5ee70a96fc634b4751386d3733e29f4bf5c6/gen-val/json-files/ACVP-AES-KW-1.0/internalProjection.json
  *
  * Rather than decorate every property, we use a single docstring up here:
  * ```repl
@@ -17,6 +17,7 @@
  *
  * @copyright Galois, Inc.
  * @author Marcella Hastings <marcella@galois.com>
+ * @editor Ryan Scott <rscott@galois.com>
  */
 module Primitive::Symmetric::Cipher::Block::Modes::Tests::AES256_KeyWrap_AE where
 
