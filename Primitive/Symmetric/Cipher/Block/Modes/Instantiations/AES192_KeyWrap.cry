@@ -1,0 +1,11 @@
+/*
+ * Instantiate AES key wrap and AES key wrap with padding for AES 192.
+ *
+ * @copyright Galois, Inc.
+ * @author Ryan Scott <rscott@galois.com>
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES192_KeyWrap =
+    Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap {
+        Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES192
+    }
+

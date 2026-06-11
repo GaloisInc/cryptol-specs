@@ -1,0 +1,11 @@
+/*
+ * Instantiate AES key wrap and AES key wrap with padding for AES 128.
+ *
+ * @copyright Galois, Inc.
+ * @author Ryan Scott <rscott@galois.com>
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES128_KeyWrap =
+    Primitive::Symmetric::Cipher::Block::Modes::AESKeyWrap {
+        Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES128
+    }
+
