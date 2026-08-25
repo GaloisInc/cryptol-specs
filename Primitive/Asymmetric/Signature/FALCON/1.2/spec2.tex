@@ -815,8 +815,26 @@ The \falcon public key \pk corresponding to the private key $\sk =
  It is immediate that \polsplit and \polmerge are inverses of each other, and equivalently \splitfft and \mergefft are inverses of each other. Just as for \splitfft, readers familiar with the Fourier transform can observe that \mergefft is a step of the fast Fourier transform: it is the reconstruction step which from two small \fft's computes a larger \fft.
 
 \begin{code}
+  // Check if a complex number is erroneous (NaN -- Not a Number).
+  CHasNaN : C -> Bit
+  CHasNaN x = fpIsNaN x.0 \/ fpIsNaN x.1
+
+  // Check if an FFT value has any invalid entries.
+  FFTHasNaN : {n} (fin n) => FFT n -> Bit
+  FFTHasNaN = any CHasNaN
+
+  /**
+   * The split and merge functions are inverses of each other.
+   * Section 4.1 claims that FALCON does not exercise "special case" FFT values,
+   * including infinites or NaNs; NaN is explicitly excluded here to achieve
+   * `:check`ability.
+   *
+   * ```repl
+   * :check FFTInvFFT
+   * ```
+   */
   FFTInvFFT : (FFT 4) -> Bit
-  property FFTInvFFT f = mergefft`{2,4} (splitfft`{2,4} f) == f
+  property FFTInvFFT f = ~ (FFTHasNaN f) ==> mergefft`{2,4} (splitfft`{2,4} f) == f
 \end{code}
 
  \paragraph{Relationship with the \fft.} There is no requirement on the order in which the values $f(\zeta)$ (resp. $f_0(\zeta')$, resp. $f_1(\zeta')$) are to be stored, and the choice of this order is left to the implementer. It is however recommended to use a unique order convention for the \fft, \ifft, \splitfft and \mergefft operators. Since the \fft and \ifft need to implemented anyway, this unique convention can be achieved \eg by implementing \splitfft as part of \ifft, and \mergefft as part of the \fft.
