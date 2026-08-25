@@ -115,7 +115,7 @@ private
      */
     Sα: [n] -> [n]
     Sα x | n == 16 => S `{7} x
-         | n >= 16 => S `{8} x
+         | n >  16 => S `{8} x
 
     /**
      * Left circular shift by the rotation constant β.
@@ -125,7 +125,7 @@ private
      */
     Sβ : [n] -> [n]
     Sβ x | n == 16 => S `{2} x
-         | n >= 16 => S `{3} x
+         | n >  16 => S `{3} x
 
     /**
      * Right circular shift by the rotation constant α.
@@ -135,7 +135,7 @@ private
      */
     Sα_Inv : [n] -> [n]
     Sα_Inv x | n == 16 => S_Inv `{7} x
-             | n >= 16 => S_Inv `{8} x
+             | n >  16 => S_Inv `{8} x
 
     /**
      * Right circular shift by the rotation constant β.
@@ -145,7 +145,7 @@ private
      */
     Sβ_Inv : [n] -> [n]
     Sβ_Inv x | n == 16 => S_Inv `{2} x
-             | n >= 16 => S_Inv `{3} x
+             | n >  16 => S_Inv `{3} x
 
     /**
      * The Speck round function. This function is parameterized by a key.
