@@ -2,10 +2,7 @@
  * @copyright Galois, Inc
  * @author Marios Georgiou <marios@galois.com>
  */
-module falcon_512 where
-
-submodule falcon_inst = spec2
-    where
+module falcon_512 = spec2 where
     type _k = 9
     type _n = 512
     type pkbytelen = 897
@@ -532,5 +529,3 @@ submodule falcon_inst = spec2
         (0.9996988186962042, -0.02454122852291245),
         (0.9999247018391445, -0.012271538285720572)
     ]
-
-import submodule falcon_inst
