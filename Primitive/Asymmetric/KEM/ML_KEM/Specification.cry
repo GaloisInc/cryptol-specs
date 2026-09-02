@@ -181,6 +181,27 @@ private
     type Tq = [n](Z q)
 
     /**
+     * ⌈x⌋ : The rounding of `x` to the nearest integer. If `x = y + 1/2` for
+     * some integer `y`, then ⌈x⌋ = y + 1.
+     *
+     * [FIPS-203] Section 2.3.
+     */
+    roundNearest: Rational -> Integer
+    roundNearest x = floor (x + 0.5)
+
+    /**
+     * [FIPS-203] Section 2.3.
+     *
+     * ```repl
+     * :prove roundingWorks
+     * ```
+     */
+    property roundingWorks y = roundUpWorks && roundDownWorks where
+        y' = fromInteger y
+        roundUpWorks = roundNearest (y' + 0.5) == (y + 1)
+        roundDownWorks = roundNearest (y' + 0.4) == y
+
+    /**
      * Pseudorandom function (PRF).
      * [FIPS-203] Section 4.1, Equations 4.2 and 4.3.
      */
@@ -296,15 +317,6 @@ private
     B2BExampleWorks = BitsToBytes 0b11010001 == [139]
 
     /**
-     * In Cryptol, rounding is computed via the built-in function `roundAway`.
-     * [FIPS-203] Section 2.3.
-     */
-    property roundingWorks y = y >= 0 ==> roundUpWorks && roundDownWorks where
-        y' = fromInteger y
-        roundUpWorks = roundAway (y' + 0.5) == (y + 1)
-        roundDownWorks = roundAway (y' + 0.4) == y
-
-    /**
      * Compress an integer mod `q` into an integer mod `2^d`.
      * [FIPS-203] Section 4.2.1, Equation 4.7.
      */
@@ -313,7 +325,7 @@ private
         // Convert from an integer mod `q` to a rational number.
         x' = fromInteger (fromZ x) : Rational
         // Compress. Note that `/.` denotes division of rationals.
-        y' = roundAway (((2^^`d) /. `q) * x')
+        y' = roundNearest (((2^^`d) /. `q) * x')
         // mod 2^^d (by converting from an integer to a d-bit vector).
         y = (fromInteger y') : [d]
 
@@ -326,7 +338,7 @@ private
         // Convert from a d-length bit vector to a rational number.
         y' = fromInteger (toInteger y) : Rational
         // Decompress! As before, `/.` is division of rationals.
-        x' = roundAway((`q /. (2^^`d)) * y')
+        x' = roundNearest ((`q /. (2^^`d)) * y')
         // Convert from an integer to an integer mod `q`.
         x = (fromInteger x') : Z q
 
@@ -361,7 +373,7 @@ private
         // The spec doesn't describe formally what "not significantly altered"
         // means; we use this equation.
         B_q : {d} (d < lg2 q) => Integer
-        B_q = roundAway((`q/.(2^^(`d+1))))
+        B_q = roundNearest ((`q/.(2^^(`d+1))))
 
         // Convert an integer mod `q` to a representation centered around 0
         // (and represented as an `Integer`).
