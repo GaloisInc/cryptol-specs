@@ -301,6 +301,10 @@ X25519 kb ub = result
  * "Conditional swap".
  * This function must be constant time in a production implementation.
  * Cryptol cannot enforce this.
+ *
+ * The procedure that uses `cswap` implicitly enforces that `swap` is
+ * always binary -- that is, it's a 255-bit string for which only the
+ * least significant bit is non-zero.
  */
 cswap : [255] -> (Z p, Z p) -> (Z p, Z p)
 cswap swap (x, y) = (BVtoZ `{p} (dummy ^ x_2), BVtoZ `{p} (dummy ^ x_3))
@@ -323,30 +327,33 @@ cswap' : [255] -> (Z p, Z p) -> (Z p, Z p)
 cswap' swap (x, y) = if swap == 0 then (x, y) else (y, x)
 
 /**
- * The swap implementations are equivalent.
+ * The swap implementations are equivalent for appropriate values of `swap`.
  * ```
- * :check cswapEq
+ * :set prover=w4-z3
+ * :prove cswapEq
  * ```
  */
-cswapEq s x = elem s [0, 1] ==> cswap s x == cswap' s x
+cswapEq x = (cswap 0 x == cswap' 0 x) && (cswap 1 x == cswap' 1 x)
 
 /**
- * `cswap False` is the identity.
+ * `cswap 0` is the identity.
  *
  * ```repl
- * :check cswapFalse
+ * :set prover=w4-z3
+ * :prove cswapFalse
  * ```
  */
 property cswapFalse x = cswap 0 x == x
 
 /**
- * `cswap True` is an involution.
+ * `cswap 1` is an involution.
  *
  * ```repl
- * :check cswapTrue
+ * :set prover=w4-z3
+ * :prove cswapTrue
  * ```
  */
-property cswapTrue y x = y > 0 ==> cswap y (cswap y x) == x
+property cswapTrue x = cswap 1 (cswap 1 x) == x
 
 /**
  * Test vector from section 5.2.
