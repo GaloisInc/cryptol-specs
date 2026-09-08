@@ -3,17 +3,15 @@ name: Lint
 on: [push, pull_request]
 
 jobs:
-  build:
+  lint:
     name: Lint
     runs-on: ubuntu-latest
-    container: mstruebing/editorconfig-checker:latest
 
     steps:
       - name: Check out code
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
       - name: Check whitespace
-        run: |
-          test -f .editorconfig
-          ec
+        uses: docker://mstruebing/editorconfig-checker:latest
