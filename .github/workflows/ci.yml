@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - master
+      - trial
   pull_request:
   workflow_dispatch:
 
