@@ -14,12 +14,13 @@
  *
  */
 module Primitive::Keyless::Hash::SHA3::Instantiations::SHAKE128 where
-import Primitive::Keyless::Hash::SHA3::Specification where
+submodule Keccak = Primitive::Keyless::Hash::SHA3::Specification where
     type b = 1600
     type nr = 24
     // The capacity is double the security level, so this provides a security
     // level of 128 (as the name suggests).
     type c = 256
+import submodule Keccak (Keccak)
 import Primitive::Keyless::Hash::SHA3::KeccakBitOrdering as KBO
 
 /**
