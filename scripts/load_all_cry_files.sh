@@ -18,7 +18,8 @@ load_cry_files() {
             load_cry_files "$FILE"
         elif [[ -f "$FILE" && "$FILE" == *.cry ]]; then
           NUM_FILES=$(($NUM_FILES+1))
-          echo ":load $FILE" > $SCRIPT
+          echo ":set tcTimeout=30" > $SCRIPT
+          echo ":load $FILE" >> $SCRIPT
           cryptol -e --batch $SCRIPT
           if (( $? != 0 )); then
             NUM_FAILS=$(($NUM_FAILS+1))
