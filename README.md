@@ -51,7 +51,7 @@ This repo includes the set of cryptographic algorithms specified in [NSA's Suite
 
 ## Other kinds of algorithms
 
-There are some [ciphers for authenticated encryption](Primitive/Symmetric/Cipher/Authenticated/) that are commonly used but not formally NIST-approved, like [ChaCha20-Poly1305](Primitive/Symmetric/Cipher/Authenticated/ChaChaPolyCryptolIETF.md) and [AES-GCM-SIV](Primitive/Symmetric/Cipher/Authenticated/AES_GCM_SIV.cry). There are also [many block ciphers](Primitive/Symmetric/Cipher/Block/), including some of historical interest (e.g. [Triple DES](Primitive/Symmetric/Cipher/Block/TripleDES.md)), and a smaller collection of [stream ciphers](Primitive/Symmetric/Cipher/Stream/)
+There are some [ciphers for authenticated encryption](Primitive/Symmetric/Cipher/Authenticated/) that are commonly used but not formally NIST-approved, like [ChaCha20-Poly1305](Primitive/Symmetric/Cipher/Authenticated/ChaChaPolyCryptolIETF.md), [AES-GCM-SIV](Primitive/Symmetric/Cipher/Authenticated/AES_GCM_SIV.cry), and [AEGIS](Primitive/Symmetric/Cipher/Authenticated/AEGIS/README.md). There are also [many block ciphers](Primitive/Symmetric/Cipher/Block/), including some of historical interest (e.g. [Triple DES](Primitive/Symmetric/Cipher/Block/TripleDES.md)), and a smaller collection of [stream ciphers](Primitive/Symmetric/Cipher/Stream/)
 
 There is an implementation of [HMAC](Primitive/Symmetric/MAC/HMAC/Specification.cry) that is used to instantiate [a hash-based key derivation function (HKDF)](Primitive/Symmetric/KDF/).
 
