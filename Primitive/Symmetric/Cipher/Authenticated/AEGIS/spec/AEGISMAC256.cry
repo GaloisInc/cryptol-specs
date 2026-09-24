@@ -1,0 +1,80 @@
+/**
+ * Cryptol AEGISMAC-256 implementation.
+ *
+ * @copyright Galois Inc.
+ * @author Craig Troop <ctroop@galois.com>
+ *
+ * [RFC10032] Sections 8 and 8.2.
+ *
+ * References
+ * [RFC10032]: F. Denis and S. Lucas, The AEGIS Authenticated Encryption
+ *     Algorithms. RFC 10032, September 2026.
+ *     @see https://www.rfc-editor.org/rfc/rfc10032
+ */
+
+module Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGISMAC256 where
+
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS256 as A
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::Common (Bytes)
+
+/**
+ * Initialize the state and absorb the zero-padded input data.
+ * [RFC10032] Section 8.2.
+ */
+MacState : {n} (fin n, n < 2^^61) =>
+    Bytes n -> A::Key -> A::Nonce -> A::AegisState
+MacState data key nonce =
+    foldl A::Absorb (A::Init key nonce) data_blocks
+    where
+        data_blocks = A::paddedBlocks data
+
+/**
+ * Authenticate `data` with a 128-bit tag.
+ * The type parameter `n` counts input bytes. This specializes the RFC `Mac`
+ * function to this tag size.
+ * [RFC10032] Sections 8 and 8.2.
+ */
+MacTag128 : {n} (fin n, n < 2^^61) =>
+    Bytes n -> A::Key -> A::Nonce -> [128]
+MacTag128 data key nonce =
+    A::Finalize128 (MacState data key nonce) (`(8 * n)) 128
+
+/**
+ * Authenticate `data` with a 256-bit tag.
+ * The type parameter `n` counts input bytes. This specializes the RFC `Mac`
+ * function to this tag size.
+ * [RFC10032] Sections 8 and 8.2.
+ */
+MacTag256 : {n} (fin n, n < 2^^61) =>
+    Bytes n -> A::Key -> A::Nonce -> [256]
+MacTag256 data key nonce =
+    A::Finalize256 (MacState data key nonce) (`(8 * n)) 256
+
+/**
+ * [RFC10032] Appendix A.8.4: check both MAC tag sizes.
+ *
+ * ```repl
+ * :check rfcMacProp
+ * ```
+ */
+property rfcMacProp =
+    (MacTag128 data key nonce ==
+        0xc08e20cfc56f27195a46c9cef5c162d4) &&
+    (MacTag256 data key nonce == expected256)
+    where
+        data = [0 .. 34] : Bytes 35
+
+        key = join
+            [ 0x10010000000000000000000000000000
+            , 0x00000000000000000000000000000000
+            ] : A::Key
+
+        nonce = join
+            [ 0x10000200000000000000000000000000
+            , 0x00000000000000000000000000000000
+            ] : A::Nonce
+
+        expected256 = join
+            [ 0xa5c906ede3d69545c11e20afa360b221
+            , 0xf936e946ed2dba3d7c75ad6dc2784126
+            ] : [256]

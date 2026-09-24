@@ -1,0 +1,125 @@
+/**
+ * Cryptol AEGIS stream generation.
+ *
+ * @copyright Galois Inc.
+ * @author Craig Troop <ctroop@galois.com>
+ *
+ * Generate a keystream by encrypting zero bits without associated data
+ * or computing an authentication tag.
+ * [RFC10032] Section 7.
+ *
+ * References
+ * [RFC10032]: F. Denis and S. Lucas, The AEGIS Authenticated Encryption
+ *     Algorithms. RFC 10032, September 2026.
+ *     @see https://www.rfc-editor.org/rfc/rfc10032
+ */
+
+module Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::Stream where
+
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::Common (Block, Bytes)
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS128L as L
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS256 as A
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS128X as LX
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS256X as AX
+
+/**
+ * Encrypt enough zero blocks, then truncate to `len` output bits.
+ * [RFC10032] Section 7.
+ */
+StreamWith : {len, R, s} (fin len, fin R, 1 <= R) =>
+    (s -> [R] -> (s, [R])) -> s -> [len]
+StreamWith EncryptBlock initial = take`{len} (join blocks)
+    where
+        inputs = zero : [len /^ R][R]
+        results = scanl step (initial, zero) inputs
+        step previous block = EncryptBlock previous.0 block
+        blocks = (tail results).1
+
+/**
+ * AEGIS-128L stream; `len` is measured in bits.
+ * [RFC10032] Section 7.
+ *
+ * Pass an all-zero nonce for the RFC omitted-nonce case.
+ */
+Stream128L : {len} (fin len, len <= 2^^64 - 8) =>
+    Block -> Block -> [len]
+Stream128L key nonce =
+    StreamWith L::Enc (L::Init key nonce)
+
+/**
+ * AEGIS-256 stream; `len` is measured in bits.
+ * [RFC10032] Section 7.
+ *
+ * Pass an all-zero nonce for the RFC omitted-nonce case.
+ */
+Stream256 : {len} (fin len, len <= 2^^64 - 8) =>
+    A::Key -> A::Nonce -> [len]
+Stream256 key nonce =
+    StreamWith A::Enc (A::Init key nonce)
+
+/**
+ * AEGIS-128X stream; select degree `D` and output length `len`.
+ * [RFC10032] Section 7.
+ *
+ * Pass an all-zero nonce for the RFC omitted-nonce case.
+ */
+Stream128X : {D, len}
+    (fin D, fin len, 1 <= D, D <= 256, len <= 2^^64 - 8) =>
+    Block -> Block -> [len]
+Stream128X key nonce =
+    StreamWith LX::Enc (LX::Init`{D} key nonce)
+
+/**
+ * AEGIS-256X stream; select degree `D` and output length `len`.
+ * [RFC10032] Section 7.
+ *
+ * Pass an all-zero nonce for the RFC omitted-nonce case.
+ */
+Stream256X : {D, len}
+    (fin D, fin len, 1 <= D, D <= 256, len <= 2^^64 - 8) =>
+    AX::Key -> AX::Nonce -> [len]
+Stream256X key nonce =
+    StreamWith AX::Enc (AX::Init`{D} key nonce)
+
+/**
+ * Compare streams with zero-message AEAD ciphertext prefixes.
+ */
+StreamChecks : {len} (fin len, len <= 2^^64 - 8) => [6]Bit
+StreamChecks =
+    [ Stream128L`{len} zero zero == take`{len} (join ctL)
+    , Stream256`{len} zero zero == take`{len} (join ctA)
+    , Stream128X`{2, len} zero zero == take`{len} (join ctLX2)
+    , Stream128X`{4, len} zero zero == take`{len} (join ctLX4)
+    , Stream256X`{2, len} zero zero == take`{len} (join ctAX2)
+    , Stream256X`{4, len} zero zero == take`{len} (join ctAX4)
+    ]
+    where
+        msg = zero : Bytes (len /^ 8)
+        ad = [] : Bytes 0
+
+        (ctL, _) = L::EncryptTag128 msg ad zero zero
+        (ctA, _) = A::EncryptTag128 msg ad zero zero
+        (ctLX2, _) = LX::EncryptTag128`{2} msg ad zero zero
+        (ctLX4, _) = LX::EncryptTag128`{4} msg ad zero zero
+        (ctAX2, _) = AX::EncryptTag128`{2} msg ad zero zero
+        (ctAX4, _) = AX::EncryptTag128`{4} msg ad zero zero
+
+StreamResults : [10][6]Bit
+StreamResults =
+    [ StreamChecks`{0}, StreamChecks`{1}
+    , StreamChecks`{128}, StreamChecks`{129}
+    , StreamChecks`{256}, StreamChecks`{257}
+    , StreamChecks`{512}, StreamChecks`{513}
+    , StreamChecks`{1024}, StreamChecks`{1025}
+    ]
+
+/**
+ * Stream generation agrees with the corresponding zero-message ciphertext
+ * prefixes at the selected output lengths.
+ * [RFC10032] Section 7.
+ *
+ * ```repl
+ * :check allStreamChecksProp
+ * ```
+ */
+property allStreamChecksProp = and (join StreamResults)

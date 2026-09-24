@@ -1,0 +1,288 @@
+/**
+ * Test vectors and regression checks for AEGIS-128X.
+ *
+ * @copyright Galois Inc.
+ * @author Craig Troop <ctroop@galois.com>
+ *
+ * [RFC10032] Appendices A.4 and A.5, with additional tampering and
+ * block-boundary checks at degrees two and four.
+ *
+ * References
+ * [RFC10032]: F. Denis and S. Lucas, The AEGIS Authenticated Encryption
+ *     Algorithms. RFC 10032, September 2026.
+ *     @see https://www.rfc-editor.org/rfc/rfc10032
+ */
+
+module Primitive::Symmetric::Cipher::Authenticated::AEGIS::tests::AEGIS128XTests where
+
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS128X as A
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::Common (Block, Bytes)
+
+testKey : Block
+testKey = 0x000102030405060708090a0b0c0d0e0f
+
+testNonce : Block
+testNonce = 0x101112131415161718191a1b1c1d1e1f
+
+type Expected m =
+    { ct : Bytes m, tag128 : [128], tag256 : [256] }
+
+/**
+ * Check both tag sizes, including rejection of modified tags.
+ */
+checkVector : {d, a, m}
+    (fin d, fin a, fin m, 1 <= d, d <= 256,
+    a < 2^^61, m < 2^^61) =>
+    Bytes a -> Bytes m -> Expected m -> Bit
+checkVector ad msg v =
+    (A::EncryptTag128`{d} msg ad k n == (v.ct, v.tag128)) &&
+    (A::EncryptTag256`{d} msg ad k n == (v.ct, v.tag256)) &&
+    (A::DecryptTag128`{d} v.ct v.tag128 ad k n == (True, msg)) &&
+    (A::DecryptTag256`{d} v.ct v.tag256 ad k n == (True, msg)) &&
+    (A::DecryptTag128`{d} v.ct (v.tag128 ^ 1) ad k n == (False, zero)) &&
+    (A::DecryptTag256`{d} v.ct (v.tag256 ^ 1) ad k n == (False, zero))
+    where
+        k = testKey
+        n = testNonce
+
+/**
+ * [RFC10032] Appendix A.4.2: empty AEGIS-128X2 message.
+ */
+emptyX2 : Expected 0
+emptyX2 =
+    { ct = []
+    , tag128 = 0x63117dc57756e402819a82e13eca8379
+    , tag256 = join
+        [ 0xb92c71fdbd358b8a4de70b27631ace90
+        , 0xcffd9b9cfba82028412bac41b4f53759
+        ]
+    }
+
+/**
+ * [RFC10032] Appendix A.5.2: empty AEGIS-128X4 message.
+ */
+emptyX4 : Expected 0
+emptyX4 =
+    { ct = []
+    , tag128 = 0x5bef762d0947c00455b97bb3af30dfa3
+    , tag256 = join
+        [ 0xa4b25437f4be93cfa856a2f27e4416b4
+        , 0x2cac79fd4698f2cdbe6af25673e10a68
+        ]
+    }
+
+exampleAD : Bytes 8
+exampleAD = split (0x0102030401020304 : [64])
+
+exampleMsg : Bytes 120
+exampleMsg = split (join (repeat (0x04050607 : [32]) : [30][32]))
+
+/**
+ * [RFC10032] Appendix A.4.3: nonempty AEGIS-128X2 message.
+ */
+messageX2 : Expected 120
+messageX2 =
+    { ct = split (prefix # suffix)
+    , tag128 = 0x1aebc200804f405cab637f2adebb6d77
+    , tag256 = join
+        [ 0xc471876f9b4978c44f2ae1ce770cdb11
+        , 0xa094ee3feca64e7afcd48bfe52c60eca
+        ]
+    }
+    where
+        prefix = join
+            [ 0x5795544301997f93621b278809d6331b
+            , 0x3bfa6f18e90db12c4aa35965b5e98c5f
+            , 0xc6fb4e54bcb6111842c20637252eff74
+            , 0x7cb3a8f85b37de80919a589fe0f24872
+            , 0xbc926360696739e05520647e390989e1
+            , 0xeb5fd42f99678a0276a498f8c454761c
+            , 0x9d6aacb647ad56be62b29c22cd4b5761
+            ] : [896]
+        suffix = 0xb38f43d5a5ee062f : [64]
+
+/**
+ * [RFC10032] Appendix A.5.3: nonempty AEGIS-128X4 message.
+ */
+messageX4 : Expected 120
+messageX4 =
+    { ct = split (prefix # suffix)
+    , tag128 = 0x0e56ab94e2e85db80f9d54010caabfb4
+    , tag256 = join
+        [ 0x69abf0f64a137dd6e122478d777e98bc
+        , 0x422823006cf57f5ee822dd78397230b2
+        ]
+    }
+    where
+        prefix = join
+            [ 0xe836118562f4479c9d35c17356a83311
+            , 0x4c21f9aa39e4dda5e5c87f4152a00fce
+            , 0x9a7c38f832eafe8b1c12f8a7cf12a81a
+            , 0x1ad8a9c24ba9dedfbdaa586ffea67ddc
+            , 0x801ea97d9ab4a872f42d0e352e2713da
+            , 0xcd609f9442c17517c5a29daf3e2a3fac
+            , 0x4ff6b1380c4e46df7b086af6ce6bc1ed
+            ] : [896]
+        suffix = 0x594b8dd64aed2a7e : [64]
+
+/**
+ * Additional rejection tests using the nonempty [RFC10032] vectors.
+ */
+checkTampering : {d} (fin d, 1 <= d, d <= 256) =>
+    Expected 120 -> Bit
+checkTampering v = and
+    [ rejected (k ^ 1) n ad v.ct
+    , rejected k (n ^ 1) ad v.ct
+    , rejected k n (split (join ad ^ 1)) v.ct
+    , rejected k n ad (split (join v.ct ^ 1))
+    ]
+    where
+        k = testKey
+        n = testNonce
+        ad = exampleAD
+
+        rejected key nonce ad' ct' =
+            (A::DecryptTag128`{d} ct' v.tag128 ad' key nonce == (False, zero)) &&
+            (A::DecryptTag256`{d} ct' v.tag256 ad' key nonce == (False, zero))
+
+/**
+ * Round-trip fixed byte patterns at selected AD/message lengths.
+ */
+checkBoundary : {d, a, m}
+    (fin d, fin a, fin m, 1 <= d, d <= 256,
+    a < 2^^61, m < 2^^61) => Bit
+checkBoundary =
+    (ct128 == ct256) &&
+    (A::DecryptTag128`{d} ct128 tag128 ad k n == (True, msg)) &&
+    (A::DecryptTag256`{d} ct256 tag256 ad k n == (True, msg))
+    where
+        ad = repeat 0x17 : Bytes a
+        msg = repeat 0xa5 : Bytes m
+        k = testKey
+        n = testNonce
+
+        (ct128, tag128) = A::EncryptTag128`{d} msg ad k n
+        (ct256, tag256) = A::EncryptTag256`{d} msg ad k n
+
+/**
+ * Empty, partial, exact-block, and multiple-block cases.
+ */
+boundaryResults : {d} (fin d, 1 <= d, d <= 256) => [9]Bit
+boundaryResults =
+    [ checkBoundary`{d, 0, 0}
+    , checkBoundary`{d, 0, 32 * d}
+    , checkBoundary`{d, 32 * d, 0}
+    , checkBoundary`{d, 1, 1}
+    , checkBoundary`{d, 32 * d - 1, 32 * d - 1}
+    , checkBoundary`{d, 32 * d, 32 * d}
+    , checkBoundary`{d, 32 * d + 1, 32 * d + 1}
+    , checkBoundary`{d, 64 * d, 64 * d}
+    , checkBoundary`{d, 64 * d + 1, 64 * d + 1}
+    ]
+
+/**
+ * Check the empty reference message at degree two.
+ *
+ * ```repl
+ * :check rfcX2EmptyProp
+ * ```
+ */
+property rfcX2EmptyProp =
+    checkVector`{2} ([] : Bytes 0) [] emptyX2
+
+/**
+ * Check the nonempty reference message at degree two.
+ *
+ * ```repl
+ * :check rfcX2MessageProp
+ * ```
+ */
+property rfcX2MessageProp =
+    checkVector`{2} exampleAD exampleMsg messageX2
+
+/**
+ * Check the empty reference message at degree four.
+ *
+ * ```repl
+ * :check rfcX4EmptyProp
+ * ```
+ */
+property rfcX4EmptyProp =
+    checkVector`{4} ([] : Bytes 0) [] emptyX4
+
+/**
+ * Check the nonempty reference message at degree four.
+ *
+ * ```repl
+ * :check rfcX4MessageProp
+ * ```
+ */
+property rfcX4MessageProp =
+    checkVector`{4} exampleAD exampleMsg messageX4
+
+rfcResults : [4]Bit
+rfcResults =
+    [ rfcX2EmptyProp, rfcX2MessageProp
+    , rfcX4EmptyProp, rfcX4MessageProp
+    ]
+
+/**
+ * All reference test vectors in this module must pass.
+ *
+ * ```repl
+ * :check allRFCVectorsProp
+ * ```
+ */
+property allRFCVectorsProp = and rfcResults
+
+/**
+ * Reject modified keys, nonces, associated data, and ciphertext at degree
+ * two.
+ *
+ * ```repl
+ * :check tamperingX2Prop
+ * ```
+ */
+property tamperingX2Prop = checkTampering`{2} messageX2
+
+/**
+ * Reject modified keys, nonces, associated data, and ciphertext at degree
+ * four.
+ *
+ * ```repl
+ * :check tamperingX4Prop
+ * ```
+ */
+property tamperingX4Prop = checkTampering`{4} messageX4
+
+/**
+ * Check round trips at the selected block-boundary lengths for degree two.
+ *
+ * ```repl
+ * :check boundaryX2Prop
+ * ```
+ */
+property boundaryX2Prop = and (boundaryResults`{2})
+
+/**
+ * Check round trips at the selected block-boundary lengths for degree four.
+ *
+ * ```repl
+ * :check boundaryX4Prop
+ * ```
+ */
+property boundaryX4Prop = and (boundaryResults`{4})
+
+/**
+ * All reference vectors and additional regression checks must pass.
+ *
+ * ```repl
+ * :check allTestsProp
+ * ```
+ */
+property allTestsProp =
+    allRFCVectorsProp &&
+    tamperingX2Prop &&
+    tamperingX4Prop &&
+    boundaryX2Prop &&
+    boundaryX4Prop

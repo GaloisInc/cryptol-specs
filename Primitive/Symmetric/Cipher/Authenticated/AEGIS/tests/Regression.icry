@@ -1,0 +1,10 @@
+// Regression tests for the AEGIS implementations.
+//
+// @copyright Galois Inc.
+// @author Craig Troop <ctroop@galois.com>
+//
+// Check the concrete AEAD, MAC, stream, encoding, and intermediate-state tests.
+// Run from the repository root.
+
+:load Primitive/Symmetric/Cipher/Authenticated/AEGIS/tests/AllTests.cry
+:check allTestsProp
