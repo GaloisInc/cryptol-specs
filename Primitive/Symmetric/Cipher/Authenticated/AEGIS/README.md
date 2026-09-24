@@ -4,7 +4,6 @@ The AEGIS directory specifies the AEGIS family described in RFC 10032.
 It includes authenticated encryption, MAC computation, stream generation,
 ciphertext/tag encoding, regression tests, and selected correctness proofs.
 
-The RFC is available locally as [rfc10032.pdf](rfc10032.pdf).
 File links below are relative to this README; commands run from the
 repository root.
 
@@ -12,24 +11,24 @@ repository root.
 
 | AEAD module | Key and nonce size, each | Input block size |
 |----|----|----|
-| [AEGIS128L.cry](../spec/AEGIS128L.cry) | 128 bits | 32 bytes |
-| [AEGIS256.cry](../spec/AEGIS256.cry) | 256 bits | 16 bytes |
-| [AEGIS128X.cry](../spec/AEGIS128X.cry) | 128 bits | 32 * D bytes |
-| [AEGIS256X.cry](../spec/AEGIS256X.cry) | 256 bits | 16 * D bytes |
+| [AEGIS128L.cry](Specs/AEGIS128L.cry) | 128 bits | 32 bytes |
+| [AEGIS256.cry](Specs/AEGIS256.cry) | 256 bits | 16 bytes |
+| [AEGIS128X.cry](Specs/AEGIS128X.cry) | 128 bits | 32 * D bytes |
+| [AEGIS256X.cry](Specs/AEGIS256X.cry) | 256 bits | 16 * D bytes |
 
 The parallel modules use degree D. Degrees 2 and 4 implement the
 corresponding X2 and X4 variants.
 
 Additional modules:
 
-- [Common.cry](../spec/Common.cry): shared types, constants, AES round adapter,
+- [Common.cry](Specs/Common.cry): shared types, constants, AES round adapter,
   and byte ordering.
-- [AEGISMAC128L.cry](../spec/AEGISMAC128L.cry),
-  [AEGISMAC256.cry](../spec/AEGISMAC256.cry),
-  [AEGISMAC128X.cry](../spec/AEGISMAC128X.cry), and
-  [AEGISMAC256X.cry](../spec/AEGISMAC256X.cry): MAC computation.
-- [Stream.cry](../spec/Stream.cry): stream generation.
-- [Encoding.cry](../spec/Encoding.cry): ciphertext/tag concatenation and separation.
+- [AEGISMAC128L.cry](Specs/AEGISMAC128L.cry),
+  [AEGISMAC256.cry](Specs/AEGISMAC256.cry),
+  [AEGISMAC128X.cry](Specs/AEGISMAC128X.cry), and
+  [AEGISMAC256X.cry](Specs/AEGISMAC256X.cry): MAC computation.
+- [Stream.cry](Specs/Stream.cry): stream generation.
+- [Encoding.cry](Specs/Encoding.cry): ciphertext/tag concatenation and separation.
 
 `Common.cry` imports the repository's existing AES specification under
 `Primitive/Symmetric/Cipher/Block/AES`. Run the commands below from
@@ -79,7 +78,7 @@ cryptol --ignore-cryptolrc
 Then enter:
 
 ```text
-:load Primitive/Symmetric/Cipher/Authenticated/AEGIS/spec/AEGIS128X.cry
+:load Primitive/Symmetric/Cipher/Authenticated/AEGIS/Specs/AEGIS128X.cry
 let key = 0x000102030405060708090a0b0c0d0e0f : [128]
 let nonce = 0x101112131415161718191a1b1c1d1e1f : [128]
 let msg = [0 .. 34] : Bytes 35
@@ -140,19 +139,19 @@ the `w4-z3` prover and requires Z3.
 From the repository root, run the regression suite:
 
 ```sh
-cryptol --ignore-cryptolrc --stop-on-error --batch=Primitive/Symmetric/Cipher/Authenticated/AEGIS/tests/Regression.icry
+cryptol --ignore-cryptolrc --stop-on-error --batch=Primitive/Symmetric/Cipher/Authenticated/AEGIS/Tests/Regression.icry
 ```
 
 Run the selected symbolic proofs:
 
 ```sh
-cryptol --ignore-cryptolrc --stop-on-error --batch=Primitive/Symmetric/Cipher/Authenticated/AEGIS/tests/Proofs.icry
+cryptol --ignore-cryptolrc --stop-on-error --batch=Primitive/Symmetric/Cipher/Authenticated/AEGIS/Tests/Proofs.icry
 ```
 
 For individual regression-group results, enter:
 
 ```text
-:load Primitive/Symmetric/Cipher/Authenticated/AEGIS/tests/AllTests.cry
+:load Primitive/Symmetric/Cipher/Authenticated/AEGIS/Tests/AllTests.cry
 testResults
 ```
 
@@ -163,7 +162,7 @@ intermediate states, authentication rejection cases, message and
 associated-data block boundaries, stream/ciphertext consistency checks,
 and concrete encoding layouts.
 
-[Proofs.icry](../tests/Proofs.icry) contains 28 proof commands covering:
+[Proofs.icry](Tests/Proofs.icry) contains 28 proof commands covering:
 
 - Base block round trips and empty partial-block behavior.
 - Parallel updates matching independent base updates.
