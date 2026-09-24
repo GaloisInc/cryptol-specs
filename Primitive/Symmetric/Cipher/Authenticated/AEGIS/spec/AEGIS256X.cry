@@ -15,7 +15,8 @@
 
 module Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS256X where
 
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::Common (Block, Bytes, C0, C1)
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::Common
+    (Block, Bytes, AuthError, verificationFailed, C0, C1)
 import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS256 as Base
 import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS128X
     (BlockVector, AESRoundVector, ctx)
@@ -240,8 +241,8 @@ EncryptWith finish msg ad key nonce = (ct, tag)
 
 /**
  * Decrypt and authenticate bytes using the supplied tag finalizer.
- * Return the validity flag and plaintext; on failure, return zeroed
- * plaintext.
+ * Return Ok plaintext on success or Err "verification failed" on
+ * authentication failure.
  * The type parameters `a` and `m` count bytes.
  * [RFC10032] Section 5.3.
  */
@@ -250,9 +251,9 @@ DecryptWith : {D, a, m, tag_len_bits}
     a < 2^^61, m < 2^^61) =>
     (AegisState D -> [64] -> [64] -> [tag_len_bits]) ->
     Bytes m -> [tag_len_bits] -> Bytes a -> Key -> Nonce ->
-    (Bit, Bytes m)
+    Result (Bytes m) AuthError
 DecryptWith finish ct tag ad key nonce =
-    (valid, if valid then msg else zero)
+    if valid then Ok msg else Err verificationFailed
     where
         initial = Init`{D} key nonce
         ad_blocks = paddedBlocks`{D} ad
@@ -296,28 +297,28 @@ EncryptTag256 = EncryptWith`{D} Finalize256
 
 /**
  * Authenticated decryption with a 128-bit tag.
- * Return the validity flag and plaintext; on failure, return zeroed
- * plaintext.
+ * Return Ok plaintext on success or Err "verification failed" on
+ * authentication failure.
  * [RFC10032] Section 5.3.
  */
 DecryptTag128 : {D, a, m}
     (fin D, fin a, fin m, 1 <= D, D <= 256,
     a < 2^^61, m < 2^^61) =>
     Bytes m -> [128] -> Bytes a -> Key -> Nonce ->
-    (Bit, Bytes m)
+    Result (Bytes m) AuthError
 DecryptTag128 = DecryptWith`{D} Finalize128
 
 /**
  * Authenticated decryption with a 256-bit tag.
- * Return the validity flag and plaintext; on failure, return zeroed
- * plaintext.
+ * Return Ok plaintext on success or Err "verification failed" on
+ * authentication failure.
  * [RFC10032] Section 5.3.
  */
 DecryptTag256 : {D, a, m}
     (fin D, fin a, fin m, 1 <= D, D <= 256,
     a < 2^^61, m < 2^^61) =>
     Bytes m -> [256] -> Bytes a -> Key -> Nonce ->
-    (Bit, Bytes m)
+    Result (Bytes m) AuthError
 DecryptTag256 = DecryptWith`{D} Finalize256
 
 property UpdateMatchesBaseProp V m =

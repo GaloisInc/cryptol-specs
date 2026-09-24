@@ -43,8 +43,8 @@ Each AEAD module provides these operations:
 EncryptTag128 msg ad key nonce -> (ciphertext, tag)
 EncryptTag256 msg ad key nonce -> (ciphertext, tag)
 
-DecryptTag128 ciphertext tag ad key nonce -> (valid, plaintext)
-DecryptTag256 ciphertext tag ad key nonce -> (valid, plaintext)
+DecryptTag128 ciphertext tag ad key nonce -> Ok plaintext or Err "verification failed"
+DecryptTag256 ciphertext tag ad key nonce -> Ok plaintext or Err "verification failed"
 ```
 
 The suffix selects the tag size in bits. The module determines the key
@@ -55,8 +55,12 @@ Messages, ciphertexts, and associated data use `Bytes n`, which means
 message. Message and associated-data lengths must each be less than
 `2^^61` bytes.
 
-Successful decryption returns `(True, plaintext)`. Authentication failure
-returns `(False, zero)`, with a zero-filled plaintext of the expected length.
+Decryption returns `Result (Bytes m) AuthError`, where `m` is the ciphertext
+length in bytes. Successful decryption returns `Ok plaintext`. Authentication
+failure returns `Err "verification failed"`, with no plaintext value, using
+the error wording from RFC Sections 3.2, 4.2, and 5.3. `Common.cry` defines
+`AuthError` as `String 19` and the shared `verificationFailed` error text.
+For an empty message, successful decryption returns `Ok []`.
 
 Select the parallel degree explicitly:
 
@@ -81,10 +85,11 @@ let nonce = 0x101112131415161718191a1b1c1d1e1f : [128]
 let msg = [0 .. 34] : Bytes 35
 let ad = [] : Bytes 0
 let sealed = EncryptTag128`{2} msg ad key nonce
-DecryptTag128`{2} sealed.0 sealed.1 ad key nonce == (True, msg)
+DecryptTag128`{2} sealed.0 sealed.1 ad key nonce == Ok msg
+DecryptTag128`{2} sealed.0 (sealed.1 ^ 1) ad key nonce == Err "verification failed"
 ```
 
-The final expression returns `True`.
+The final two expressions each return `True`.
 
 These fixed inputs are for demonstration. Encryption callers must ensure
 nonce uniqueness for each key.

@@ -16,7 +16,7 @@
 module Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS128L where
 
 import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::Common
-    (Block, Bytes, AESRound, C0, C1, LE64)
+    (Block, Bytes, AuthError, verificationFailed, AESRound, C0, C1, LE64)
 
 /**
  * The state consists of 8 128-bit AES blocks; `S @ i` represents `Si`.
@@ -199,17 +199,18 @@ EncryptWith finish msg ad key nonce = (ct, tag)
 
 /**
  * Decrypt and authenticate bytes using the supplied tag finalizer.
- * Return the validity flag and plaintext; on failure, return zeroed
- * plaintext.
+ * Return Ok plaintext on success or Err "verification failed" on
+ * authentication failure.
  * The type parameters `a` and `m` count bytes.
  * [RFC10032] Section 3.2.
  */
 DecryptWith : {a, m, tag_len_bits}
     (fin a, fin m, fin tag_len_bits, a < 2^^61, m < 2^^61) =>
     (AegisState -> [64] -> [64] -> [tag_len_bits]) ->
-    Bytes m -> [tag_len_bits] -> Bytes a -> Block -> Block -> (Bit, Bytes m)
+    Bytes m -> [tag_len_bits] -> Bytes a -> Block -> Block ->
+    Result (Bytes m) AuthError
 DecryptWith finish ct tag ad key nonce =
-    (valid, if valid then msg else zero)
+    if valid then Ok msg else Err verificationFailed
     where
         initial = Init key nonce
         ad_blocks = paddedBlocks ad
@@ -249,24 +250,24 @@ EncryptTag256 = EncryptWith Finalize256
 
 /**
  * Authenticated decryption with a 128-bit tag.
- * Return the validity flag and plaintext; on failure, return zeroed
- * plaintext.
+ * Return Ok plaintext on success or Err "verification failed" on
+ * authentication failure.
  * [RFC10032] Section 3.2.
  */
 DecryptTag128 : {a, m}
     (fin a, fin m, a < 2^^61, m < 2^^61) =>
-    Bytes m -> [128] -> Bytes a -> Block -> Block -> (Bit, Bytes m)
+    Bytes m -> [128] -> Bytes a -> Block -> Block -> Result (Bytes m) AuthError
 DecryptTag128 = DecryptWith Finalize128
 
 /**
  * Authenticated decryption with a 256-bit tag.
- * Return the validity flag and plaintext; on failure, return zeroed
- * plaintext.
+ * Return Ok plaintext on success or Err "verification failed" on
+ * authentication failure.
  * [RFC10032] Section 3.2.
  */
 DecryptTag256 : {a, m}
     (fin a, fin m, a < 2^^61, m < 2^^61) =>
-    Bytes m -> [256] -> Bytes a -> Block -> Block -> (Bit, Bytes m)
+    Bytes m -> [256] -> Bytes a -> Block -> Block -> Result (Bytes m) AuthError
 DecryptTag256 = DecryptWith Finalize256
 
 /**
@@ -412,10 +413,10 @@ property emptyPartialProp (S : AegisState) =
 property aeadExampleProp =
     (EncryptTag128 msg ad key nonce == (ct, tag128)) &&
     (EncryptTag256 msg ad key nonce == (ct, tag256)) &&
-    (DecryptTag128 ct tag128 ad key nonce == (True, msg)) &&
-    (DecryptTag256 ct tag256 ad key nonce == (True, msg)) &&
-    (DecryptTag128 ct (tag128 ^ 1) ad key nonce == (False, zero)) &&
-    (DecryptTag256 ct (tag256 ^ 1) ad key nonce == (False, zero))
+    (DecryptTag128 ct tag128 ad key nonce == Ok msg) &&
+    (DecryptTag256 ct tag256 ad key nonce == Ok msg) &&
+    (DecryptTag128 ct (tag128 ^ 1) ad key nonce == Err "verification failed") &&
+    (DecryptTag256 ct (tag256 ^ 1) ad key nonce == Err "verification failed")
     where
         key = 0x10010000000000000000000000000000
         nonce = 0x10000200000000000000000000000000

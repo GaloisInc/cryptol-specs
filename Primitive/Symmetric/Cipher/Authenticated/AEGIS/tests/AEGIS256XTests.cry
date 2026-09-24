@@ -43,10 +43,10 @@ checkVector : {d, a, m}
 checkVector ad msg v =
     (A::EncryptTag128`{d} msg ad k n == (v.ct, v.tag128)) &&
     (A::EncryptTag256`{d} msg ad k n == (v.ct, v.tag256)) &&
-    (A::DecryptTag128`{d} v.ct v.tag128 ad k n == (True, msg)) &&
-    (A::DecryptTag256`{d} v.ct v.tag256 ad k n == (True, msg)) &&
-    (A::DecryptTag128`{d} v.ct (v.tag128 ^ 1) ad k n == (False, zero)) &&
-    (A::DecryptTag256`{d} v.ct (v.tag256 ^ 1) ad k n == (False, zero))
+    (A::DecryptTag128`{d} v.ct v.tag128 ad k n == Ok msg) &&
+    (A::DecryptTag256`{d} v.ct v.tag256 ad k n == Ok msg) &&
+    (A::DecryptTag128`{d} v.ct (v.tag128 ^ 1) ad k n == Err "verification failed") &&
+    (A::DecryptTag256`{d} v.ct (v.tag256 ^ 1) ad k n == Err "verification failed")
     where
         k = testKey
         n = testNonce
@@ -148,8 +148,8 @@ checkTampering v = and
         ad = exampleAD
 
         rejected key nonce ad' ct' =
-            (A::DecryptTag128`{d} ct' v.tag128 ad' key nonce == (False, zero)) &&
-            (A::DecryptTag256`{d} ct' v.tag256 ad' key nonce == (False, zero))
+            (A::DecryptTag128`{d} ct' v.tag128 ad' key nonce == Err "verification failed") &&
+            (A::DecryptTag256`{d} ct' v.tag256 ad' key nonce == Err "verification failed")
 
 /**
  * Round-trip fixed byte patterns at selected AD/message lengths.
@@ -159,8 +159,8 @@ checkBoundary : {d, a, m}
     a < 2^^61, m < 2^^61) => Bit
 checkBoundary =
     (ct128 == ct256) &&
-    (A::DecryptTag128`{d} ct128 tag128 ad k n == (True, msg)) &&
-    (A::DecryptTag256`{d} ct256 tag256 ad k n == (True, msg))
+    (A::DecryptTag128`{d} ct128 tag128 ad k n == Ok msg) &&
+    (A::DecryptTag256`{d} ct256 tag256 ad k n == Ok msg)
     where
         ad = repeat 0x17 : Bytes a
         msg = repeat 0xa5 : Bytes m

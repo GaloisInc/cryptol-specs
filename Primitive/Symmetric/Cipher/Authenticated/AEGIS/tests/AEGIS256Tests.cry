@@ -44,10 +44,10 @@ checkVector : {a, m}
 checkVector ad msg ct tag128 tag256 =
     (A::EncryptTag128 msg ad k n == (ct, tag128)) &&
     (A::EncryptTag256 msg ad k n == (ct, tag256)) &&
-    (A::DecryptTag128 ct tag128 ad k n == (True, msg)) &&
-    (A::DecryptTag256 ct tag256 ad k n == (True, msg)) &&
-    (A::DecryptTag128 ct (tag128 ^ 1) ad k n == (False, zero)) &&
-    (A::DecryptTag256 ct (tag256 ^ 1) ad k n == (False, zero))
+    (A::DecryptTag128 ct tag128 ad k n == Ok msg) &&
+    (A::DecryptTag256 ct tag256 ad k n == Ok msg) &&
+    (A::DecryptTag128 ct (tag128 ^ 1) ad k n == Err "verification failed") &&
+    (A::DecryptTag256 ct (tag256 ^ 1) ad k n == Err "verification failed")
     where
         k = testKey
         n = testNonce
@@ -74,15 +74,15 @@ vector4 =
     }
 
 /**
- * Require rejection and zeroed output for both tag sizes.
+ * Require Err "verification failed" for both tag sizes.
  */
 checkRejected : {a, m}
     (fin a, fin m, a < 2^^61, m < 2^^61) =>
     A::Key -> A::Nonce -> Bytes a -> Bytes m ->
     [128] -> [256] -> Bit
 checkRejected k n ad ct tag128 tag256 =
-    (A::DecryptTag128 ct tag128 ad k n == (False, zero)) &&
-    (A::DecryptTag256 ct tag256 ad k n == (False, zero))
+    (A::DecryptTag128 ct tag128 ad k n == Err "verification failed") &&
+    (A::DecryptTag256 ct tag256 ad k n == Err "verification failed")
 
 /**
  * Results for [RFC10032] vectors 1 through 9, in that order.

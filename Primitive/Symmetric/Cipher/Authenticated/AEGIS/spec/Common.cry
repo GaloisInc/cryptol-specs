@@ -30,6 +30,19 @@ type Block = [128]
 type Bytes n = [n][8]
 
 /**
+ * Authentication error text returned by AEGIS decryption.
+ * [RFC10032] Sections 3.2, 4.2, and 5.3.
+ */
+type AuthError = String 19
+
+/**
+ * The authentication failure error from the RFC.
+ * [RFC10032] Sections 3.2, 4.2, and 5.3.
+ */
+verificationFailed : AuthError
+verificationFailed = "verification failed"
+
+/**
  * A single AES encryption round, with input `in` first and round key `rk`
  * second. Adapt the repository AES state representation to 128-bit blocks.
  * [RFC10032] Section 2.
