@@ -14,25 +14,25 @@
  *     @see https://www.rfc-editor.org/rfc/rfc10032
  */
 
-module Primitive::Symmetric::Cipher::Authenticated::AEGIS::tests::AllTests where
+module Primitive::Symmetric::Cipher::Authenticated::AEGIS::Tests::AllTests where
 
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS128L as L
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS256 as A
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS128X as LX
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS256X as AX
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS128L as L
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS256 as A
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS128X as LX
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS256X as AX
 
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::tests::AEGIS128LTests as LT
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::tests::AEGIS256Tests as AT
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::tests::AEGIS128XTests as LXT
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::tests::AEGIS256XTests as AXT
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::tests::IntermediateTests as I
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Tests::AEGIS128LTests as LT
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Tests::AEGIS256Tests as AT
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Tests::AEGIS128XTests as LXT
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Tests::AEGIS256XTests as AXT
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Tests::IntermediateTests as I
 
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGISMAC128L as ML
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGISMAC256 as MA
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGISMAC128X as MLX
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGISMAC256X as MAX
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::Stream as S
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::Encoding as E
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGISMAC128L as ML
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGISMAC256 as MA
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGISMAC128X as MLX
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGISMAC256X as MAX
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::Stream as S
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::Encoding as E
 
 /**
  * Concrete examples stored alongside the core specifications.

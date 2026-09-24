@@ -6,5 +6,5 @@
 // Check the concrete AEAD, MAC, stream, encoding, and intermediate-state tests.
 // Run from the repository root.
 
-:load Primitive/Symmetric/Cipher/Authenticated/AEGIS/tests/AllTests.cry
+:load Primitive/Symmetric/Cipher/Authenticated/AEGIS/Tests/AllTests.cry
 :check allTestsProp

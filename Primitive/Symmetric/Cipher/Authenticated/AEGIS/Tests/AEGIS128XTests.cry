@@ -1,10 +1,10 @@
 /**
- * Test vectors and regression checks for AEGIS-256X.
+ * Test vectors and regression checks for AEGIS-128X.
  *
  * @copyright Galois Inc.
  * @author Craig Troop <ctroop@galois.com>
  *
- * [RFC10032] Appendices A.6 and A.7, with additional tampering and
+ * [RFC10032] Appendices A.4 and A.5, with additional tampering and
  * block-boundary checks at degrees two and four.
  *
  * References
@@ -13,22 +13,16 @@
  *     @see https://www.rfc-editor.org/rfc/rfc10032
  */
 
-module Primitive::Symmetric::Cipher::Authenticated::AEGIS::tests::AEGIS256XTests where
+module Primitive::Symmetric::Cipher::Authenticated::AEGIS::Tests::AEGIS128XTests where
 
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS256X as A
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::Common (Bytes)
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS128X as A
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::Common (Block, Bytes)
 
-testKey : A::Key
-testKey = join
-    [ 0x000102030405060708090a0b0c0d0e0f
-    , 0x101112131415161718191a1b1c1d1e1f
-    ]
+testKey : Block
+testKey = 0x000102030405060708090a0b0c0d0e0f
 
-testNonce : A::Nonce
-testNonce = join
-    [ 0x101112131415161718191a1b1c1d1e1f
-    , 0x202122232425262728292a2b2c2d2e2f
-    ]
+testNonce : Block
+testNonce = 0x101112131415161718191a1b1c1d1e1f
 
 type Expected m =
     { ct : Bytes m, tag128 : [128], tag256 : [256] }
@@ -52,28 +46,28 @@ checkVector ad msg v =
         n = testNonce
 
 /**
- * [RFC10032] Appendix A.6.2: empty AEGIS-256X2 message.
+ * [RFC10032] Appendix A.4.2: empty AEGIS-128X2 message.
  */
 emptyX2 : Expected 0
 emptyX2 =
     { ct = []
-    , tag128 = 0x62cdbab084c83dacdb945bb446f049c8
+    , tag128 = 0x63117dc57756e402819a82e13eca8379
     , tag256 = join
-        [ 0x25d7e799b49a80354c3f881ac2f1027f
-        , 0x471a5d293052bd9997abd3ae84014bb7
+        [ 0xb92c71fdbd358b8a4de70b27631ace90
+        , 0xcffd9b9cfba82028412bac41b4f53759
         ]
     }
 
 /**
- * [RFC10032] Appendix A.7.2: empty AEGIS-256X4 message.
+ * [RFC10032] Appendix A.5.2: empty AEGIS-128X4 message.
  */
 emptyX4 : Expected 0
 emptyX4 =
     { ct = []
-    , tag128 = 0x3b7fee6cee7bf17888ad11ed2397beb4
+    , tag128 = 0x5bef762d0947c00455b97bb3af30dfa3
     , tag256 = join
-        [ 0x6093a1a8aab20ec635dc1ca71745b01b
-        , 0x5bec4fc444c9ffbebd710d4a34d20eaf
+        [ 0xa4b25437f4be93cfa856a2f27e4416b4
+        , 0x2cac79fd4698f2cdbe6af25673e10a68
         ]
     }
 
@@ -84,52 +78,52 @@ exampleMsg : Bytes 120
 exampleMsg = split (join (repeat (0x04050607 : [32]) : [30][32]))
 
 /**
- * [RFC10032] Appendix A.6.3: nonempty AEGIS-256X2 message.
+ * [RFC10032] Appendix A.4.3: nonempty AEGIS-128X2 message.
  */
 messageX2 : Expected 120
 messageX2 =
     { ct = split (prefix # suffix)
-    , tag128 = 0x635d391828520bf1512763f0c8f5cdbd
+    , tag128 = 0x1aebc200804f405cab637f2adebb6d77
     , tag256 = join
-        [ 0xb5668d3317159e9cc5d46e4803c3a76a
-        , 0xd63bb42b3f47956d94f30db8cb366ad7
+        [ 0xc471876f9b4978c44f2ae1ce770cdb11
+        , 0xa094ee3feca64e7afcd48bfe52c60eca
         ]
     }
     where
         prefix = join
-            [ 0x72120c2ea8236180d67859001f472907
-            , 0x7b7064c414384fe3a7b52f1571f4f8a7
-            , 0xd0f01e18db4f3bc0adb150702e5d147a
-            , 0x8d36522132761b994c1bd395589e2ccf
-            , 0x0790dfe2a3d12d61cd666b2859827739
-            , 0xdb4037dd3124c78424459376f6cac08e
-            , 0x1a7223a2a43e398ce6385cd654a19f48
+            [ 0x5795544301997f93621b278809d6331b
+            , 0x3bfa6f18e90db12c4aa35965b5e98c5f
+            , 0xc6fb4e54bcb6111842c20637252eff74
+            , 0x7cb3a8f85b37de80919a589fe0f24872
+            , 0xbc926360696739e05520647e390989e1
+            , 0xeb5fd42f99678a0276a498f8c454761c
+            , 0x9d6aacb647ad56be62b29c22cd4b5761
             ] : [896]
-        suffix = 0x1cba3b8f25910b42 : [64]
+        suffix = 0xb38f43d5a5ee062f : [64]
 
 /**
- * [RFC10032] Appendix A.7.3: nonempty AEGIS-256X4 message.
+ * [RFC10032] Appendix A.5.3: nonempty AEGIS-128X4 message.
  */
 messageX4 : Expected 120
 messageX4 =
     { ct = split (prefix # suffix)
-    , tag128 = 0xb63b611b13975e2f3dc3cb6c2397bfcd
+    , tag128 = 0x0e56ab94e2e85db80f9d54010caabfb4
     , tag256 = join
-        [ 0x7847eace74409ee56c8f4cf63a9c2841
-        , 0xce7c8bd567d7c0ca514c879a190b978c
+        [ 0x69abf0f64a137dd6e122478d777e98bc
+        , 0x422823006cf57f5ee822dd78397230b2
         ]
     }
     where
         prefix = join
-            [ 0xbfc2085b7e8017da99b0b6d646ae4d01
-            , 0xf4ba8f2e7dfca1d759ae48a135139b9a
-            , 0xaac6b4f5db810d426be1fdaff4e14541
-            , 0x53a34b11da78ed7e418ee2ee9853042e
-            , 0x95536aecbb694cea1b16a478eb0d4d1b
-            , 0xf6509b1ce652a45af58e0e46ffccfa2d
-            , 0x0426e702391d2ff5813808b81748a490
+            [ 0xe836118562f4479c9d35c17356a83311
+            , 0x4c21f9aa39e4dda5e5c87f4152a00fce
+            , 0x9a7c38f832eafe8b1c12f8a7cf12a81a
+            , 0x1ad8a9c24ba9dedfbdaa586ffea67ddc
+            , 0x801ea97d9ab4a872f42d0e352e2713da
+            , 0xcd609f9442c17517c5a29daf3e2a3fac
+            , 0x4ff6b1380c4e46df7b086af6ce6bc1ed
             ] : [896]
-        suffix = 0xdd656465fed61f09 : [64]
+        suffix = 0x594b8dd64aed2a7e : [64]
 
 /**
  * Additional rejection tests using the nonempty [RFC10032] vectors.
@@ -176,14 +170,14 @@ checkBoundary =
 boundaryResults : {d} (fin d, 1 <= d, d <= 256) => [9]Bit
 boundaryResults =
     [ checkBoundary`{d, 0, 0}
-    , checkBoundary`{d, 0, 16 * d}
-    , checkBoundary`{d, 16 * d, 0}
+    , checkBoundary`{d, 0, 32 * d}
+    , checkBoundary`{d, 32 * d, 0}
     , checkBoundary`{d, 1, 1}
-    , checkBoundary`{d, 16 * d - 1, 16 * d - 1}
-    , checkBoundary`{d, 16 * d, 16 * d}
-    , checkBoundary`{d, 16 * d + 1, 16 * d + 1}
+    , checkBoundary`{d, 32 * d - 1, 32 * d - 1}
     , checkBoundary`{d, 32 * d, 32 * d}
     , checkBoundary`{d, 32 * d + 1, 32 * d + 1}
+    , checkBoundary`{d, 64 * d, 64 * d}
+    , checkBoundary`{d, 64 * d + 1, 64 * d + 1}
     ]
 
 /**

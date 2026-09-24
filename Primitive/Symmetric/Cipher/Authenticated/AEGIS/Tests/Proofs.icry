@@ -6,7 +6,7 @@
 // Prove selected block-operation, MAC-finalization, and encoding properties.
 // Run from the repository root. Requires Z3 for the `w4-z3` prover.
 
-:load Primitive/Symmetric/Cipher/Authenticated/AEGIS/tests/AllTests.cry
+:load Primitive/Symmetric/Cipher/Authenticated/AEGIS/Tests/AllTests.cry
 :set prover=w4-z3
 
 // Base algorithms: arbitrary states and complete input blocks.

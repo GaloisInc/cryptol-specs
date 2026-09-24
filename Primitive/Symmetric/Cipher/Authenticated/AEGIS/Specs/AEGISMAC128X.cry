@@ -1,11 +1,11 @@
 /**
- * Cryptol AEGISMAC-256X implementation.
+ * Cryptol AEGISMAC-128X implementation.
  *
  * @copyright Galois Inc.
  * @author Craig Troop <ctroop@galois.com>
  *
  * Parallel MAC computation with degree `D`.
- * [RFC10032] Sections 8 and 8.4.
+ * [RFC10032] Sections 8 and 8.3.
  *
  * References
  * [RFC10032]: F. Denis and S. Lucas, The AEGIS Authenticated Encryption
@@ -13,31 +13,31 @@
  *     @see https://www.rfc-editor.org/rfc/rfc10032
  */
 
-module Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGISMAC256X where
+module Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGISMAC128X where
 
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::Common (Block, Bytes)
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS256X as X
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS256 as Base
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::Common (Block, Bytes)
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS128X as X
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS128L as Base
 
 /**
  * Extract a 128-bit tag from a finalized lane without further updates.
- * [RFC10032] Section 8.4.2.
+ * [RFC10032] Section 8.3.2.
  */
 stateTag128 : Base::AegisState -> [128]
-stateTag128 S = foldl (^) zero S
+stateTag128 S = foldl (^) zero (take`{7} S)
 
 /**
  * Extract a 256-bit tag from a finalized lane without further updates.
- * [RFC10032] Section 8.4.2.
+ * [RFC10032] Section 8.3.2.
  */
 stateTag256 : Base::AegisState -> [256]
 stateTag256 S =
-    foldl (^) zero (take`{3} S) # foldl (^) zero (drop`{3} S)
+    foldl (^) zero (take`{4} S) # foldl (^) zero (drop`{4} S)
 
 /**
  * Perform the first seven finalization updates in each lane.
  * Both `data_len_bits` and `tag_len_bits` count bits.
- * [RFC10032] Section 8.4.2.
+ * [RFC10032] Section 8.3.2.
  */
 FinalizeLanes : {D} (fin D) =>
     X::AegisState D -> [64] -> [64] -> [D]Base::AegisState
@@ -50,7 +50,7 @@ FinalizeLanes V data_len_bits tag_len_bits =
  * Produce a 128-bit MAC tag by finalizing the lanes and, for `D > 1`,
  * combining their tags into lane zero and finalizing that lane again.
  * The input `data_len_bits` counts bits.
- * [RFC10032] Section 8.4.2.
+ * [RFC10032] Section 8.3.2.
  */
 FinalizeMac128 : {D} (fin D, 1 <= D, D <= 256) =>
     X::AegisState D -> [64] -> [128]
@@ -61,14 +61,19 @@ FinalizeMac128 V data_len_bits =
     where
         states = FinalizeLanes V data_len_bits 128
         first = states @ 0
-        tags = [stateTag128 S | S <- drop`{1} states]
-        merged = foldl Base::Absorb first tags
+        tags = [stateTag128 S | S <- states]
+
+        // [RFC10032] Section 2: `Split` keeps only complete 256-bit blocks.
+        blocks : [D / 2][256]
+        blocks = split (take`{256 * (D / 2)} (join tags))
+
+        merged = foldl Base::Absorb first blocks
 
 /**
  * Produce a 256-bit MAC tag by finalizing the lanes and, for `D > 1`,
  * combining their tags into lane zero and finalizing that lane again.
  * The input `data_len_bits` counts bits.
- * [RFC10032] Section 8.4.2.
+ * [RFC10032] Section 8.3.2.
  */
 FinalizeMac256 : {D} (fin D, 1 <= D, D <= 256) =>
     X::AegisState D -> [64] -> [256]
@@ -80,19 +85,15 @@ FinalizeMac256 V data_len_bits =
         states = FinalizeLanes V data_len_bits 256
         first = states @ 0
         tags = [stateTag256 S | S <- drop`{1} states]
-
-        blocks : [2 * (D - 1)]Block
-        blocks = split (join tags)
-
-        merged = foldl Base::Absorb first blocks
+        merged = foldl Base::Absorb first tags
 
 /**
  * Initialize the state and absorb the zero-padded input data.
- * [RFC10032] Section 8.4.1.
+ * [RFC10032] Section 8.3.1.
  */
 MacState : {D, n}
     (fin D, fin n, 1 <= D, D <= 256, n < 2^^61) =>
-    Bytes n -> X::Key -> X::Nonce -> X::AegisState D
+    Bytes n -> Block -> Block -> X::AegisState D
 MacState data key nonce =
     foldl X::Absorb (X::Init`{D} key nonce) data_blocks
     where
@@ -102,11 +103,11 @@ MacState data key nonce =
  * Authenticate `data` with a 128-bit tag.
  * The type parameter `n` counts input bytes. This specializes the RFC `Mac`
  * function to this tag size.
- * [RFC10032] Sections 8 and 8.4.1.
+ * [RFC10032] Sections 8 and 8.3.1.
  */
 MacTag128 : {D, n}
     (fin D, fin n, 1 <= D, D <= 256, n < 2^^61) =>
-    Bytes n -> X::Key -> X::Nonce -> [128]
+    Bytes n -> Block -> Block -> [128]
 MacTag128 data key nonce =
     FinalizeMac128 (MacState`{D} data key nonce) (`(8 * n))
 
@@ -114,16 +115,16 @@ MacTag128 data key nonce =
  * Authenticate `data` with a 256-bit tag.
  * The type parameter `n` counts input bytes. This specializes the RFC `Mac`
  * function to this tag size.
- * [RFC10032] Sections 8 and 8.4.1.
+ * [RFC10032] Sections 8 and 8.3.1.
  */
 MacTag256 : {D, n}
     (fin D, fin n, 1 <= D, D <= 256, n < 2^^61) =>
-    Bytes n -> X::Key -> X::Nonce -> [256]
+    Bytes n -> Block -> Block -> [256]
 MacTag256 data key nonce =
     FinalizeMac256 (MacState`{D} data key nonce) (`(8 * n))
 
 /**
- * [RFC10032] Appendices A.8.5 and A.8.6, both tag sizes.
+ * [RFC10032] Appendices A.8.2 and A.8.3, both tag sizes.
  */
 rfcResults : [4]Bit
 rfcResults =
@@ -134,27 +135,19 @@ rfcResults =
     ]
     where
         data = [0 .. 34] : Bytes 35
+        key = 0x10010000000000000000000000000000 : Block
+        nonce = 0x10000200000000000000000000000000 : Block
 
-        key = join
-            [ 0x10010000000000000000000000000000
-            , 0x00000000000000000000000000000000
-            ] : X::Key
-
-        nonce = join
-            [ 0x10000200000000000000000000000000
-            , 0x00000000000000000000000000000000
-            ] : X::Nonce
-
-        tag128X2 = 0xfb319cb6dd728a764606fb14d37f2a5e
+        tag128X2 = 0x6873ee34e6b5c59143b6d35c5e4f2c6e
         tag256X2 = join
-            [ 0x0844b20ed5147ceae89c7a160263afd4
-            , 0xb1382d6b154ecf560ce8a342cb6a8fd1
+            [ 0xafcba3fc2d63c8d6c7f2d63f3ec8fbbb
+            , 0xaf022e15ac120e78ffa7755abccd959c
             ] : [256]
 
-        tag128X4 = 0xa51f9bc5beae60cce77f0dbc60761edd
+        tag128X4 = 0xc45a98fd9ab8956ce616eb008cfe4e53
         tag256X4 = join
-            [ 0xb36a16ef07c36d75a91f437502f24f54
-            , 0x5b8dfa88648ed116943c29fead3bf10c
+            [ 0x26fdc76f41b1da7aec7779f6e964beae
+            , 0x8904e662f05aca8345ae3befb357412a
             ] : [256]
 
 /**
@@ -168,7 +161,7 @@ property allRFCVectorsProp = and rfcResults
 
 /**
  * Degree-one MAC finalization agrees with the base algorithm.
- * [RFC10032] Section 8.4.2.
+ * [RFC10032] Section 8.3.2.
  *
  * ```repl
  * :prove degreeOneFinalizeProp

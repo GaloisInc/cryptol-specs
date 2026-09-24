@@ -13,9 +13,9 @@
  *     @see https://www.rfc-editor.org/rfc/rfc10032
  */
 
-module Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS128L where
+module Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS128L where
 
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::Common
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::Common
     (Block, Bytes, AuthError, verificationFailed, AESRound, C0, C1, LE64)
 
 /**

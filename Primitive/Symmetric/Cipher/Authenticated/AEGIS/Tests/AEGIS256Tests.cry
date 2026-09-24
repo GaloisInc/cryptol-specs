@@ -1,10 +1,10 @@
 /**
- * Test vectors for AEGIS-128L.
+ * Test vectors for AEGIS-256.
  *
  * @copyright Galois Inc.
  * @author Craig Troop <ctroop@galois.com>
  *
- * [RFC10032] Appendix A.2, with additional modified-tag checks.
+ * [RFC10032] Appendix A.3, with additional modified-tag checks.
  *
  * References
  * [RFC10032]: F. Denis and S. Lucas, The AEGIS Authenticated Encryption
@@ -12,22 +12,28 @@
  *     @see https://www.rfc-editor.org/rfc/rfc10032
  */
 
-module Primitive::Symmetric::Cipher::Authenticated::AEGIS::tests::AEGIS128LTests where
+module Primitive::Symmetric::Cipher::Authenticated::AEGIS::Tests::AEGIS256Tests where
 
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::AEGIS128L as A
-import Primitive::Symmetric::Cipher::Authenticated::AEGIS::spec::Common (Block, Bytes)
-
-/**
- * Default key for the [RFC10032] AEGIS-128L positive test vectors.
- */
-testKey : Block
-testKey = 0x10010000000000000000000000000000
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS256 as A
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::Common (Bytes)
 
 /**
- * Default nonce for the [RFC10032] AEGIS-128L positive test vectors.
+ * Default key for the [RFC10032] AEGIS-256 positive test vectors.
  */
-testNonce : Block
-testNonce = 0x10000200000000000000000000000000
+testKey : A::Key
+testKey = join
+    [ 0x10010000000000000000000000000000
+    , 0x00000000000000000000000000000000
+    ]
+
+/**
+ * Default nonce for the [RFC10032] AEGIS-256 positive test vectors.
+ */
+testNonce : A::Nonce
+testNonce = join
+    [ 0x10000200000000000000000000000000
+    , 0x00000000000000000000000000000000
+    ]
 
 /**
  * Check both tag sizes and rejection of one-bit tag changes.
@@ -47,7 +53,7 @@ checkVector ad msg ct tag128 tag256 =
         n = testNonce
 
 /**
- * [RFC10032] Appendix A.2.5 data, also used by rejection tests.
+ * [RFC10032] Appendix A.3.5 data, also used by rejection tests.
  */
 vector4 :
     { ad : Bytes 8
@@ -59,11 +65,11 @@ vector4 :
 vector4 =
     { ad = [0 .. 7]
     , msg = [0 .. 13]
-    , ct = split (0x79d94593d8c2119d7e8fd9b8fc77 : [112])
-    , tag128 = 0x5c04b3dba849b2701effbe32c7f0fab7
+    , ct = split (0xf373079ed84b2709faee37358458 : [112])
+    , tag128 = 0xc60b9c2d33ceb058f96e6dd03c215652
     , tag256 = join
-        [ 0x86f1b80bfb463aba711d15405d094baf
-        , 0x4a55a15dbfec81a76f35ed0b9c8b04ac
+        [ 0x8c1cc703c81281bee3f6d9966e14948b
+        , 0x4a175b2efbdc31e61a98b4465235c2d9
         ]
     }
 
@@ -72,7 +78,7 @@ vector4 =
  */
 checkRejected : {a, m}
     (fin a, fin m, a < 2^^61, m < 2^^61) =>
-    Block -> Block -> Bytes a -> Bytes m ->
+    A::Key -> A::Nonce -> Bytes a -> Bytes m ->
     [128] -> [256] -> Bit
 checkRejected k n ad ct tag128 tag256 =
     (A::DecryptTag128 ct tag128 ad k n == Err "verification failed") &&
@@ -89,7 +95,7 @@ rfcResults =
     ]
 
 /**
- * [RFC10032] Appendix A.2.2: one complete plaintext block.
+ * [RFC10032] Appendix A.3.2: one complete plaintext block.
  *
  * ```repl
  * :check rfcVector1Prop
@@ -100,16 +106,16 @@ property rfcVector1Prop = checkVector ad msg ct tag128 tag256
         ad = [] : Bytes 0
         msg = zero : Bytes 16
 
-        ct = split (0xc1c0e58bd913006feba00f4b3cc3594e : [128])
+        ct = split (0x754fc3d8c973246dcc6d741412a4b236 : [128])
 
-        tag128 = 0xabe0ece80c24868a226a35d16bdae37a
+        tag128 = 0x3fe91994768b332ed7f570a19ec5896e
         tag256 = join
-            [ 0x25835bfbb21632176cf03840687cb968
-            , 0xcace4617af1bd0f7d064c639a5c79ee4
+            [ 0x1181a1d18091082bf0266f66297d167d
+            , 0x2e68b845f61a3b0527d31fc7b7b89f13
             ] : [256]
 
 /**
- * [RFC10032] Appendix A.2.3: empty plaintext and associated data.
+ * [RFC10032] Appendix A.3.3: empty plaintext and associated data.
  *
  * ```repl
  * :check rfcVector2Prop
@@ -121,14 +127,14 @@ property rfcVector2Prop = checkVector ad msg ct tag128 tag256
         msg = [] : Bytes 0
         ct = [] : Bytes 0
 
-        tag128 = 0xc2b879a67def9d74e6c14f708bbcc9b4
+        tag128 = 0xe3def978a0f054afd1e761d7553afba3
         tag256 = join
-            [ 0x1360dc9db8ae42455f6e5b6a9d488ea4
-            , 0xf2184c4e12120249335c4ee84bafe25d
+            [ 0x6a348c930adbd654896e1666aad67de9
+            , 0x89ea75ebaa2b82fb588977b1ffec864a
             ] : [256]
 
 /**
- * [RFC10032] Appendix A.2.4: two complete plaintext blocks.
+ * [RFC10032] Appendix A.3.4: two complete plaintext blocks.
  *
  * ```repl
  * :check rfcVector3Prop
@@ -139,18 +145,18 @@ property rfcVector3Prop = checkVector ad msg ct tag128 tag256
         ad = [0 .. 7] : Bytes 8
         msg = [0 .. 31] : Bytes 32
 
-        c0 = 0x79d94593d8c2119d7e8fd9b8fc77845c : [128]
-        c1 = 0x5c077a05b2528b6ac54b563aed8efe84 : [128]
+        c0 = 0xf373079ed84b2709faee373584585d60 : [128]
+        c1 = 0xaccd191db310ef5d8b11833df9dec711 : [128]
         ct = split (c0 # c1)
 
-        tag128 = 0xcc6f3372f6aa1bb82388d695c3962d9a
+        tag128 = 0x8d86f91ee606e9ff26a01b64ccbdd91d
         tag256 = join
-            [ 0x022cb796fe7e0ae1197525ff67e30948
-            , 0x4cfbab6528ddef89f17d74ef8ecd82b3
+            [ 0xb7d28d0c3c0ebd409fd22b4416050307
+            , 0x3a547412da0854bfb9723020dab8da1a
             ] : [256]
 
 /**
- * [RFC10032] Appendix A.2.5: a partial plaintext block.
+ * [RFC10032] Appendix A.3.5: a partial plaintext block.
  *
  * ```repl
  * :check rfcVector4Prop
@@ -162,7 +168,7 @@ property rfcVector4Prop =
         v = vector4
 
 /**
- * [RFC10032] Appendix A.2.6: multiple blocks and partial tails.
+ * [RFC10032] Appendix A.3.6: multiple blocks and partial tails.
  *
  * ```repl
  * :check rfcVector5Prop
@@ -173,19 +179,19 @@ property rfcVector5Prop = checkVector ad msg ct tag128 tag256
         ad = [0 .. 41] : Bytes 42
         msg = [16 .. 55] : Bytes 40
 
-        c0 = 0xb31052ad1cca4e291abcf2df3502e6bd : [128]
-        c1 = 0xb1bfd6db36798be3607b1f94d34478aa : [128]
-        c2 = 0x7ede7f7a990fec10 : [64]
+        c0 = 0x57754a7d09963e7c787583a2e7b859bb : [128]
+        c1 = 0x24fa1e04d49fd550b2511a358e3bca25 : [128]
+        c2 = 0x2a9b1b8b30cc4a67 : [64]
         ct = split (c0 # c1 # c2)
 
-        tag128 = 0x7542a745733014f9474417b337399507
+        tag128 = 0xab8a7d53fd0e98d727accca94925e128
         tag256 = join
-            [ 0xb91e2947a33da8bee89b6794e647baf0
-            , 0xfc835ff574aca3fc27c33be0db2aff98
+            [ 0xa3aca270c006094d71c20e6910b5161c
+            , 0x0826df233d08919a566ec2c05990f734
             ] : [256]
 
 /**
- * [RFC10032] Appendix A.2.7: key and nonce swapped.
+ * [RFC10032] Appendix A.3.7: key and nonce swapped.
  *
  * ```repl
  * :check rfcVector6Prop
@@ -197,7 +203,7 @@ property rfcVector6Prop =
         v = vector4
 
 /**
- * [RFC10032] Appendix A.2.8: modified ciphertext.
+ * [RFC10032] Appendix A.3.8: modified ciphertext.
  *
  * ```repl
  * :check rfcVector7Prop
@@ -207,10 +213,10 @@ property rfcVector7Prop =
     checkRejected testKey testNonce v.ad ct v.tag128 v.tag256
     where
         v = vector4
-        ct = split (0x79d94593d8c2119d7e8fd9b8fc78 : [112])
+        ct = split (join v.ct ^ 1)
 
 /**
- * [RFC10032] Appendix A.2.9: modified associated data.
+ * [RFC10032] Appendix A.3.9: modified associated data.
  *
  * ```repl
  * :check rfcVector8Prop
@@ -223,7 +229,7 @@ property rfcVector8Prop =
         ad = split (0x0001020304050608 : [64])
 
 /**
- * [RFC10032] Appendix A.2.10: modified authentication tags.
+ * [RFC10032] Appendix A.3.10: modified authentication tags.
  *
  * ```repl
  * :check rfcVector9Prop
@@ -233,11 +239,11 @@ property rfcVector9Prop =
     checkRejected testKey testNonce v.ad v.ct tag128 tag256
     where
         v = vector4
-        tag128 = 0x6c04b3dba849b2701effbe32c7f0fab8
-        tag256 = v.tag256 ^ 1
+        tag128 = v.tag128 ^ 1
+        tag256 = v.tag256 ^ 3
 
 /**
- * Require every [RFC10032] AEGIS-128L AEAD vector to pass.
+ * Require every [RFC10032] AEGIS-256 AEAD vector to pass.
  *
  * ```repl
  * :check allRFCVectorsProp
