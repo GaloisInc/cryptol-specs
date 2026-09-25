@@ -1,0 +1,240 @@
+/**
+ * Intermediate-state and MAC tag tests for parallel AEGIS variants.
+ *
+ * @copyright Galois Inc.
+ * @author Craig Troop <ctroop@galois.com>
+ *
+ * [RFC10032] Appendices A.5.1, A.7.1, and A.8.
+ *
+ * References
+ * [RFC10032]: F. Denis and S. Lucas, The AEGIS Authenticated Encryption
+ *     Algorithms. RFC 10032, September 2026.
+ *     @see https://www.rfc-editor.org/rfc/rfc10032
+ */
+
+module Primitive::Symmetric::Cipher::Authenticated::AEGIS::Tests::IntermediateTests where
+
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::Common (Block, Bytes)
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS128X as LX
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS256X as AX
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGISMAC128X as MLX
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGISMAC256X as MAX
+
+/**
+ * Inputs shared by the parallel MAC vectors.
+ */
+macInput : Bytes 35
+macInput = [0 .. 34]
+
+macKey : Block
+macKey = 0x10010000000000000000000000000000
+
+macNonce : Block
+macNonce = 0x10000200000000000000000000000000
+
+/**
+ * Compare the intermediate tag sequences for AEGISMAC-128X.
+ * [RFC10032] Section 8.3.2 and Appendices A.8.2 and A.8.3.
+ */
+checkMAC128X : {d} (fin d, 1 <= d, d <= 256) =>
+    [d]Block -> [d - 1][256] -> Bit
+checkMAC128X expected128 expected256 =
+    (tags128 == expected128) && (tags256 == expected256)
+    where
+        v = MLX::MacState`{d} macInput macKey macNonce
+        tags128 =
+            [ MLX::stateTag128 s
+            | s <- MLX::FinalizeLanes v 280 128
+            ]
+        tags256 =
+            [ MLX::stateTag256 s
+            | s <- drop`{1} (MLX::FinalizeLanes v 280 256)
+            ]
+
+/**
+ * Compare the intermediate tag sequences for AEGISMAC-256X.
+ * [RFC10032] Section 8.4.2 and Appendices A.8.5 and A.8.6.
+ */
+checkMAC256X : {d} (fin d, 1 <= d, d <= 256) =>
+    [d - 1]Block -> [d - 1][256] -> Bit
+checkMAC256X expected128 expected256 =
+    (tags128 == expected128) && (tags256 == expected256)
+    where
+        v = MAX::MacState`{d} macInput (macKey # zero) (macNonce # zero)
+        tags128 =
+            [ MAX::stateTag128 s
+            | s <- drop`{1} (MAX::FinalizeLanes v 280 128)
+            ]
+        tags256 =
+            [ MAX::stateTag256 s
+            | s <- drop`{1} (MAX::FinalizeLanes v 280 256)
+            ]
+
+/**
+ * Check the complete initial state for AEGIS-128X4.
+ * [RFC10032] Appendix A.5.1.
+ *
+ * ```repl
+ * :check initialize128X4Prop
+ * ```
+ */
+property initialize128X4Prop =
+    LX::Init`{4} key nonce == expected
+    where
+        key = join ([0 .. 15] : Bytes 16)
+        nonce = join ([16 .. 31] : Bytes 16)
+
+        expected : LX::AegisState 4
+        expected =
+            [ [0x924eb07635003a37e6c6575ba8ce1929, 0xc8b6a5d91475445e936d48e794be0ce2
+            ,0xfcd37d050e24084befe3bbb219d64760, 0x2e9f58cfb893a8800220242c373a8b18]
+            , [0x1a1f60c4fab64e5471dc72edfcf6fe6b, 0xc1e525ebea2d6375a9edd045dce96381
+            ,0x97a3e25abd228a44d4a14a6d3fe9185c, 0xc2d4cf7f4287a98744645674265d4ca8]
+            , [0x7bb50c534f6ec4780530ff1cce8a16e8, 0x7b08d57557da0b5ef7b5f7d98b0ba189
+            ,0x6bfcac34ddb68404821a4d665303cb0f, 0xd95626f6dfad1aed7467622c38529932]
+            , [0xaf339fd2d50ee45fc47665c647cf6586, 0xd0669b39d140f0e118a4a511efe2f95a
+            ,0x7a94330f35c194fadda2a87e42cdeccc, 0x233b640d1f4d56e2757e72c1a9d8ecb1]
+            , [0x9f93737d699ba05c11e94f2b201bef5e, 0x61caf387cf7cfd3f8300ac7680ccfd76
+            ,0x5825a671ecef03b7a9c98a601ae32115, 0x87a1fe4d558161a8f4c38731f3223032]
+            , [0x7a5aca78d636c05bbc702b2980196ab6, 0x915d868408495d07eb527789f282c575
+            ,0xd0947bfbc1d3309cdffc9be1503aea62, 0x8834ea57a15b9fbdc0245464a4b8cbef]
+            , [0xe46f4cf71a95ac45b6f0823e3aba1a86, 0x8c4ecef682fc44a8eba911b3fc7d99f9
+            ,0xa4fb61e2c928a2ca760b8772f2ea5f2e, 0x3d34ea89da73caa3016c280500a155a3]
+            , [0x85075f0080e9d618e7eb40f57c32d9f7, 0xd2ab2b320c6e93b155a3787cb83e5281
+            ,0x0b3af0250ae36831a1b072e499929bcb, 0x5cce4d00329d69f1aae36aa541347512]
+            ]
+
+/**
+ * Check the complete initial state for AEGIS-256X4.
+ * [RFC10032] Appendix A.7.1.
+ *
+ * ```repl
+ * :check initialize256X4Prop
+ * ```
+ */
+property initialize256X4Prop =
+    AX::Init`{4} key nonce == expected
+    where
+        key = join ([0 .. 31] : Bytes 32)
+        nonce = join ([16 .. 47] : Bytes 32)
+
+        expected : AX::AegisState 4
+        expected =
+            [ [0x482a86e8436cd2361063a4b2702769b9, 0xd95a2be81c9245b22996f68eea0122f9
+            ,0x0c2a3b348b1a5e256c6751377318c41e, 0xf64436a21653fe7cf2e0829a177db383]
+            , [0xe705e8866267717d96092e58e78b574c, 0xd1dd412142df9806cc267af2fe1d830e
+            ,0x30e7dfd3c9941b8394e95bdf5bac99d9, 0x9f27186f8a4fab86820689822c3c74d2]
+            , [0xe1aa6af5d9e31dde8d94a48a0810fa89, 0x63555cdf0d98f18fb75b029ad80786c0
+            ,0xa3ee0e4a3429a9539e4fcec385475608, 0x28ea527d31ef61df498dc107fe02df99]
+            , [0x37f06808410c8f3954525ae44584d3be, 0x8fcc23bca2fe2209f93d34e2da35b33d
+            ,0x33156347df89eaa69ab11096362daccf, 0xbbe58d9dbe8c5b0469be5a87086db5d4]
+            , [0xd1c9eb37fecbc5ada7b351fa4f501f32, 0x0b9b803283c1538628b507c8f6432434
+            ,0xbfb8b6d4f87cce28825c7e92f54b8728, 0x8917bb5b09c32f900c6a5a1d63c46264]
+            , [0x4f6110c2ef0c3c687e90c1e5532ddf8e, 0x031bd85d99f64684d23728a0453c72a1
+            ,0x10bc7ec34d4119b5bdeb6c7dfc458247, 0x591ece530aeaa5c9867220156f5c25e3]
+            ]
+
+/**
+ * Check the intermediate lane tags for AEGISMAC-128X2.
+ * [RFC10032] Appendix A.8.2.
+ *
+ * ```repl
+ * :check mac128X2Prop
+ * ```
+ */
+property mac128X2Prop =
+    checkMAC128X`{2} expected128 expected256
+    where
+        expected128 =
+            [ 0x9f5f69928fa481fa86e8a51e072a9b29
+            , 0xeeaa77a356f796b427f6a54f52ae0e20
+            ]
+        expected256 = split (join
+            [ 0x22cdcf558d0338b6ad8fbba4da7307d3
+            , 0x0bd685fff23dc9d41f598c2a7ea44055
+            ] : [256])
+
+/**
+ * Check the intermediate lane tags for AEGISMAC-128X4.
+ * [RFC10032] Appendix A.8.3.
+ *
+ * ```repl
+ * :check mac128X4Prop
+ * ```
+ */
+property mac128X4Prop =
+    checkMAC128X`{4} expected128 expected256
+    where
+        expected128 =
+            [ 0x7fecd913a7cb0011b6c4c88e0c6f8578
+            , 0x19a98fbeaf21d1092c32953fff82c8a9
+            , 0xc7b5e6625a5765d04af26cf22adc1282
+            , 0x4c8cf3b4dbb85f379e13b04a8d06bca7
+            ]
+        expected256 = split (join
+            [ 0xd595732bdf230a1441978414cd8cfa39
+            , 0xecef6ad0ee1e65ae530006ca5d5f4481
+            , 0xf9ec5edfa64e9c3d76d3a5eda9fe5bd1
+            , 0xfb9d842373f7c90bedb8bfe383740b23
+            , 0x1264a15143eb8c3d9f17754099f147e3
+            , 0x401c83c0d5afc70fd0d68bfd17f9280f
+            ] : [768])
+
+/**
+ * Check the intermediate lane tags for AEGISMAC-256X2.
+ * [RFC10032] Appendix A.8.5.
+ *
+ * ```repl
+ * :check mac256X2Prop
+ * ```
+ */
+property mac256X2Prop =
+    checkMAC256X`{2} expected128 expected256
+    where
+        expected128 =
+            [ 0xdb8852ea2c03f22b0d0694ea4e88e4b1 ]
+        expected256 = split (join
+            [ 0xb4d124976b34b2aa8bc3fa0b55396cf7
+            , 0xfb83f4ef5ba607681cddf5ba3e925727
+            ] : [256])
+
+/**
+ * Check the intermediate lane tags for AEGISMAC-256X4.
+ * [RFC10032] Appendix A.8.6.
+ *
+ * ```repl
+ * :check mac256X4Prop
+ * ```
+ */
+property mac256X4Prop =
+    checkMAC256X`{4} expected128 expected256
+    where
+        expected128 =
+            [ 0x702d595e74962d073a0d68c883d80deb
+            , 0x41ab207e43b16659d556d7467218a9ec
+            , 0x113406e7cb56e0f6b63c95c88421dfee
+            ]
+        expected256 = split (join
+            [ 0xa46ebcd10939b42012a3f9b6147172af
+            , 0x3b74aec5d0070e8d6a81498ccbcdb41a
+            , 0xd57cd7a50fa8621dfea2e81cd941def5
+            , 0x57094251a24527a4d97fc4c825368180
+            , 0x3973129d07cc20811a8b3c34574f6ce0
+            , 0x10165dd0e856e797f70731e78e32f764
+            ] : [768])
+
+rfcResults : [6]Bit
+rfcResults =
+    [ initialize128X4Prop, initialize256X4Prop
+    , mac128X2Prop, mac128X4Prop
+    , mac256X2Prop, mac256X4Prop
+    ]
+
+/**
+ * All reference test vectors in this module must pass.
+ *
+ * ```repl
+ * :check allRFCVectorsProp
+ * ```
+ */
+property allRFCVectorsProp = and rfcResults

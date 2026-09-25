@@ -1,0 +1,479 @@
+/**
+ * Cryptol AEGIS-128X implementation.
+ *
+ * @copyright Galois Inc.
+ * @author Craig Troop <ctroop@galois.com>
+ *
+ * Parallel AEGIS-128L instances with degree `D`.
+ * [RFC10032] Sections 5.1 through 5.4.
+ *
+ * References
+ * [RFC10032]: F. Denis and S. Lucas, The AEGIS Authenticated Encryption
+ *     Algorithms. RFC 10032, September 2026.
+ *     @see https://www.rfc-editor.org/rfc/rfc10032
+ */
+
+module Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS128X where
+
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::Common
+    (Block, Bytes, AuthError, verificationFailed, AESRound, C0, C1)
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS128L as Base
+
+/**
+ * A vector of `D` 128-bit AES blocks.
+ * [RFC10032] Section 5.1.
+ */
+type BlockVector D = [D]Block
+
+/**
+ * Parallel state indexed by block and lane: `V @ j @ i` represents `V[j,i]`.
+ * [RFC10032] Section 5.1.
+ */
+type AegisState D = [8][D]Block
+
+/**
+ * An input block containing `R = 256 * D` bits.
+ * [RFC10032] Section 5.1.
+ */
+type InputBlock D = [256 * D]
+
+/**
+ * Apply `AESRound` independently to each pair of input and round-key lanes.
+ * [RFC10032] Sections 2 and 5.4.1.
+ */
+AESRoundVector : {D} (fin D) =>
+    BlockVector D -> BlockVector D -> BlockVector D
+AESRoundVector inputs keys =
+    [ AESRound in rk | in <- inputs | rk <- keys ]
+
+/**
+ * Update the state using split vectors of 128-bit blocks.
+ * [RFC10032] Section 5.4.1.
+ *
+ * The inputs are already split into lanes, corresponding to the RFC
+ * locals `m0` and `m1`.
+ */
+Update : {D} (fin D) =>
+    AegisState D -> BlockVector D -> BlockVector D -> AegisState D
+Update V m0 m1 =
+    [ AESRoundVector (V @ 7) ((V @ 0) ^ m0)
+    , AESRoundVector (V @ 0) (V @ 1)
+    , AESRoundVector (V @ 1) (V @ 2)
+    , AESRoundVector (V @ 2) (V @ 3)
+    , AESRoundVector (V @ 3) ((V @ 4) ^ m1)
+    , AESRoundVector (V @ 4) (V @ 5)
+    , AESRoundVector (V @ 5) (V @ 6)
+    , AESRoundVector (V @ 6) (V @ 7)
+    ]
+
+/**
+ * Context separators for the parallel lanes. Each 128-bit block encodes
+ * the lane index, `D - 1`, and 112 zero bits.
+ * [RFC10032] Section 5.1.
+ */
+ctx : {D} (fin D, 1 <= D, D <= 256) => BlockVector D
+ctx =
+    [ i # (`(D - 1) : [8]) # (zero : [112])
+    | i <- take`{D} ([0 .. 255] : [256][8])
+    ]
+
+/**
+ * Initialize the state from `key` and `nonce`. Context separators are
+ * injected before every initialization update.
+ * [RFC10032] Section 5.4.2.
+ */
+Init : {D} (fin D, 1 <= D, D <= 256) =>
+    Block -> Block -> AegisState D
+Init key nonce = (iterate step initial) @ 10
+    where
+        seed =
+            [ key ^ nonce
+            , C1
+            , C0
+            , C1
+            , key ^ nonce
+            , key ^ C0
+            , key ^ C1
+            , key ^ C0
+            ]
+
+        initial : AegisState D
+        initial = [ repeat x | x <- seed ]
+
+        mask : AegisState D
+        mask = [zero, zero, zero, ctx, zero, zero, zero, ctx]
+
+        step V = Update (V ^ mask) (repeat nonce) (repeat key)
+
+/**
+ * Absorb one input block into the state.
+ * [RFC10032] Section 5.4.3.
+ */
+Absorb : {D} (fin D) =>
+    AegisState D -> InputBlock D -> AegisState D
+Absorb V ai = Update V (split t0) (split t1)
+    where
+        (t0, t1) = splitAt`{128 * D} ai
+
+/**
+ * Compute the output mask used by `Enc`, `Dec`, and `DecPartial`.
+ * [RFC10032] Sections 5.4.4 through 5.4.6.
+ */
+keystreamBlock : {D} (fin D) => AegisState D -> InputBlock D
+keystreamBlock V = join z0 # join z1
+    where
+        z0 = (V @ 1) ^ (V @ 6) ^ ((V @ 2) && (V @ 3))
+        z1 = (V @ 2) ^ (V @ 5) ^ ((V @ 6) && (V @ 7))
+
+/**
+ * Encrypt an input block and return the next state and ciphertext block.
+ * [RFC10032] Section 5.4.4.
+ */
+Enc : {D} (fin D) =>
+    AegisState D -> InputBlock D -> (AegisState D, InputBlock D)
+Enc V xi = (Absorb V xi, xi ^ keystreamBlock V)
+
+/**
+ * Decrypt an input block and return the next state and unverified plaintext.
+ * [RFC10032] Section 5.4.5.
+ */
+Dec : {D} (fin D) =>
+    AegisState D -> InputBlock D -> (AegisState D, InputBlock D)
+Dec V ci = (Absorb V xi, xi)
+    where
+      xi = ci ^ keystreamBlock V
+
+/**
+ * Decrypt a final fragment and return the next state and unverified
+ * plaintext.
+ * [RFC10032] Section 5.4.6.
+ *
+ * This helper also accepts an empty fragment and leaves the state unchanged;
+ * the RFC calls `DecPartial` only for nonempty fragments.
+ */
+DecPartial : {D, n}
+    (fin D, fin n, 1 <= D, n < 256 * D) =>
+    AegisState D -> [n] -> (AegisState D, [n])
+DecPartial V cn = (next, xn)
+    where
+        padded : InputBlock D
+        padded = cn # zero
+        xn = take`{n} (padded ^ keystreamBlock V)
+        next = if (`n : Integer) == 0
+            then V
+            else Absorb V (xn # zero)
+
+/**
+ * Produce a 128-bit authentication tag using the original associated-data
+ * and message lengths in bits. Finalize each lane and XOR the tags.
+ * [RFC10032] Section 5.4.7.
+ *
+ * This specializes the RFC `Finalize` function to a 128-bit tag.
+ */
+Finalize128 : {D} (fin D) =>
+    AegisState D -> [64] -> [64] -> [128]
+Finalize128 V ad_len_bits msg_len_bits =
+    foldl (^) zero
+        [ Base::Finalize128 lane ad_len_bits msg_len_bits
+        | lane <- transpose V
+        ]
+
+/**
+ * Produce a 256-bit authentication tag using the original associated-data
+ * and message lengths in bits. Finalize each lane and XOR the tags.
+ * [RFC10032] Section 5.4.7.
+ *
+ * This specializes the RFC `Finalize` function to a 256-bit tag.
+ */
+Finalize256 : {D} (fin D) =>
+    AegisState D -> [64] -> [64] -> [256]
+Finalize256 V ad_len_bits msg_len_bits =
+    foldl (^) zero
+        [ Base::Finalize256 lane ad_len_bits msg_len_bits
+        | lane <- transpose V
+        ]
+
+/**
+ * Zero-pad a byte sequence to a whole number of input blocks and split it.
+ * This implements `Split(ZeroPad(...))` in the RFC pseudocode.
+ * [RFC10032] Sections 5.2 and 5.3.
+ */
+paddedBlocks : {D, n} (fin D, fin n, 1 <= D) =>
+    Bytes n -> [n /^ (32 * D)](InputBlock D)
+paddedBlocks xs = split (join xs # zero)
+
+/**
+ * Run a block operation sequentially, collecting its outputs.
+ */
+runBlocks : {D, n} (fin D, fin n) =>
+    (AegisState D -> InputBlock D -> (AegisState D, InputBlock D)) ->
+    AegisState D -> [n](InputBlock D) ->
+    (AegisState D, [n](InputBlock D))
+runBlocks operation V blocks =
+    ((last results).0, (tail results).1)
+    where
+        results = scanl step (V, zero) blocks
+        step previous block = operation previous.0 block
+
+/**
+ * Encrypt bytes using the supplied tag finalizer.
+ * The type parameters `a` and `m` count bytes; finalization receives bit
+ * lengths.
+ * [RFC10032] Section 5.2.
+ */
+EncryptWith : {D, a, m, tag_len_bits}
+    (fin D, fin a, fin m, fin tag_len_bits, 1 <= D, D <= 256,
+    a < 2^^61, m < 2^^61) =>
+    (AegisState D -> [64] -> [64] -> [tag_len_bits]) ->
+    Bytes m -> Bytes a -> Block -> Block -> (Bytes m, [tag_len_bits])
+EncryptWith finish msg ad key nonce = (ct, tag)
+    where
+        initial = Init`{D} key nonce
+        ad_blocks = paddedBlocks`{D} ad
+        ready = foldl Absorb initial ad_blocks
+
+        msg_blocks = paddedBlocks`{D} msg
+        (final, blocks) = runBlocks Enc ready msg_blocks
+
+        ct = split (take`{8 * m} (join blocks))
+        tag = finish final (`(8 * a)) (`(8 * m))
+
+/**
+ * Decrypt and authenticate bytes using the supplied tag finalizer.
+ * Return Ok plaintext on success or Err "verification failed" on
+ * authentication failure.
+ * The type parameters `a` and `m` count bytes.
+ * [RFC10032] Section 5.3.
+ */
+DecryptWith : {D, a, m, tag_len_bits}
+    (fin D, fin a, fin m, fin tag_len_bits, 1 <= D, D <= 256,
+    a < 2^^61, m < 2^^61) =>
+    (AegisState D -> [64] -> [64] -> [tag_len_bits]) ->
+    Bytes m -> [tag_len_bits] -> Bytes a -> Block -> Block ->
+    Result (Bytes m) AuthError
+DecryptWith finish ct tag ad key nonce =
+    if valid then Ok msg else Err verificationFailed
+    where
+        initial = Init`{D} key nonce
+        ad_blocks = paddedBlocks`{D} ad
+        ready = foldl Absorb initial ad_blocks
+
+        (full, cn_bytes) =
+            splitAt`{32 * D * (m / (32 * D))} ct
+
+        cn = join cn_bytes
+        ct_blocks : [m / (32 * D)](InputBlock D)
+        ct_blocks = split (join full)
+
+        (afterFull, plaintext_blocks) = runBlocks Dec ready ct_blocks
+        (final, xn) = DecPartial afterFull cn
+
+        msg = split (join plaintext_blocks # xn)
+        expected_tag = finish final (`(8 * a)) (`(8 * m))
+        valid = tag == expected_tag
+
+/**
+ * Authenticated encryption with a 128-bit tag.
+ * Specializes the RFC `Encrypt` function to this tag size.
+ * [RFC10032] Section 5.2.
+ */
+EncryptTag128 : {D, a, m}
+    (fin D, fin a, fin m, 1 <= D, D <= 256,
+    a < 2^^61, m < 2^^61) =>
+    Bytes m -> Bytes a -> Block -> Block -> (Bytes m, [128])
+EncryptTag128 = EncryptWith`{D} Finalize128
+
+/**
+ * Authenticated encryption with a 256-bit tag.
+ * Specializes the RFC `Encrypt` function to this tag size.
+ * [RFC10032] Section 5.2.
+ */
+EncryptTag256 : {D, a, m}
+    (fin D, fin a, fin m, 1 <= D, D <= 256,
+    a < 2^^61, m < 2^^61) =>
+    Bytes m -> Bytes a -> Block -> Block -> (Bytes m, [256])
+EncryptTag256 = EncryptWith`{D} Finalize256
+
+/**
+ * Authenticated decryption with a 128-bit tag.
+ * Return Ok plaintext on success or Err "verification failed" on
+ * authentication failure.
+ * [RFC10032] Section 5.3.
+ */
+DecryptTag128 : {D, a, m}
+    (fin D, fin a, fin m, 1 <= D, D <= 256,
+    a < 2^^61, m < 2^^61) =>
+    Bytes m -> [128] -> Bytes a -> Block -> Block ->
+    Result (Bytes m) AuthError
+DecryptTag128 = DecryptWith`{D} Finalize128
+
+/**
+ * Authenticated decryption with a 256-bit tag.
+ * Return Ok plaintext on success or Err "verification failed" on
+ * authentication failure.
+ * [RFC10032] Section 5.3.
+ */
+DecryptTag256 : {D, a, m}
+    (fin D, fin a, fin m, 1 <= D, D <= 256,
+    a < 2^^61, m < 2^^61) =>
+    Bytes m -> [256] -> Bytes a -> Block -> Block ->
+    Result (Bytes m) AuthError
+DecryptTag256 = DecryptWith`{D} Finalize256
+
+/**
+ * Each lane must agree with an independent AEGIS-128L `Update`.
+ *
+ * ```repl
+ * :prove UpdateMatchesBaseProp`{2}
+ * :prove UpdateMatchesBaseProp`{4}
+ * ```
+ */
+UpdateMatchesBaseProp : {D} (fin D) =>
+    AegisState D -> BlockVector D -> BlockVector D -> Bit
+property UpdateMatchesBaseProp V m0 m1 =
+    transpose (Update V m0 m1) ==
+        [ Base::Update S x y
+        | S <- transpose V
+        | x <- m0
+        | y <- m1
+        ]
+
+/**
+ * Check the X2 initial state against [RFC10032] Appendix A.4.1.
+ *
+ * ```repl
+ * :check InitX2Prop
+ * ```
+ */
+property InitX2Prop =
+    Init`{2} key nonce == expected
+    where
+        key = 0x000102030405060708090a0b0c0d0e0f
+        nonce = 0x101112131415161718191a1b1c1d1e1f
+
+        expected : AegisState 2
+        expected =
+            [ [ 0xa4fc1ad9a72942fb88bd2cabbba6509a
+            , 0x80a40e392fc71084209b6c3319bdc6cc
+            ]
+            , [ 0x380f435cf801763b1f0c2a2f7212052d
+            , 0x73796607b59b1b650ee91c152af1f18a
+            ]
+            , [ 0x6ee1de433ea877fa33bc0782abff2dcb
+            , 0xb9fab2ab496e16d1facaffd5453cbf14
+            ]
+            , [ 0x85f94b0d4263bfa86fdf45a603d8b6ac
+            , 0x90356c8cadbaa2c969001da02e3feca0
+            ]
+            , [ 0x09bd69ad3730174bcd2ce9a27cd1357e
+            , 0xe610b45125796a4fcf1708cef5c4f718
+            ]
+            , [ 0xfcdeb0cf0a87bf442fc82383ddb0f6d6
+            , 0x61ad32a4694d6f3cca313a2d3f4687aa
+            ]
+            , [ 0x571c207988659e2cdfbdaae77f4f37e3
+            , 0x32e6094e217573bf91fb28c145a3efa8
+            ]
+            , [ 0xca549badf8faa58222412478598651cf
+            , 0x3407279a54ce76d2e2e8a90ec5d108eb
+            ]
+            ]
+
+/**
+ * Full-block encryption and decryption agree on state and data.
+ *
+ * ```repl
+ * :prove blockRoundTripProp`{2}
+ * :prove blockRoundTripProp`{4}
+ * ```
+ */
+blockRoundTripProp : {D} (fin D) =>
+    AegisState D -> InputBlock D -> Bit
+property blockRoundTripProp V msg =
+    Dec V ct == (next, msg)
+    where
+        (next, ct) = Enc V msg
+
+/**
+ * Check the first 64 ciphertext bytes from [RFC10032] Appendix A.4.3.
+ *
+ * ```repl
+ * :check blockX2ExampleProp
+ * ```
+ */
+property blockX2ExampleProp = ct == expected
+    where
+        key = 0x000102030405060708090a0b0c0d0e0f
+        nonce = 0x101112131415161718191a1b1c1d1e1f
+
+        adBlock = (0x0102030401020304 : [64]) # (zero : [448])
+        msg = join (repeat (0x04050607 : [32]) : [16][32])
+
+        expected = join
+            [ 0x5795544301997f93621b278809d6331b
+            , 0x3bfa6f18e90db12c4aa35965b5e98c5f
+            , 0xc6fb4e54bcb6111842c20637252eff74
+            , 0x7cb3a8f85b37de80919a589fe0f24872
+            ] : InputBlock 2
+
+        V = Absorb (Init`{2} key nonce) adBlock
+        (_, ct) = Enc V msg
+
+/**
+ * Check empty-message tags from [RFC10032] Appendices A.4.2 and A.5.2.
+ *
+ * ```repl
+ * :check emptyTagsProp
+ * ```
+ */
+property emptyTagsProp =
+    (Finalize128 v2 0 0 == tag128X2) &&
+    (Finalize256 v2 0 0 == tag256X2) &&
+    (Finalize128 v4 0 0 == tag128X4) &&
+    (Finalize256 v4 0 0 == tag256X4)
+    where
+        key = 0x000102030405060708090a0b0c0d0e0f
+        nonce = 0x101112131415161718191a1b1c1d1e1f
+
+        v2 = Init`{2} key nonce
+        v4 = Init`{4} key nonce
+
+        tag128X2 = 0x63117dc57756e402819a82e13eca8379
+        tag256X2 = join
+            [ 0xb92c71fdbd358b8a4de70b27631ace90
+            , 0xcffd9b9cfba82028412bac41b4f53759
+            ] : [256]
+
+        tag128X4 = 0x5bef762d0947c00455b97bb3af30dfa3
+        tag256X4 = join
+            [ 0xa4b25437f4be93cfa856a2f27e4416b4
+            , 0x2cac79fd4698f2cdbe6af25673e10a68
+            ] : [256]
+
+/**
+ * An empty fragment leaves state and output unchanged.
+ *
+ * ```repl
+ * :prove emptyPartialProp`{2}
+ * :prove emptyPartialProp`{4}
+ * ```
+ */
+emptyPartialProp : {D} (fin D, 1 <= D) => AegisState D -> Bit
+property emptyPartialProp V =
+    DecPartial V ([] : [0]) == (V, [])
+
+/**
+ * Partial encryption and decryption agree on plaintext and state.
+ *
+ * ```repl
+ * :prove partialRoundTripProp`{2,448}
+ * :prove partialRoundTripProp`{4,960}
+ * ```
+ */
+partialRoundTripProp : {D, n}
+    (fin D, fin n, 1 <= D, 1 <= n, n < 256 * D) =>
+    AegisState D -> [n] -> Bit
+property partialRoundTripProp V msg =
+    DecPartial V (take`{n} ct) == (next, msg)
+    where
+        (next, ct) = Enc V (msg # zero)

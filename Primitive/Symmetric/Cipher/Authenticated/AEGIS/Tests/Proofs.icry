@@ -1,0 +1,48 @@
+// Proof checks for the AEGIS implementations.
+//
+// @copyright Galois Inc.
+// @author Craig Troop <ctroop@galois.com>
+//
+// Prove selected block-operation, MAC-finalization, and encoding properties.
+// Run from the repository root. Requires Z3 for the `w4-z3` prover.
+
+:load Primitive/Symmetric/Cipher/Authenticated/AEGIS/Tests/AllTests.cry
+:set prover=w4-z3
+
+// Base algorithms: arbitrary states and complete input blocks.
+:prove L::blockRoundTripProp
+:prove L::emptyPartialProp
+:prove A::blockRoundTripProp
+:prove A::emptyPartialProp
+
+// AEGIS-128X: degrees 2 and 4.
+:prove LX::UpdateMatchesBaseProp`{2}
+:prove LX::UpdateMatchesBaseProp`{4}
+:prove LX::blockRoundTripProp`{2}
+:prove LX::blockRoundTripProp`{4}
+:prove LX::partialRoundTripProp`{2,448}
+:prove LX::partialRoundTripProp`{4,960}
+:prove LX::emptyPartialProp`{2}
+:prove LX::emptyPartialProp`{4}
+
+// AEGIS-256X: degrees 2 and 4.
+:prove AX::UpdateMatchesBaseProp`{2}
+:prove AX::UpdateMatchesBaseProp`{4}
+:prove AX::blockRoundTripProp`{2}
+:prove AX::blockRoundTripProp`{4}
+:prove AX::partialRoundTripProp`{2,192}
+:prove AX::partialRoundTripProp`{4,448}
+:prove AX::emptyPartialProp`{2}
+:prove AX::emptyPartialProp`{4}
+
+// Degree-one MAC finalization.
+:prove MLX::degreeOneFinalizeProp
+:prove MAX::degreeOneFinalizeProp
+
+// Tuple encoding: empty and 35-byte ciphertexts.
+:prove E::decodeEncode128Prop`{0}
+:prove E::decodeEncode128Prop`{35}
+:prove E::decodeEncode256Prop`{0}
+:prove E::decodeEncode256Prop`{35}
+:prove E::encodeDecode128Prop`{35}
+:prove E::encodeDecode256Prop`{35}

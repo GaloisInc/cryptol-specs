@@ -1,0 +1,78 @@
+/**
+ * Shared types and primitives for the AEGIS implementations.
+ *
+ * @copyright Galois Inc.
+ * @author Craig Troop <ctroop@galois.com>
+ *
+ * [RFC10032] Section 2.
+ *
+ * References
+ * [RFC10032]: F. Denis and S. Lucas, The AEGIS Authenticated Encryption
+ *     Algorithms. RFC 10032, September 2026.
+ *     @see https://www.rfc-editor.org/rfc/rfc10032
+ */
+
+module Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::Common where
+
+import Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES128
+    as AES
+
+/**
+ * A 128-bit AES block.
+ * [RFC10032] Section 2.
+ */
+type Block = [128]
+
+/**
+ * A sequence of `n` bytes, each containing eight bits.
+ * [RFC10032] Section 2.
+ */
+type Bytes n = [n][8]
+
+/**
+ * Authentication error text returned by AEGIS decryption.
+ * [RFC10032] Sections 3.2, 4.2, and 5.3.
+ */
+type AuthError = String 19
+
+/**
+ * The authentication failure error from the RFC.
+ * [RFC10032] Sections 3.2, 4.2, and 5.3.
+ */
+verificationFailed : AuthError
+verificationFailed = "verification failed"
+
+/**
+ * A single AES encryption round, with input `in` first and round key `rk`
+ * second. Adapt the repository AES state representation to 128-bit blocks.
+ * [RFC10032] Section 2.
+ */
+AESRound : Block -> Block -> Block
+AESRound in rk =
+    AES::stateToMsg
+        (AES::AddRoundKey
+            (AES::msgToState rk)
+            (AES::MixColumns
+                (AES::ShiftRows
+                    (AES::SubBytes (AES::msgToState in)))))
+
+/**
+ * The first fixed 128-bit constant block.
+ * [RFC10032] Section 2.
+ */
+C0 : Block
+C0 = 0x000101020305080d1522375990e97962
+
+/**
+ * The second fixed 128-bit constant block.
+ * [RFC10032] Section 2.
+ */
+C1 : Block
+C1 = 0xdb3d18556dc22ff12011314273b528dd
+
+/**
+ * Encode an unsigned 64-bit number as little-endian bytes.
+ * [RFC10032] Section 2.
+ */
+LE64 : [64] -> [64]
+LE64 x = join (reverse (split x : [8][8]))

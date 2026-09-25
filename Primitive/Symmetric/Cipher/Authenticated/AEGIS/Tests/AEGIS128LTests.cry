@@ -1,0 +1,246 @@
+/**
+ * Test vectors for AEGIS-128L.
+ *
+ * @copyright Galois Inc.
+ * @author Craig Troop <ctroop@galois.com>
+ *
+ * [RFC10032] Appendix A.2, with additional modified-tag checks.
+ *
+ * References
+ * [RFC10032]: F. Denis and S. Lucas, The AEGIS Authenticated Encryption
+ *     Algorithms. RFC 10032, September 2026.
+ *     @see https://www.rfc-editor.org/rfc/rfc10032
+ */
+
+module Primitive::Symmetric::Cipher::Authenticated::AEGIS::Tests::AEGIS128LTests where
+
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS128L as A
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::Common (Block, Bytes)
+
+/**
+ * Default key for the [RFC10032] AEGIS-128L positive test vectors.
+ */
+testKey : Block
+testKey = 0x10010000000000000000000000000000
+
+/**
+ * Default nonce for the [RFC10032] AEGIS-128L positive test vectors.
+ */
+testNonce : Block
+testNonce = 0x10000200000000000000000000000000
+
+/**
+ * Check both tag sizes and rejection of one-bit tag changes.
+ */
+checkVector : {a, m}
+    (fin a, fin m, a < 2^^61, m < 2^^61) =>
+    Bytes a -> Bytes m -> Bytes m -> [128] -> [256] -> Bit
+checkVector ad msg ct tag128 tag256 =
+    (A::EncryptTag128 msg ad k n == (ct, tag128)) &&
+    (A::EncryptTag256 msg ad k n == (ct, tag256)) &&
+    (A::DecryptTag128 ct tag128 ad k n == Ok msg) &&
+    (A::DecryptTag256 ct tag256 ad k n == Ok msg) &&
+    (A::DecryptTag128 ct (tag128 ^ 1) ad k n == Err "verification failed") &&
+    (A::DecryptTag256 ct (tag256 ^ 1) ad k n == Err "verification failed")
+    where
+        k = testKey
+        n = testNonce
+
+/**
+ * [RFC10032] Appendix A.2.5 data, also used by rejection tests.
+ */
+vector4 :
+    { ad : Bytes 8
+    , msg : Bytes 14
+    , ct : Bytes 14
+    , tag128 : [128]
+    , tag256 : [256]
+    }
+vector4 =
+    { ad = [0 .. 7]
+    , msg = [0 .. 13]
+    , ct = split (0x79d94593d8c2119d7e8fd9b8fc77 : [112])
+    , tag128 = 0x5c04b3dba849b2701effbe32c7f0fab7
+    , tag256 = join
+        [ 0x86f1b80bfb463aba711d15405d094baf
+        , 0x4a55a15dbfec81a76f35ed0b9c8b04ac
+        ]
+    }
+
+/**
+ * Require Err "verification failed" for both tag sizes.
+ */
+checkRejected : {a, m}
+    (fin a, fin m, a < 2^^61, m < 2^^61) =>
+    Block -> Block -> Bytes a -> Bytes m ->
+    [128] -> [256] -> Bit
+checkRejected k n ad ct tag128 tag256 =
+    (A::DecryptTag128 ct tag128 ad k n == Err "verification failed") &&
+    (A::DecryptTag256 ct tag256 ad k n == Err "verification failed")
+
+/**
+ * Results for [RFC10032] vectors 1 through 9, in that order.
+ */
+rfcResults : [9]Bit
+rfcResults =
+    [ rfcVector1Prop, rfcVector2Prop, rfcVector3Prop
+    , rfcVector4Prop, rfcVector5Prop, rfcVector6Prop
+    , rfcVector7Prop, rfcVector8Prop, rfcVector9Prop
+    ]
+
+/**
+ * [RFC10032] Appendix A.2.2: one complete plaintext block.
+ *
+ * ```repl
+ * :check rfcVector1Prop
+ * ```
+ */
+property rfcVector1Prop = checkVector ad msg ct tag128 tag256
+    where
+        ad = [] : Bytes 0
+        msg = zero : Bytes 16
+
+        ct = split (0xc1c0e58bd913006feba00f4b3cc3594e : [128])
+
+        tag128 = 0xabe0ece80c24868a226a35d16bdae37a
+        tag256 = join
+            [ 0x25835bfbb21632176cf03840687cb968
+            , 0xcace4617af1bd0f7d064c639a5c79ee4
+            ] : [256]
+
+/**
+ * [RFC10032] Appendix A.2.3: empty plaintext and associated data.
+ *
+ * ```repl
+ * :check rfcVector2Prop
+ * ```
+ */
+property rfcVector2Prop = checkVector ad msg ct tag128 tag256
+    where
+        ad = [] : Bytes 0
+        msg = [] : Bytes 0
+        ct = [] : Bytes 0
+
+        tag128 = 0xc2b879a67def9d74e6c14f708bbcc9b4
+        tag256 = join
+            [ 0x1360dc9db8ae42455f6e5b6a9d488ea4
+            , 0xf2184c4e12120249335c4ee84bafe25d
+            ] : [256]
+
+/**
+ * [RFC10032] Appendix A.2.4: two complete plaintext blocks.
+ *
+ * ```repl
+ * :check rfcVector3Prop
+ * ```
+ */
+property rfcVector3Prop = checkVector ad msg ct tag128 tag256
+    where
+        ad = [0 .. 7] : Bytes 8
+        msg = [0 .. 31] : Bytes 32
+
+        c0 = 0x79d94593d8c2119d7e8fd9b8fc77845c : [128]
+        c1 = 0x5c077a05b2528b6ac54b563aed8efe84 : [128]
+        ct = split (c0 # c1)
+
+        tag128 = 0xcc6f3372f6aa1bb82388d695c3962d9a
+        tag256 = join
+            [ 0x022cb796fe7e0ae1197525ff67e30948
+            , 0x4cfbab6528ddef89f17d74ef8ecd82b3
+            ] : [256]
+
+/**
+ * [RFC10032] Appendix A.2.5: a partial plaintext block.
+ *
+ * ```repl
+ * :check rfcVector4Prop
+ * ```
+ */
+property rfcVector4Prop =
+    checkVector v.ad v.msg v.ct v.tag128 v.tag256
+    where
+        v = vector4
+
+/**
+ * [RFC10032] Appendix A.2.6: multiple blocks and partial tails.
+ *
+ * ```repl
+ * :check rfcVector5Prop
+ * ```
+ */
+property rfcVector5Prop = checkVector ad msg ct tag128 tag256
+    where
+        ad = [0 .. 41] : Bytes 42
+        msg = [16 .. 55] : Bytes 40
+
+        c0 = 0xb31052ad1cca4e291abcf2df3502e6bd : [128]
+        c1 = 0xb1bfd6db36798be3607b1f94d34478aa : [128]
+        c2 = 0x7ede7f7a990fec10 : [64]
+        ct = split (c0 # c1 # c2)
+
+        tag128 = 0x7542a745733014f9474417b337399507
+        tag256 = join
+            [ 0xb91e2947a33da8bee89b6794e647baf0
+            , 0xfc835ff574aca3fc27c33be0db2aff98
+            ] : [256]
+
+/**
+ * [RFC10032] Appendix A.2.7: key and nonce swapped.
+ *
+ * ```repl
+ * :check rfcVector6Prop
+ * ```
+ */
+property rfcVector6Prop =
+    checkRejected testNonce testKey v.ad v.ct v.tag128 v.tag256
+    where
+        v = vector4
+
+/**
+ * [RFC10032] Appendix A.2.8: modified ciphertext.
+ *
+ * ```repl
+ * :check rfcVector7Prop
+ * ```
+ */
+property rfcVector7Prop =
+    checkRejected testKey testNonce v.ad ct v.tag128 v.tag256
+    where
+        v = vector4
+        ct = split (0x79d94593d8c2119d7e8fd9b8fc78 : [112])
+
+/**
+ * [RFC10032] Appendix A.2.9: modified associated data.
+ *
+ * ```repl
+ * :check rfcVector8Prop
+ * ```
+ */
+property rfcVector8Prop =
+    checkRejected testKey testNonce ad v.ct v.tag128 v.tag256
+    where
+        v = vector4
+        ad = split (0x0001020304050608 : [64])
+
+/**
+ * [RFC10032] Appendix A.2.10: modified authentication tags.
+ *
+ * ```repl
+ * :check rfcVector9Prop
+ * ```
+ */
+property rfcVector9Prop =
+    checkRejected testKey testNonce v.ad v.ct tag128 tag256
+    where
+        v = vector4
+        tag128 = 0x6c04b3dba849b2701effbe32c7f0fab8
+        tag256 = v.tag256 ^ 1
+
+/**
+ * Require every [RFC10032] AEGIS-128L AEAD vector to pass.
+ *
+ * ```repl
+ * :check allRFCVectorsProp
+ * ```
+ */
+property allRFCVectorsProp = and rfcResults

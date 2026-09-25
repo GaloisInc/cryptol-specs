@@ -1,0 +1,97 @@
+/**
+ * Aggregate regression tests for the AEGIS implementations.
+ *
+ * @copyright Galois Inc.
+ * @author Craig Troop <ctroop@galois.com>
+ *
+ * Combine concrete AEAD, MAC, stream, encoding, and intermediate-state
+ * checks. The separate `Proofs.icry` script proves selected properties.
+ * [RFC10032] Appendix A supplies the reference test vectors.
+ *
+ * References
+ * [RFC10032]: F. Denis and S. Lucas, The AEGIS Authenticated Encryption
+ *     Algorithms. RFC 10032, September 2026.
+ *     @see https://www.rfc-editor.org/rfc/rfc10032
+ */
+
+module Primitive::Symmetric::Cipher::Authenticated::AEGIS::Tests::AllTests where
+
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS128L as L
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS256 as A
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS128X as LX
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGIS256X as AX
+
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Tests::AEGIS128LTests as LT
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Tests::AEGIS256Tests as AT
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Tests::AEGIS128XTests as LXT
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Tests::AEGIS256XTests as AXT
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Tests::IntermediateTests as I
+
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGISMAC128L as ML
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGISMAC256 as MA
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGISMAC128X as MLX
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::AEGISMAC256X as MAX
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::Stream as S
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::Encoding as E
+
+/**
+ * Concrete examples stored alongside the core specifications.
+ */
+coreResults : [15]Bit
+coreResults =
+    [ L::AESRoundExampleProp
+    , L::UpdateExampleProp
+    , L::blockExampleProp
+    , L::LE64ExampleProp
+    , L::partialExampleProp
+    , L::aeadExampleProp
+    , A::UpdateExampleProp
+    , A::blockExampleProp
+    , A::partialExampleProp
+    , A::aeadExampleProp
+    , LX::InitX2Prop
+    , LX::blockX2ExampleProp
+    , LX::emptyTagsProp
+    , AX::InitX2Prop
+    , AX::emptyTagsProp
+    ]
+
+/**
+ * Named results for the existing concrete regression tests.
+ */
+testResults =
+    { core = and coreResults
+    , aead128L = LT::allRFCVectorsProp
+    , aead256 = AT::allRFCVectorsProp
+    , aead128X = LXT::allTestsProp
+    , aead256X = AXT::allTestsProp
+    , mac128L = ML::rfcMacProp
+    , mac256 = MA::rfcMacProp
+    , mac128X = MLX::allRFCVectorsProp
+    , mac256X = MAX::allRFCVectorsProp
+    , streams = S::allStreamChecksProp
+    , encoding = E::layout128Prop && E::layout256Prop
+    , intermediates = I::allRFCVectorsProp
+    }
+
+/**
+ * Evaluate every concrete test group; this does not run proofs.
+ *
+ * ```repl
+ * :check allTestsProp
+ * ```
+ */
+property allTestsProp = and
+    [ testResults.core
+    , testResults.aead128L
+    , testResults.aead256
+    , testResults.aead128X
+    , testResults.aead256X
+    , testResults.mac128L
+    , testResults.mac256
+    , testResults.mac128X
+    , testResults.mac256X
+    , testResults.streams
+    , testResults.encoding
+    , testResults.intermediates
+    ]

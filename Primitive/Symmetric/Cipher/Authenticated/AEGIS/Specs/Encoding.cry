@@ -1,0 +1,140 @@
+/**
+ * Encoding and decoding of AEGIS ciphertext and tag tuples.
+ *
+ * @copyright Galois Inc.
+ * @author Craig Troop <ctroop@galois.com>
+ *
+ * [RFC10032] Section 6.
+ *
+ * References
+ * [RFC10032]: F. Denis and S. Lucas, The AEGIS Authenticated Encryption
+ *     Algorithms. RFC 10032, September 2026.
+ *     @see https://www.rfc-editor.org/rfc/rfc10032
+ */
+
+module Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::Encoding where
+
+import Primitive::Symmetric::Cipher::Authenticated::AEGIS::Specs::Common (Bytes)
+
+/**
+ * Append a 128-bit tag to the ciphertext as its final 16 bytes.
+ * [RFC10032] Section 6.
+ */
+encode128 : {m} (fin m, m < 2^^61) =>
+    (Bytes m, [128]) -> Bytes (m + 16)
+encode128 (ct, tag) = ct # split tag
+
+/**
+ * Separate the final 16 bytes as a 128-bit tag.
+ * This separates fields only; it does not authenticate the ciphertext.
+ * [RFC10032] Section 6.
+ */
+decode128 : {m} (fin m, m < 2^^61) =>
+    Bytes (m + 16) -> (Bytes m, [128])
+decode128 combined_ct = (ct, join tag_bytes)
+    where
+        (ct, tag_bytes) = splitAt`{m} combined_ct
+
+/**
+ * Append a 256-bit tag to the ciphertext as its final 32 bytes.
+ * [RFC10032] Section 6.
+ */
+encode256 : {m} (fin m, m < 2^^61) =>
+    (Bytes m, [256]) -> Bytes (m + 32)
+encode256 (ct, tag) = ct # split tag
+
+/**
+ * Separate the final 32 bytes as a 256-bit tag.
+ * This separates fields only; it does not authenticate the ciphertext.
+ * [RFC10032] Section 6.
+ */
+decode256 : {m} (fin m, m < 2^^61) =>
+    Bytes (m + 32) -> (Bytes m, [256])
+decode256 combined_ct = (ct, join tag_bytes)
+    where
+        (ct, tag_bytes) = splitAt`{m} combined_ct
+
+/**
+ * Encoding and decoding recover the ciphertext and 128-bit tag.
+ * [RFC10032] Section 6.
+ *
+ * ```repl
+ * :prove decodeEncode128Prop`{0}
+ * :prove decodeEncode128Prop`{35}
+ * ```
+ */
+decodeEncode128Prop : {m} (fin m, m < 2^^61) =>
+    Bytes m -> [128] -> Bit
+property decodeEncode128Prop ct tag =
+    decode128 (encode128 (ct, tag)) == (ct, tag)
+
+/**
+ * Encoding and decoding recover the ciphertext and 256-bit tag.
+ * [RFC10032] Section 6.
+ *
+ * ```repl
+ * :prove decodeEncode256Prop`{0}
+ * :prove decodeEncode256Prop`{35}
+ * ```
+ */
+decodeEncode256Prop : {m} (fin m, m < 2^^61) =>
+    Bytes m -> [256] -> Bit
+property decodeEncode256Prop ct tag =
+    decode256 (encode256 (ct, tag)) == (ct, tag)
+
+/**
+ * Decoding and encoding preserve the combined ciphertext and 128-bit tag.
+ * [RFC10032] Section 6.
+ *
+ * ```repl
+ * :prove encodeDecode128Prop`{35}
+ * ```
+ */
+encodeDecode128Prop : {m} (fin m, m < 2^^61) =>
+    Bytes (m + 16) -> Bit
+property encodeDecode128Prop combined_ct =
+    encode128 (decode128 combined_ct) == combined_ct
+
+/**
+ * Decoding and encoding preserve the combined ciphertext and 256-bit tag.
+ * [RFC10032] Section 6.
+ *
+ * ```repl
+ * :prove encodeDecode256Prop`{35}
+ * ```
+ */
+encodeDecode256Prop : {m} (fin m, m < 2^^61) =>
+    Bytes (m + 32) -> Bit
+property encodeDecode256Prop combined_ct =
+    encode256 (decode256 combined_ct) == combined_ct
+
+/**
+ * Check ciphertext-before-tag field order and byte order for a 128-bit tag.
+ * [RFC10032] Section 6.
+ *
+ * ```repl
+ * :check layout128Prop
+ * ```
+ */
+property layout128Prop =
+    join (encode128 ([0xaa, 0xbb], tag)) ==
+        0xaabb000102030405060708090a0b0c0d0e0f
+    where
+        tag = 0x000102030405060708090a0b0c0d0e0f : [128]
+
+/**
+ * Check ciphertext-before-tag field order and byte order for a 256-bit tag.
+ * [RFC10032] Section 6.
+ *
+ * ```repl
+ * :check layout256Prop
+ * ```
+ */
+property layout256Prop =
+    join (encode256 ([0xaa, 0xbb], tag)) ==
+        0xaabb000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+    where
+        tag = join
+            [ 0x000102030405060708090a0b0c0d0e0f
+            , 0x101112131415161718191a1b1c1d1e1f
+            ] : [256]
