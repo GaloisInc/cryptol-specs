@@ -164,7 +164,7 @@ verifyingKeyPartiallyValid Q = EC::isValid Q && ~(EC::isInfinity Q)
  * [SP-800-56Ar3] Section 5.6.2.1.4.
  */
 keyPairIsConsistent : SigningKey -> VerifyingKey -> Bool
-keyPairIsConsistent d Q = EC::pointEq expectedQ Q where
+keyPairIsConsistent d Q = expectedQ == Q where
     expectedQ = EC::scmul (fromZ d) EC::G
 
 /**

@@ -15,7 +15,7 @@ import Common::utils(BVtoZ)
 // NB: We haven't implemented the point compression functions yet, but if we
 // do we can use these test vectors
 /*
-property p192_G_compress = P192::affineEq (P192::compress P192::G)
+property p192_G_compress = P192::compress P192::G ==
     0x00000003188da80eb03090f67cbf20eb43a18800f4ff0afd82ff1012
 property mp_mod_sqrt_192_correct = p192::mp_mod_sqrt_correct
 
@@ -41,7 +41,7 @@ property sAndTAreValid = P192::isValid S && P192::isValid T
  * :prove additionVectorPasses
  * ```
  */
-property additionVectorPasses = P192::affineEq (P192::add S T) R
+property additionVectorPasses = P192::add S T == R
   where R = P192::Affine (BVtoZ 0x48e1e4096b9b8e5ca9d0f1f077b8abf58e843894de4d0290)
              (BVtoZ 0x408fa77c797cd7dbfb16aa48a3648d3d63c94117d7b6aa4b)
 
@@ -50,7 +50,7 @@ property additionVectorPasses = P192::affineEq (P192::add S T) R
  * :prove subtractionVectorPasses
  * ```
  */
-property subtractionVectorPasses = P192::affineEq (P192::sub S T) R
+property subtractionVectorPasses = P192::sub S T == R
   where R = P192::Affine (BVtoZ 0xfc9683cc5abfb4fe0cc8cc3bc9f61eabc4688f11e9f64a2e)
              (BVtoZ 0x093e31d00fb78269732b1bd2a73c23cdd31745d0523d816b)
 
@@ -59,7 +59,7 @@ property subtractionVectorPasses = P192::affineEq (P192::sub S T) R
  * :prove doubleVectorPasses
  * ```
  */
-property doubleVectorPasses = P192::affineEq (P192::double S) R
+property doubleVectorPasses = P192::double S == R
   where R = P192::Affine (BVtoZ 0x30c5bc6b8c7da25354b373dc14dd8a0eba42d25a3f6e6962)
              (BVtoZ 0x0dde14bc4249a721c407aedbf011e2ddbbcb2968c9d889cf)
 
@@ -68,7 +68,7 @@ property doubleVectorPasses = P192::affineEq (P192::double S) R
  * :prove scalarMultVectorPasses
  * ```
  */
-property scalarMultVectorPasses = P192::affineEq (P192::scmul d S) R
+property scalarMultVectorPasses = P192::scmul d S == R
   where d = toInteger 0xa78a236d60baec0c5dd41b33a542463a8255391af64c74ee
         R = P192::Affine (BVtoZ 0x1faee4205a4f669d2d0a8f25e3bcec9a62a6952965bf6d31)
              (BVtoZ 0x5ff2cdfa508a2581892367087c696f179e7a4d7e8260fb06)
@@ -78,7 +78,7 @@ property scalarMultVectorPasses = P192::affineEq (P192::scmul d S) R
  * :prove scalarMultVectorPasses2
  * ```
  */
-property scalarMultVectorPasses2 = P192::affineEq (P192::scmul d S') R
+property scalarMultVectorPasses2 = P192::scmul d S' == R
     where
         S' = P192::Affine (BVtoZ 0x188da80eb03090f67cbf20eb43a18800f4ff0afd82ff1012)
             (BVtoZ 0x07192b95ffc8da78631011ed6b24cdd573f977a11e794811)
@@ -92,7 +92,7 @@ property scalarMultVectorPasses2 = P192::affineEq (P192::scmul d S') R
  * ```
  */
 property twinMultVectorPasses =
-  P192::affineEq R (P192::twin_mul d S e T)
+  R == P192::twin_mul d S e T
   where d = toInteger 0xa78a236d60baec0c5dd41b33a542463a8255391af64c74ee
         e = toInteger 0xc4be3d53ec3089e71e4de8ceab7cce889bc393cd85b972bc
         R = P192::Affine (BVtoZ 0x019f64eed8fa9b72b7dfea82c17c9bfa60ecb9e1778b5bde)

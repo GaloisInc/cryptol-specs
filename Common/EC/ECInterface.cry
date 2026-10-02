@@ -39,6 +39,7 @@ interface module Common::EC::ECInterface where
      * coordinate) and the point at infinity.
      */
     type Point : *
+    type constraint (Eq Point)
 
     /**
      * Order of the base point `G` for the curve.
@@ -85,11 +86,6 @@ interface module Common::EC::ECInterface where
      *   OR is the point at infinity.
      */
     isValid : Point -> Bool
-
-    /**
-     * Indicate whether two points are the same.
-     */
-    pointEq : Point -> Point -> Bool
 
     /**
      * Addition of two points.
