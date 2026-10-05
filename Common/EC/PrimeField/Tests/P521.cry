@@ -14,7 +14,7 @@ import Common::utils(BVtoZ)
 
 // NB: We haven't implemented the point compression functions yet, but if we
 // do we can use these test vectors
-//property p521_G_compress = P521::affineEq (P521::compress P521::G)
+//property p521_G_compress = P521::compress P521::G ==
 //    0x04c6858e06b70404e9cd9e3ecb662395b4429c648139053fb521f828af606b4d3dbaa14b5e77efe75928fe1dc127a2ffa8de3348b3c1856a429bf97e7e31c2e5bd66
 //property mp_mod_sqrt_521_correct = p521::mp_mod_sqrt_correct
 
@@ -37,7 +37,7 @@ property sAndTAreValid = P521::isValid S && P521::isValid T
  * :prove additionVectorPasses
  * ```
  */
-property additionVectorPasses = P521::affineEq (P521::add S T) R
+property additionVectorPasses = P521::add S T == R
   where R = P521::Affine (BVtoZ 0x000001264ae115ba9cbc2ee56e6f0059e24b52c8046321602c59a339cfb757c89a59c358a9a8e1f86d384b3f3b255ea3f73670c6dc9f45d46b6a196dc37bbe0f6b2dd9e9)
              (BVtoZ 0x00000062a9c72b8f9f88a271690bfa017a6466c31b9cadc2fc544744aeb817072349cfddc5ad0e81b03f1897bd9c8c6efbdf68237dc3bb00445979fb373b20c9a967ac55)
 
@@ -46,7 +46,7 @@ property additionVectorPasses = P521::affineEq (P521::add S T) R
  * :prove subtractionVectorPasses
  * ```
  */
-property subtractionVectorPasses = P521::affineEq (P521::sub S T) R
+property subtractionVectorPasses = P521::sub S T == R
   where R = P521::Affine (BVtoZ 0x000001292cb58b1795ba477063fef7cd22e42c20f57ae94ceaad86e0d21ff22918b0dd3b076d63be253de24bc20c6da290fa54d83771a225deecf9149f79a8e614c3c4cd)
              (BVtoZ 0x000001695e3821e72c7cacaadcf62909cd83463a21c6d03393c527c643b36239c46af117ab7c7ad19a4c8cf0ae95ed51729885461aa2ce2700a6365bca3733d2920b2267)
 
@@ -55,7 +55,7 @@ property subtractionVectorPasses = P521::affineEq (P521::sub S T) R
  * :prove doubleVectorPasses
  * ```
  */
-property doubleVectorPasses = P521::affineEq (P521::double S) R
+property doubleVectorPasses = P521::double S == R
   where R = P521::Affine (BVtoZ 0x0000012879442f2450c119e7119a5f738be1f1eba9e9d7c6cf41b325d9ce6d643106e9d61124a91a96bcf201305a9dee55fa79136dc700831e54c3ca4ff2646bd3c36bc6)
              (BVtoZ 0x0000019864a8b8855c2479cbefe375ae553e2393271ed36fadfc4494fc0583f6bd03598896f39854abeae5f9a6515a021e2c0eef139e71de610143f53382f4104dccb543)
 
@@ -64,7 +64,7 @@ property doubleVectorPasses = P521::affineEq (P521::double S) R
  * :prove scalarMultVectorPasses
  * ```
  */
-property scalarMultVectorPasses = P521::affineEq (P521::scmul d S) R
+property scalarMultVectorPasses = P521::scmul d S == R
   where d = toInteger 0x000001eb7f81785c9629f136a7e8f8c674957109735554111a2a866fa5a166699419bfa9936c78b62653964df0d6da940a695c7294d41b2d6600de6dfcf0edcfc89fdcb1
         R = P521::Affine (BVtoZ 0x00000091b15d09d0ca0353f8f96b93cdb13497b0a4bb582ae9ebefa35eee61bf7b7d041b8ec34c6c00c0c0671c4ae063318fb75be87af4fe859608c95f0ab4774f8c95bb)
              (BVtoZ 0x00000130f8f8b5e1abb4dd94f6baaf654a2d5810411e77b7423965e0c7fd79ec1ae563c207bd255ee9828eb7a03fed565240d2cc80ddd2cecbb2eb50f0951f75ad87977f)
@@ -75,7 +75,7 @@ property scalarMultVectorPasses = P521::affineEq (P521::scmul d S) R
  * ```
  */
 property twinMultVectorPasses =
-  P521::affineEq R (P521::twin_mul d S e T)
+  R == P521::twin_mul d S e T
   where d = toInteger 0x000001eb7f81785c9629f136a7e8f8c674957109735554111a2a866fa5a166699419bfa9936c78b62653964df0d6da940a695c7294d41b2d6600de6dfcf0edcfc89fdcb1
         e = toInteger 0x00000137e6b73d38f153c3a7575615812608f2bab3229c92e21c0d1c83cfad9261dbb17bb77a63682000031b9122c2f0cdab2af72314be95254de4291a8f85f7c70412e3
         R = P521::Affine (BVtoZ 0x0000009d3802642b3bea152beb9e05fba247790f7fc168072d363340133402f2585588dc1385d40ebcb8552f8db02b23d687cae46185b27528adb1bf9729716e4eba653d)

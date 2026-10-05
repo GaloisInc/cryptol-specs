@@ -30,7 +30,7 @@ References
     @see https://doi.org/10.6028/NIST.FIPS.186-5
 [MATH-2008]: Mathematical routines for the NIST prime elliptic curves.
     March 2008.
-    @see https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=e1b05e600bfcdeecf8555bc9948483c5fbbdd478
+    @see https://web.archive.org/web/20100128073538id_/http://www.nsa.gov/ia/_files/nist-routines.pdf
 [SP-800-186]: Lily Chen, Dustin Moody, Karen Randall, Andrew Regenscheid,
     Angela Robinson. Recommendations for Discrete Logarithm-based Cryptography:
     Elliptic Curve Domain Parameters. (National Institute of Standards and
@@ -40,7 +40,7 @@ References
  [SEC1-v2]: Daniel R. L. Brown. SEC 1: Elliptic Curve Cryptography, Version
     2.0. Standards for Efficient Cryptography Group. May 2009.
     @see http://www.secg.org/sec1-v2.pdf
- [SEC2-v2]: Daniel R. L. Brown. SEC 2: Recommened Elliptic Curve Domain
+ [SEC2-v2]: Daniel R. L. Brown. SEC 2: Recommended Elliptic Curve Domain
     Parameters, Version 2.0. Standards for Efficient Cryptography Group. Jan
     2010.
     @see https://www.secg.org/sec2-v2.pdf
@@ -137,27 +137,7 @@ h = 1 : Integer
  * [SP-800-186] Section 2.1.1.
  */
 enum Point = Infinity | Affine (Z P) (Z P)
-
-/**
- * Check equality of two affine points.
- *
- * I don't know if this is explicitly specified anywhere because it's just
- * by definition.
- */
-affineEq : Point -> Point -> Bool
-affineEq p1 p2 = case p1 of
-    Infinity -> case p2 of
-        Infinity -> True
-        _ -> False
-    Affine x y -> case p2 of
-        Affine x' y' -> (x == x') && (y == y')
-        _ -> False
-
-/**
- * The EC interface uses `pointEq` to compare equality on two points, since it
- * isn't prescriptive about what its point type is, exactly.
- */
-pointEq = affineEq
+    deriving (Eq)
 
 /**
  * Check that a given point is on the curve -- either it is the point at
@@ -172,7 +152,7 @@ pointEq = affineEq
 isValid : Point -> Bit
 isValid point = case point of
     Infinity -> True
-    Affine x y -> (y ^^ 2 == x ^^ 3 + a * x + b)
+    Affine x y -> y ^^ 2 == x ^^ 3 + a * x + b
 
 /**
  * Indicate whether a point is the point at infinity.
@@ -207,7 +187,7 @@ property curveCoefficientsAreValid = (4 * a^^3 + _27 * b^^2 != 0)
  * :prove gOrderIsN
  * ```
  */
-property gOrderIsN = affineEq G ((`n + 1) ~* G)
+property gOrderIsN = G == (`n + 1) ~* G
 
 /**
  * `G` must be a valid point on the curve.
@@ -302,6 +282,8 @@ scmul k p = to_affine (ec_mult (fromInteger k) (to_projective p))
 
 (~*) = scmul  // infix form of operator
 
+infixr 90 ~* // same as *
+
 /**
  * Scalar multiplication is a closed operation: the result must also be on the
  * curve.
@@ -317,7 +299,7 @@ property scmulIsClosed m = isValid (m ~* G)
  * :check scmul_commutes
  * ```
  */
-property scmul_commutes m m' = affineEq (m ~* (m' ~* G)) (m' ~* (m ~* G))
+property scmul_commutes m m' = m ~* m' ~* G == m' ~* m ~* G
 
 /**
  * Compute twin multiplication.
@@ -388,7 +370,7 @@ private
         // We can't compute twin normalization on the point at infinity
         // because it doesn't have an inverse. Instead, skip the normalization
         // step (the algorithm will still work!)
-        if (A.z == 0) || (B.z == 0) || (C.z == 0) || (D.z == 0) then
+        if (A.z == 0) \/ (B.z == 0) \/ (C.z == 0) \/ (D.z == 0) then
             { A=A, B=B, C=C, D=D }
         else
           // Note the parentheses here.
@@ -428,7 +410,7 @@ private
      * :prove normalizeWorksOnNormalPoints 0 0 0 0
      * ```
      */
-    property normalizeWorksOnNormalPoints k1 k2 k3 k4 = all_are_normal && all_match
+    property normalizeWorksOnNormalPoints k1 k2 k3 k4 = all_are_normal /\ all_match
         where
             p1 = to_projective (validPointFromK k1)
             p2 = to_projective (validPointFromK k2)
@@ -446,13 +428,14 @@ private
             // ...and the point at infinity always has a z-coordinate of 0.
             // So, this check for "normalcy" is only relevant if we're not
             // dealing with a point at infinity.
-            all_are_normal = any_are_infinity ||
+            all_are_normal = any_are_infinity \/
                 all (\p -> p.z == 1) [out.A, out.B, out.C, out.D]
 
             // In either case, our `toProjective` function produces points in normal
             // form, so `twin_normalize` shouldn't actually change the representation.
-            all_match = (out.A == p1) && (out.B == p2)
-                && (out.C == p3) && (out.D == p4)
+            all_match =
+                (out.A == p1) /\ (out.B == p2) /\
+                (out.C == p3) /\ (out.D == p4)
 
     /**
      * Double an elliptic curve point.
@@ -580,7 +563,9 @@ private
         | S.z == 0 then to_projective Infinity
         else Rs ! 1 /* the iteration stops at 1, not 0 */
         where
+            // Normalizing S once lets ec_add use its T.z == 1 fast path. (lines 10-13)
             S' = if S.z != 1 then to_projective (to_affine S) else S
+
             // Get bits of `d` and `3d`. The width of `ks` is set to be large
             // enough to hold the full width of `hs`.
             ks = ZtoBV d : [width P + 2]
@@ -591,8 +576,8 @@ private
             // floppy with our bitwise conversion, we'll start at 0 and
             // iterate over all the bits.
             Rs = [ InfinityProjective ] #
-                [ if hi && ~ki then ec_full_add doubleR S
-                  | ~hi && ki then ec_full_sub doubleR S
+                [ if hi /\ ~ki then ec_full_add doubleR S'
+                  | ~hi /\ ki then ec_full_sub doubleR S'
                   else doubleR
                   where doubleR = ec_double Ri
                 | ki <- ks | hi <- hs | Ri <- Rs ]
@@ -610,13 +595,13 @@ private
         Infinity -> point2
         Affine x1 y1 -> case point2 of
             Infinity -> point1
-            Affine x2 y2 -> if (x1 == x2) && (y1 == -y2) then Infinity
+            Affine x2 y2 -> if (x1 == x2) /\ (y1 == -y2) then Infinity
                 else Affine x y
                 where  // all arithmetic operations are mod p
                     x = lambda ^^ 2 - x1 - x2
                     y = lambda * (x1 - x) - y1
-                    lambda = if x1 == x2 then (3 * x1 ^^ 2 + a) %/ (2 * y1)
-                        else (y2 - y1) %/ (x2 - x1)
+                    lambda = if x1 == x2 then (3 * x1 ^^ 2 + a) /. (2 * y1)
+                        else (y2 - y1) /. (x2 - x1)
 
 
     /**
@@ -652,7 +637,7 @@ private
      */
     addsAreEquivalent : Z n' -> Z n' -> Bool
     property addsAreEquivalent k1 k2 =
-        affineEq (affine_add p1 p2) (to_affine full_sum)
+        affine_add p1 p2 == to_affine full_sum
         where
             p1 = validPointFromK k1
             p2 = validPointFromK k2
@@ -667,15 +652,15 @@ private
      */
     addsBehaveCorrectlyAtInfinity : Z n' -> Bool
     property addsBehaveCorrectlyAtInfinity k =
-        oo && ok && ko && oo' && ok' && ko'
+        oo /\ ok /\ ko /\ oo' /\ ok' /\ ko'
         where
-            // Compute infinity identies in affine form.
+            // Compute infinity identities in affine form.
             point = validPointFromK k
-            oo = affineEq Infinity (affine_add Infinity Infinity)
-            ok = affineEq point (affine_add Infinity point)
-            ko = affineEq point (affine_add point Infinity)
+            oo = Infinity == affine_add Infinity Infinity
+            ok = point == affine_add Infinity point
+            ko = point == affine_add point Infinity
 
-            // Compute infinity identies in projective form.
+            // Compute infinity identities in projective form.
             point' = to_projective point
             oo' = InfinityProjective ==
                 ec_full_add InfinityProjective InfinityProjective
@@ -723,17 +708,17 @@ private
                     // Line 18.
                     RkDouble = ec_double Rk
                     // Lines 19-26.
-                    Rk' = if (u0 == -1) && (u1 == -1) then
+                    Rk' = if (u0 == -1) /\ (u1 == -1) then
                             ec_full_sub RkDouble SpT'
-                        | (u0 == -1) && (u1 ==  0) then ec_full_sub RkDouble S'
-                        | (u0 == -1) && (u1 ==  1) then
+                        | (u0 == -1) /\ (u1 ==  0) then ec_full_sub RkDouble S'
+                        | (u0 == -1) /\ (u1 ==  1) then
                             ec_full_sub RkDouble SmT'
-                        | (u0 ==  0) && (u1 == -1) then ec_full_sub RkDouble T'
-                        | (u0 ==  0) && (u1 ==  1) then ec_full_add RkDouble T'
-                        | (u0 ==  1) && (u1 == -1) then
+                        | (u0 ==  0) /\ (u1 == -1) then ec_full_sub RkDouble T'
+                        | (u0 ==  0) /\ (u1 ==  1) then ec_full_add RkDouble T'
+                        | (u0 ==  1) /\ (u1 == -1) then
                             ec_full_add RkDouble SmT'
-                        | (u0 ==  1) && (u1 ==  0) then ec_full_add RkDouble S'
-                        | (u0 ==  1) && (u1 ==  1) then
+                        | (u0 ==  1) /\ (u1 ==  0) then ec_full_add RkDouble S'
+                        | (u0 ==  1) /\ (u1 ==  1) then
                             ec_full_add RkDouble SpT'
                         else RkDouble
                 | (Rk, [c0, c1]) <- states
@@ -745,10 +730,10 @@ private
             // An auxiliary routine.
             // [MATH-2008] Routine 2.2.11.
             F : [5] -> [5]
-            F t = if (18 <= t) && (t < 22) then 9
-                | (14 <= t) && (t < 18) then 10
-                | (22 <= t) && (t < 24) then 11
-                | (4 <= t)  && (t < 12) then 14
+            F t = if (18 <= t) /\ (t < 22) then 9
+                | (14 <= t) /\ (t < 18) then 10
+                | (22 <= t) /\ (t < 24) then 11
+                | (4 <= t)  /\ (t < 12) then 14
                 else 12
 
     /**
@@ -766,21 +751,12 @@ private
      * :check (\d0 d1 k -> twin_mult_works d0 0 d1 k)
      * ```
      */
-    property twin_mult_works d0 k0 d1 k1 = affineEq R_plain R_twin
+    property twin_mult_works d0 k0 d1 k1 = R_plain == R_twin
         where
             S = to_projective (validPointFromK k0)
             T = to_projective (validPointFromK k1)
             R_plain = to_affine (ec_full_add (ec_mult d0 S) (ec_mult d1 T))
             R_twin = to_affine (ec_twin_mult d0 S d1 T)
-
-    /**
-    * Calulate x / y in a field.
-    * ```repl
-    * :prove  2 %/ 2 == (1 : Z 3)
-    * ```
-    */
-    (%/) : {a} (Field a) => a -> a -> a
-    (%/) x y = x * recip y
 
 /*
 Note [Limit scope of recip in where clauses]

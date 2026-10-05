@@ -14,7 +14,7 @@ import Common::utils(BVtoZ)
 
 // NB: We haven't implemented the point compression functions yet, but if we
 // do we can use these test vectors
-//property p224_G_compress = P224::affineEq (P224::compress P224::G)
+//property p224_G_compress = P224::compress P224::G ==
 //    0x00000002b70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21
 //property mp_mod_sqrt_224_correct = p224::mp_mod_sqrt_correct
 
@@ -37,7 +37,7 @@ property sAndTAreValid = P224::isValid S && P224::isValid T
  * :prove additionVectorPasses
  * ```
  */
-property additionVectorPasses = P224::affineEq (P224::add S T) R
+property additionVectorPasses = P224::add S T == R
   where R = P224::Affine (BVtoZ 0x236f26d9e84c2f7d776b107bd478ee0a6d2bcfcaa2162afae8d2fd15)
              (BVtoZ 0xe53cc0a7904ce6c3746f6a97471297a0b7d5cdf8d536ae25bb0fda70)
 
@@ -46,7 +46,7 @@ property additionVectorPasses = P224::affineEq (P224::add S T) R
  * :prove subtractionVectorPasses
  * ```
  */
-property subtractionVectorPasses = P224::affineEq (P224::sub S T) R
+property subtractionVectorPasses = P224::sub S T == R
   where R = P224::Affine (BVtoZ 0xdb4112bcc8f34d4f0b36047bca1054f3615413852a7931335210b332)
              (BVtoZ 0x90c6e8304da4813878c1540b2396f411facf787a520a0ffb55a8d961)
 
@@ -55,7 +55,7 @@ property subtractionVectorPasses = P224::affineEq (P224::sub S T) R
  * :prove doubleVectorPasses
  * ```
  */
-property doubleVectorPasses = P224::affineEq (P224::double S) R
+property doubleVectorPasses = P224::double S == R
   where R = P224::Affine (BVtoZ 0xa9c96f2117dee0f27ca56850ebb46efad8ee26852f165e29cb5cdfc7)
              (BVtoZ 0xadf18c84cf77ced4d76d4930417d9579207840bf49bfbf5837dfdd7d)
 
@@ -64,7 +64,7 @@ property doubleVectorPasses = P224::affineEq (P224::double S) R
  * :prove scalarMultVectorPasses
  * ```
  */
-property scalarMultVectorPasses = P224::affineEq (P224::scmul d S) R
+property scalarMultVectorPasses = P224::scmul d S == R
   where d = toInteger 0xa78ccc30eaca0fcc8e36b2dd6fbb03df06d37f52711e6363aaf1d73b
         R = P224::Affine (BVtoZ 0x96a7625e92a8d72bff1113abdb95777e736a14c6fdaacc392702bca4)
              (BVtoZ 0x0f8e5702942a3c5e13cd2fd5801915258b43dfadc70d15dbada3ed10)
@@ -75,7 +75,7 @@ property scalarMultVectorPasses = P224::affineEq (P224::scmul d S) R
  * ```
  */
 property twinMultVectorPasses =
-  P224::affineEq R (P224::twin_mul d S e T)
+  R == P224::twin_mul d S e T
   where d = toInteger 0xa78ccc30eaca0fcc8e36b2dd6fbb03df06d37f52711e6363aaf1d73b
         e = toInteger 0x54d549ffc08c96592519d73e71e8e0703fc8177fa88aa77a6ed35736
         R = P224::Affine (BVtoZ 0xdbfe2958c7b2cda1302a67ea3ffd94c918c5b350ab838d52e288c83e)

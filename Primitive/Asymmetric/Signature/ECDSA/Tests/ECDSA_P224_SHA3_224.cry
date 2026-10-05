@@ -26,7 +26,7 @@ import Common::EC::PrimeField::Instantiations::P224 as EC
  */
 property testVerification = publicKeyWorks && sigVerWorks where
     // Check that the provided `d` computes the expected public key.
-    publicKeyWorks = EC::affineEq (ECDSA::publicKey d) (EC::Affine qx qy)
+    publicKeyWorks = ECDSA::publicKey d == EC::Affine qx qy
 
     d = BVtoZ 0x2F9D814730AF0085C942FE8B679B023C0DB5AFAC27613D7CEC883405
     qx = BVtoZ 0x47E1E01BBE0407877C18D7B94ACFC690BDCF0AF6D6A9EC91CA59F772
