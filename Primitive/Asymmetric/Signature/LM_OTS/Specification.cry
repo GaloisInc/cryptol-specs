@@ -1,0 +1,32 @@
+/**
+ * The Leighton-Micali Hash Based Signature (LMS) requires
+ * an LM-OTS signature (Leighton-Micali One Time Signature).
+ *
+ * Reference:
+ * [LMS] RFC 8554: Leighton-Micali Hash-Based Signatures
+ *       McGrew, Curcio, Fluhrer.
+ *       April 1, 2019.
+ *       @see https://doi.org/10.17487/RFC8554
+ *
+ * [NIST] NIST SP800-208: Recommendation for Stateful Hash Based Signature Schemes.
+ *        Cooper et. al.
+ *        October 2020
+ *        @see https://doi.org/10.6028/NIST.SP.800-208
+ */
+module Primitive::Asymmetric::Signature::LM_OTS::Specification where
+
+import interface Primitive::Asymmetric::Signature::LM_OTS::Parameters
+import interface Primitive::Keyless::Hash::HashInterface
+
+/**
+ * The LM OTS specification requires n to be the number of bytes in
+ * the hash digest. We enforce this here.
+ */
+interface constraint (DigestLength == 8 * n)
+
+/**
+ * w is in the set {1, 2, 4, 8}, but Cryptol requires help to deduce
+ * that the width of 2 ^^ w - 2 is less than or equal to 8 because
+ * of the particular formulation of w.
+ */
+interface constraint (width (2 ^^ w - 2) <= 8)
