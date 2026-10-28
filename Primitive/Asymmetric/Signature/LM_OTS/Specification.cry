@@ -161,7 +161,127 @@ signatureGeneration privateKey message C = signature
 
         signature = u32str typecode # C # join y
 
+/**
+ * In order to verify a message with its signature, the verifier
+ * must "complete" the chain of iterations of H using the w-bit
+ * coefficients of the string resulting from the concatenation of
+ * the message hash and its checksum. This computation should result
+ * in a value that matches the provided public key.
+ *
+ * See Section 4.6 of [LMS], Algorithm 4a + Algorithm 4b.
+ *
+ */
+verifySignature:
+    {m}
+    (fin m, width (8 * (22 + m + n)) < MessageUpperBound)
+    => [SignatureLen][8] -> [m][8] -> [PublicKeyLen][8] -> Bit
+verifySignature s m p = case verify s m p of
+                            VALID -> True
+                            INVALID -> False
+
 private
+
+    /**
+     * The specification uses VALID and INVALID in place
+     * of a bit. We make the editorial decision to hide this
+     * detail.
+     */
+    enum OTSResult = VALID | INVALID
+
+    /**
+     * Algorithm 4a: Verifying a Signature and Message Using a
+     * Public Key.
+     */
+    verify:
+        {m}
+        (fin m, width (8 * (22 + m + n)) < MessageUpperBound)
+        => [SignatureLen][8] -> [m][8] -> [PublicKeyLen][8] -> OTSResult
+    verify signature message pubKey = if badPubtype
+                                      then INVALID // We should be using a different parameter set.
+                                      else case Kc of
+                                        Err _ -> INVALID // An error while computing the candidate.
+                                        Ok kc -> if kc == K
+                                                 then VALID
+                                                 else INVALID
+        where
+            // 1. If the public key is not at least four bytes long,
+            // return INVALID.
+
+            // This case is precluded by the type definition.
+
+            // 2. Parse pubtype, I, q, and K from the public key.
+
+            // a. Parse pubtype
+            (pubtype, remPk0) = (strTou32 (take `{4} pubKey), drop `{4} pubKey)
+
+            // b. Set n according to the pubkey...
+
+            // we ignore this, since we take it as a parameter. what we will do
+            // instead is check that it matches the typecode we expect.
+            badPubtype = typecode != pubtype
+
+            // c. parse I
+            (I, remPk1) = (take `{16} remPk0, drop `{16} remPk0)
+
+            // d. compute q
+            (q, remPk2) = (strTou32 (take `{4} remPk1), drop `{4} remPk1)
+
+            // e. the rest of the public key is K
+            // we make the type explicit to ensure that it is exactly
+            // n bytes like the type "promises".
+            K = remPk2 : [n][8]
+
+            // 3. Compute Kc
+            Kc = computeKc signature message pubtype I q
+
+    /**
+     * Algorithm 4b: Computing a Public Key Candidate Kc from
+     * a Signature, Message, Signature Typecode pubtype, and
+     * Identifiers I, q.
+     *
+     * We intentionally deviate from the specification in the
+     * following ways:
+     *
+     * 1. Algorithm 4b assumes that n and p will be set with
+     * the typecode, while we assume that n and p are pre-set.
+     * This means the Cryptol specification does the length checking
+     * in the type system, rather than at "runtime".
+     */
+    computeKc:
+        {m}
+        (fin m, width (8 * (22 + m + n)) < MessageUpperBound)
+        => [SignatureLen][8] -> [m][8] -> Typecode -> [16][8] -> [32] -> Result ([n][8]) OTSResult
+    computeKc signature message pubtype I q = if badType
+                                              then Err INVALID
+                                              else Ok Kc
+        where
+            // 1. If the signature is not at least four bytes long,
+            // return INVALID.
+
+            // This case is precluded by the definition of SignatureLen
+
+            // 2. Parse sigtype, C, and y from the signature.
+            //
+            // The case where the length check fails is precluded
+            // by the definition of SignatureLen. To make this
+            // clear, we give explicit types to C and y.
+
+            (sigtype, rem) = (take `{4} signature, drop `{4} signature)
+            (C, y) = (take `{n} rem, split (drop `{n} rem)) : ([n][8], [p][n][8])
+
+            // if sigtype is not equal to pubtype, return INVALID.
+            badType = join sigtype != pubtype
+
+            // 3. Compute the string Kc
+            Q = H (I # u32str q # u16str D_MESG # C # message)
+
+            // Convert Q || Cksm(Q) into a w string.
+            // Convert the w string into a sequence of 8 bit values.
+            Qw = map (zext `{8}) (wStr (Q # split (Cksm Q)))
+
+            z = [HtIter (2 ^^ `w - 1) i I q (y @ i) (Qw @ i) | i <- [0..p - 1]]
+
+            Kc = H (I # u32str q # u16str D_PBLC # join z)
 
     /**
      * A checksum is used to ensure that any forgery attempt
