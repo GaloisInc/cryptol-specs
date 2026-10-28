@@ -182,6 +182,28 @@ verifySignature s m p = case verify s m p of
 private
 
     /**
+     * It should be possible to verify a signature created by some
+     * private key holder with the corresponding public key.
+     *
+     *
+     * Performance note: this is a relatively slow test, even if
+     * Suite B primitives are used.
+     *
+     * ```
+     * :check schemeOk `{8}
+     * ```
+     */
+    schemeOk:
+        {m}
+        (fin m, width (8 * (22 + m + n)) < MessageUpperBound)
+        => [PrivateKeyLen][8] -> [m][8] -> [n][8] -> Bit
+    property schemeOk privateKey message nonce = verificationResult
+        where
+            verificationResult = verifySignature signature message publicKey
+            publicKey = publicKeyGeneration privateKey
+            signature = signatureGeneration privateKey message nonce
+
+    /**
      * The specification uses VALID and INVALID in place
      * of a bit. We make the editorial decision to hide this
      * detail.
