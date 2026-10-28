@@ -30,3 +30,79 @@ interface constraint (DigestLength == 8 * n)
  * of the particular formulation of w.
  */
 interface constraint (width (2 ^^ w - 2) <= 8)
+
+/**
+ * The private key is a:
+ * - typecode
+ * - tree ID
+ * - leaf ID
+ * - private key array
+ */
+type PrivateKeyLen = 4 + 16 + 4 + (p * n)
+
+/**
+ * Private key generation. This corresponds to Algorithm 0 in Section 4.2 of [LMS].
+ * This implementation intentionally deviates from the specification in the following
+ * ways:
+ *
+ * 1. The parameters p and n are taken from the parameters file rather than a table
+ * of specified values.
+ *
+ * 2. The "random" array x is passed in as an argument to this function, since we do
+ * not model random number generation in Cryptol.
+ *
+ * 3. The typecode does not correspond to the specification, and is instead treated
+ * as an arbitrary 32 bit value from the parameter module.
+ *
+ */
+privateKeyGeneration: [16][8] -> [32] -> [p][n][8] -> [PrivateKeyLen][8]
+privateKeyGeneration I q x = (u32str typecode) # I # (split q) # join x
+
+private
+
+    /*
+     * Unsigned integers are converted into byte strings by representing them
+     * in network byte order. See [LMS] Section 3.
+     */
+
+    /**
+     * Convert an 8-bit integer into a byte string.
+     *
+     * See Section 3.1 of [LMS].
+     */
+    u8str: [8] -> [1][8]
+    u8str x = [x]
+
+    /**
+     * Convert a 16-bit integer into a byte string.
+     *
+     * See Section 3.1 of [LMS].
+     */
+    u16str: [16] -> [2][8]
+    u16str = split
+
+    /**
+     * Convert a 32-bit integer into a byte string.
+     *
+     * See Section 3.1 of [LMS].
+     */
+    u32str: [32] -> [4][8]
+    u32str = split
+
+    /**
+     * Convert a byte string to an unsigned integer.
+     *
+     * See Section 3.1 of [LMS].
+     */
+    strTou32: [4][8] -> [32]
+    strTou32 = join
+
+    /**
+     * The following identity holds for any four byte
+     * string.
+     *
+     * ```
+     * :prove strConvertIdentity
+     * ```
+     */
+    property strConvertIdentity s = u32str(strTou32(s)) == s
