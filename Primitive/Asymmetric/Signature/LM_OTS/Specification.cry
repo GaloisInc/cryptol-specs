@@ -12,6 +12,9 @@
  *        Cooper et. al.
  *        October 2020
  *        @see https://doi.org/10.6028/NIST.SP.800-208
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
  */
 module Primitive::Asymmetric::Signature::LM_OTS::Specification where
 

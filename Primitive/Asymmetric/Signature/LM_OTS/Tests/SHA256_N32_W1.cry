@@ -2,6 +2,9 @@
  * Test the SHA256 FFI N32 W1 LMS OTS instance.
  * This uses generated test vectors from the Trail of Bits LMS Go Package.
  * @see https://github.com/trailofbits/lms-go
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
  */
 module Primitive::Asymmetric::Signature::LM_OTS::Tests::SHA256_N32_W1 where
 

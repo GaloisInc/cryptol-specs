@@ -1,6 +1,9 @@
 /**
  * An instantiation of LM OTS with SHA256 as the underlying function H and a
  * Winternitz parameter (w) of 1. This uses a implementation of SHA256 via FFI.
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
  */
 module Primitive::Asymmetric::Signature::LM_OTS::Instantiations::SHA256_N32_W1 =
     Primitive::Asymmetric::Signature::LM_OTS::Specification
