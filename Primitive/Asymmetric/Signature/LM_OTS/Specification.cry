@@ -184,6 +184,20 @@ verifySignature s m p = case verify s m p of
                             VALID -> True
                             INVALID -> False
 
+/**
+ * Appendix A of [LMS] specifies a way to pseudorandomly generate
+ * an LMS key from an m-byte value. This relies on the H for LM-OTS,
+ * and the generation of "many" LM-OTS private keys (one for each leaf).
+ */
+pseudoRandomKeyGeneration:
+    {m}
+    (fin m, 1 + width (8 * (23 + m)) <= MessageUpperBound)
+    => [16][8] -> [32] -> [m][8] -> [p * n][8]
+pseudoRandomKeyGeneration I q SEED = join keyElements
+    where
+        keyElements: [p][n][8]
+        keyElements @ i = H (I # u32str q # u16str i # u8str 0xFF # SEED)
+
 private
 
     /**
