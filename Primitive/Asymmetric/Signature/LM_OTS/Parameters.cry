@@ -1,0 +1,96 @@
+/**
+ * The Leighton-Micali Hash Based Signature (LMS) requires
+ * a LM-OTS signature (Leighton-Micali One Time Signature).
+ *
+ * Reference:
+ * [LMS] RFC 8554: Leighton-Micali Hash-Based Signatures
+ *       McGrew, Curcio, Fluhrer.
+ *       April 1, 2019.
+ *       @see https://doi.org/10.17487/RFC8554
+ *
+ * [NIST] NIST SP800-208: Recommendation for Stateful Hash Based Signature Schemes.
+ *        Cooper et. al.
+ *        October 2020
+ *        @see https://doi.org/10.6028/NIST.SP.800-208
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ */
+interface module Primitive::Asymmetric::Signature::LM_OTS::Parameters where
+
+/*
+ * The signature system uses the parameters `n` and `w`, which are both
+ * positive integers.  The algorithm description also makes use of the
+ * internal parameters `p` and `ls`, which are dependent on `n` and `w`.
+ *
+ * Ref: [LMS] Section 4.1
+ */
+
+/**
+ * The number of bytes of the output of the hash function.
+ */
+type n: #
+
+type constraint (fin n, n > 0)
+
+/**
+ * Here, we actually paramterize on a type _w, that maps
+ * onto the "real" parameter w. This is done to ensure that
+ * the types `w` actually fall into the specified set.
+ */
+type _w: #
+
+type constraint (_w < 4)
+
+/**
+ * This is the number of independent Winternitz chains used in the
+ * signature; it will be the number of w-bit digits needed to hold
+ * the n-bit hash (u in the below equations), along with the
+ * number of digits needed to hold the checksum (v in the below
+ * equations)
+ */
+type p: # // Stubbed out
+
+type constraint (fin p, p > 0)
+
+/**
+ * This is the size of the shift needed to move the checksum so
+ * that it appears in the checksum digits
+ */
+type ls: # // Stubbed out
+
+type constraint (fin ls)
+
+
+/**
+ * The width (in bits) of the Winternitz coefficients; that is,
+ * the number of bits from the hash or checksum that is used with a
+ * single Winternitz chain.  It is a member of the set
+ *  { 1, 2, 4, 8 }.
+ *
+ * Here we observe that this set is the first four powers of two.
+ */
+type w = 2 ^^ _w
+
+/**
+ * This constraint is added to appease Cryptol's typechecker.
+ */
+type constraint (8 % w == 0)
+
+/**
+ *
+ * Per Section 3.2 of [LMS]:
+ *
+ * A typecode is an unsigned integer that is associated with a
+ * particular data format.  The format of the LM-OTS, LMS, and HSS
+ * signatures and public keys all begin with a typecode that indicates
+ * the precise details used in that format.  These typecodes are
+ * represented as four-byte unsigned integers in network byte order.
+ *
+ * The typecode is referenced throughout the RFC to specify details
+ * such as the choice of hash function, data format, etc...rather than
+ * tabulate these, to support more flexible instances, we take the typecode
+ * as a parameter, and expect the implementor to set the other parameters
+ * in accord with the standard if they desire standards conformance.
+ */
+typecode: [32]
