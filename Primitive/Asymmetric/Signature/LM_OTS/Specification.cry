@@ -115,7 +115,9 @@ publicKeyGeneration privateKey = pubKey
         (_, I, q, x) = unpackPrivate privateKey
 
         // 4. Compute the string K.
-        y = [publicComponent i I q (x @ i) | i <- [0..p - 1]]
+        y : [p][n][8]
+        y@i = publicComponent i I q (x @ i)
+
         K = H (I # u32str q # u16str D_PBLC # join y)
 
         // 5. Return the following
