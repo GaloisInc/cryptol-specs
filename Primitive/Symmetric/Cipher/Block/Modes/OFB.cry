@@ -1,0 +1,19 @@
+/*
+ * Output feedback mode of operation, as defined in [NIST-SP-800-38A], Section 6.4.
+ *
+ * ⚠️ Warning ⚠️: OFB mode will fail catastrophically if a (key, iv) pair is ever reused.
+ * Cryptol cannot detect such failures! Please audit your implementations separately for
+ * this issue.
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ *
+ * References:
+ * [NIST-SP-800-38A]: Morris Dworkin. Recommendation for Block Cipher
+ * Modes of Operation: Methods and Techniques. NIST Special Publication
+ * 800-38A. December 2001.
+ *
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::OFB where
+
+import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
