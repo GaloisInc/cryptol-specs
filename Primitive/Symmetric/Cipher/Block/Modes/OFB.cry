@@ -65,7 +65,19 @@ private
      * OFB decryption inverts encryption.
      */
     OFBOk: {m} (fin m) => [C::KeySize] -> [C::BlockSize] -> [m] -> Bit
-    OFBOk K IV P = OFBDecrypt K IV (OFBEncrypt K IV P) == P
+    property OFBOk K IV P = OFBDecrypt K IV (OFBEncrypt K IV P) == P
+
+    /**
+     * A formulation of OFB encryption as a stream cipher.
+     */
+    OFBEncrypt': {m} (fin m) => [C::KeySize] -> [C::BlockSize] -> [m] -> [m]
+    OFBEncrypt' K IV P = P ^ take (bitstream K IV)
+
+    /**
+     * The OFB encryptor is the same as the bit oriented one.
+     */
+    OFBIsStreamCipher: {m} (fin m) => [C::KeySize] -> [C::BlockSize] -> [m] -> Bit
+    property OFBIsStreamCipher K IV P = OFBEncrypt K IV P == OFBEncrypt' K IV P
 
     /**
      * The most significant bits of the ciphertext are used as the keystream
