@@ -20,8 +20,59 @@ import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
 
 interface constraint (C::BlockSize > 0)
 
+/**
+ * Output FeedBack mode encryption.
+ *
+ * This is described in Section 6.4 of [NIST-SP800-38A].
+ */
+OFBEncrypt: {m} (fin m) => [C::KeySize] -> [C::BlockSize] -> [m] -> [m]
+OFBEncrypt K IV P
+    | m == 0 => []
+    | m > 0 => join Cjs # Cstar
+        where
+            // n blocks are required to have "enough" key bits
+            type n = m /^ C::BlockSize
+            type n' = (m / C::BlockSize) * C::BlockSize
+
+            // There are u bits in the final partial block.
+            type u = m % C::BlockSize
+
+            // P is possibly many blocks followed by at most one partial block.
+            // We would like to take m - u bits instead of n' bits, but the Cryptol
+            // typechecker cannot solve that equality.
+            Pjs = take `{n'} P
+            Pstar = drop `{m - u} P
+
+            Os = Ojs `{n} K IV
+
+            Cjs = [Pj ^ Oj | Pj <- split Pjs | Oj <- Os]
+            Cstar = if `(m - u) > 0
+                    then Pstar ^ MSB (last Os)
+                    else Pstar
+
+/**
+ * Output FeedBack (OFB) mode decryption.
+ *
+ * This deviates from the specification by observing that decryption is just
+ * OFB encryption applied to the ciphertext. This is akin to the counter mode.
+ */
+OFBDecrypt: {m} (fin m) => [C::KeySize] -> [C::BlockSize] -> [m] -> [m]
+OFBDecrypt K IV C = OFBEncrypt K IV C
 
 private
+
+    /**
+     * OFB decryption inverts encryption.
+     */
+    OFBOk: {m} (fin m) => [C::KeySize] -> [C::BlockSize] -> [m] -> Bit
+    OFBOk K IV P = OFBDecrypt K IV (OFBEncrypt K IV P) == P
+
+    /**
+     * The most significant bits of the ciphertext are used as the keystream
+     * if the final block is partial.
+     */
+    MSB: {u} (u <= C::BlockSize) => [C::BlockSize] -> [u]
+    MSB = take
 
     /**
      * The forward cipher is iterated on a sequence of blocks. This corresponds
