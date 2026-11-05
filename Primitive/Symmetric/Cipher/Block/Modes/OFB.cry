@@ -17,3 +17,42 @@
 module Primitive::Symmetric::Cipher::Block::Modes::OFB where
 
 import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
+
+interface constraint (C::BlockSize > 0)
+
+
+private
+
+    /**
+     * The forward cipher is iterated on a sequence of blocks. This corresponds
+     * to the first three lines of the OFB Encryption / Decryption definition.
+     *
+     * The specification uses 1-based indices. This uses zero-based indices.
+     */
+    Ojs: {n} () => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize]
+    Ojs K IV = O
+        where
+            I0 = IV
+            Is = [I0] # [Ij | Ij <- O]
+            O @ j = CIPH_K (Is @ j)
+            CIPH_K = C::encrypt K
+
+    /**
+     * Alternatively, the generation of the Ojs can be thought of as the generation
+     * of an infinite stream of bits. This formulation is not directly mentioned in
+     * SP800-38A, but is written here for validation purposes, and as an arguably more
+     * idiomatic Cryptol definition.
+     */
+    bitstream: [C::KeySize] -> [C::BlockSize] -> [inf]
+    bitstream K IV = join bits
+        where
+            // Cryptol "iterate" outputs the first argument
+            // as the "zeroth" iteration.
+            bits = drop `{1} (iterate CIPH_K IV)
+            CIPH_K = C::encrypt K
+
+    /**
+     * The definition of Ojs is a prefix of the "bitstream" when the key and IV match.
+     */
+    bitstreamOk: {n} (fin n) => [C::KeySize] -> [C::BlockSize] -> Bit
+    property bitstreamOk K IV = join (Ojs `{n} K IV) == take (bitstream K IV)
