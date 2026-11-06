@@ -105,11 +105,11 @@ private
      * idiomatic Cryptol definition.
      */
     bitstream: [C::KeySize] -> [C::BlockSize] -> [inf]
-    bitstream K IV = join bits
+    bitstream K IV = join blocks
         where
             // Cryptol "iterate" outputs the first argument
             // as the "zeroth" iteration.
-            bits = drop `{1} (iterate CIPH_K IV)
+            blocks = drop `{1} (iterate CIPH_K IV)
             CIPH_K = C::encrypt K
 
     /**
