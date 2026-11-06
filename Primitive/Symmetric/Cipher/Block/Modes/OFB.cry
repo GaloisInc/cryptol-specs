@@ -46,9 +46,7 @@ OFBEncrypt K IV P
             Os = Ojs `{n} K IV
 
             Cjs = [Pj ^ Oj | Pj <- split Pjs | Oj <- Os]
-            Cstar = if `(m - u) > 0
-                    then Pstar ^ MSB (last Os)
-                    else Pstar
+            Cstar = Pstar ^ MSB (last Os)
 
 /**
  * Output FeedBack (OFB) mode decryption.
