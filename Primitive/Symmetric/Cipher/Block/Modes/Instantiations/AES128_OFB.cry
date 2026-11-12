@@ -1,0 +1,10 @@
+/*
+ * Instantiate OFB mode for AES 128.
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::Instantiations::AES128_OFB =
+    Primitive::Symmetric::Cipher::Block::Modes::OFB {
+        Primitive::Symmetric::Cipher::Block::AES::Instantiations::AES128
+    }

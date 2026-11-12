@@ -1,0 +1,119 @@
+/*
+ * Output feedback mode of operation, as defined in [NIST-SP-800-38A], Section 6.4.
+ *
+ * ⚠️ Warning ⚠️: OFB mode will fail catastrophically if a (key, iv) pair is ever reused.
+ * Cryptol cannot detect such failures! Please audit your implementations separately for
+ * this issue.
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ *
+ * References:
+ * [NIST-SP-800-38A]: Morris Dworkin. Recommendation for Block Cipher
+ * Modes of Operation: Methods and Techniques. NIST Special Publication
+ * 800-38A. December 2001.
+ *
+ */
+module Primitive::Symmetric::Cipher::Block::Modes::OFB where
+
+import interface Primitive::Symmetric::Cipher::Block::CipherInterface as C
+
+interface constraint (C::BlockSize > 0)
+
+/**
+ * Output FeedBack mode encryption.
+ *
+ * This is described in Section 6.4 of [NIST-SP800-38A].
+ */
+OFBEncrypt: {m} (fin m) => [C::KeySize] -> [C::BlockSize] -> [m] -> [m]
+OFBEncrypt K IV P
+    | m == 0 => []
+    | m > 0 => join Cjs # Cstar
+        where
+            // n blocks are required to have "enough" key bits
+            type n = m /^ C::BlockSize
+            type n' = (m / C::BlockSize) * C::BlockSize
+
+            // There are u bits in the final partial block.
+            type u = m % C::BlockSize
+
+            // P is possibly many blocks followed by at most one partial block.
+            // We would like to take m - u bits instead of n' bits, but the Cryptol
+            // typechecker cannot solve that equality.
+            Pjs = take `{n'} P
+            Pstar = drop `{m - u} P
+
+            Os = Ojs `{n} K IV
+
+            Cjs = [Pj ^ Oj | Pj <- split Pjs | Oj <- Os]
+            Cstar = Pstar ^ MSB (last Os)
+
+/**
+ * Output FeedBack (OFB) mode decryption.
+ *
+ * This deviates from the specification by observing that decryption is just
+ * OFB encryption applied to the ciphertext. This is akin to the counter mode.
+ */
+OFBDecrypt: {m} (fin m) => [C::KeySize] -> [C::BlockSize] -> [m] -> [m]
+OFBDecrypt K IV C = OFBEncrypt K IV C
+
+private
+
+    /**
+     * OFB decryption inverts encryption.
+     */
+    OFBOk: {m} (fin m) => [C::KeySize] -> [C::BlockSize] -> [m] -> Bit
+    property OFBOk K IV P = OFBDecrypt K IV (OFBEncrypt K IV P) == P
+
+    /**
+     * A formulation of OFB encryption as a stream cipher.
+     */
+    OFBEncrypt': {m} (fin m) => [C::KeySize] -> [C::BlockSize] -> [m] -> [m]
+    OFBEncrypt' K IV P = P ^ take (bitstream K IV)
+
+    /**
+     * The OFB encryptor is the same as the bit oriented one.
+     */
+    OFBIsStreamCipher: {m} (fin m) => [C::KeySize] -> [C::BlockSize] -> [m] -> Bit
+    property OFBIsStreamCipher K IV P = OFBEncrypt K IV P == OFBEncrypt' K IV P
+
+    /**
+     * The most significant bits of the ciphertext are used as the keystream
+     * if the final block is partial.
+     */
+    MSB: {u} (u <= C::BlockSize) => [C::BlockSize] -> [u]
+    MSB = take
+
+    /**
+     * The forward cipher is iterated on a sequence of blocks. This corresponds
+     * to the first three lines of the OFB Encryption / Decryption definition.
+     *
+     * The specification uses 1-based indices. This uses zero-based indices.
+     */
+    Ojs: {n} () => [C::KeySize] -> [C::BlockSize] -> [n][C::BlockSize]
+    Ojs K IV = O
+        where
+            I0 = IV
+            Is = [I0] # [Ij | Ij <- O]
+            O @ j = CIPH_K (Is @ j)
+            CIPH_K = C::encrypt K
+
+    /**
+     * Alternatively, the generation of the Ojs can be thought of as the generation
+     * of an infinite stream of bits. This formulation is not directly mentioned in
+     * SP800-38A, but is written here for validation purposes, and as an arguably more
+     * idiomatic Cryptol definition.
+     */
+    bitstream: [C::KeySize] -> [C::BlockSize] -> [inf]
+    bitstream K IV = join blocks
+        where
+            // Cryptol "iterate" outputs the first argument
+            // as the "zeroth" iteration.
+            blocks = drop `{1} (iterate CIPH_K IV)
+            CIPH_K = C::encrypt K
+
+    /**
+     * The definition of Ojs is a prefix of the "bitstream" when the key and IV match.
+     */
+    bitstreamOk: {n} (fin n) => [C::KeySize] -> [C::BlockSize] -> Bit
+    property bitstreamOk K IV = join (Ojs `{n} K IV) == take (bitstream K IV)
