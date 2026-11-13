@@ -1,0 +1,15 @@
+/**
+ * Parameter set for LM_OTS.
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ */
+module Primitive::Asymmetric::Signature::LM_OTS::Parameters::N32_W1 where
+
+type n = 32
+type _w = 0 // type w = 2 ^^ _w = 1
+
+typecode = 1 : [32]
+
+type p = 265
+type ls = 7

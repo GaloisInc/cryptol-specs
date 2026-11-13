@@ -1,0 +1,16 @@
+/**
+ * Hash interface instantiation using the SHA256 FFI.
+ *
+ * @copyright Galois, Inc.
+ * @author John Christensen <jchristensen@galois.com>
+ */
+module Primitive::Asymmetric::Signature::LM_OTS::Parameters::SHA256_FFI where
+
+import SuiteB as SuiteB
+
+type MessageUpperBound = 64
+type DigestLength = 256
+type SecurityStrength = 128
+
+hash: {m} (fin m, width m < MessageUpperBound) => [m] -> [DigestLength]
+hash = SuiteB::sha256
